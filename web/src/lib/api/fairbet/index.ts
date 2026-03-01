@@ -182,6 +182,18 @@ export function formatMarketKey(key: string): string {
     player_goals: "Goals",
     player_shots_on_goal: "SOG",
     player_total_saves: "Saves",
+    // MLB prop markets
+    batter_hits: "Hits",
+    batter_total_bases: "Total Bases",
+    batter_rbis: "RBIs",
+    batter_runs_scored: "Runs",
+    batter_home_runs: "Home Runs",
+    batter_stolen_bases: "Stolen Bases",
+    pitcher_strikeouts: "Pitcher Ks",
+    pitcher_outs: "Pitcher Outs",
+    pitcher_hits_allowed: "Hits Allowed",
+    pitcher_walks: "Pitcher Walks",
+    pitcher_earned_runs: "Earned Runs",
     // Other markets
     team_totals: "Team Total",
     alternate_spreads: "Alt Spread",

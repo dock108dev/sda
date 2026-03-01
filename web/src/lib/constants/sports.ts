@@ -7,7 +7,7 @@
 export const SUPPORTED_LEAGUES = ["NBA", "NCAAB", "NFL", "NCAAF", "MLB", "NHL"] as const;
 
 /** Leagues with FairBet odds support — subset of SUPPORTED_LEAGUES */
-export const FAIRBET_LEAGUES = ["NBA", "NHL", "NCAAB"] as const;
+export const FAIRBET_LEAGUES = ["NBA", "NHL", "NCAAB", "MLB"] as const;
 
 export type LeagueCode = typeof SUPPORTED_LEAGUES[number];
 

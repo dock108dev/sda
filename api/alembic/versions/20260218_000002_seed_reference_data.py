@@ -1,6 +1,6 @@
 """Seed reference data from prod snapshot.
 
-Loads 6 leagues, 428 teams (NBA/NHL/NCAAB + colors + external_codes),
+Loads 6 leagues, 458 teams (NBA/NHL/NCAAB/MLB + colors + external_codes),
 411 team social accounts, and 6 compact mode thresholds from seed_data.sql.
 
 Revision ID: 20260218_seed

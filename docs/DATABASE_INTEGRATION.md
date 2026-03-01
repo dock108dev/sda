@@ -18,7 +18,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 
 | Table | Description |
 |-------|-------------|
-| `sports_leagues` | League definitions (NBA, NHL, NCAAB) |
+| `sports_leagues` | League definitions (NBA, NHL, NCAAB, MLB) |
 | `sports_teams` | Teams with names, abbreviations, colors, X handles, `external_codes` |
 | `sports_players` | Player records linked to teams |
 | `sports_games` | Games with scores, dates, status lifecycle, social scrape timestamps |

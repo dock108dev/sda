@@ -141,27 +141,32 @@ class TestGetStrategy:
         assert config is not None
         assert config.max_reference_staleness_seconds == 1800
 
+    def test_mlb_mainline_staleness(self) -> None:
+        config = get_strategy("MLB", "mainline")
+        assert config is not None
+        assert config.max_reference_staleness_seconds == 3600
+
     def test_player_prop_exists(self) -> None:
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             config = get_strategy(league, "player_prop")
             assert config is not None
 
     def test_team_prop_exists(self) -> None:
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             config = get_strategy(league, "team_prop")
             assert config is not None
 
     def test_alternate_exists(self) -> None:
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             config = get_strategy(league, "alternate")
             assert config is not None
 
     def test_period_returns_none(self) -> None:
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             assert get_strategy(league, "period") is None
 
     def test_game_prop_returns_none(self) -> None:
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             assert get_strategy(league, "game_prop") is None
 
     def test_unknown_league_returns_none(self) -> None:
@@ -176,7 +181,7 @@ class TestGetStrategy:
 
     def test_all_strategies_have_pinnacle(self) -> None:
         """Every non-None strategy uses Pinnacle as eligible sharp book."""
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             for cat in ("mainline", "player_prop", "team_prop", "alternate"):
                 config = get_strategy(league, cat)
                 assert config is not None
@@ -184,14 +189,14 @@ class TestGetStrategy:
 
     def test_all_strategies_have_min_books_3(self) -> None:
         """All strategies start with min_qualifying_books = 3."""
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             for cat in ("mainline", "player_prop", "team_prop", "alternate"):
                 config = get_strategy(league, cat)
                 assert config is not None
                 assert config.min_qualifying_books == 3
 
     def test_all_strategy_names_are_pinnacle_devig(self) -> None:
-        for league in ("NBA", "NHL", "NCAAB"):
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
             for cat in ("mainline", "player_prop", "team_prop", "alternate"):
                 config = get_strategy(league, cat)
                 assert config is not None
@@ -215,6 +220,11 @@ class TestExtrapolationConfig:
         assert MAX_EXTRAPOLATION_HALF_POINTS["NHL"]["spreads"] == 4
         assert MAX_EXTRAPOLATION_HALF_POINTS["NHL"]["totals"] == 4
         assert MAX_EXTRAPOLATION_HALF_POINTS["NHL"]["team_totals"] == 3
+
+    def test_mlb_half_point_limits(self) -> None:
+        assert MAX_EXTRAPOLATION_HALF_POINTS["MLB"]["spreads"] == 4
+        assert MAX_EXTRAPOLATION_HALF_POINTS["MLB"]["totals"] == 4
+        assert MAX_EXTRAPOLATION_HALF_POINTS["MLB"]["team_totals"] == 3
 
     def test_max_extrapolated_prob_divergence(self) -> None:
         assert MAX_EXTRAPOLATED_PROB_DIVERGENCE == 0.07

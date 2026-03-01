@@ -245,6 +245,7 @@ EV is computed **at query time** inside `GET /api/fairbet/odds`. Nothing is pers
 | NBA | mainline | high | 1 hour | 150 |
 | NHL | mainline | high | 1 hour | 150 |
 | NCAAB | mainline | medium | 30 min | 200 |
+| MLB | mainline | high | 1 hour | 150 |
 | All | player_prop | low | 30 min | 250 |
 | All | team_prop | medium | 30 min | 200 |
 | All | alternate | low | 30 min | 300 |
@@ -287,7 +288,7 @@ POST /api/fairbet/parlay/evaluate
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `league` | string | — | Filter by league code (`NBA`, `NHL`, `NCAAB`) |
+| `league` | string | — | Filter by league code (`NBA`, `NHL`, `NCAAB`, `MLB`) |
 | `market_category` | string | — | Filter by category (`mainline`, `player_prop`, `team_prop`, `alternate`) |
 | `exclude_categories` | string[] | — | Exclude specific categories |
 | `game_id` | int | — | Filter to a single game |

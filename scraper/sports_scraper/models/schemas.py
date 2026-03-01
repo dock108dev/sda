@@ -121,7 +121,7 @@ def classify_market(market_key: str) -> str:
     key = market_key.lower()
     if key in ("h2h", "spreads", "totals"):
         return "mainline"
-    if key.startswith("player_"):
+    if key.startswith(("player_", "batter_", "pitcher_")):
         return "player_prop"
     if key.startswith("team_total"):
         return "team_prop"

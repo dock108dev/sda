@@ -126,6 +126,17 @@ MARKET_DISPLAY_NAMES: dict[str, str] = {
     "player_goals": "Player Goals",
     "player_shots_on_goal": "Shots on Goal",
     "player_power_play_points": "PP Points",
+    "batter_hits": "Hits",
+    "batter_total_bases": "Total Bases",
+    "batter_rbis": "RBIs",
+    "batter_runs_scored": "Runs",
+    "batter_home_runs": "Home Runs",
+    "batter_stolen_bases": "Stolen Bases",
+    "pitcher_strikeouts": "Pitcher Ks",
+    "pitcher_outs": "Pitcher Outs",
+    "pitcher_hits_allowed": "Hits Allowed",
+    "pitcher_walks": "Pitcher Walks",
+    "pitcher_earned_runs": "Earned Runs",
     "team_totals": "Team Total",
     "alternate_spreads": "Alt Spread",
     "alternate_totals": "Alt Total",
@@ -235,6 +246,13 @@ _STRATEGY_MAP: dict[tuple[str, str], EVStrategyConfig | None] = {
     ("NCAAB", "alternate"): _PINNACLE_ALTERNATE,
     ("NCAAB", "period"): None,
     ("NCAAB", "game_prop"): None,
+    # MLB
+    ("MLB", "mainline"): _PINNACLE_MAINLINE_NBA_NHL,
+    ("MLB", "player_prop"): _PINNACLE_PLAYER_PROP,
+    ("MLB", "team_prop"): _PINNACLE_TEAM_PROP,
+    ("MLB", "alternate"): _PINNACLE_ALTERNATE,
+    ("MLB", "period"): None,
+    ("MLB", "game_prop"): None,
 }
 
 
@@ -251,6 +269,7 @@ HALF_POINT_LOGIT_SLOPE: dict[str, dict[str, float]] = {
     "NBA": {"spreads": 0.06, "totals": 0.05, "team_totals": 0.065},
     "NCAAB": {"spreads": 0.07, "totals": 0.06, "team_totals": 0.075},
     "NHL": {"spreads": 0.18, "totals": 0.15, "team_totals": 0.19},
+    "MLB": {"spreads": 0.20, "totals": 0.12, "team_totals": 0.15},
 }
 
 # Max number of half-points we'll extrapolate (beyond → too uncertain).
@@ -259,6 +278,7 @@ MAX_EXTRAPOLATION_HALF_POINTS: dict[str, dict[str, int]] = {
     "NBA": {"spreads": 6, "totals": 4, "team_totals": 3},
     "NCAAB": {"spreads": 6, "totals": 4, "team_totals": 3},
     "NHL": {"spreads": 4, "totals": 4, "team_totals": 3},
+    "MLB": {"spreads": 4, "totals": 4, "team_totals": 3},
 }
 
 # Max divergence (probability space) between extrapolated fair prob and median

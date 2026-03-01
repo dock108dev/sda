@@ -92,10 +92,34 @@ class TestLeagueConfigConstants:
         """NCAAB has social integration enabled."""
         assert LEAGUE_CONFIG["NCAAB"].social_enabled is True
 
+    def test_contains_mlb(self):
+        """Contains MLB configuration."""
+        assert "MLB" in LEAGUE_CONFIG
+        assert LEAGUE_CONFIG["MLB"].code == "MLB"
+
+    def test_mlb_boxscores_disabled(self):
+        """MLB has boxscores disabled (odds-only for now)."""
+        assert LEAGUE_CONFIG["MLB"].boxscores_enabled is False
+
+    def test_mlb_not_in_scheduled_leagues(self):
+        """MLB is not in scheduled ingestion leagues."""
+        assert "MLB" not in get_scheduled_leagues()
+
+    def test_mlb_not_in_social_leagues(self):
+        """MLB is not in social-enabled leagues."""
+        assert "MLB" not in get_social_enabled_leagues()
+
+    def test_mlb_not_in_timeline_leagues(self):
+        """MLB is not in timeline-enabled leagues."""
+        assert "MLB" not in get_timeline_enabled_leagues()
+
     def test_all_leagues_have_boxscores(self):
-        """All leagues have boxscores enabled."""
-        for league_config in LEAGUE_CONFIG.values():
-            assert league_config.boxscores_enabled is True
+        """All leagues except MLB have boxscores enabled."""
+        for code, league_config in LEAGUE_CONFIG.items():
+            if code == "MLB":
+                assert league_config.boxscores_enabled is False
+            else:
+                assert league_config.boxscores_enabled is True
 
     def test_all_leagues_have_odds(self):
         """All leagues have odds enabled."""
@@ -146,6 +170,7 @@ class TestGetEnabledLeagues:
         assert "NBA" in result
         assert "NHL" in result
         assert "NCAAB" in result
+        assert "MLB" in result
 
 
 class TestGetScheduledLeagues:

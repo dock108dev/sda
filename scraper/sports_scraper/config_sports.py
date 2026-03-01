@@ -82,6 +82,19 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         live_pbp_enabled=True,  # Handled via NCAAB batch polling
         estimated_game_duration_hours=2.5,  # Regulation ~2h + OT buffer
     ),
+    "MLB": LeagueConfig(
+        code="MLB",
+        display_name="MLB Baseball",
+        boxscores_enabled=False,
+        odds_enabled=True,
+        social_enabled=False,
+        pbp_enabled=False,
+        timeline_enabled=False,
+        scheduled_ingestion=False,
+        live_pbp_enabled=False,
+        live_boxscore_enabled=False,
+        estimated_game_duration_hours=3.5,
+    ),
 }
 
 # --- Static validation: live_odds_enabled must remain False for all leagues ---

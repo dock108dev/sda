@@ -231,7 +231,7 @@ List games with filtering and pagination.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `league` | `string[]` | Filter by league codes (NBA, NHL, NCAAB) |
+| `league` | `string[]` | Filter by league codes (NBA, NHL, NCAAB, MLB) |
 | `season` | `int` | Filter by season year |
 | `team` | `string` | Filter by team name (partial match) |
 | `startDate` | `date` | Games on or after (Eastern Time) |
@@ -541,7 +541,7 @@ List teams with game counts.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB) |
+| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB, MLB) |
 | `search` | `string` | — | Search by team name, short name, or abbreviation (partial match) |
 | `limit` | `int` | 100 | Max results (1-500) |
 | `offset` | `int` | 0 | Pagination offset |
@@ -934,6 +934,7 @@ Odds comparison tool with expected value (EV) analysis across multiple sportsboo
 - NBA
 - NHL
 - NCAAB
+- MLB
 
 ### `GET /odds`
 
@@ -941,7 +942,7 @@ Get bet-centric odds for cross-book comparison with EV annotations.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB) |
+| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB, MLB) |
 | `market_category` | `string` | — | Filter by market category (see [Market Categories](#market-categories)) |
 | `game_id` | `int` | — | Filter to a specific game |
 | `book` | `string` | — | Filter to a specific sportsbook |

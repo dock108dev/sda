@@ -59,6 +59,13 @@ PROP_MARKETS: dict[str, list[str]] = {
         "player_shots_on_goal", "player_total_saves",
         "team_totals", "alternate_spreads", "alternate_totals",
     ],
+    "MLB": [
+        "batter_hits", "batter_total_bases", "batter_rbis",
+        "batter_runs_scored", "batter_home_runs", "batter_stolen_bases",
+        "pitcher_strikeouts", "pitcher_outs", "pitcher_hits_allowed",
+        "pitcher_walks", "pitcher_earned_runs",
+        "team_totals", "alternate_spreads", "alternate_totals",
+    ],
 }
 
 # Credit safety thresholds
