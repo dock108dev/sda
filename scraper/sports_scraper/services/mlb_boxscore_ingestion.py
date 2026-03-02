@@ -150,8 +150,8 @@ def select_games_for_boxscores_mlb_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> list[tuple[int, int, date]]:
-    """Return game ids and MLB game PKs for MLB API boxscore ingestion."""
+) -> list[tuple[int, int, date, str | None]]:
+    """Return game ids, MLB game PKs, dates, and status for MLB API boxscore ingestion."""
     league = session.query(db_models.SportsLeague).filter(
         db_models.SportsLeague.code == "MLB"
     ).first()
@@ -164,6 +164,7 @@ def select_games_for_boxscores_mlb_api(
         db_models.SportsGame.id,
         mlb_game_pk_expr.label("mlb_game_pk"),
         db_models.SportsGame.game_date,
+        db_models.SportsGame.status,
     ).filter(
         db_models.SportsGame.league_id == league.id,
         db_models.SportsGame.game_date >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
@@ -185,13 +186,13 @@ def select_games_for_boxscores_mlb_api(
 
     rows = query.all()
     results = []
-    for game_id, mlb_game_pk, game_date in rows:
+    for game_id, mlb_game_pk, game_date, status in rows:
         if mlb_game_pk:
             try:
                 mlb_pk = int(mlb_game_pk)
                 game_day = game_date.date() if game_date else None
                 if game_day:
-                    results.append((game_id, mlb_pk, game_day))
+                    results.append((game_id, mlb_pk, game_day, status))
             except (ValueError, TypeError):
                 logger.warning(
                     "mlb_boxscore_invalid_game_pk",
@@ -266,9 +267,9 @@ def ingest_boxscores_via_mlb_api(
     games_enriched = 0
     games_with_stats = 0
 
-    for game_id, mlb_game_pk, game_date in games:
+    for game_id, mlb_game_pk, game_date, game_status in games:
         try:
-            boxscore = client.fetch_boxscore(mlb_game_pk)
+            boxscore = client.fetch_boxscore(mlb_game_pk, game_status=game_status)
 
             if not boxscore:
                 logger.warning(

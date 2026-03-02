@@ -19,8 +19,8 @@ def select_games_for_pbp_mlb_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> list[tuple[int, int]]:
-    """Return game ids and MLB game PKs for MLB API play-by-play ingestion.
+) -> list[tuple[int, int, str | None]]:
+    """Return game ids, MLB game PKs, and status for MLB API play-by-play ingestion.
 
     Args:
         session: Database session
@@ -30,7 +30,7 @@ def select_games_for_pbp_mlb_api(
         updated_before: Only include games with stale PBP data
 
     Returns:
-        List of (game_id, mlb_game_pk) tuples for games needing PBP
+        List of (game_id, mlb_game_pk, game_status) tuples for games needing PBP
     """
     league = session.query(db_models.SportsLeague).filter(
         db_models.SportsLeague.code == "MLB"
@@ -64,11 +64,11 @@ def select_games_for_pbp_mlb_api(
 
     rows = query.all()
     results = []
-    for game_id, mlb_game_pk, _status in rows:
+    for game_id, mlb_game_pk, status in rows:
         if mlb_game_pk:
             try:
                 mlb_pk = int(mlb_game_pk)
-                results.append((game_id, mlb_pk))
+                results.append((game_id, mlb_pk, status))
             except (ValueError, TypeError):
                 logger.warning(
                     "mlb_pbp_invalid_game_pk",
@@ -141,9 +141,9 @@ def ingest_pbp_via_mlb_api(
     pbp_games = 0
     pbp_events = 0
 
-    for game_id, mlb_game_pk in games:
+    for game_id, mlb_game_pk, game_status in games:
         try:
-            payload = client.fetch_play_by_play(mlb_game_pk)
+            payload = client.fetch_play_by_play(mlb_game_pk, game_status=game_status)
 
             if not payload.plays:
                 logger.warning(

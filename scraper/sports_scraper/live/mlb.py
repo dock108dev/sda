@@ -150,11 +150,15 @@ class MLBLiveFeedClient:
         return games
 
     # Delegate PBP methods to PBP fetcher
-    def fetch_play_by_play(self, game_pk: int) -> NormalizedPlayByPlay:
+    def fetch_play_by_play(
+        self, game_pk: int, game_status: str | None = None
+    ) -> NormalizedPlayByPlay:
         """Fetch and normalize play-by-play data for a game."""
-        return self._pbp_fetcher.fetch_play_by_play(game_pk)
+        return self._pbp_fetcher.fetch_play_by_play(game_pk, game_status=game_status)
 
     # Delegate boxscore methods to boxscore fetcher
-    def fetch_boxscore(self, game_pk: int) -> MLBBoxscore | None:
+    def fetch_boxscore(
+        self, game_pk: int, game_status: str | None = None
+    ) -> MLBBoxscore | None:
         """Fetch boxscore from MLB Stats API."""
-        return self._boxscore_fetcher.fetch_boxscore(game_pk)
+        return self._boxscore_fetcher.fetch_boxscore(game_pk, game_status=game_status)

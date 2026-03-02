@@ -29,8 +29,16 @@ class MLBPbpFetcher:
         self.client = client
         self._cache = cache
 
-    def fetch_play_by_play(self, game_pk: int) -> NormalizedPlayByPlay:
+    def fetch_play_by_play(
+        self, game_pk: int, game_status: str | None = None
+    ) -> NormalizedPlayByPlay:
         """Fetch and normalize play-by-play data for a game.
+
+        Args:
+            game_pk: MLB game primary key.
+            game_status: Normalized game status from the DB (e.g. "final").
+                Used by should_cache_final to decide whether to persist the
+                response.  When None the response is never cached.
 
         Results are cached to avoid redundant API calls.
         """
@@ -76,7 +84,7 @@ class MLBPbpFetcher:
             )
 
         # Only cache completed game data with actual plays
-        if should_cache_final(bool(plays), "OFF"):
+        if should_cache_final(bool(plays), game_status):
             self._cache.put(cache_key, payload)
             logger.info("mlb_pbp_cached", game_pk=game_pk, play_count=len(plays))
         else:

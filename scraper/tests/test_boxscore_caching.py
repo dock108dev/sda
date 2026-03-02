@@ -23,6 +23,8 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
+from sports_scraper.live.mlb_boxscore import MLBBoxscoreFetcher
+from sports_scraper.live.mlb_pbp import MLBPbpFetcher
 from sports_scraper.live.nba_boxscore import NBABoxscoreFetcher
 from sports_scraper.live.ncaab_pbp import NCAABPbpFetcher
 from sports_scraper.live.nhl_boxscore import NHLBoxscoreFetcher
@@ -453,6 +455,186 @@ class TestNCAABPbpCaching:
 
         fetcher = NCAABPbpFetcher(client, cache)
         result = fetcher.fetch_play_by_play(12345, game_status="final")
+
+        client.get.assert_not_called()
+        assert len(result.plays) == 3
+
+
+# ---------------------------------------------------------------------------
+# MLB boxscore fetcher caching
+# ---------------------------------------------------------------------------
+
+
+class TestMLBBoxscoreCaching:
+    """Verify MLBBoxscoreFetcher caches only final games with player data."""
+
+    @pytest.fixture
+    def cache(self) -> MagicMock:
+        mock = MagicMock()
+        mock.get.return_value = None
+        return mock
+
+    @pytest.fixture
+    def client(self) -> MagicMock:
+        return MagicMock()
+
+    def _mlb_payload(self, has_players: bool = True) -> dict:
+        players = {"ID123": {"person": {"id": 123, "fullName": "Mike Trout"}}} if has_players else {}
+        return {
+            "teams": {
+                "home": {
+                    "team": {"id": 108, "name": "Los Angeles Angels", "abbreviation": "LAA"},
+                    "players": players,
+                    "batters": [123] if has_players else [],
+                    "pitchers": [],
+                    "teamStats": {"batting": {"runs": "5"}, "pitching": {}, "fielding": {}},
+                },
+                "away": {
+                    "team": {"id": 117, "name": "Houston Astros", "abbreviation": "HOU"},
+                    "players": {},
+                    "batters": [],
+                    "pitchers": [],
+                    "teamStats": {"batting": {"runs": "3"}, "pitching": {}, "fielding": {}},
+                },
+            },
+        }
+
+    def test_caches_final_game_with_players(self, client: MagicMock, cache: MagicMock) -> None:
+        """Final game with player data is cached."""
+        payload = self._mlb_payload(has_players=True)
+        client.get.return_value = _make_http_response(payload)
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        fetcher.fetch_boxscore(717001, game_status="final")
+
+        cache.put.assert_called_once()
+
+    def test_skips_cache_for_live_game(self, client: MagicMock, cache: MagicMock) -> None:
+        """Live game is never cached."""
+        payload = self._mlb_payload(has_players=True)
+        client.get.return_value = _make_http_response(payload)
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        fetcher.fetch_boxscore(717001, game_status="live")
+
+        cache.put.assert_not_called()
+
+    def test_skips_cache_when_status_none(self, client: MagicMock, cache: MagicMock) -> None:
+        """Not cached when game_status is not provided."""
+        payload = self._mlb_payload(has_players=True)
+        client.get.return_value = _make_http_response(payload)
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        fetcher.fetch_boxscore(717001)
+
+        cache.put.assert_not_called()
+
+    def test_skips_cache_for_final_without_players(self, client: MagicMock, cache: MagicMock) -> None:
+        """Final game with empty players is not cached."""
+        payload = self._mlb_payload(has_players=False)
+        client.get.return_value = _make_http_response(payload)
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        fetcher.fetch_boxscore(717001, game_status="final")
+
+        cache.put.assert_not_called()
+
+    def test_uses_cached_response(self, client: MagicMock, cache: MagicMock) -> None:
+        """Returns cached data without hitting the network."""
+        payload = self._mlb_payload(has_players=True)
+        cache.get.return_value = payload
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        result = fetcher.fetch_boxscore(717001, game_status="final")
+
+        client.get.assert_not_called()
+        assert result is not None
+
+
+# ---------------------------------------------------------------------------
+# MLB PBP fetcher caching
+# ---------------------------------------------------------------------------
+
+
+class TestMLBPbpCaching:
+    """Verify MLBPbpFetcher caches only final games with play data."""
+
+    @pytest.fixture
+    def cache(self) -> MagicMock:
+        mock = MagicMock()
+        mock.get.return_value = None
+        return mock
+
+    @pytest.fixture
+    def client(self) -> MagicMock:
+        return MagicMock()
+
+    def _pbp_payload(self, n_plays: int = 3) -> dict:
+        plays = [
+            {
+                "about": {"inning": 1, "isTopInning": True, "atBatIndex": i},
+                "result": {
+                    "eventType": "single",
+                    "event": "Single",
+                    "description": f"Play {i}",
+                    "homeScore": 0,
+                    "awayScore": 0,
+                },
+                "matchup": {
+                    "batter": {"id": 100 + i, "fullName": f"Batter {i}"},
+                    "pitcher": {"id": 200 + i, "fullName": f"Pitcher {i}"},
+                },
+            }
+            for i in range(1, n_plays + 1)
+        ]
+        return {"allPlays": plays}
+
+    def test_caches_final_game_with_plays(self, client: MagicMock, cache: MagicMock) -> None:
+        """Final game with plays is cached."""
+        payload = self._pbp_payload(5)
+        client.get.return_value = _make_http_response(payload)
+
+        fetcher = MLBPbpFetcher(client, cache)
+        fetcher.fetch_play_by_play(717001, game_status="final")
+
+        cache.put.assert_called_once()
+
+    def test_skips_cache_for_live_game(self, client: MagicMock, cache: MagicMock) -> None:
+        """Live game with plays is not cached."""
+        payload = self._pbp_payload(5)
+        client.get.return_value = _make_http_response(payload)
+
+        fetcher = MLBPbpFetcher(client, cache)
+        fetcher.fetch_play_by_play(717001, game_status="live")
+
+        cache.put.assert_not_called()
+
+    def test_skips_cache_when_status_none(self, client: MagicMock, cache: MagicMock) -> None:
+        """Not cached when game_status is not provided."""
+        payload = self._pbp_payload(5)
+        client.get.return_value = _make_http_response(payload)
+
+        fetcher = MLBPbpFetcher(client, cache)
+        fetcher.fetch_play_by_play(717001)
+
+        cache.put.assert_not_called()
+
+    def test_skips_cache_for_final_without_plays(self, client: MagicMock, cache: MagicMock) -> None:
+        """Final game with empty plays is not cached."""
+        client.get.return_value = _make_http_response({"allPlays": []})
+
+        fetcher = MLBPbpFetcher(client, cache)
+        fetcher.fetch_play_by_play(717001, game_status="final")
+
+        cache.put.assert_not_called()
+
+    def test_uses_cached_response(self, client: MagicMock, cache: MagicMock) -> None:
+        """Returns cached data without hitting the network."""
+        payload = self._pbp_payload(3)
+        cache.get.return_value = payload
+
+        fetcher = MLBPbpFetcher(client, cache)
+        result = fetcher.fetch_play_by_play(717001, game_status="final")
 
         client.get.assert_not_called()
         assert len(result.plays) == 3

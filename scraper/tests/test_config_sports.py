@@ -97,29 +97,32 @@ class TestLeagueConfigConstants:
         assert "MLB" in LEAGUE_CONFIG
         assert LEAGUE_CONFIG["MLB"].code == "MLB"
 
-    def test_mlb_boxscores_disabled(self):
-        """MLB has boxscores disabled (odds-only for now)."""
-        assert LEAGUE_CONFIG["MLB"].boxscores_enabled is False
+    def test_mlb_fully_enabled(self):
+        """MLB has all features enabled."""
+        mlb = LEAGUE_CONFIG["MLB"]
+        assert mlb.boxscores_enabled is True
+        assert mlb.odds_enabled is True
+        assert mlb.social_enabled is True
+        assert mlb.pbp_enabled is True
+        assert mlb.timeline_enabled is True
+        assert mlb.scheduled_ingestion is True
 
-    def test_mlb_not_in_scheduled_leagues(self):
-        """MLB is not in scheduled ingestion leagues."""
-        assert "MLB" not in get_scheduled_leagues()
+    def test_mlb_in_scheduled_leagues(self):
+        """MLB is in scheduled ingestion leagues."""
+        assert "MLB" in get_scheduled_leagues()
 
-    def test_mlb_not_in_social_leagues(self):
-        """MLB is not in social-enabled leagues."""
-        assert "MLB" not in get_social_enabled_leagues()
+    def test_mlb_in_social_leagues(self):
+        """MLB is in social-enabled leagues."""
+        assert "MLB" in get_social_enabled_leagues()
 
-    def test_mlb_not_in_timeline_leagues(self):
-        """MLB is not in timeline-enabled leagues."""
-        assert "MLB" not in get_timeline_enabled_leagues()
+    def test_mlb_in_timeline_leagues(self):
+        """MLB is in timeline-enabled leagues."""
+        assert "MLB" in get_timeline_enabled_leagues()
 
     def test_all_leagues_have_boxscores(self):
-        """All leagues except MLB have boxscores enabled."""
+        """All leagues have boxscores enabled."""
         for code, league_config in LEAGUE_CONFIG.items():
-            if code == "MLB":
-                assert league_config.boxscores_enabled is False
-            else:
-                assert league_config.boxscores_enabled is True
+            assert league_config.boxscores_enabled is True, f"{code} missing boxscores"
 
     def test_all_leagues_have_odds(self):
         """All leagues have odds enabled."""

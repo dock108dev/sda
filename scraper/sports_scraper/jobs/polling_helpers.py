@@ -306,7 +306,7 @@ def _poll_mlb_game(session, game) -> dict:
     # Fetch PBP if game is live or pregame
     if game.status in (db_models.GameStatus.live.value, db_models.GameStatus.pregame.value):
         try:
-            payload = client.fetch_play_by_play(mlb_game_id)
+            payload = client.fetch_play_by_play(mlb_game_id, game_status=game.status)
             result["api_calls"] += 1
 
             if payload.plays:
@@ -453,7 +453,7 @@ def _poll_mlb_game_boxscore(session, game) -> dict:
     result: dict = {"api_calls": 0, "boxscore_updated": False}
 
     try:
-        boxscore = client.fetch_boxscore(mlb_game_id)
+        boxscore = client.fetch_boxscore(mlb_game_id, game_status=game.status)
         result["api_calls"] = 1
 
         if boxscore:

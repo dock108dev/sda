@@ -30,8 +30,16 @@ class MLBBoxscoreFetcher:
         self.client = client
         self._cache = cache
 
-    def fetch_boxscore(self, game_pk: int) -> MLBBoxscore | None:
+    def fetch_boxscore(
+        self, game_pk: int, game_status: str | None = None
+    ) -> MLBBoxscore | None:
         """Fetch boxscore from MLB Stats API.
+
+        Args:
+            game_pk: MLB game primary key.
+            game_status: Normalized game status from the DB (e.g. "final").
+                Used by should_cache_final to decide whether to persist the
+                response.  When None the response is never cached.
 
         Results are cached to avoid redundant API calls.
         """
@@ -65,20 +73,19 @@ class MLBBoxscoreFetcher:
 
         payload = response.json()
 
-        # Only cache final game data
+        # Only cache final game data — the boxscore endpoint doesn't include
+        # gameState, so the caller must pass the real status from the DB.
         teams = payload.get("teams", {})
         has_data = bool(
             teams.get("home", {}).get("players")
             or teams.get("away", {}).get("players")
         )
 
-        # The boxscore endpoint doesn't include gameState directly;
-        # we pass "OFF" for final detection based on has_data presence
-        if should_cache_final(has_data, "OFF"):
+        if should_cache_final(has_data, game_status):
             self._cache.put(cache_key, payload)
-            logger.info("mlb_boxscore_cached", game_pk=game_pk)
+            logger.info("mlb_boxscore_cached", game_pk=game_pk, game_status=game_status)
         else:
-            logger.info("mlb_boxscore_not_cached", game_pk=game_pk, has_data=has_data)
+            logger.info("mlb_boxscore_not_cached", game_pk=game_pk, has_data=has_data, game_status=game_status)
 
         return self._parse_boxscore_response(payload, game_pk)
 
