@@ -64,7 +64,8 @@ def upgrade() -> None:
             f"color_light_hex, color_dark_hex) "
             f"VALUES (nextval('sports_teams_id_seq'), 5, NULL, '{esc_name}', "
             f"'{esc_short}', '{abbr}', NULL, '{{}}', now(), now(), NULL, "
-            f"'{color_light}', '{color_dark}')"
+            f"'{color_light}', '{color_dark}') "
+            f"ON CONFLICT (league_id, name) DO NOTHING"
         )
 
 

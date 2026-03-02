@@ -34,11 +34,11 @@ class MLBBoxscore:
     """
 
     game_pk: int
-    game_date: datetime
     status: str
     home_team: TeamIdentity
     away_team: TeamIdentity
     home_score: int
     away_score: int
+    game_date: datetime | None = None  # Not available from the boxscore endpoint
     team_boxscores: list = field(default_factory=list)  # List of NormalizedTeamBoxscore
     player_boxscores: list = field(default_factory=list)  # List of NormalizedPlayerBoxscore

@@ -638,3 +638,92 @@ class TestMLBPbpCaching:
 
         client.get.assert_not_called()
         assert len(result.plays) == 3
+
+
+# ---------------------------------------------------------------------------
+# MLB Boxscore status threading
+# ---------------------------------------------------------------------------
+
+
+class TestMLBBoxscoreStatus:
+    """Verify MLBBoxscoreFetcher threads game_status to the parsed result."""
+
+    @pytest.fixture
+    def cache(self) -> MagicMock:
+        mock = MagicMock()
+        mock.get.return_value = None
+        return mock
+
+    @pytest.fixture
+    def client(self) -> MagicMock:
+        return MagicMock()
+
+    def _mlb_payload(self) -> dict:
+        return {
+            "teams": {
+                "home": {
+                    "team": {"id": 108, "name": "Los Angeles Angels", "abbreviation": "LAA"},
+                    "players": {"ID123": {"person": {"id": 123, "fullName": "Mike Trout"}}},
+                    "batters": [123],
+                    "pitchers": [],
+                    "teamStats": {"batting": {"runs": "5"}, "pitching": {}, "fielding": {}},
+                },
+                "away": {
+                    "team": {"id": 117, "name": "Houston Astros", "abbreviation": "HOU"},
+                    "players": {},
+                    "batters": [],
+                    "pitchers": [],
+                    "teamStats": {"batting": {"runs": "3"}, "pitching": {}, "fielding": {}},
+                },
+            },
+        }
+
+    def test_final_status_passed_through(self, client: MagicMock, cache: MagicMock) -> None:
+        """Final game_status is reflected in the parsed MLBBoxscore."""
+        client.get.return_value = _make_http_response(self._mlb_payload())
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        result = fetcher.fetch_boxscore(717001, game_status="final")
+
+        assert result is not None
+        assert result.status == "final"
+
+    def test_live_status_preserved(self, client: MagicMock, cache: MagicMock) -> None:
+        """Live game_status is NOT overridden to 'final'."""
+        client.get.return_value = _make_http_response(self._mlb_payload())
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        result = fetcher.fetch_boxscore(717001, game_status="live")
+
+        assert result is not None
+        assert result.status == "live"
+
+    def test_scheduled_status_preserved(self, client: MagicMock, cache: MagicMock) -> None:
+        """Scheduled game_status is NOT overridden to 'final'."""
+        client.get.return_value = _make_http_response(self._mlb_payload())
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        result = fetcher.fetch_boxscore(717001, game_status="scheduled")
+
+        assert result is not None
+        assert result.status == "scheduled"
+
+    def test_none_status_defaults_to_scheduled(self, client: MagicMock, cache: MagicMock) -> None:
+        """When game_status is None, defaults to 'scheduled' (safe, no premature finalization)."""
+        client.get.return_value = _make_http_response(self._mlb_payload())
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        result = fetcher.fetch_boxscore(717001)
+
+        assert result is not None
+        assert result.status == "scheduled"
+
+    def test_game_date_is_none(self, client: MagicMock, cache: MagicMock) -> None:
+        """game_date is None since the boxscore endpoint doesn't provide it."""
+        client.get.return_value = _make_http_response(self._mlb_payload())
+
+        fetcher = MLBBoxscoreFetcher(client, cache)
+        result = fetcher.fetch_boxscore(717001, game_status="final")
+
+        assert result is not None
+        assert result.game_date is None

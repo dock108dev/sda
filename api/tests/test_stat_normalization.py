@@ -73,3 +73,87 @@ class TestNormalizeStats:
         result = normalize_stats(raw, "NBA")
         pts = [s for s in result if s["key"] == "points"]
         assert len(pts) == 0
+
+
+class TestMLBTeamBoxscoreNormalization:
+    """Tests that MLB stat aliases resolve against the actual persisted structure.
+
+    MLB team boxscores are stored as:
+      {"points": 5, "hits": 10,
+       "batting": {"runs": "5", "hits": "10", "atBats": "35", ...},
+       "pitching": {"era": "3.00", ...},
+       "fielding": {"errors": "1", ...}}
+    """
+
+    STORED = {
+        "points": 5,
+        "hits": 10,
+        "batting": {
+            "runs": "5",
+            "hits": "10",
+            "atBats": "35",
+            "homeRuns": "2",
+            "rbi": "4",
+            "baseOnBalls": "3",
+            "strikeOuts": "8",
+            "stolenBases": "1",
+            "leftOnBase": "7",
+            "avg": ".286",
+            "obp": ".350",
+            "slg": ".500",
+        },
+        "pitching": {
+            "era": "3.00",
+        },
+        "fielding": {
+            "errors": "1",
+        },
+    }
+
+    def test_runs_from_points(self) -> None:
+        result = normalize_stats(self.STORED, "MLB")
+        by_key = {s["key"]: s["value"] for s in result}
+        assert by_key["runs"] == 5
+
+    def test_hits_from_top_level(self) -> None:
+        result = normalize_stats(self.STORED, "MLB")
+        by_key = {s["key"]: s["value"] for s in result}
+        assert by_key["hits"] == 10
+
+    def test_errors_from_fielding(self) -> None:
+        result = normalize_stats(self.STORED, "MLB")
+        by_key = {s["key"]: s["value"] for s in result}
+        assert by_key["errors"] == 1
+
+    def test_batting_stats_from_nested(self) -> None:
+        result = normalize_stats(self.STORED, "MLB")
+        by_key = {s["key"]: s["value"] for s in result}
+        assert by_key["at_bats"] == 35
+        assert by_key["home_runs"] == 2
+        assert by_key["rbi"] == 4
+        assert by_key["base_on_balls"] == 3
+        assert by_key["strike_outs"] == 8
+        assert by_key["stolen_bases"] == 1
+        assert by_key["left_on_base"] == 7
+
+    def test_batting_rate_stats(self) -> None:
+        result = normalize_stats(self.STORED, "MLB")
+        by_key = {s["key"]: s["value"] for s in result}
+        assert by_key["avg"] == ".286"
+        assert by_key["obp"] == ".350"
+        assert by_key["slg"] == ".500"
+
+    def test_era_from_pitching(self) -> None:
+        result = normalize_stats(self.STORED, "MLB")
+        by_key = {s["key"]: s["value"] for s in result}
+        assert by_key["era"] == "3.00"
+
+    def test_all_expected_keys_present(self) -> None:
+        result = normalize_stats(self.STORED, "MLB")
+        keys = {s["key"] for s in result}
+        expected = {
+            "runs", "hits", "errors", "left_on_base",
+            "at_bats", "home_runs", "rbi", "base_on_balls",
+            "strike_outs", "stolen_bases", "avg", "obp", "slg", "era",
+        }
+        assert expected == keys

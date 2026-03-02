@@ -53,22 +53,24 @@ NCAAB_STATS = _BASKETBALL_STATS
 
 MLB_STATS: tuple[StatDefinition, ...] = (
     # Core line score
-    StatDefinition("runs", "R", "scoring", "int", ("runs",)),
-    StatDefinition("hits", "H", "scoring", "int", ("hits",)),
-    StatDefinition("errors", "E", "scoring", "int", ("errors",)),
-    StatDefinition("left_on_base", "LOB", "scoring", "int", ("leftOnBase", "lob")),
+    # Runs are stored as top-level "points" by _build_team_stats, and also
+    # nested under batting.runs in raw_stats.
+    StatDefinition("runs", "R", "scoring", "int", ("points", "batting.runs")),
+    StatDefinition("hits", "H", "scoring", "int", ("hits", "batting.hits")),
+    StatDefinition("errors", "E", "scoring", "int", ("fielding.errors",)),
+    StatDefinition("left_on_base", "LOB", "scoring", "int", ("batting.leftOnBase", "leftOnBase", "lob")),
     # Batting
-    StatDefinition("at_bats", "AB", "batting", "int", ("atBats", "ab")),
-    StatDefinition("home_runs", "HR", "batting", "int", ("homeRuns", "hr")),
-    StatDefinition("rbi", "RBI", "batting", "int", ("rbi",)),
-    StatDefinition("base_on_balls", "BB", "batting", "int", ("baseOnBalls", "bb")),
-    StatDefinition("strike_outs", "SO", "batting", "int", ("strikeOuts", "so")),
-    StatDefinition("stolen_bases", "SB", "batting", "int", ("stolenBases", "sb")),
-    StatDefinition("avg", "AVG", "batting", "str", ("avg",)),
-    StatDefinition("obp", "OBP", "batting", "str", ("obp",)),
-    StatDefinition("slg", "SLG", "batting", "str", ("slg",)),
+    StatDefinition("at_bats", "AB", "batting", "int", ("batting.atBats", "atBats", "ab")),
+    StatDefinition("home_runs", "HR", "batting", "int", ("batting.homeRuns", "homeRuns", "hr")),
+    StatDefinition("rbi", "RBI", "batting", "int", ("batting.rbi", "rbi")),
+    StatDefinition("base_on_balls", "BB", "batting", "int", ("batting.baseOnBalls", "baseOnBalls", "bb")),
+    StatDefinition("strike_outs", "SO", "batting", "int", ("batting.strikeOuts", "strikeOuts", "so")),
+    StatDefinition("stolen_bases", "SB", "batting", "int", ("batting.stolenBases", "stolenBases", "sb")),
+    StatDefinition("avg", "AVG", "batting", "str", ("batting.avg",)),
+    StatDefinition("obp", "OBP", "batting", "str", ("batting.obp",)),
+    StatDefinition("slg", "SLG", "batting", "str", ("batting.slg",)),
     # Pitching
-    StatDefinition("era", "ERA", "pitching", "str", ("era",)),
+    StatDefinition("era", "ERA", "pitching", "str", ("pitching.era",)),
 )
 
 # Registry by league

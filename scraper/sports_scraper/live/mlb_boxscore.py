@@ -16,10 +16,7 @@ from ..models import (
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
 from .mlb_constants import MLB_BOXSCORE_URL
-from .mlb_helpers import (
-    build_team_identity_from_api,
-    parse_datetime,
-)
+from .mlb_helpers import build_team_identity_from_api
 from .mlb_models import MLBBoxscore
 
 
@@ -47,7 +44,7 @@ class MLBBoxscoreFetcher:
         cached = self._cache.get(cache_key)
         if cached is not None:
             logger.info("mlb_boxscore_using_cache", game_pk=game_pk)
-            return self._parse_boxscore_response(cached, game_pk)
+            return self._parse_boxscore_response(cached, game_pk, game_status)
 
         url = MLB_BOXSCORE_URL.format(game_pk=game_pk)
         logger.info("mlb_boxscore_fetch", url=url, game_pk=game_pk)
@@ -87,9 +84,11 @@ class MLBBoxscoreFetcher:
         else:
             logger.info("mlb_boxscore_not_cached", game_pk=game_pk, has_data=has_data, game_status=game_status)
 
-        return self._parse_boxscore_response(payload, game_pk)
+        return self._parse_boxscore_response(payload, game_pk, game_status)
 
-    def _parse_boxscore_response(self, payload: dict, game_pk: int) -> MLBBoxscore:
+    def _parse_boxscore_response(
+        self, payload: dict, game_pk: int, game_status: str | None = None
+    ) -> MLBBoxscore:
         """Parse boxscore JSON into normalized structure."""
         teams = payload.get("teams", {})
         home_data = teams.get("home", {})
@@ -133,8 +132,7 @@ class MLBBoxscoreFetcher:
 
         return MLBBoxscore(
             game_pk=game_pk,
-            game_date=parse_datetime(None),
-            status="final",
+            status=game_status or "scheduled",
             home_team=home_team,
             away_team=away_team,
             home_score=home_score,
