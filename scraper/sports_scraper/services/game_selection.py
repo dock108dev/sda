@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
+from ..utils.datetime_utils import end_of_et_day_utc
+
 from sqlalchemy import exists, not_
 from sqlalchemy.orm import Session
 
@@ -37,7 +39,7 @@ def select_games_for_boxscores(
     ).filter(
         db_models.SportsGame.league_id == league.id,
         db_models.SportsGame.game_date >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
-        db_models.SportsGame.game_date <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+        db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
         db_models.SportsGame.source_game_key.isnot(None),
     )
 
@@ -78,7 +80,7 @@ def select_games_for_pbp_sportsref(
     ).filter(
         db_models.SportsGame.league_id == league.id,
         db_models.SportsGame.game_date >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
-        db_models.SportsGame.game_date <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+        db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
         db_models.SportsGame.source_game_key.isnot(None),
     )
 

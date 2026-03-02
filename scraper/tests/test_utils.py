@@ -236,19 +236,25 @@ class TestDateWindowForMatching:
 
     def test_date_window_default_range(self):
         start, end = date_window_for_matching(date(2024, 1, 15))
-        # Default is 1 day before and 1 day after
-        assert start.date() == date(2024, 1, 14)
-        assert end.date() == date(2024, 1, 16)
+        # Default is 1 day before and 1 day after.
+        # start = midnight ET Jan 14 = 05:00 UTC Jan 14 (EST)
+        # end   = midnight ET Jan 17 = 05:00 UTC Jan 17 (EST, exclusive upper)
+        assert start == datetime(2024, 1, 14, 5, 0, tzinfo=UTC)
+        assert end == datetime(2024, 1, 17, 5, 0, tzinfo=UTC)
 
     def test_date_window_custom_range(self):
         start, end = date_window_for_matching(date(2024, 1, 15), days_before=3, days_after=2)
-        assert start.date() == date(2024, 1, 12)
-        assert end.date() == date(2024, 1, 17)
+        # start = midnight ET Jan 12 = 05:00 UTC Jan 12
+        # end   = midnight ET Jan 18 = 05:00 UTC Jan 18
+        assert start == datetime(2024, 1, 12, 5, 0, tzinfo=UTC)
+        assert end == datetime(2024, 1, 18, 5, 0, tzinfo=UTC)
 
     def test_date_window_zero_range(self):
         start, end = date_window_for_matching(date(2024, 1, 15), days_before=0, days_after=0)
-        assert start.date() == date(2024, 1, 15)
-        assert end.date() == date(2024, 1, 15)
+        # start = midnight ET Jan 15 = 05:00 UTC Jan 15
+        # end   = midnight ET Jan 16 = 05:00 UTC Jan 16
+        assert start == datetime(2024, 1, 15, 5, 0, tzinfo=UTC)
+        assert end == datetime(2024, 1, 16, 5, 0, tzinfo=UTC)
 
 
 # ============================================================================

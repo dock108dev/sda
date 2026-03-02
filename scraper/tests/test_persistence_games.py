@@ -310,7 +310,7 @@ class TestUpsertGameStub:
         mock_session = MagicMock()
         mock_get_league_id.return_value = 1
         mock_upsert_team.side_effect = [10, 20]  # home_team_id, away_team_id
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = None
+        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = None
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
         away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")
@@ -346,7 +346,7 @@ class TestUpsertGameStub:
         existing_game.venue = None
         existing_game.external_ids = {}
         existing_game.tip_time = None
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
+        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
         away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")
@@ -385,7 +385,7 @@ class TestUpsertGameStub:
         existing_game.venue = None
         existing_game.external_ids = {}
         existing_game.tip_time = None
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
+        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
         away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")
@@ -420,7 +420,7 @@ class TestUpsertGameStub:
         existing_game.venue = None
         existing_game.external_ids = {}
         existing_game.tip_time = None
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
+        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
         away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")
@@ -456,7 +456,7 @@ class TestUpsertGameStub:
         existing_game.venue = None
         existing_game.external_ids = {"existing": "123"}
         existing_game.tip_time = None
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
+        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
         away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import Date, case, cast, func, literal_column, or_
+from sqlalchemy import case, func, literal_column, or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -13,7 +14,7 @@ from ..db import db_models
 from ..logging import logger
 from ..models import NormalizedGame
 from ..utils.date_utils import season_from_date
-from ..utils.datetime_utils import now_utc
+from ..utils.datetime_utils import end_of_et_day_utc, now_utc
 from ..utils.db_queries import get_league_id
 from .teams import _upsert_team
 
@@ -132,14 +133,23 @@ def upsert_game_stub(
     normalized_status = _normalize_status(status)
 
     # Match games by DATE only (not exact datetime) to prevent duplicates
-    # when Sports Reference (midnight) vs Odds API (actual time) create the same game
-    game_date_only = game_date.date()
+    # when Sports Reference (midnight) vs Odds API (actual time) create the same game.
+    # Convert to ET before extracting date so late-night UTC games land on the correct
+    # Eastern-Time sports-calendar day.
+    game_date_only = game_date.astimezone(ZoneInfo("America/New_York")).date()
+
+    # Use a UTC range that covers both old (midnight UTC) and new (midnight ET→UTC)
+    # storage conventions so we never create duplicates during the migration window.
+    day_start_utc = datetime.combine(game_date_only, datetime.min.time(), tzinfo=UTC)
+    day_end_utc = end_of_et_day_utc(game_date_only)
+
     existing = (
         session.query(db_models.SportsGame)
         .filter(db_models.SportsGame.league_id == league_id)
         .filter(db_models.SportsGame.home_team_id == home_team_id)
         .filter(db_models.SportsGame.away_team_id == away_team_id)
-        .filter(cast(db_models.SportsGame.game_date, Date) == game_date_only)
+        .filter(db_models.SportsGame.game_date >= day_start_utc)
+        .filter(db_models.SportsGame.game_date < day_end_utc)
         .first()
     )
 
@@ -174,8 +184,11 @@ def upsert_game_stub(
         session.flush()
         return existing.id, False
 
-    # Normalize game_date to midnight UTC for storage (matching uses date only)
-    normalized_game_date = datetime.combine(game_date_only, datetime.min.time(), tzinfo=UTC)
+    # Normalize game_date to midnight ET → UTC for storage so the stored
+    # timestamp always represents the correct Eastern-Time sports-calendar day.
+    normalized_game_date = datetime.combine(
+        game_date_only, datetime.min.time(), tzinfo=ZoneInfo("America/New_York")
+    ).astimezone(UTC)
     season = season_from_date(game_date_only, league_code)
 
     game = db_models.SportsGame(

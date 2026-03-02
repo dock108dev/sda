@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
+from ..utils.datetime_utils import end_of_et_day_utc
+
 from sqlalchemy import exists, not_, or_
 from sqlalchemy.orm import Session
 
@@ -52,7 +54,7 @@ def select_games_for_pbp_nhl_api(
     ).filter(
         db_models.SportsGame.league_id == league.id,
         db_models.SportsGame.game_date >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
-        db_models.SportsGame.game_date <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+        db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
         # nhl_game_pk is required for NHL API PBP fetch
         nhl_game_pk_expr.isnot(None),
     )
@@ -120,7 +122,7 @@ def populate_nhl_game_ids(
         .filter(
             db_models.SportsGame.league_id == league.id,
             db_models.SportsGame.game_date >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
-            db_models.SportsGame.game_date <= datetime.combine(end_date, datetime.max.time(), tzinfo=UTC),
+            db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
             or_(
                 nhl_game_pk_expr.is_(None),
                 nhl_game_pk_expr == "",

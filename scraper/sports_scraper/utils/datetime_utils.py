@@ -16,6 +16,8 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+ET = ZoneInfo("America/New_York")
+
 SPORTS_DAY_BOUNDARY_HOUR_ET = 4
 
 
@@ -70,11 +72,19 @@ def date_window_for_matching(day: date, days_before: int = 1, days_after: int = 
     Returns:
         Tuple of (window_start, window_end) in UTC
     """
-    start_date = day - timedelta(days=days_before)
-    end_date = day + timedelta(days=days_after)
-    start = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=UTC)
-    end = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=UTC)
-    return start, end
+    start_day = day - timedelta(days=days_before)
+    end_day = day + timedelta(days=days_after)
+    return start_of_et_day_utc(start_day), end_of_et_day_utc(end_day)
+
+
+def start_of_et_day_utc(d: date) -> datetime:
+    """Midnight ET on date *d*, expressed in UTC. Use as ``>=`` bound."""
+    return datetime.combine(d, datetime.min.time(), tzinfo=ET).astimezone(UTC)
+
+
+def end_of_et_day_utc(d: date) -> datetime:
+    """Midnight ET on date *d+1*, expressed in UTC. Use as ``<`` (exclusive) upper bound."""
+    return datetime.combine(d + timedelta(days=1), datetime.min.time(), tzinfo=ET).astimezone(UTC)
 
 
 def eastern_date_range_to_utc_iso(
