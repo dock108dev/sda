@@ -16,7 +16,7 @@ def _run_flow_generation(
     Common implementation for scheduled flow generation tasks.
 
     Args:
-        league: League code (NBA, NHL, NCAAB)
+        league: League code (NBA, NHL, NCAAB, MLB)
         max_games: Maximum number of games to process (None = no limit)
 
     Returns:
@@ -70,7 +70,7 @@ def _run_flow_generation(
         max_polls = 60
         poll_interval = 30
 
-        for poll_num in range(max_polls):
+        for _poll_num in range(max_polls):
             time.sleep(poll_interval)
 
             with httpx.Client(timeout=30.0, headers=get_api_headers()) as client:
@@ -211,6 +211,22 @@ def run_scheduled_ncaab_flow_generation() -> dict:
 
 
 @shared_task(
+    name="run_scheduled_mlb_flow_generation",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": 2},
+)
+def run_scheduled_mlb_flow_generation() -> dict:
+    """
+    Scheduled task to generate flows for MLB games in the last 72 hours.
+
+    Runs 30 minutes after NCAAB flow generation (6:00 AM EST = 11:00 UTC).
+    Only generates flows for games that don't already have them (force=False).
+    """
+    return _run_flow_generation("MLB")
+
+
+@shared_task(
     name="run_scheduled_flow_generation",
     autoretry_for=(Exception,),
     retry_backoff=True,
@@ -273,7 +289,7 @@ def run_scheduled_flow_generation() -> dict:
         max_polls = 60
         poll_interval = 30
 
-        for poll_num in range(max_polls):
+        for _poll_num in range(max_polls):
             time.sleep(poll_interval)
 
             with httpx.Client(timeout=30.0, headers=get_api_headers()) as client:

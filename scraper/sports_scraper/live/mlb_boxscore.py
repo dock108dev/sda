@@ -18,7 +18,6 @@ from ..utils.parsing import parse_int
 from .mlb_constants import MLB_BOXSCORE_URL
 from .mlb_helpers import (
     build_team_identity_from_api,
-    map_mlb_game_state,
     parse_datetime,
 )
 from .mlb_models import MLBBoxscore
@@ -150,7 +149,7 @@ class MLBBoxscoreFetcher:
         batters = set(team_data.get("batters", []))
         pitchers = set(team_data.get("pitchers", []))
 
-        for player_key, player_data in players_dict.items():
+        for _player_key, player_data in players_dict.items():
             person = player_data.get("person", {})
             player_id = person.get("id")
             if not player_id:

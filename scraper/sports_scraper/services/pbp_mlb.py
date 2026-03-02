@@ -64,7 +64,7 @@ def select_games_for_pbp_mlb_api(
 
     rows = query.all()
     results = []
-    for game_id, mlb_game_pk, status in rows:
+    for game_id, mlb_game_pk, _status in rows:
         if mlb_game_pk:
             try:
                 mlb_pk = int(mlb_game_pk)
@@ -156,16 +156,15 @@ def ingest_pbp_via_mlb_api(
 
             # Validation: Check if game is final and event count is suspiciously low
             game = session.query(db_models.SportsGame).get(game_id)
-            if game and game.status == db_models.GameStatus.final.value:
-                if len(payload.plays) < MLB_MIN_EXPECTED_PLAYS:
-                    logger.warning(
-                        "mlb_pbp_insufficient_events",
-                        run_id=run_id,
-                        game_id=game_id,
-                        mlb_game_pk=mlb_game_pk,
-                        play_count=len(payload.plays),
-                        expected_min=MLB_MIN_EXPECTED_PLAYS,
-                    )
+            if game and game.status == db_models.GameStatus.final.value and len(payload.plays) < MLB_MIN_EXPECTED_PLAYS:
+                logger.warning(
+                    "mlb_pbp_insufficient_events",
+                    run_id=run_id,
+                    game_id=game_id,
+                    mlb_game_pk=mlb_game_pk,
+                    play_count=len(payload.plays),
+                    expected_min=MLB_MIN_EXPECTED_PLAYS,
+                )
 
             # Persist plays
             inserted = upsert_plays(session, game_id, payload.plays, source="mlb_api")

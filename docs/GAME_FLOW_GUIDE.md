@@ -61,7 +61,7 @@ X-API-Key: YOUR_KEY
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `league` | `string` | `NBA`, `NHL`, or `NCAAB` |
+| `league` | `string` | `NBA`, `NHL`, `NCAAB`, or `MLB` |
 | `startDate` | `date` | Games on/after (Eastern Time) |
 | `endDate` | `date` | Games on/before (Eastern Time) |
 | `limit` | `int` | Max results (default 50, max 200) |

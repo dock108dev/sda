@@ -44,6 +44,13 @@ NHL_OT_REAL_SECONDS = 10 * 60
 NHL_PLAYOFF_OT_GAME_SECONDS = 20 * 60
 
 # -----------------------------------------------------------------------------
+# MLB Timing Constants (9-inning games, no game clock)
+# -----------------------------------------------------------------------------
+MLB_REGULATION_REAL_SECONDS = 195 * 60  # ~3h15m for a 9-inning game
+MLB_INNING_REAL_SECONDS = MLB_REGULATION_REAL_SECONDS // 9  # ~21.7 min per inning
+MLB_EXTRAS_INNING_REAL_SECONDS = 15 * 60  # ~15 min per extra inning (faster pace)
+
+# -----------------------------------------------------------------------------
 # League-Aware Timing Constants (heuristic estimates for classification)
 # -----------------------------------------------------------------------------
 
@@ -65,7 +72,7 @@ SOCIAL_PREGAME_WINDOW_SECONDS = 2 * 60 * 60  # 2 hours before game start
 SOCIAL_POSTGAME_WINDOW_SECONDS = 2 * 60 * 60  # 2 hours after game end
 
 # Canonical phase ordering - this is the source of truth for timeline order
-# Includes phases for all supported leagues (NBA, NCAAB, NHL)
+# Includes phases for all supported leagues (NBA, NCAAB, NHL, MLB)
 PHASE_ORDER: dict[str, int] = {
     "pregame": 0,
     # NBA/NCAAB phases
@@ -80,13 +87,23 @@ PHASE_ORDER: dict[str, int] = {
     "p1": 1,
     "p2": 3,
     "p3": 5,
+    # MLB inning phases
+    "inn1": 1,
+    "inn2": 2,
+    "inn3": 3,
+    "inn4": 4,
+    "inn5": 5,
+    "inn6": 6,
+    "inn7": 7,
+    "inn8": 8,
+    "inn9": 9,
     # Overtime phases (all leagues)
-    "ot": 6,
-    "ot1": 6,
-    "ot2": 7,
-    "ot3": 8,
-    "ot4": 9,
-    "shootout": 10,  # NHL shootout
+    "ot": 10,
+    "ot1": 10,
+    "ot2": 11,
+    "ot3": 12,
+    "ot4": 13,
+    "shootout": 14,  # NHL shootout
     "postgame": 99,
 }
 

@@ -1,7 +1,7 @@
 """Phase boundary computation for game timeline segmentation.
 
 Contains game-end calculations and phase boundary computations
-for NBA, NCAAB, and NHL. Used by NORMALIZE_PBP to assign plays
+for NBA, NCAAB, NHL, and MLB. Used by NORMALIZE_PBP to assign plays
 to narrative phases with synthetic timestamps.
 """
 
@@ -12,17 +12,21 @@ from datetime import datetime, timedelta
 
 from ....db.sports import SportsGamePlay
 from ....services.timeline_types import (
+    # MLB Constants
+    MLB_EXTRAS_INNING_REAL_SECONDS,
+    MLB_INNING_REAL_SECONDS,
+    MLB_REGULATION_REAL_SECONDS,
+    # NBA Constants
     NBA_HALFTIME_REAL_SECONDS,
     NBA_QUARTER_REAL_SECONDS,
-    # NBA Constants
     NBA_REGULATION_REAL_SECONDS,
+    # NCAAB Constants
     NCAAB_HALF_REAL_SECONDS,
     NCAAB_HALFTIME_REAL_SECONDS,
-    # NCAAB Constants
     NCAAB_REGULATION_REAL_SECONDS,
+    # NHL Constants
     NHL_INTERMISSION_REAL_SECONDS,
     NHL_PERIOD_REAL_SECONDS,
-    # NHL Constants
     NHL_REGULATION_REAL_SECONDS,
     # Social windows
     SOCIAL_PREGAME_WINDOW_SECONDS,
@@ -81,6 +85,57 @@ def nhl_game_end(
     return game_start + timedelta(
         seconds=NHL_REGULATION_REAL_SECONDS + ot_count * 10 * 60
     )
+
+
+def mlb_game_end(
+    game_start: datetime, plays: Sequence[SportsGamePlay]
+) -> datetime:
+    """Calculate MLB game end time based on plays."""
+    max_inning = 9
+    for play in plays:
+        if play.quarter and play.quarter > max_inning:
+            max_inning = play.quarter
+
+    if max_inning <= 9:
+        return game_start + timedelta(seconds=MLB_REGULATION_REAL_SECONDS)
+
+    extra_innings = max_inning - 9
+    return game_start + timedelta(
+        seconds=MLB_REGULATION_REAL_SECONDS
+        + extra_innings * MLB_EXTRAS_INNING_REAL_SECONDS
+    )
+
+
+def compute_mlb_phase_boundaries(
+    game_start: datetime, has_extras: bool = False, extra_innings: int = 0
+) -> dict[str, tuple[datetime, datetime]]:
+    """Compute start/end times for each MLB narrative phase.
+
+    MLB has 9 innings with no intermissions (continuous play).
+    """
+    boundaries: dict[str, tuple[datetime, datetime]] = {}
+
+    # Pregame: 2 hours before to game start
+    pregame_start = game_start - timedelta(seconds=SOCIAL_PREGAME_WINDOW_SECONDS)
+    boundaries["pregame"] = (pregame_start, game_start)
+
+    # 9 regulation innings
+    cursor = game_start
+    for i in range(1, 10):
+        inn_end = cursor + timedelta(seconds=MLB_INNING_REAL_SECONDS)
+        boundaries[f"inn{i}"] = (cursor, inn_end)
+        cursor = inn_end
+
+    # Extra innings
+    if has_extras and extra_innings > 0:
+        for i in range(1, extra_innings + 1):
+            inn_end = cursor + timedelta(seconds=MLB_EXTRAS_INNING_REAL_SECONDS)
+            boundaries[f"ot{i}"] = (cursor, inn_end)
+            cursor = inn_end
+
+    boundaries["postgame"] = (cursor, cursor + timedelta(hours=2))
+
+    return boundaries
 
 
 def compute_phase_boundaries(

@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchGameFlow } from "@/lib/api/sportsAdmin";
 import type { GameFlowResponse, GameFlowMoment, GameFlowPlay, MomentBoxScore, MomentPlayerStat, NarrativeBlock, BlockMiniBox, BlockPlayerStat } from "@/lib/api/sportsAdmin/gameFlowTypes";
 import { CollapsibleSection } from "./CollapsibleSection";
-import { formatPeriodRange } from "@/lib/utils/periodLabels";
+import { formatPeriodLabel, formatPeriodRange } from "@/lib/utils/periodLabels";
 import styles from "./styles.module.css";
 
 type FlowSectionProps = {
@@ -24,6 +24,7 @@ type MomentCardProps = {
   moment: GameFlowMoment;
   momentIndex: number;
   plays: GameFlowPlay[];
+  leagueCode: string;
 };
 
 function formatPlayerStats(player: MomentPlayerStat): string {
@@ -37,6 +38,11 @@ function formatPlayerStats(player: MomentPlayerStat): string {
   if (player.goals != null && player.goals > 0) parts.push(`${player.goals} G`);
   if (player.assists != null && player.assists > 0) parts.push(`${player.assists} A`);
   if (player.sog != null && player.sog > 0) parts.push(`${player.sog} SOG`);
+  // Baseball stats
+  if (player.runs != null && player.runs > 0) parts.push(`${player.runs} R`);
+  if (player.hits != null && player.hits > 0) parts.push(`${player.hits} H`);
+  if (player.rbi != null && player.rbi > 0) parts.push(`${player.rbi} RBI`);
+  if (player.hr != null && player.hr > 0) parts.push(`${player.hr} HR`);
   return parts.join(", ");
 }
 
@@ -91,7 +97,7 @@ function MiniBoxScore({ boxScore }: { boxScore: MomentBoxScore }) {
   );
 }
 
-function MomentCard({ moment, momentIndex, plays }: MomentCardProps) {
+function MomentCard({ moment, momentIndex, plays, leagueCode }: MomentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get plays for this moment
@@ -116,7 +122,7 @@ function MomentCard({ moment, momentIndex, plays }: MomentCardProps) {
       <div className={styles.momentHeader}>
         <div className={styles.momentMeta}>
           <span className={styles.momentIndex}>#{momentIndex + 1}</span>
-          <span className={styles.momentPeriod}>Q{moment.period}</span>
+          <span className={styles.momentPeriod}>{formatPeriodLabel(moment.period, leagueCode)}</span>
           {moment.startClock && (
             <span className={styles.momentClock}>
               {moment.startClock}
@@ -187,8 +193,9 @@ function MomentCard({ moment, momentIndex, plays }: MomentCardProps) {
 }
 
 function BlockMiniBoxDisplay({ miniBox }: { miniBox: BlockMiniBox }) {
-  // Detect hockey by checking for goals stat
+  // Detect sport by checking for stat keys
   const isHockey = miniBox.home.players.some(p => p.goals !== undefined);
+  const isBaseball = miniBox.home.players.some(p => p.runs !== undefined || p.rbi !== undefined);
 
   const fmt = (val: number | undefined, delta: number | undefined, label: string) => {
     if (!val) return null;
@@ -202,6 +209,15 @@ function BlockMiniBoxDisplay({ miniBox }: { miniBox: BlockMiniBox }) {
     const lastName = words.length > 2 && suffixes.has(last.toLowerCase())
       ? `${words[words.length - 2]} ${last}`
       : last || p.name;
+    if (isBaseball) {
+      const parts = [
+        fmt(p.runs, p.deltaRuns, "R"),
+        fmt(p.hits, p.deltaHits, "H"),
+        fmt(p.rbi, p.deltaRbi, "RBI"),
+        p.hr ? `${p.hr} HR` : null,
+      ].filter(Boolean);
+      return parts.length ? { name: lastName, stats: parts.join(", ") } : null;
+    }
     if (isHockey) {
       const parts = [
         fmt(p.goals, p.deltaGoals, "G"),
@@ -357,6 +373,7 @@ export function FlowSection({ gameId, hasFlow, leagueCode }: FlowSectionProps) {
                     moment={moment}
                     momentIndex={idx}
                     plays={story.plays}
+                    leagueCode={leagueCode}
                   />
                 ))}
               </div>

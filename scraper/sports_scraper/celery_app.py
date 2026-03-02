@@ -56,11 +56,12 @@ app.conf.task_routes = {
 }
 # Daily pipeline schedule (all times US Eastern / UTC during EST):
 #
-#   3:30 AM EST (08:30 UTC) — Sports ingestion (NBA → NHL → NCAAB sequentially)
+#   3:30 AM EST (08:30 UTC) — Sports ingestion (NBA → NHL → NCAAB → MLB sequentially)
 #   4:00 AM EST (09:00 UTC) — Daily sweep (truth repair, backfill missing data)
 #   4:30 AM EST (09:30 UTC) — NBA flow generation
 #   5:00 AM EST (10:00 UTC) — NHL flow generation
 #   5:30 AM EST (10:30 UTC) — NCAAB flow generation
+#   6:00 AM EST (11:00 UTC) — MLB flow generation
 #
 # Each job is spaced 30 minutes apart. During EDT (March-November) all times
 # shift 1 hour later (e.g., ingestion at 4:30 AM EDT).
@@ -117,6 +118,11 @@ _scheduled_tasks = {
     "daily-ncaab-flow-generation-530am-eastern": {
         "task": "run_scheduled_ncaab_flow_generation",
         "schedule": crontab(minute=30, hour=10),  # 5:30 AM EST = 10:30 UTC (+30 min after NHL flow)
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+    },
+    "daily-mlb-flow-generation-6am-eastern": {
+        "task": "run_scheduled_mlb_flow_generation",
+        "schedule": crontab(minute=0, hour=11),  # 6:00 AM EST = 11:00 UTC (+30 min after NCAAB flow)
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     },
     # === Daily sweep (status repair, social scrape #2, embedded tweets, archive) ===

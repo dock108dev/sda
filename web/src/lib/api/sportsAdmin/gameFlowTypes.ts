@@ -25,6 +25,13 @@ export type MomentPlayerStat = {
   assists?: number | null;
   sog?: number | null;
   plusMinus?: number | null;
+  // Baseball stats
+  runs?: number | null;
+  hits?: number | null;
+  rbi?: number | null;
+  hr?: number | null;
+  sb?: number | null;
+  k?: number | null;
 };
 
 /**
@@ -153,6 +160,17 @@ export type BlockPlayerStat = {
   // Hockey deltas
   deltaGoals?: number;
   deltaAssists?: number;
+  // Baseball stats (cumulative)
+  runs?: number;
+  hits?: number;
+  rbi?: number;
+  hr?: number;
+  sb?: number;
+  k?: number;
+  // Baseball deltas
+  deltaRuns?: number;
+  deltaHits?: number;
+  deltaRbi?: number;
 };
 
 /**

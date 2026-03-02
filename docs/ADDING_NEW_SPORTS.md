@@ -22,10 +22,13 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         display_name="MLB Baseball",
         boxscores_enabled=True,
         odds_enabled=True,
-        social_enabled=False,       # Enable when X handles are seeded
-        pbp_enabled=False,          # MLB PBP not yet supported
-        timeline_enabled=False,     # Enable when PBP works
-        scheduled_ingestion=False,  # Enable when ready for prod
+        social_enabled=True,
+        pbp_enabled=True,
+        timeline_enabled=True,
+        scheduled_ingestion=True,
+        live_pbp_enabled=True,
+        live_boxscore_enabled=True,
+        estimated_game_duration_hours=3.5,
     ),
 }
 ```
@@ -136,7 +139,7 @@ if cfg.some_feature_enabled:
 league_code: str = Field(default="NBA")
 
 # GOOD
-league_code: str = Field(..., description="Required: NBA, NHL, NCAAB")
+league_code: str = Field(..., description="Required: NBA, NHL, NCAAB, MLB")
 ```
 
 ---

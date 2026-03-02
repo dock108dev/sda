@@ -24,9 +24,11 @@ from .normalize_pbp_helpers import (
     compute_resolution_stats,
 )
 from .phase_boundaries import (
+    compute_mlb_phase_boundaries,
     compute_ncaab_phase_boundaries,
     compute_nhl_phase_boundaries,
     compute_phase_boundaries,
+    mlb_game_end,
     nba_game_end,
     ncaab_game_end,
     nhl_game_end,
@@ -165,15 +167,20 @@ async def execute_normalize_pbp(
     game_start = game.start_time
     is_ncaab = league_code == "NCAAB"
     is_nhl = league_code == "NHL"
+    is_mlb = league_code == "MLB"
 
-    if is_nhl:
+    if is_mlb:
+        regulation_periods = 9
+    elif is_nhl:
         regulation_periods = 3
     elif is_ncaab:
         regulation_periods = 2
     else:
         regulation_periods = 4
 
-    if is_nhl:
+    if is_mlb:
+        game_end = mlb_game_end(game_start, plays)
+    elif is_nhl:
         game_end = nhl_game_end(game_start, plays)
     elif is_ncaab:
         game_end = ncaab_game_end(game_start, plays)
@@ -212,7 +219,13 @@ async def execute_normalize_pbp(
             )
 
     # Compute phase boundaries for later use (league-specific)
-    if is_nhl:
+    if is_mlb:
+        max_inning = max((play.quarter or 0) for play in plays)
+        extra_innings = max(0, max_inning - 9)
+        phase_boundaries = compute_mlb_phase_boundaries(
+            game_start, has_overtime, extra_innings
+        )
+    elif is_nhl:
         # Check for shootout (period 5)
         has_shootout = any((play.quarter or 0) == 5 for play in plays)
         phase_boundaries = compute_nhl_phase_boundaries(

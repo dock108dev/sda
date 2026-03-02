@@ -134,7 +134,7 @@ def poll_live_pbp_task() -> dict:
             pbp_updated = 0
             rate_limited = False
 
-            # Build league lookup and separate NCAAB from NBA/NHL
+            # Build league lookup and separate NCAAB from NBA/NHL/MLB
             from ..db import db_models
             league_map: dict[int, str] = {}
             nba_nhl_pbp_games: list = []
@@ -250,7 +250,7 @@ def poll_live_pbp_task() -> dict:
 
             if not rate_limited:
                 boxscore_games = resolver.get_games_needing_boxscore(session)
-                # Filter to NBA/NHL only (NCAAB boxscores handled in batch phase)
+                # Filter to NBA/NHL/MLB (NCAAB boxscores handled in batch phase)
                 nba_nhl_box_games = [
                     g for g in boxscore_games
                     if league_map.get(g.league_id, "") in ("NBA", "NHL", "MLB")

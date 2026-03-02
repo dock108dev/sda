@@ -48,7 +48,7 @@ def compute_cumulative_box_score(
         up_to_play_index: Compute stats up to and including this play index
         home_team: Home team name (for display)
         away_team: Away team name (for display)
-        league_code: League code (NBA, NCAAB, NHL)
+        league_code: League code (NBA, NCAAB, NHL, MLB)
         home_team_abbrev: Home team abbreviation (for matching, e.g., "GSW")
         away_team_abbrev: Away team abbreviation (for matching, e.g., "LAC")
 
@@ -132,7 +132,16 @@ def compute_cumulative_box_score(
             player_teams[player] = team_abbrev
 
         if player not in player_stats:
-            if league_code == "NHL":
+            if league_code == "MLB":
+                player_stats[player] = {
+                    "runs": 0,
+                    "hits": 0,
+                    "rbi": 0,
+                    "hr": 0,
+                    "sb": 0,
+                    "k": 0,
+                }
+            elif league_code == "NHL":
                 player_stats[player] = {
                     "goals": 0,
                     "assists": 0,
@@ -157,7 +166,9 @@ def compute_cumulative_box_score(
         desc = (event.get("description") or "").lower()
         original_desc = event.get("description") or ""
 
-        if league_code == "NHL":
+        if league_code == "MLB":
+            _accumulate_mlb_stats(player_stats[player], play_type, desc, score_delta)
+        elif league_code == "NHL":
             _accumulate_nhl_stats(player_stats[player], play_type, desc)
             # Credit assists from goal descriptions (format: "goal ... (assists: Name1, Name2)")
             if play_type.lower() in ("goal", "scored"):
@@ -229,14 +240,17 @@ def compute_cumulative_box_score(
         elif away_abbrev_upper and team_upper == away_abbrev_upper:
             away_players.append(player_entry)
 
-    # Sort by contribution (points for basketball, goals+assists for hockey)
+    # Sort by contribution (points for basketball, goals+assists for hockey, runs+rbi for MLB)
+    def _mlb_sort_key(p: dict[str, Any]) -> tuple[int, int]:
+        return (p.get("runs", 0) + p.get("rbi", 0), p.get("hits", 0))
+
     def _nhl_sort_key(p: dict[str, Any]) -> tuple[int, int]:
         return (p.get("goals", 0) + p.get("assists", 0), p.get("sog", 0))
 
     def _basketball_sort_key(p: dict[str, Any]) -> tuple[int, int]:
         return (p.get("pts", 0), p.get("ast", 0))
 
-    sort_key = _nhl_sort_key if league_code == "NHL" else _basketball_sort_key
+    sort_key = _mlb_sort_key if league_code == "MLB" else (_nhl_sort_key if league_code == "NHL" else _basketball_sort_key)
 
     home_players.sort(key=sort_key, reverse=True)
     away_players.sort(key=sort_key, reverse=True)
@@ -311,6 +325,45 @@ def _accumulate_nhl_stats(
             stats["is_goalie"] = True
 
 
+def _accumulate_mlb_stats(
+    stats: dict[str, Any],
+    play_type: str,
+    desc: str,
+    score_delta: int,
+) -> None:
+    """Accumulate MLB stats for a player from a play event."""
+    pt = play_type.lower()
+    dl = desc.lower()
+
+    # Scoring
+    if score_delta > 0:
+        stats["runs"] += score_delta
+
+    # Hits
+    if pt in ("single", "double", "triple", "home_run") or "single" in dl or "doubles" in dl or "triples" in dl:
+        stats["hits"] += 1
+
+    # Home runs
+    if pt == "home_run" or "home run" in dl or "homer" in dl:
+        stats["hr"] += 1
+        stats["hits"] += 0  # already counted above when pt == "home_run"
+
+    # RBI (from description, e.g., "2 RBI")
+    rbi_match = re.search(r"(\d+)\s*rbi", dl)
+    if rbi_match:
+        stats["rbi"] += int(rbi_match.group(1))
+    elif score_delta > 0 and pt in ("single", "double", "triple", "home_run", "sac_fly", "sac_bunt", "grounded_into_double_play"):
+        stats["rbi"] += score_delta
+
+    # Stolen bases
+    if pt == "stolen_base" or "steals" in dl or "stolen base" in dl:
+        stats["sb"] += 1
+
+    # Strikeouts (batter)
+    if pt == "strikeout" or "strikes out" in dl or "struck out" in dl:
+        stats["k"] += 1
+
+
 def compute_block_mini_box(
     pbp_events: list[dict[str, Any]],
     block_start_play_idx: int,
@@ -336,7 +389,7 @@ def compute_block_mini_box(
         prev_block_end_play_idx: Last play index of previous block (None for first block)
         home_team: Home team name
         away_team: Away team name
-        league_code: League code (NBA, NCAAB, NHL)
+        league_code: League code (NBA, NCAAB, NHL, MLB)
         home_team_abbrev: Home team abbreviation
         away_team_abbrev: Away team abbreviation
 
@@ -391,8 +444,11 @@ def compute_block_mini_box(
         p["name"]: p for p in prev_cumulative["away"].get("players", [])
     }
 
-    # Key stat for sorting (points for basketball, goals+assists for hockey)
-    if league_code == "NHL":
+    # Key stat for sorting (points for basketball, goals+assists for hockey, runs+rbi for MLB)
+    if league_code == "MLB":
+        key_stat = "runs"
+        delta_key = "deltaRuns"
+    elif league_code == "NHL":
         key_stat = "goals"
         delta_key = "deltaGoals"
     else:
@@ -408,7 +464,12 @@ def compute_block_mini_box(
             prev = prev_stats.get(name, {})
 
             # Calculate deltas for key stats
-            if league_code == "NHL":
+            if league_code == "MLB":
+                player["deltaRuns"] = player.get("runs", 0) - prev.get("runs", 0)
+                player["deltaHits"] = player.get("hits", 0) - prev.get("hits", 0)
+                player["deltaRbi"] = player.get("rbi", 0) - prev.get("rbi", 0)
+                delta_contribution = player.get("deltaRuns", 0) + player.get("deltaRbi", 0)
+            elif league_code == "NHL":
                 player["deltaGoals"] = player.get("goals", 0) - prev.get("goals", 0)
                 player["deltaAssists"] = player.get("assists", 0) - prev.get("assists", 0)
                 delta_contribution = player.get("deltaGoals", 0) + player.get("deltaAssists", 0)
@@ -419,7 +480,7 @@ def compute_block_mini_box(
                 delta_contribution = player.get("deltaPts", 0)
 
             # Track block stars (players who contributed significantly this segment)
-            if delta_contribution >= 5 or (league_code == "NHL" and delta_contribution >= 1):
+            if delta_contribution >= 5 or (league_code in ("NHL", "MLB") and delta_contribution >= 1):
                 last_name = _extract_last_name(name)
                 block_stars.append(last_name)
 
@@ -433,8 +494,10 @@ def compute_block_mini_box(
         )
         cumulative[side]["players"] = players[:3]
 
-    # Strip mini box to PRA only (basketball) or goals/assists (NHL)
-    if league_code == "NHL":
+    # Strip mini box to key stats only
+    if league_code == "MLB":
+        pra_keys = {"name", "runs", "hits", "rbi", "hr", "deltaRuns", "deltaHits", "deltaRbi"}
+    elif league_code == "NHL":
         pra_keys = {"name", "goals", "assists", "deltaGoals", "deltaAssists"}
     else:
         pra_keys = {"name", "pts", "reb", "ast", "deltaPts", "deltaReb", "deltaAst"}

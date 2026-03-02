@@ -48,7 +48,7 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Data Sources](DATA_SOURCES.md) | **Start here:** Where data comes from (boxscores, PBP, odds, social) |
+| [Data Sources](DATA_SOURCES.md) | **Start here:** Where data comes from — NBA, NHL, NCAAB, MLB (boxscores, PBP, odds, social) |
 
 ## Operations
 

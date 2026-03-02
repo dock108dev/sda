@@ -315,7 +315,7 @@ def get_strategy(league_code: str, market_category: str) -> EVStrategyConfig | N
     """Look up the EV strategy for a (league, market_category) pair.
 
     Args:
-        league_code: League code (e.g., "NBA", "NHL", "NCAAB").
+        league_code: League code (e.g., "NBA", "NHL", "NCAAB", "MLB").
         market_category: Market category (e.g., "mainline", "player_prop").
 
     Returns:

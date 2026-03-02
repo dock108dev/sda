@@ -89,7 +89,20 @@ def _format_player_stat(
     league_code: str,
 ) -> str | None:
     """Format a single player's stat string for the contributors line."""
-    if league_code == "NHL":
+    if league_code == "MLB":
+        r = player.get("deltaRuns", 0)
+        rbi = player.get("deltaRbi", 0)
+        h = player.get("deltaHits", 0)
+        stat_parts = []
+        if r:
+            stat_parts.append(f"+{r}R")
+        if rbi:
+            stat_parts.append(f"+{rbi}RBI")
+        if h:
+            stat_parts.append(f"+{h}H")
+        if stat_parts:
+            return f"{last_name} {'/'.join(stat_parts)}"
+    elif league_code == "NHL":
         g = player.get("deltaGoals", 0)
         a = player.get("deltaAssists", 0)
         stat_parts = []
@@ -161,14 +174,26 @@ def _build_period_label(league_code: str, period_start: int, period_end: int) ->
     """Build sport-appropriate period label.
 
     Args:
-        league_code: Sport code (NBA, NHL, NCAAB)
+        league_code: Sport code (NBA, NHL, NCAAB, MLB)
         period_start: Starting period number
         period_end: Ending period number
 
     Returns:
         Period label string (e.g., "Q1", "P2-P3", "H1", "OT")
     """
-    if league_code == "NHL":
+    def _mlb_ordinal(n: int) -> str:
+        ordinals = {1: "1st", 2: "2nd", 3: "3rd"}
+        return ordinals.get(n, f"{n}th")
+
+    if league_code == "MLB":
+        if period_start == period_end:
+            if period_start <= 9:
+                return _mlb_ordinal(period_start)
+            else:
+                return f"{_mlb_ordinal(period_start)} (extra)"
+        else:
+            return f"{_mlb_ordinal(period_start)}-{_mlb_ordinal(period_end)}"
+    elif league_code == "NHL":
         if period_start == period_end:
             if period_start <= 3:
                 return f"P{period_start}"

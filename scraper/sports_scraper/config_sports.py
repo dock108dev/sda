@@ -25,7 +25,7 @@ class LeagueConfig:
       closing-line architecture requires pre-game odds only)
     """
 
-    code: str                       # "NBA", "NHL", "NCAAB"
+    code: str                       # "NBA", "NHL", "NCAAB", "MLB"
     display_name: str               # "NBA Basketball"
 
     # Pipeline feature flags
@@ -87,9 +87,9 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         display_name="MLB Baseball",
         boxscores_enabled=True,
         odds_enabled=True,
-        social_enabled=False,
+        social_enabled=True,
         pbp_enabled=True,
-        timeline_enabled=False,
+        timeline_enabled=True,
         scheduled_ingestion=True,
         live_pbp_enabled=True,
         live_boxscore_enabled=True,
