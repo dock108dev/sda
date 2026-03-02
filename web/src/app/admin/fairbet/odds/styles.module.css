@@ -573,3 +573,15 @@
 .derivationResult .derivationValue {
   color: #93c5fd;
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .betsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

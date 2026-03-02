@@ -259,3 +259,16 @@
   gap: 0.25rem;
   font-size: var(--font-label-size);
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .taskGrid,
+  .backfillGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .paramsRow,
+  .dateRow {
+    flex-direction: column;
+  }
+}

@@ -131,3 +131,17 @@
   padding: var(--space-card-inner);
   color: #dc2626;
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

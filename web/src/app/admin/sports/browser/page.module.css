@@ -400,3 +400,43 @@
   padding-top: var(--space-section-card);
   border-top: 1px solid var(--border-default);
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .statsRow {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  }
+
+  .teamsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterRow {
+    flex-direction: column;
+  }
+
+  .paginationControls {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .paginationRight {
+    justify-content: center;
+  }
+}
+
+/* ── Responsive: < 480px ── */
+@media (max-width: 479px) {
+  .statsRow {
+    grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
+  }
+
+  .statValue {
+    font-size: 0.9rem;
+  }
+
+  .statLabel {
+    font-size: 0.6rem;
+  }
+}

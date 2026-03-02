@@ -1174,3 +1174,60 @@
   padding-bottom: 0.25rem;
   border-bottom: 1px solid var(--border-default);
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .container {
+    max-width: 100%;
+  }
+
+  .card {
+    padding: 1rem;
+    overflow: hidden;
+  }
+
+  .scoreLine strong {
+    font-size: 1.25rem;
+  }
+
+  .teamStatsGrid,
+  .playerStatsGrid,
+  .computedFieldsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .highlightsGrid,
+  .socialPostsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pbpDescription {
+    max-width: 100%;
+  }
+
+  .table,
+  .playsTable {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .miniBoxScoreTeams {
+    grid-template-columns: 1fr;
+  }
+
+  .momentHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .oddsCategoryTab,
+  .quarterTab {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .oddsSearchInput {
+    max-width: 100%;
+  }
+}

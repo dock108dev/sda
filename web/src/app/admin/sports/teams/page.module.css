@@ -172,3 +172,10 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .teamsGrid {
+    grid-template-columns: 1fr;
+  }
+}

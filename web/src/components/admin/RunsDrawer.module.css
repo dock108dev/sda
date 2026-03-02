@@ -284,3 +284,16 @@
   color: var(--text-muted);
   font-size: 0.8rem;
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .drawer {
+    left: 0;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+}

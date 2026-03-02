@@ -152,3 +152,25 @@
   padding: 2rem;
   text-align: center;
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .panel {
+    width: 100vw;
+    min-width: unset;
+    max-width: 100vw;
+  }
+
+  .header {
+    padding: 0.75rem 1rem;
+  }
+
+  .tabs {
+    padding: 0 0.75rem;
+    overflow-x: auto;
+  }
+
+  .logContent {
+    font-size: 0.7rem;
+  }
+}

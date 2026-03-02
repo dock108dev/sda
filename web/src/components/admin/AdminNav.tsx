@@ -35,7 +35,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
   },
 ];
 
-export function AdminNav() {
+export function AdminNav({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
 
   const isActive = (href: string, exact?: boolean) =>
@@ -57,6 +57,7 @@ export function AdminNav() {
                 key={item.href}
                 href={item.href}
                 className={`${styles.navLink} ${isActive(item.href, item.exact) ? styles.navLinkActive : ""}`}
+                onClick={onNavigate}
               >
                 {item.label}
               </Link>

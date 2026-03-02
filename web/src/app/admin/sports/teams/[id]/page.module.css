@@ -331,3 +331,23 @@
   color: var(--text-muted);
   font-size: var(--font-body-size);
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .gamesTable,
+  .apiRefTable {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .colorEditor {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .meta {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+}

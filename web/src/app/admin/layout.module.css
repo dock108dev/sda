@@ -193,3 +193,95 @@
 .adminShell strong {
   color: var(--admin-text);
 }
+
+/* ── Hamburger button (hidden on desktop) ── */
+.hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-button);
+  padding: 0.4rem;
+  cursor: pointer;
+  color: var(--admin-text);
+  line-height: 1;
+}
+
+/* ── Sidebar backdrop (hidden on desktop) ── */
+.sidebarBackdrop {
+  display: none;
+}
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .adminShell {
+    grid-template-columns: 1fr;
+    grid-template-areas: "header" "main";
+    --space-page-section: 1.5rem;
+    --space-section-card: 1rem;
+    --font-page-title-size: 1.375rem;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: var(--admin-header-height);
+    left: 0;
+    bottom: 0;
+    width: var(--admin-sidebar-width);
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .sidebarBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: var(--admin-header-height);
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .sidebarBackdropVisible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .main {
+    padding: 1rem;
+  }
+}
+
+/* ── Responsive: < 480px ── */
+@media (max-width: 479px) {
+  .adminShell {
+    --font-page-title-size: 1.25rem;
+    --space-page-section: 1.25rem;
+    --space-section-card: 0.75rem;
+  }
+
+  .main {
+    padding: 0.75rem;
+  }
+
+  .header {
+    padding: 0 0.75rem;
+  }
+
+  .headerLogo {
+    font-size: 1rem;
+  }
+}

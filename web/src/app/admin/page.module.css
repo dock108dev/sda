@@ -130,3 +130,14 @@
   padding: var(--space-card-inner);
   color: #dc2626;
 }
+
+/* ── Responsive: < 768px ── */
+@media (max-width: 767px) {
+  .statsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .quickLinks {
+    grid-template-columns: 1fr;
+  }
+}
