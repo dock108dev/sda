@@ -223,7 +223,8 @@ def _find_game_for_boxscore(
         .filter(db_models.SportsGame.home_team_id == home_team_id)
         .filter(db_models.SportsGame.away_team_id == away_team_id)
         .filter(db_models.SportsGame.game_date >= day_start)
-        .filter(db_models.SportsGame.game_date <= day_end)
+        .filter(db_models.SportsGame.game_date < day_end)
+        .order_by(db_models.SportsGame.game_date.asc())
         .first()
     )
 

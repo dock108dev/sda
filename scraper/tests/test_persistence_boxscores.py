@@ -526,7 +526,7 @@ class TestFindGameForBoxscore:
 
         mock_session = MagicMock()
         mock_game = MagicMock()
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = mock_game
+        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.order_by.return_value.first.return_value = mock_game
 
         game_date = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         result = _find_game_for_boxscore(
@@ -544,7 +544,7 @@ class TestFindGameForBoxscore:
         from sports_scraper.persistence.boxscores import _find_game_for_boxscore
 
         mock_session = MagicMock()
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = None
+        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.order_by.return_value.first.return_value = None
 
         game_date = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         result = _find_game_for_boxscore(

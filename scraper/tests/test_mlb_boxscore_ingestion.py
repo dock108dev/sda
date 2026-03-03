@@ -109,7 +109,7 @@ class TestPopulateMlbGameIds:
         mlb_game = MagicMock()
         mlb_game.home_team.abbreviation = "BOS"
         mlb_game.away_team.abbreviation = "NYY"
-        mlb_game.game_date.date.return_value = date(2024, 7, 15)
+        mlb_game.game_date = datetime(2024, 7, 15, 23, 10, tzinfo=UTC)
         mlb_game.game_pk = 717001
         mock_client_cls.return_value.fetch_schedule.return_value = [mlb_game]
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc
+from ..utils.datetime_utils import ET, end_of_et_day_utc
 
 from sqlalchemy import exists, not_, or_
 from sqlalchemy.orm import Session
@@ -99,12 +99,17 @@ def populate_mlb_game_ids(
     # Build lookup: (home_abbr, away_abbr, date) -> sorted list of game_pks.
     # Using a list prevents doubleheader collisions where the same teams play
     # twice on the same date (lower game_pk = earlier game).
+    # NOTE: MLB API game_date is in UTC. Late West Coast games (e.g. 8 PM ET =
+    # midnight+ UTC) have a UTC date one day ahead of the ET sports-calendar date.
+    # The DB stores game_date normalised to midnight ET, so we must convert the
+    # API datetime to ET before extracting the date for a correct match.
     mlb_lookup: dict[tuple[str, str, date], list[int]] = {}
     for mg in mlb_games:
+        game_day_et = mg.game_date.astimezone(ET).date()
         key = (
             mg.home_team.abbreviation.upper(),
             mg.away_team.abbreviation.upper(),
-            mg.game_date.date(),
+            game_day_et,
         )
         mlb_lookup.setdefault(key, []).append(mg.game_pk)
 
