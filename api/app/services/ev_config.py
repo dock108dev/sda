@@ -102,6 +102,7 @@ CONFIDENCE_DISPLAY_LABELS: dict[str, str] = {
     "full": "Sharp",
     "decent": "Market",
     "thin": "Thin",
+    "consensus": "Consensus",
 }
 
 MARKET_DISPLAY_NAMES: dict[str, str] = {
@@ -145,11 +146,13 @@ MARKET_DISPLAY_NAMES: dict[str, str] = {
 FAIRBET_METHOD_DISPLAY_NAMES: dict[str, str] = {
     "pinnacle_devig": "Pinnacle Devig",
     "pinnacle_extrapolated": "Pinnacle Extrapolated",
+    "median_consensus": "Median Consensus",
 }
 
 FAIRBET_METHOD_EXPLANATIONS: dict[str, str] = {
     "pinnacle_devig": "Fair odds derived by removing vig from Pinnacle's line",
     "pinnacle_extrapolated": "Fair odds extrapolated from Pinnacle's reference line using logit-space projection",
+    "median_consensus": "Fair odds derived from the median of individually devigged book prices",
 }
 
 
@@ -206,6 +209,14 @@ _PINNACLE_PLAYER_PROP = EVStrategyConfig(
     max_fair_prob_divergence=0.10,  # Thin Pinnacle coverage
 )
 
+_MEDIAN_CONSENSUS_PLAYER_PROP = EVStrategyConfig(
+    strategy_name="median_consensus",
+    eligible_sharp_books=(),  # No single sharp book — all books contribute
+    min_qualifying_books=4,  # Need more books since no single anchor
+    max_reference_staleness_seconds=1800,  # 30 minutes
+    max_fair_prob_divergence=0.10,
+)
+
 _PINNACLE_TEAM_PROP = EVStrategyConfig(
     strategy_name="pinnacle_devig",
     eligible_sharp_books=("Pinnacle",),
@@ -227,28 +238,28 @@ _PINNACLE_ALTERNATE = EVStrategyConfig(
 _STRATEGY_MAP: dict[tuple[str, str], EVStrategyConfig | None] = {
     # NBA
     ("NBA", "mainline"): _PINNACLE_MAINLINE_NBA_NHL,
-    ("NBA", "player_prop"): _PINNACLE_PLAYER_PROP,
+    ("NBA", "player_prop"): _MEDIAN_CONSENSUS_PLAYER_PROP,
     ("NBA", "team_prop"): _PINNACLE_TEAM_PROP,
     ("NBA", "alternate"): _PINNACLE_ALTERNATE,
     ("NBA", "period"): None,
     ("NBA", "game_prop"): None,
     # NHL
     ("NHL", "mainline"): _PINNACLE_MAINLINE_NBA_NHL,
-    ("NHL", "player_prop"): _PINNACLE_PLAYER_PROP,
+    ("NHL", "player_prop"): _MEDIAN_CONSENSUS_PLAYER_PROP,
     ("NHL", "team_prop"): _PINNACLE_TEAM_PROP,
     ("NHL", "alternate"): _PINNACLE_ALTERNATE,
     ("NHL", "period"): None,
     ("NHL", "game_prop"): None,
     # NCAAB
     ("NCAAB", "mainline"): _PINNACLE_MAINLINE_NCAAB,
-    ("NCAAB", "player_prop"): _PINNACLE_PLAYER_PROP,
+    ("NCAAB", "player_prop"): _MEDIAN_CONSENSUS_PLAYER_PROP,
     ("NCAAB", "team_prop"): _PINNACLE_TEAM_PROP,
     ("NCAAB", "alternate"): _PINNACLE_ALTERNATE,
     ("NCAAB", "period"): None,
     ("NCAAB", "game_prop"): None,
     # MLB
     ("MLB", "mainline"): _PINNACLE_MAINLINE_NBA_NHL,
-    ("MLB", "player_prop"): _PINNACLE_PLAYER_PROP,
+    ("MLB", "player_prop"): _MEDIAN_CONSENSUS_PLAYER_PROP,
     ("MLB", "team_prop"): _PINNACLE_TEAM_PROP,
     ("MLB", "alternate"): _PINNACLE_ALTERNATE,
     ("MLB", "period"): None,

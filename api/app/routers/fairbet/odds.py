@@ -93,6 +93,9 @@ class BetDefinition(BaseModel):
     estimated_sharp_price: float | None = None
     extrapolation_ref_line: float | None = None
     extrapolation_distance: float | None = None
+    consensus_book_count: int | None = None
+    consensus_iqr: float | None = None
+    per_book_fair_probs: dict[str, float] | None = None
     confidence: float | None = None
     confidence_flags: list[str] = []
     fair_american_odds: int | None = None
@@ -571,6 +574,8 @@ async def get_fairbet_odds(
             estimated_sharp_price=bet.get("estimated_sharp_price"),
             extrapolation_ref_line=bet.get("extrapolation_ref_line"),
             extrapolation_distance=bet.get("extrapolation_distance"),
+            per_book_fair_probs=bet.get("per_book_fair_probs"),
+            consensus_iqr=bet.get("consensus_iqr"),
         )
 
         # BookOdds-level display fields

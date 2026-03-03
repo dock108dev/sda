@@ -304,17 +304,18 @@ class TestEvaluateEVEligibility:
         assert result.strategy_config is not None
 
     def test_eligible_ncaab_player_prop(self) -> None:
-        """Eligible NCAAB player prop — 2 non-sharp books → thin."""
+        """Eligible NCAAB player prop — consensus requires 4 common books."""
         result = evaluate_ev_eligibility(
             "NCAAB",
             "player_prop",
-            _make_books({"Pinnacle": -110, "DraftKings": -108, "FanDuel": -112}),
-            _make_books({"Pinnacle": -110, "DraftKings": -112, "FanDuel": -108}),
+            _make_books({"DraftKings": -108, "FanDuel": -112, "BetMGM": -110, "Caesars": -109}),
+            _make_books({"DraftKings": -112, "FanDuel": -108, "BetMGM": -110, "Caesars": -111}),
             now=NOW,
         )
         assert result.eligible is True
-        # 2 non-sharp books per side → "thin"
-        assert result.confidence_tier == "thin"
+        assert result.ev_method == "median_consensus"
+        # 4 non-sharp books per side → "decent"
+        assert result.confidence_tier == "decent"
 
     def test_excluded_books_dont_count(self) -> None:
         """Excluded books should not count toward min_qualifying_books."""
@@ -524,10 +525,14 @@ class TestFairOddsSanityCheck:
         return config
 
     @pytest.fixture
-    def player_prop_config(self) -> EVStrategyConfig:
-        config = get_strategy("NBA", "player_prop")
-        assert config is not None
-        return config
+    def pinnacle_prop_config(self) -> EVStrategyConfig:
+        return EVStrategyConfig(
+            strategy_name="pinnacle_devig",
+            eligible_sharp_books=("Pinnacle",),
+            min_qualifying_books=3,
+            max_reference_staleness_seconds=1800,
+            max_fair_prob_divergence=0.10,
+        )
 
     def test_normal_market_not_flagged(
         self, nba_mainline_config: EVStrategyConfig
@@ -541,7 +546,7 @@ class TestFairOddsSanityCheck:
         assert result.fair_odds_suspect is False
 
     def test_divergent_longshot_flagged(
-        self, player_prop_config: EVStrategyConfig
+        self, pinnacle_prop_config: EVStrategyConfig
     ) -> None:
         """Pinnacle -1500/+800, consensus near -400/+350 → flagged.
 
@@ -550,7 +555,7 @@ class TestFairOddsSanityCheck:
         result = compute_ev_for_market(
             _make_books({"Pinnacle": -1500, "DraftKings": -400, "FanDuel": -400}),
             _make_books({"Pinnacle": 800, "DraftKings": 350, "FanDuel": 350}),
-            player_prop_config,
+            pinnacle_prop_config,
         )
         assert result.fair_odds_suspect is True
 
@@ -571,13 +576,13 @@ class TestFairOddsSanityCheck:
         assert result.fair_odds_suspect is False
 
     def test_suspect_result_still_has_annotations(
-        self, player_prop_config: EVStrategyConfig
+        self, pinnacle_prop_config: EVStrategyConfig
     ) -> None:
         """Even when flagged, annotated_a/annotated_b are populated."""
         result = compute_ev_for_market(
             _make_books({"Pinnacle": -1500, "DraftKings": -400, "FanDuel": -400}),
             _make_books({"Pinnacle": 800, "DraftKings": 350, "FanDuel": 350}),
-            player_prop_config,
+            pinnacle_prop_config,
         )
         assert result.fair_odds_suspect is True
         # Annotations are still computed — the caller decides what to do

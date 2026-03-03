@@ -26,6 +26,7 @@ from ...services.ev import (
     pinnacle_alignment_factor,
     probability_confidence,
 )
+from ...services.ev_consensus import compute_ev_median_consensus, consensus_agreement_factor
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,7 @@ def _compute_side_confidence(
     pinnacle_implied: float | None,
     extrapolation_hp: float | None = None,
     book_implieds: list[float] | None = None,
+    consensus_devigged_probs: list[float] | None = None,
 ) -> tuple[float, list[str]]:
     """Compute confidence multiplier and flags for one side of a market.
 
@@ -159,12 +161,19 @@ def _compute_side_confidence(
         confidence *= prob_conf
         flags.append("low_probability")
 
-    # Pinnacle alignment (vig gap check)
-    if pinnacle_implied is not None:
+    # Pinnacle alignment (vig gap check) — skip for consensus
+    if pinnacle_implied is not None and consensus_devigged_probs is None:
         align = pinnacle_alignment_factor(true_prob, pinnacle_implied)
         if align < 1.0:
             confidence *= align
             flags.append("high_vig")
+
+    # Consensus agreement factor (replaces pinnacle alignment for consensus)
+    if consensus_devigged_probs is not None:
+        agree = consensus_agreement_factor(consensus_devigged_probs)
+        if agree < 1.0:
+            confidence *= agree
+            flags.append("consensus_spread")
 
     # Extrapolation distance penalty
     if extrapolation_hp is not None:
@@ -254,11 +263,18 @@ def _annotate_pair_ev(
     )
 
     if eligibility.eligible and eligibility.strategy_config is not None:
-        ev_result = compute_ev_for_market(
-            books_a,
-            books_b,
-            eligibility.strategy_config,
-        )
+        strategy_config = eligibility.strategy_config
+        is_consensus = strategy_config.strategy_name == "median_consensus"
+        consensus_metadata = None
+
+        if is_consensus:
+            ev_result, consensus_metadata = compute_ev_median_consensus(
+                books_a, books_b, strategy_config,
+            )
+        else:
+            ev_result = compute_ev_for_market(
+                books_a, books_b, strategy_config,
+            )
 
         if ev_result.fair_odds_suspect:
             logger.warning(
@@ -318,6 +334,11 @@ def _annotate_pair_ev(
             for b in ev_result.annotated_b
         ]
 
+        # Build consensus devigged probs list (if consensus method)
+        consensus_devigged_probs: list[float] | None = None
+        if is_consensus and consensus_metadata is not None:
+            consensus_devigged_probs = list(consensus_metadata.per_book_fair_probs.values())
+
         # Compute confidence and display_ev for each side
         for key, true_prob, annotated in [
             (key_a, ev_result.true_prob_a, ev_result.annotated_a),
@@ -335,6 +356,7 @@ def _annotate_pair_ev(
             confidence, flags = _compute_side_confidence(
                 true_prob, pinnacle_implied,
                 book_implieds=non_sharp_implieds or None,
+                consensus_devigged_probs=consensus_devigged_probs,
             )
             bets_map[key]["books"] = _apply_display_ev(
                 bets_map[key]["books"], confidence
@@ -366,6 +388,14 @@ def _annotate_pair_ev(
 
         bets_map[key_a]["has_fair"] = True
         bets_map[key_b]["has_fair"] = True
+
+        # Attach consensus metadata if available
+        if consensus_metadata is not None:
+            for key in (key_a, key_b):
+                bets_map[key]["consensus_book_count"] = consensus_metadata.consensus_book_count
+                bets_map[key]["consensus_iqr"] = consensus_metadata.consensus_iqr
+                bets_map[key]["per_book_fair_probs"] = consensus_metadata.per_book_fair_probs
+
         return None
     else:
         # Not eligible: attach disabled metadata, convert books to BookOdds

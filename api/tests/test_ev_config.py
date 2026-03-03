@@ -179,28 +179,37 @@ class TestGetStrategy:
         config = get_strategy("nba", "mainline")
         assert config is not None
 
-    def test_all_strategies_have_pinnacle(self) -> None:
-        """Every non-None strategy uses Pinnacle as eligible sharp book."""
+    def test_pinnacle_strategies_have_pinnacle(self) -> None:
+        """Non-consensus strategies use Pinnacle as eligible sharp book."""
         for league in ("NBA", "NHL", "NCAAB", "MLB"):
-            for cat in ("mainline", "player_prop", "team_prop", "alternate"):
+            for cat in ("mainline", "team_prop", "alternate"):
                 config = get_strategy(league, cat)
                 assert config is not None
                 assert "Pinnacle" in config.eligible_sharp_books
 
-    def test_all_strategies_have_min_books_3(self) -> None:
-        """All strategies start with min_qualifying_books = 3."""
+    def test_pinnacle_strategies_have_min_books_3(self) -> None:
+        """Pinnacle strategies start with min_qualifying_books = 3."""
         for league in ("NBA", "NHL", "NCAAB", "MLB"):
-            for cat in ("mainline", "player_prop", "team_prop", "alternate"):
+            for cat in ("mainline", "team_prop", "alternate"):
                 config = get_strategy(league, cat)
                 assert config is not None
                 assert config.min_qualifying_books == 3
 
-    def test_all_strategy_names_are_pinnacle_devig(self) -> None:
+    def test_mainline_strategy_names_are_pinnacle_devig(self) -> None:
         for league in ("NBA", "NHL", "NCAAB", "MLB"):
-            for cat in ("mainline", "player_prop", "team_prop", "alternate"):
+            for cat in ("mainline", "team_prop", "alternate"):
                 config = get_strategy(league, cat)
                 assert config is not None
                 assert config.strategy_name == "pinnacle_devig"
+
+    def test_player_prop_uses_median_consensus(self) -> None:
+        """All leagues use median_consensus for player props."""
+        for league in ("NBA", "NHL", "NCAAB", "MLB"):
+            config = get_strategy(league, "player_prop")
+            assert config is not None
+            assert config.strategy_name == "median_consensus"
+            assert config.eligible_sharp_books == ()
+            assert config.min_qualifying_books == 4
 
 
 class TestExtrapolationConfig:

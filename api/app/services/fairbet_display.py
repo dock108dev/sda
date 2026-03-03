@@ -393,6 +393,55 @@ def _build_extrapolated_steps(
     return steps
 
 
+def _build_median_consensus_steps(
+    *,
+    true_prob: float,
+    fair_odds: int | None,
+    best_book: str | None,
+    best_book_price: float | None,
+    best_ev_percent: float | None,
+    per_book_fair_probs: dict[str, float] | None,
+    consensus_iqr: float | None,
+) -> list[dict[str, Any]]:
+    """Path: Median consensus walkthrough for player props."""
+    steps: list[dict[str, Any]] = []
+
+    # Step 1: Collect book prices
+    rows: list[dict[str, Any]] = []
+    if per_book_fair_probs:
+        rows.append(_row("Books contributing", str(len(per_book_fair_probs))))
+        for book_name, prob in sorted(per_book_fair_probs.items()):
+            rows.append(_row(book_name, _fmt_pct(prob)))
+    steps.append(_step(
+        1,
+        "Devig each book individually",
+        "Each book's over/under pair is devigged independently using Shin's method to find its implied fair probability.",
+        rows,
+    ))
+
+    # Step 2: Take the median
+    median_rows = [
+        _row("Fair probability (median)", _fmt_pct(true_prob), is_highlight=True),
+    ]
+    if consensus_iqr is not None:
+        median_rows.append(_row("IQR (agreement)", _fmt_pct(consensus_iqr)))
+    fair_odds_display = _fmt_american(implied_to_american(true_prob)) if true_prob else "N/A"
+    median_rows.append(_row("Fair odds", fair_odds_display if fair_odds is None else _fmt_american(fair_odds)))
+
+    steps.append(_step(
+        2,
+        "Take median fair probability",
+        "The median across all books is used as the consensus fair value, which is robust against individual book outliers.",
+        median_rows,
+    ))
+
+    # Step 3: EV at best price
+    if best_book and best_book_price is not None and true_prob is not None:
+        steps.append(_build_ev_step(3, true_prob, best_book, best_book_price, best_ev_percent))
+
+    return steps
+
+
 def _build_fallback_steps(
     *,
     true_prob: float,
@@ -441,6 +490,8 @@ def build_explanation_steps(
     estimated_sharp_price: float | None,
     extrapolation_ref_line: float | None,
     extrapolation_distance: float | None,
+    per_book_fair_probs: dict[str, float] | None = None,
+    consensus_iqr: float | None = None,
 ) -> list[dict[str, Any]]:
     """Build the step-by-step explanation of how fair odds were derived.
 
@@ -450,6 +501,17 @@ def build_explanation_steps(
     """
     if ev_disabled_reason:
         return _build_not_available_step(ev_disabled_reason)
+
+    if ev_method == "median_consensus" and true_prob is not None:
+        return _build_median_consensus_steps(
+            true_prob=true_prob,
+            fair_odds=fair_odds,
+            best_book=best_book,
+            best_book_price=best_book_price,
+            best_ev_percent=best_ev_percent,
+            per_book_fair_probs=per_book_fair_probs,
+            consensus_iqr=consensus_iqr,
+        )
 
     if (
         ev_method == "pinnacle_devig"

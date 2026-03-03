@@ -326,6 +326,12 @@ def evaluate_ev_eligibility(
             confidence_tier=None,
         )
 
+    # Branch: consensus strategies skip sharp book checks
+    if config.strategy_name == "median_consensus":
+        return _evaluate_consensus_eligibility(
+            config, side_a_books, side_b_books,
+        )
+
     # 2. Sharp book present on both sides?
     sharp_a = _find_sharp_entry(side_a_books, config.eligible_sharp_books)
     sharp_b = _find_sharp_entry(side_b_books, config.eligible_sharp_books)
@@ -369,6 +375,44 @@ def evaluate_ev_eligibility(
         qualifying_a < config.min_qualifying_books
         or qualifying_b < config.min_qualifying_books
     ):
+        return EligibilityResult(
+            eligible=False,
+            strategy_config=config,
+            disabled_reason="insufficient_books",
+            ev_method=config.strategy_name,
+            confidence_tier=market_confidence_tier(non_sharp_count),
+        )
+
+    return EligibilityResult(
+        eligible=True,
+        strategy_config=config,
+        disabled_reason=None,
+        ev_method=config.strategy_name,
+        confidence_tier=market_confidence_tier(non_sharp_count),
+    )
+
+
+def _evaluate_consensus_eligibility(
+    config: EVStrategyConfig,
+    side_a_books: list[dict],
+    side_b_books: list[dict],
+) -> EligibilityResult:
+    """Evaluate eligibility for median consensus strategy.
+
+    Instead of requiring a sharp book, requires min_qualifying_books
+    common books present on both sides simultaneously.
+    """
+    a_book_names = {b["book"] for b in side_a_books if b["book"] in INCLUDED_BOOKS}
+    b_book_names = {b["book"] for b in side_b_books if b["book"] in INCLUDED_BOOKS}
+    common_books = a_book_names & b_book_names
+    common_count = len(common_books)
+
+    # Non-sharp count = all included books (no sharp books in consensus)
+    non_sharp_a = len(a_book_names)
+    non_sharp_b = len(b_book_names)
+    non_sharp_count = min(non_sharp_a, non_sharp_b)
+
+    if common_count < config.min_qualifying_books:
         return EligibilityResult(
             eligible=False,
             strategy_config=config,
