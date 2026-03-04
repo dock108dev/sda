@@ -312,6 +312,7 @@ def summarize_game(
         last_pbp_at=game.last_pbp_at,
         last_social_at=game.last_social_at,
         last_odds_at=game.last_odds_at,
+        last_advanced_stats_at=getattr(game, "last_advanced_stats_at", None),
         derived_metrics=derived,
         home_team_abbr=game.home_team.abbreviation,
         away_team_abbr=game.away_team.abbreviation,

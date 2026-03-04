@@ -23,6 +23,7 @@ const STALE_THRESHOLD_MS: Record<string, number> = {
   social: 7 * 24 * 60 * 60 * 1000,
   pbp: 7 * 24 * 60 * 60 * 1000,
   flow: 7 * 24 * 60 * 60 * 1000,
+  advancedStats: 7 * 24 * 60 * 60 * 1000,
 };
 
 /** Data types that don't apply to future games (everything except odds). */
@@ -32,6 +33,7 @@ const FUTURE_NOT_APPLICABLE = new Set([
   "social",
   "pbp",
   "flow",
+  "advancedStats",
 ]);
 
 export type DataField =
@@ -40,7 +42,8 @@ export type DataField =
   | "odds"
   | "social"
   | "pbp"
-  | "flow";
+  | "flow"
+  | "advancedStats";
 
 const MISSING_REASONS: Record<DataField, string> = {
   boxscore: "No boxscore scraped",
@@ -49,6 +52,7 @@ const MISSING_REASONS: Record<DataField, string> = {
   social: "No social posts scraped",
   pbp: "No play-by-play scraped",
   flow: "No flow generated",
+  advancedStats: "No advanced stats ingested",
 };
 
 function isFutureGame(gameDate: string): boolean {

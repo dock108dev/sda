@@ -44,6 +44,7 @@ class ScrapeRunConfig(BaseModel):
     odds: bool = Field(True, alias="odds")
     social: bool = Field(False, alias="social")
     pbp: bool = Field(False, alias="pbp")
+    advanced_stats: bool = Field(False, alias="advancedStats")
 
     # NOTE: Boxscore date capping is handled by the scraper worker
     # (ScrapeRunManager.run) which computes boxscore_end = min(end, yesterday)
@@ -68,10 +69,9 @@ class ScrapeRunConfig(BaseModel):
             "odds": self.odds,
             "social": self.social,
             "pbp": self.pbp,
+            "advanced_stats": self.advanced_stats,
             "only_missing": self.only_missing,
-            "updated_before": self.updated_before.isoformat()
-            if self.updated_before
-            else None,
+            "updated_before": self.updated_before.isoformat() if self.updated_before else None,
             "include_books": self.include_books,
         }
 

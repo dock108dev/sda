@@ -101,6 +101,7 @@ export default function UnifiedBrowserPage() {
         socialPercent: Math.round((aggregates.withSocial / total) * 100),
         pbpPercent: Math.round((aggregates.withPbp / total) * 100),
         flowPercent: Math.round((aggregates.withFlow / total) * 100),
+        advancedStatsPercent: Math.round((aggregates.withAdvancedStats / total) * 100),
       };
     }
     return null;
@@ -172,6 +173,10 @@ export default function UnifiedBrowserPage() {
                 <div className={styles.stat}>
                   <span className={styles.statValue}>{aggregateStats.flowPercent}%</span>
                   <span className={styles.statLabel}>Flow</span>
+                </div>
+                <div className={styles.stat}>
+                  <span className={styles.statValue}>{aggregateStats.advancedStatsPercent}%</span>
+                  <span className={styles.statLabel}>Adv Stats</span>
                 </div>
               </>
             )}

@@ -39,21 +39,36 @@ class ScrapeRunManager:
     def _update_run(self, run_id: int, **updates) -> None:
         try:
             with get_session() as session:
-                run = session.query(db_models.SportsScrapeRun).filter(db_models.SportsScrapeRun.id == run_id).first()
+                run = (
+                    session.query(db_models.SportsScrapeRun)
+                    .filter(db_models.SportsScrapeRun.id == run_id)
+                    .first()
+                )
                 if not run:
-                    all_runs = session.query(db_models.SportsScrapeRun.id, db_models.SportsScrapeRun.status).limit(5).all()
+                    all_runs = (
+                        session.query(
+                            db_models.SportsScrapeRun.id, db_models.SportsScrapeRun.status
+                        )
+                        .limit(5)
+                        .all()
+                    )
                     logger.error(
                         "scrape_run_not_found",
                         run_id=run_id,
                         database_url=settings.database_url[:50] + "...",
-                        existing_runs=[r.id for r in all_runs]
+                        existing_runs=[r.id for r in all_runs],
                     )
                     return
                 for key, value in updates.items():
                     setattr(run, key, value)
                 session.flush()
                 session.commit()
-                logger.info("scrape_run_updated", run_id=run_id, updates=list(updates.keys()), new_status=updates.get("status"))
+                logger.info(
+                    "scrape_run_updated",
+                    run_id=run_id,
+                    updates=list(updates.keys()),
+                    new_status=updates.get("status"),
+                )
         except Exception as exc:
             logger.exception("failed_to_update_run", run_id=run_id, error=str(exc), exc_info=True)
             raise
@@ -92,16 +107,36 @@ class ScrapeRunManager:
 
             if config.league_code == "NHL":
                 from .nhl_boxscore_ingestion import ingest_boxscores_via_nhl_api
-                _LEAGUE_DISPATCH["NHL"] = (ingest_boxscores_via_nhl_api, "nhl_api", "nhl_boxscore_ingestion_failed")
+
+                _LEAGUE_DISPATCH["NHL"] = (
+                    ingest_boxscores_via_nhl_api,
+                    "nhl_api",
+                    "nhl_boxscore_ingestion_failed",
+                )
             elif config.league_code == "NCAAB":
                 from .ncaab_boxscore_ingestion import ingest_boxscores_via_ncaab_api
-                _LEAGUE_DISPATCH["NCAAB"] = (ingest_boxscores_via_ncaab_api, "cbb_api", "ncaab_boxscore_ingestion_failed")
+
+                _LEAGUE_DISPATCH["NCAAB"] = (
+                    ingest_boxscores_via_ncaab_api,
+                    "cbb_api",
+                    "ncaab_boxscore_ingestion_failed",
+                )
             elif config.league_code == "NBA":
                 from .nba_boxscore_ingestion import ingest_boxscores_via_nba_api
-                _LEAGUE_DISPATCH["NBA"] = (ingest_boxscores_via_nba_api, "nba_api", "nba_boxscore_ingestion_failed")
+
+                _LEAGUE_DISPATCH["NBA"] = (
+                    ingest_boxscores_via_nba_api,
+                    "nba_api",
+                    "nba_boxscore_ingestion_failed",
+                )
             elif config.league_code == "MLB":
                 from .mlb_boxscore_ingestion import ingest_boxscores_via_mlb_api
-                _LEAGUE_DISPATCH["MLB"] = (ingest_boxscores_via_mlb_api, "mlb_api", "mlb_boxscore_ingestion_failed")
+
+                _LEAGUE_DISPATCH["MLB"] = (
+                    ingest_boxscores_via_mlb_api,
+                    "mlb_api",
+                    "mlb_boxscore_ingestion_failed",
+                )
 
             dispatch = _LEAGUE_DISPATCH.get(config.league_code)
 
@@ -157,11 +192,16 @@ class ScrapeRunManager:
                     # Filter games by criteria
                     with get_session() as session:
                         games_to_scrape = select_games_for_boxscores(
-                            session, config.league_code, start, boxscore_end,
+                            session,
+                            config.league_code,
+                            start,
+                            boxscore_end,
                             only_missing=config.only_missing,
                             updated_before=updated_before_dt,
                         )
-                    logger.info("found_games_for_boxscores", count=len(games_to_scrape), run_id=run_id)
+                    logger.info(
+                        "found_games_for_boxscores", count=len(games_to_scrape), run_id=run_id
+                    )
 
                     for game_id, source_key, game_date in games_to_scrape:
                         if not source_key or not game_date:
@@ -181,7 +221,9 @@ class ScrapeRunManager:
                                     else:
                                         games_skipped += 1
                         except Exception as exc:
-                            logger.warning("boxscore_scrape_failed", game_id=game_id, error=str(exc))
+                            logger.warning(
+                                "boxscore_scrape_failed", game_id=game_id, error=str(exc)
+                            )
                 else:
                     # Scrape all games in date range from Sports Reference
                     for game_payload in scraper.fetch_date_range(start, boxscore_end):
@@ -232,7 +274,10 @@ class ScrapeRunManager:
             with get_session() as session:
                 total_final_games = (
                     session.query(db_models.SportsGame)
-                    .join(db_models.SportsLeague, db_models.SportsGame.league_id == db_models.SportsLeague.id)
+                    .join(
+                        db_models.SportsLeague,
+                        db_models.SportsGame.league_id == db_models.SportsLeague.id,
+                    )
                     .filter(
                         db_models.SportsLeague.code == config.league_code,
                         db_models.SportsGame.status == db_models.GameStatus.final.value,
@@ -472,29 +517,123 @@ class ScrapeRunManager:
             )
             summary["social_posts"] = "dispatched"
 
+    def _ingest_advanced_stats(
+        self,
+        run_id: int,
+        config: IngestionConfig,
+        summary: dict,
+        start: datetime,
+        end: datetime,
+        updated_before_dt: datetime | None,
+    ) -> None:
+        """Phase: MLB Statcast advanced stats ingestion."""
+        if config.league_code != "MLB":
+            logger.info(
+                "advanced_stats_skip_non_mlb",
+                run_id=run_id,
+                league=config.league_code,
+                message="Advanced stats only available for MLB; skipping.",
+            )
+            return
+
+        adv_run_id = start_job_run("advanced_stats", ["MLB"])
+        logger.info(
+            "advanced_stats_start",
+            run_id=run_id,
+            league=config.league_code,
+            start_date=str(start),
+            end_date=str(end),
+            only_missing=config.only_missing,
+        )
+        try:
+            from .mlb_advanced_stats_ingestion import ingest_advanced_stats_for_game
+
+            with get_session() as session:
+                window_start = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
+                window_end = datetime.combine(end, datetime.max.time(), tzinfo=UTC)
+
+                query = (
+                    session.query(db_models.SportsGame)
+                    .join(
+                        db_models.SportsLeague,
+                        db_models.SportsGame.league_id == db_models.SportsLeague.id,
+                    )
+                    .filter(
+                        db_models.SportsLeague.code == "MLB",
+                        db_models.SportsGame.status == db_models.GameStatus.final.value,
+                        db_models.SportsGame.game_date >= window_start,
+                        db_models.SportsGame.game_date <= window_end,
+                    )
+                )
+
+                if config.only_missing:
+                    query = query.filter(db_models.SportsGame.last_advanced_stats_at.is_(None))
+
+                if updated_before_dt:
+                    query = query.filter(
+                        (db_models.SportsGame.last_advanced_stats_at.is_(None))
+                        | (db_models.SportsGame.last_advanced_stats_at < updated_before_dt)
+                    )
+
+                games = query.all()
+                count = 0
+                for game in games:
+                    try:
+                        ingest_advanced_stats_for_game(session, game.id)
+                        count += 1
+                    except Exception as exc:
+                        logger.warning(
+                            "advanced_stats_game_failed",
+                            game_id=game.id,
+                            error=str(exc),
+                        )
+
+                session.commit()
+
+            summary["advanced_stats"] = count
+            logger.info(
+                "advanced_stats_complete",
+                run_id=run_id,
+                count=count,
+                total_games=len(games),
+            )
+            complete_job_run(adv_run_id, "success")
+        except Exception as exc:
+            logger.exception(
+                "advanced_stats_failed",
+                run_id=run_id,
+                league=config.league_code,
+                error=str(exc),
+            )
+            complete_job_run(adv_run_id, "error", str(exc))
+
     def _run_diagnostics(self, config: IngestionConfig) -> None:
         """Phase: post-run diagnostics."""
         with get_session() as session:
             detect_missing_pbp(session, league_code=config.league_code)
-            detect_external_id_conflicts(session, league_code=config.league_code, source="live_feed")
+            detect_external_id_conflicts(
+                session, league_code=config.league_code, source="live_feed"
+            )
 
     def _finalize_run(self, run_id: int, summary: dict) -> None:
         """Phase: build summary string and mark run complete."""
         summary_parts = []
         if summary["games"]:
             summary_parts.append(
-                f'Games: {summary["games"]} ({summary["games_enriched"]} enriched, {summary["games_with_stats"]} with stats)'
+                f"Games: {summary['games']} ({summary['games_enriched']} enriched, {summary['games_with_stats']} with stats)"
             )
         if summary["odds"]:
-            summary_parts.append(f'Odds: {summary["odds"]}')
+            summary_parts.append(f"Odds: {summary['odds']}")
         if summary["social_posts"]:
             social_val = summary["social_posts"]
             if social_val == "dispatched":
                 summary_parts.append("Social: dispatched to worker")
             else:
-                summary_parts.append(f'Social: {social_val}')
+                summary_parts.append(f"Social: {social_val}")
         if summary["pbp_games"]:
-            summary_parts.append(f'PBP: {summary["pbp_games"]}')
+            summary_parts.append(f"PBP: {summary['pbp_games']}")
+        if summary["advanced_stats"]:
+            summary_parts.append(f"Advanced Stats: {summary['advanced_stats']}")
 
         self._update_run(
             run_id,
@@ -516,6 +655,7 @@ class ScrapeRunManager:
             "odds": 0,
             "social_posts": 0,
             "pbp_games": 0,
+            "advanced_stats": 0,
         }
         start = config.start_date or today_et()
         end = config.end_date or start
@@ -536,6 +676,7 @@ class ScrapeRunManager:
             odds=config.odds,
             social=config.social,
             pbp=config.pbp,
+            advanced_stats=config.advanced_stats,
             only_missing=config.only_missing,
             updated_before=str(config.updated_before) if config.updated_before else None,
             start_date=str(start),
@@ -543,7 +684,11 @@ class ScrapeRunManager:
         )
 
         # NHL, NBA, NCAAB, and MLB use official APIs for boxscores, so scraper is not required
-        if not scraper and config.boxscores and config.league_code not in ("NHL", "NBA", "NCAAB", "MLB"):
+        if (
+            not scraper
+            and config.boxscores
+            and config.league_code not in ("NHL", "NBA", "NCAAB", "MLB")
+        ):
             raise RuntimeError(f"No scraper implemented for {config.league_code}")
 
         self._update_run(run_id, status="running", started_at=now_utc())
@@ -560,7 +705,9 @@ class ScrapeRunManager:
                 ingest_run_id = start_job_run("ingest", [config.league_code])
 
             if config.boxscores:
-                self._ingest_boxscores(run_id, config, summary, start, end, updated_before_dt, scraper)
+                self._ingest_boxscores(
+                    run_id, config, summary, start, end, updated_before_dt, scraper
+                )
 
             if ingest_run_id is not None:
                 complete_job_run(ingest_run_id, "success")
@@ -571,6 +718,9 @@ class ScrapeRunManager:
 
             if config.social:
                 self._dispatch_social(run_id, config, summary, start, end)
+
+            if config.advanced_stats:
+                self._ingest_advanced_stats(run_id, config, summary, start, end, updated_before_dt)
 
             self._run_diagnostics(config)
             self._finalize_run(run_id, summary)

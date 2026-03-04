@@ -8,6 +8,7 @@ export type ScrapeRunConfig = {
   odds?: boolean;
   social?: boolean;
   pbp?: boolean;
+  advancedStats?: boolean;
   onlyMissing?: boolean;
   updatedBefore?: string;
   books?: string[];
@@ -45,6 +46,7 @@ export type GameSummary = {
   hasSocial: boolean;
   hasPbp: boolean;
   hasFlow: boolean;
+  hasAdvancedStats: boolean;
   playCount: number;
   socialPostCount: number;
   scrapeVersion: number | null;
@@ -53,6 +55,7 @@ export type GameSummary = {
   lastPbpAt: string | null;
   lastSocialAt: string | null;
   lastOddsAt: string | null;
+  lastAdvancedStatsAt: string | null;
   derivedMetrics: Record<string, unknown> | null;
 };
 
@@ -66,6 +69,7 @@ export type GameListResponse = {
   withSocialCount?: number;
   withPbpCount?: number;
   withFlowCount?: number;
+  withAdvancedStatsCount?: number;
 };
 
 export type NormalizedStat = {
@@ -222,12 +226,14 @@ export type AdminGameDetail = {
     lastPbpAt: string | null;
     lastSocialAt: string | null;
     lastOddsAt: string | null;
+    lastAdvancedStatsAt: string | null;
     hasBoxscore: boolean;
     hasPlayerStats: boolean;
     hasOdds: boolean;
     hasSocial: boolean;
     hasPbp: boolean;
     hasFlow: boolean;
+    hasAdvancedStats: boolean;
     playCount: number;
     socialPostCount: number;
   };

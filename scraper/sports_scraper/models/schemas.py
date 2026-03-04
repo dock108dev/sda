@@ -84,7 +84,9 @@ class NormalizedGame(BaseModel):
 
     @field_validator("team_boxscores")
     @classmethod
-    def ensure_team_alignment(cls, value: list[NormalizedTeamBoxscore]) -> list[NormalizedTeamBoxscore]:
+    def ensure_team_alignment(
+        cls, value: list[NormalizedTeamBoxscore]
+    ) -> list[NormalizedTeamBoxscore]:
         if not value:
             msg = "team_boxscores cannot be empty"
             raise ValueError(msg)
@@ -107,7 +109,9 @@ class NormalizedOddsSnapshot(BaseModel):
     is_closing_line: bool = True
     raw_payload: dict = Field(default_factory=dict)
     event_id: str | None = None  # Odds API event ID for prop fetching
-    market_category: str = "mainline"  # mainline, player_prop, team_prop, alternate, period, game_prop
+    market_category: str = (
+        "mainline"  # mainline, player_prop, team_prop, alternate, period, game_prop
+    )
     player_name: str | None = None  # Player name for player props
     description: str | None = None  # Outcome description from API
 
@@ -139,7 +143,9 @@ class NormalizedPlay(BaseModel):
 
     play_index: int
     quarter: int | None = None  # Period number; NHL uses periods instead of quarters.
-    game_clock: str | None = None  # Remaining time in period; absolute timestamps go in raw_data["event_time"].
+    game_clock: str | None = (
+        None  # Remaining time in period; absolute timestamps go in raw_data["event_time"].
+    )
     play_type: str | None = None  # Supports league-specific enums (e.g., NHL eventTypeId).
     team_abbreviation: str | None = None
     player_id: str | None = None
@@ -175,6 +181,7 @@ class IngestionConfig(BaseModel):
     odds: bool = True  # Fetch odds from API
     social: bool = False  # Scrape X posts for games
     pbp: bool = False  # Scrape play-by-play
+    advanced_stats: bool = False  # Ingest MLB Statcast advanced stats
     batch_live_feed: bool = False  # Use live endpoints (cdn.nba.com) for PBP
 
     # Shared filters
