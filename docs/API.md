@@ -243,6 +243,7 @@ List games with filtering and pagination.
 | `missingSocial` | `bool` | Games without social posts |
 | `missingAny` | `bool` | Games missing any data type |
 | `hasPbp` | `bool` | Only games with play-by-play data |
+| `finalOnly` | `bool` | Only include games with final/completed/official status |
 | `safe` | `bool` | Exclude games with conflicts or missing team mappings |
 | `limit` | `int` | Max results (1-200, default 50) |
 | `offset` | `int` | Pagination offset |
@@ -274,6 +275,7 @@ List games with filtering and pagination.
       "lastPbpAt": "2026-01-23T05:00:00Z",
       "lastSocialAt": "2026-01-23T04:00:00Z",
       "lastOddsAt": "2026-01-23T05:00:00Z",
+      "lastAdvancedStatsAt": null,
       "homeTeamAbbr": "LAL",
       "awayTeamAbbr": "GSW",
       "homeTeamColorLight": "#FDB927",
@@ -289,7 +291,8 @@ List games with filtering and pagination.
   "withOddsCount": 245,
   "withSocialCount": 200,
   "withPbpCount": 230,
-  "withFlowCount": 180
+  "withFlowCount": 180,
+  "withAdvancedStatsCount": 42
 }
 ```
 
@@ -333,14 +336,19 @@ Full game detail including stats, odds, social posts, and plays.
   "playerStats": [PlayerStat, ...],
   "nhlSkaters": [NHLSkaterStat, ...] | null,
   "nhlGoalies": [NHLGoalieStat, ...] | null,
+  "mlbBatters": [MLBBatterStat, ...] | null,
+  "mlbPitchers": [MLBPitcherStat, ...] | null,
+  "mlbAdvancedStats": [MLBAdvancedTeamStats, ...] | null,
+  "mlbAdvancedPlayerStats": [MLBAdvancedPlayerStats, ...] | null,
   "odds": [OddsEntry, ...],
   "socialPosts": [SocialPostEntry, ...],
   "plays": [PlayEntry, ...],
   "groupedPlays": [TieredPlayGroup, ...],
   "derivedMetrics": {...},
-  "mlbAdvancedStats": [MLBAdvancedTeamStats, ...] | null,
   "rawPayloads": {...},
-  "dataHealth": NHLDataHealth | null
+  "dataHealth": NHLDataHealth | null,
+  "oddsTable": [OddsTableGroup, ...] | null,
+  "statAnnotations": [StatAnnotation, ...] | null
 }
 ```
 
@@ -1188,6 +1196,7 @@ interface GameSummary {
   lastPbpAt: string | null;
   lastSocialAt: string | null;
   lastOddsAt: string | null;
+  lastAdvancedStatsAt: string | null;  // MLB Statcast advanced stats timestamp
   derivedMetrics: Record<string, any> | null;  // Server-computed metrics (40+)
   homeTeamAbbr: string | null;       // Clash-resolved team abbreviation
   awayTeamAbbr: string | null;
@@ -1229,6 +1238,7 @@ interface GameListResponse {
   withSocialCount: number;
   withPbpCount: number;
   withFlowCount: number;
+  withAdvancedStatsCount: number;  // MLB games with Statcast-derived advanced stats
 }
 ```
 
@@ -1605,12 +1615,15 @@ interface GameDetailResponse {
   playerStats: PlayerStat[];            // NBA/NCAAB player stats
   nhlSkaters: NHLSkaterStat[] | null;   // NHL only
   nhlGoalies: NHLGoalieStat[] | null;   // NHL only
+  mlbBatters: MLBBatterStat[] | null;   // MLB only — batter stats
+  mlbPitchers: MLBPitcherStat[] | null; // MLB only — pitcher stats
+  mlbAdvancedStats: MLBAdvancedTeamStats[] | null;         // MLB only — Statcast-derived team-level advanced stats
+  mlbAdvancedPlayerStats: MLBAdvancedPlayerStats[] | null;  // MLB only — Statcast-derived player-level advanced stats
   odds: OddsEntry[];
   socialPosts: SocialPostEntry[];
   plays: PlayEntry[];
   groupedPlays: TieredPlayGroup[];
   derivedMetrics: Record<string, any>;
-  mlbAdvancedStats: MLBAdvancedTeamStats[] | null;  // MLB only — Statcast-derived advanced batting stats
   rawPayloads: Record<string, any>;
   dataHealth: NHLDataHealth | null;     // NHL only
   oddsTable: OddsTableGroup[] | null;   // Structured odds table (see below)
@@ -1665,6 +1678,7 @@ interface GameMeta {
   lastPbpAt: string | null;
   lastSocialAt: string | null;
   lastOddsAt: string | null;
+  lastAdvancedStatsAt: string | null;  // MLB Statcast advanced stats timestamp
   homeTeamXHandle: string | null;
   awayTeamXHandle: string | null;
   homeTeamAbbr: string | null;
@@ -1701,6 +1715,49 @@ interface NHLDataHealth {
 
 ---
 
+### MLB Player Stats
+
+MLB games return `mlbBatters` and `mlbPitchers` instead of generic `playerStats`.
+
+```typescript
+interface MLBBatterStat {
+  team: string;
+  playerName: string;
+  position: string | null;
+  atBats: number | null;
+  hits: number | null;
+  runs: number | null;
+  rbi: number | null;
+  homeRuns: number | null;
+  baseOnBalls: number | null;
+  strikeOuts: number | null;
+  stolenBases: number | null;
+  avg: string | null;
+  obp: string | null;
+  slg: string | null;
+  ops: string | null;
+  rawStats: Record<string, any>;
+}
+
+interface MLBPitcherStat {
+  team: string;
+  playerName: string;
+  inningsPitched: string | null;
+  hits: number | null;
+  runs: number | null;
+  earnedRuns: number | null;
+  baseOnBalls: number | null;
+  strikeOuts: number | null;
+  homeRuns: number | null;
+  era: string | null;
+  pitchCount: number | null;
+  strikes: number | null;
+  rawStats: Record<string, any>;
+}
+```
+
+---
+
 ### MLBAdvancedTeamStats
 
 Statcast-derived advanced batting stats for one team in an MLB game. Returned in `mlbAdvancedStats` (MLB games only, null for other leagues).
@@ -1716,6 +1773,31 @@ interface MLBAdvancedTeamStats {
   oSwingPct: number | null;       // Outside swing rate (outside_swings / outside_pitches)
   zContactPct: number | null;     // Zone contact rate (zone_contact / zone_swings)
   oContactPct: number | null;     // Outside contact rate (outside_contact / outside_swings)
+  // Quality of contact
+  avgExitVelo: number | null;     // Average exit velocity (mph)
+  hardHitPct: number | null;      // Hard-hit rate (launch speed >= 95 mph)
+  barrelPct: number | null;       // Barrel rate (MLB barrel formula)
+}
+```
+
+---
+
+### MLBAdvancedPlayerStats
+
+Statcast-derived advanced batting stats for individual batters in an MLB game. Same stat columns as `MLBAdvancedTeamStats`, plus player identification. Returned in `mlbAdvancedPlayerStats` (MLB games only, null for other leagues).
+
+```typescript
+interface MLBAdvancedPlayerStats {
+  team: string;                    // Team name
+  playerName: string;              // Batter name
+  isHome: boolean;
+  totalPitches: number;            // Total pitches seen
+  ballsInPlay: number;             // Batted balls with launch speed data
+  // Plate discipline
+  zSwingPct: number | null;       // Zone swing rate
+  oSwingPct: number | null;       // Outside swing rate
+  zContactPct: number | null;     // Zone contact rate
+  oContactPct: number | null;     // Outside contact rate
   // Quality of contact
   avgExitVelo: number | null;     // Average exit velocity (mph)
   hardHitPct: number | null;      // Hard-hit rate (launch speed >= 95 mph)

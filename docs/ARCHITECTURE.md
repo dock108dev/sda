@@ -156,6 +156,7 @@ See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
 - `sports_game_odds` - Betting lines (game-centric)
 - `fairbet_game_odds_work` - Bet-centric odds for cross-book comparison
 - `mlb_game_advanced_stats` - Statcast-derived advanced batting stats per team per game
+- `mlb_player_advanced_stats` - Statcast-derived advanced batting stats per batter per game
 - `team_social_posts` - Social media content (mapped to games via `mapping_status`)
 
 Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). Reference data (leagues, teams, social handles) is seeded from `seed_data.sql`.

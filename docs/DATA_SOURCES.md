@@ -113,11 +113,13 @@ NHL uses the official NHL API for ALL data (schedule, PBP, boxscores).
 MLB Stats API `playByPlay` endpoint (same data source as PBP, different aggregation).
 
 ### Data Collected
-Team-level advanced batting stats computed from pitch-level Statcast data:
+Team-level and player-level advanced batting stats computed from pitch-level Statcast data:
 
 **Plate discipline:** zone swing rate, outside swing rate, zone contact rate, outside contact rate (zones 1-9 = strike zone, zones 11-14 = outside)
 
 **Quality of contact:** average exit velocity, hard-hit rate (launch speed >= 95 mph), barrel rate (>= 98 mph + MLB barrel angle formula)
+
+Both team-level aggregates and per-batter breakdowns are computed and stored.
 
 ### Timing
 - Dispatched automatically when a game transitions to FINAL (60-second countdown)
@@ -125,6 +127,7 @@ Team-level advanced batting stats computed from pitch-level Statcast data:
 
 ### Storage
 - `mlb_game_advanced_stats` — Two rows per game (home + away), with raw counts and derived percentages
+- `mlb_player_advanced_stats` — One row per batter per game, with same stat columns plus player identification
 - `sports_games.last_advanced_stats_at` — Timestamp of last ingestion
 
 ### Implementation

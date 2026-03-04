@@ -31,6 +31,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | Table | Description |
 |-------|-------------|
 | `mlb_game_advanced_stats` | Statcast-derived team-level advanced batting stats (2 rows per game: home + away) |
+| `mlb_player_advanced_stats` | Statcast-derived player-level advanced batting stats (one row per batter per game) |
 
 ### Odds & FairBet
 

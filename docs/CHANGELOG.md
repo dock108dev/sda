@@ -7,19 +7,21 @@ All notable changes to Sports Data Admin.
 ### MLB Advanced Stats (Statcast-derived)
 
 - **New table `mlb_game_advanced_stats`**: Stores team-level advanced batting stats derived from pitch-level Statcast data in the MLB Stats API `playByPlay` endpoint
+- **New table `mlb_player_advanced_stats`**: Stores per-batter advanced stats with same columns as team-level, plus player identification
 - **Plate discipline stats**: Zone swing rate, outside swing rate, zone contact rate, outside contact rate (zones 1-9 = strike zone, 11-14 = outside)
 - **Quality of contact stats**: Average exit velocity, hard-hit rate (>= 95 mph), barrel rate (MLB barrel formula: >= 98 mph + angle window)
 - **Automatic dispatch**: `ingest_mlb_advanced_stats` task fires with 60s countdown when an MLB game transitions to FINAL
-- **API integration**: `mlbAdvancedStats` on game detail response, `hasAdvancedStats` on game list/detail
+- **API integration**: `mlbAdvancedStats` and `mlbAdvancedPlayerStats` on game detail response, `hasAdvancedStats` on game list/detail
 - **Admin trigger**: `ingest_mlb_advanced_stats` added to task registry for on-demand dispatch
 
 ### Documentation
 
 - **README.md**: Fixed league list to include MLB
-- **API.md**: Added MLB to Supported Leagues table with Advanced Stats; added `hasAdvancedStats`, `mlbAdvancedStats`, and `MLBAdvancedTeamStats` model
+- **API.md**: Added MLB to Supported Leagues table with Advanced Stats; added `hasAdvancedStats`, `mlbAdvancedStats`, `mlbAdvancedPlayerStats`, `mlbBatters`, `mlbPitchers`, `MLBAdvancedTeamStats`, `MLBAdvancedPlayerStats`, `MLBBatterStat`, `MLBPitcherStat` models; added `lastAdvancedStatsAt` to `GameSummary`/`GameMeta`; added `withAdvancedStatsCount` to `GameListResponse`
 - **DATA_SOURCES.md**: Fixed MLB boxscore URL (`api/v1/game/{game_pk}/boxscore`); added MLB flow generation schedule (11:00 UTC / 6:00 AM ET); added MLB Advanced Stats section
-- **DATABASE_INTEGRATION.md**: Added `mlb_game_advanced_stats` table; fixed `status = 'completed'` to `'final'` in example query
-- **ARCHITECTURE.md**: Updated ingestion diagram from "SportsRef" to "League APIs"; added `mlb_game_advanced_stats` to schema list
+- **DATABASE_INTEGRATION.md**: Added `mlb_game_advanced_stats` and `mlb_player_advanced_stats` tables; fixed `status = 'completed'` to `'final'` in example query
+- **ARCHITECTURE.md**: Updated ingestion diagram from "SportsRef" to "League APIs"; added `mlb_game_advanced_stats` and `mlb_player_advanced_stats` to schema list
+- **DATA_SOURCES.md**: Updated MLB Advanced Stats section to cover both team-level and player-level stats
 
 ---
 
