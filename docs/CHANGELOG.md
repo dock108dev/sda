@@ -2,7 +2,28 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-02-27] - Current
+## [2026-03-03] - Current
+
+### MLB Advanced Stats (Statcast-derived)
+
+- **New table `mlb_game_advanced_stats`**: Stores team-level advanced batting stats derived from pitch-level Statcast data in the MLB Stats API `playByPlay` endpoint
+- **Plate discipline stats**: Zone swing rate, outside swing rate, zone contact rate, outside contact rate (zones 1-9 = strike zone, 11-14 = outside)
+- **Quality of contact stats**: Average exit velocity, hard-hit rate (>= 95 mph), barrel rate (MLB barrel formula: >= 98 mph + angle window)
+- **Automatic dispatch**: `ingest_mlb_advanced_stats` task fires with 60s countdown when an MLB game transitions to FINAL
+- **API integration**: `mlbAdvancedStats` on game detail response, `hasAdvancedStats` on game list/detail
+- **Admin trigger**: `ingest_mlb_advanced_stats` added to task registry for on-demand dispatch
+
+### Documentation
+
+- **README.md**: Fixed league list to include MLB
+- **API.md**: Added MLB to Supported Leagues table with Advanced Stats; added `hasAdvancedStats`, `mlbAdvancedStats`, and `MLBAdvancedTeamStats` model
+- **DATA_SOURCES.md**: Fixed MLB boxscore URL (`api/v1/game/{game_pk}/boxscore`); added MLB flow generation schedule (11:00 UTC / 6:00 AM ET); added MLB Advanced Stats section
+- **DATABASE_INTEGRATION.md**: Added `mlb_game_advanced_stats` table; fixed `status = 'completed'` to `'final'` in example query
+- **ARCHITECTURE.md**: Updated ingestion diagram from "SportsRef" to "League APIs"; added `mlb_game_advanced_stats` to schema list
+
+---
+
+## [2026-02-27]
 
 ### Documentation Consolidation
 

@@ -29,11 +29,13 @@ from .mlb_helpers import (
 )
 from .mlb_models import MLBBoxscore, MLBLiveGame
 from .mlb_pbp import MLBPbpFetcher
+from .mlb_statcast import MLBStatcastFetcher, TeamStatcastAggregates
 
 __all__ = [
     "MLBLiveGame",
     "MLBBoxscore",
     "MLBLiveFeedClient",
+    "TeamStatcastAggregates",
 ]
 
 
@@ -56,6 +58,7 @@ class MLBLiveFeedClient:
         # Compose fetchers
         self._boxscore_fetcher = MLBBoxscoreFetcher(self.client, self._cache)
         self._pbp_fetcher = MLBPbpFetcher(self.client, self._cache)
+        self._statcast_fetcher = MLBStatcastFetcher(self.client, self._cache)
 
     def fetch_schedule(self, start: date, end: date) -> list[MLBLiveGame]:
         """Fetch MLB schedule for a date range.
@@ -162,9 +165,14 @@ class MLBLiveFeedClient:
         """Fetch and normalize play-by-play data for a game."""
         return self._pbp_fetcher.fetch_play_by_play(game_pk, game_status=game_status)
 
-    # Delegate boxscore methods to boxscore fetcher
-    def fetch_boxscore(
+    # Delegate statcast methods to statcast fetcher
+    def fetch_statcast_aggregates(
         self, game_pk: int, game_status: str | None = None
-    ) -> MLBBoxscore | None:
+    ) -> dict[str, TeamStatcastAggregates]:
+        """Fetch and aggregate Statcast data for a game."""
+        return self._statcast_fetcher.fetch_statcast_aggregates(game_pk, game_status=game_status)
+
+    # Delegate boxscore methods to boxscore fetcher
+    def fetch_boxscore(self, game_pk: int, game_status: str | None = None) -> MLBBoxscore | None:
         """Fetch boxscore from MLB Stats API."""
         return self._boxscore_fetcher.fetch_boxscore(game_pk, game_status=game_status)

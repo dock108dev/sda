@@ -26,6 +26,12 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `sports_player_boxscores` | Player-level stats per game (JSONB `raw_stats_json`) |
 | `sports_game_plays` | Play-by-play events with period, clock, scores, play type |
 
+### MLB Advanced Stats
+
+| Table | Description |
+|-------|-------------|
+| `mlb_game_advanced_stats` | Statcast-derived team-level advanced batting stats (2 rows per game: home + away) |
+
 ### Odds & FairBet
 
 | Table | Description |
@@ -143,7 +149,7 @@ FROM sports_games g
 JOIN sports_leagues l ON g.league_id = l.id
 WHERE EXISTS (SELECT 1 FROM sports_team_boxscores WHERE game_id = g.id)
   AND EXISTS (SELECT 1 FROM sports_game_odds WHERE game_id = g.id)
-  AND g.status = 'completed';
+  AND g.status = 'final';
 ```
 
 ### Team Stats

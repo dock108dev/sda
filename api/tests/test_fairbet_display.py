@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.services.ev import calculate_ev
 from app.services.fairbet_display import (
     book_abbreviation,

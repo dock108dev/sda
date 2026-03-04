@@ -2,7 +2,7 @@
 
 **Centralized sports data hub for all Dock108 apps.**
 
-Automated ingestion, normalization, and serving of sports data. Provides play-by-play, box scores, odds, and social media for NBA, NHL, and NCAAB.
+Automated ingestion, normalization, and serving of sports data. Provides play-by-play, box scores, odds, and social media for NBA, NHL, NCAAB, and MLB.
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ For manual setup, see [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
 ```
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
 │ External Sources│────▶│   Scraper    │────▶│  PostgreSQL │
-│ (SportsRef, APIs)     │ (Celery/uv)  │     │    Hub      │
+│ (League APIs)         │ (Celery/uv)  │     │    Hub      │
 └─────────────────┘     └──────────────┘     └──────┬──────┘
                                                     │
                         ┌───────────────────────────┼───────────────────────────┐

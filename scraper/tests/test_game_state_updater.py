@@ -10,6 +10,7 @@ from sports_scraper.services.game_state_updater import (
     _promote_final_to_archived,
     _promote_pregame_to_live,
     _promote_scheduled_to_pregame,
+    _promote_stale_to_final,
     update_game_states,
 )
 
@@ -58,7 +59,9 @@ class TestUpdateGameStates:
     @patch(f"{_MOD}._promote_stale_to_final", return_value=0)
     @patch(f"{_MOD}._promote_pregame_to_live", return_value=0)
     @patch(f"{_MOD}._promote_scheduled_to_pregame", return_value=2)
-    def test_logs_info_when_transitions(self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger):
+    def test_logs_info_when_transitions(
+        self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger
+    ):
         session = MagicMock()
         result = update_game_states(session)
         assert result["scheduled_to_pregame"] == 2
@@ -70,7 +73,9 @@ class TestUpdateGameStates:
     @patch(f"{_MOD}._promote_stale_to_final", return_value=0)
     @patch(f"{_MOD}._promote_pregame_to_live", return_value=0)
     @patch(f"{_MOD}._promote_scheduled_to_pregame", return_value=0)
-    def test_logs_debug_when_no_transitions(self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger):
+    def test_logs_debug_when_no_transitions(
+        self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger
+    ):
         session = MagicMock()
         update_game_states(session)
         mock_logger.debug.assert_called_once_with("game_state_updater_no_transitions")
@@ -229,6 +234,133 @@ class TestPromotePregameToLive:
         assert result == 2
         for g in games:
             assert g.status == "live"
+
+
+# ---------------------------------------------------------------------------
+# _promote_stale_to_final
+# ---------------------------------------------------------------------------
+_POSTGAME_WINDOW_HOURS = 3.0
+
+
+class TestPromoteStaleToFinal:
+    @patch(f"{_MOD}.LEAGUE_CONFIG")
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_promotes_stale_live_game_to_final(self, mock_now, mock_config):
+        """Live game 7 hrs past tip → promoted to final."""
+        now = _utc_now()
+        config = MagicMock()
+        config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
+        config.postgame_window_hours = _POSTGAME_WINDOW_HOURS
+        mock_config.items.return_value = [("NBA", config)]
+
+        game = _make_game(
+            status="live",
+            tip_time=now - timedelta(hours=7),  # 7 hrs ago, cutoff is 6
+        )
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.scalar.return_value = _MOCK_LEAGUE_ID
+        session.query.return_value.filter.return_value.all.return_value = [game]
+
+        result = _promote_stale_to_final(session)
+        assert result == 1
+        assert game.status == "final"
+        assert game.end_time == game.tip_time + timedelta(hours=_ESTIMATED_GAME_DURATION_HOURS)
+        assert game.updated_at == now
+
+    @patch(f"{_MOD}.LEAGUE_CONFIG")
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_does_not_promote_recent_live_game(self, mock_now, mock_config):
+        """Live game 2 hrs past tip → NOT promoted (still within timeout)."""
+        now = _utc_now()
+        config = MagicMock()
+        config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
+        config.postgame_window_hours = _POSTGAME_WINDOW_HOURS
+        mock_config.items.return_value = [("NBA", config)]
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.scalar.return_value = _MOCK_LEAGUE_ID
+        session.query.return_value.filter.return_value.all.return_value = []
+
+        result = _promote_stale_to_final(session)
+        assert result == 0
+
+    @patch(f"{_MOD}.logger")
+    @patch(f"{_MOD}.LEAGUE_CONFIG")
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_logs_warning_for_stale_live(self, mock_now, mock_config, mock_logger):
+        """live→final fires logger.warning with reason stale_live_timeout."""
+        now = _utc_now()
+        config = MagicMock()
+        config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
+        config.postgame_window_hours = _POSTGAME_WINDOW_HOURS
+        mock_config.items.return_value = [("NBA", config)]
+
+        game = _make_game(
+            status="live",
+            tip_time=now - timedelta(hours=7),
+        )
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.scalar.return_value = _MOCK_LEAGUE_ID
+        session.query.return_value.filter.return_value.all.return_value = [game]
+
+        _promote_stale_to_final(session)
+
+        mock_logger.warning.assert_called_once()
+        call_kwargs = mock_logger.warning.call_args
+        assert call_kwargs[1]["reason"] == "stale_live_timeout"
+        assert call_kwargs[1]["from_status"] == "live"
+        # Ensure info was NOT called (only warning for live→final)
+        mock_logger.info.assert_not_called()
+
+    @patch(f"{_MOD}.LEAGUE_CONFIG")
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_promotes_stale_scheduled_game(self, mock_now, mock_config):
+        """Existing behavior: scheduled game past cutoff → final."""
+        now = _utc_now()
+        config = MagicMock()
+        config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
+        config.postgame_window_hours = _POSTGAME_WINDOW_HOURS
+        mock_config.items.return_value = [("NBA", config)]
+
+        game = _make_game(
+            status="scheduled",
+            tip_time=now - timedelta(hours=7),
+        )
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.scalar.return_value = _MOCK_LEAGUE_ID
+        session.query.return_value.filter.return_value.all.return_value = [game]
+
+        result = _promote_stale_to_final(session)
+        assert result == 1
+        assert game.status == "final"
+
+    @patch(f"{_MOD}.LEAGUE_CONFIG")
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_mixed_stale_statuses(self, mock_now, mock_config):
+        """All three stale statuses (scheduled, pregame, live) promoted together."""
+        now = _utc_now()
+        config = MagicMock()
+        config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
+        config.postgame_window_hours = _POSTGAME_WINDOW_HOURS
+        mock_config.items.return_value = [("NBA", config)]
+
+        games = [
+            _make_game(id=1, status="scheduled", tip_time=now - timedelta(hours=8)),
+            _make_game(id=2, status="pregame", tip_time=now - timedelta(hours=7)),
+            _make_game(id=3, status="live", tip_time=now - timedelta(hours=10)),
+        ]
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.scalar.return_value = _MOCK_LEAGUE_ID
+        session.query.return_value.filter.return_value.all.return_value = games
+
+        result = _promote_stale_to_final(session)
+        assert result == 3
+        for g in games:
+            assert g.status == "final"
 
 
 # ---------------------------------------------------------------------------

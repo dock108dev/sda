@@ -30,7 +30,6 @@ from sports_scraper.services.job_runs import (
     complete_job_run,
     enforce_social_queue_limit,
     queue_job_run,
-    start_job_run,
     track_job_run,
 )
 

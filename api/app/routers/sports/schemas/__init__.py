@@ -42,6 +42,7 @@ from .games import (
     GameSummary,
     JobResponse,
 )
+from .mlb_advanced import MLBAdvancedTeamStats
 from .scraper import ScrapeRunConfig, ScrapeRunCreateRequest, ScrapeRunResponse
 from .teams import (
     TeamColorUpdate,
@@ -91,6 +92,8 @@ __all__ = [
     "GamePreviewScoreResponse",
     "GameSummary",
     "JobResponse",
+    # mlb_advanced
+    "MLBAdvancedTeamStats",
     # scraper
     "ScrapeRunConfig",
     "ScrapeRunCreateRequest",

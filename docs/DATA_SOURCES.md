@@ -21,7 +21,7 @@ This document describes where data comes from and how it's ingested.
 - **NBA**: NBA API (`cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json`)
 - **NHL**: NHL API (`api-web.nhle.com/v1/gamecenter/{game_id}/boxscore`)
 - **NCAAB**: CBB Stats API (`/games/teams`, `/games/players`) with date range batching
-- **MLB**: MLB Stats API (`statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live`) — batter and pitcher stats
+- **MLB**: MLB Stats API (`statsapi.mlb.com/api/v1/game/{game_pk}/boxscore`) — batter and pitcher stats
 
 ### NCAAB Team Mapping
 NCAAB boxscore ingestion requires `cbb_team_id` in `sports_teams.external_codes` to match games to the CBB API.
@@ -106,6 +106,31 @@ NHL uses the official NHL API for ALL data (schedule, PBP, boxscores).
 **Clock Parsing:**
 - NBA: `PT11M22.00S` → `11:22`
 - NHL: Clock extracted from play data
+
+## MLB Advanced Stats (Statcast-derived)
+
+### Source
+MLB Stats API `playByPlay` endpoint (same data source as PBP, different aggregation).
+
+### Data Collected
+Team-level advanced batting stats computed from pitch-level Statcast data:
+
+**Plate discipline:** zone swing rate, outside swing rate, zone contact rate, outside contact rate (zones 1-9 = strike zone, zones 11-14 = outside)
+
+**Quality of contact:** average exit velocity, hard-hit rate (launch speed >= 95 mph), barrel rate (>= 98 mph + MLB barrel angle formula)
+
+### Timing
+- Dispatched automatically when a game transitions to FINAL (60-second countdown)
+- Also triggerable on-demand via admin Control Panel (`ingest_mlb_advanced_stats`)
+
+### Storage
+- `mlb_game_advanced_stats` — Two rows per game (home + away), with raw counts and derived percentages
+- `sports_games.last_advanced_stats_at` — Timestamp of last ingestion
+
+### Implementation
+- Computation: `scraper/sports_scraper/live/mlb_statcast.py`
+- Ingestion service: `scraper/sports_scraper/services/mlb_advanced_stats_ingestion.py`
+- Celery task: `scraper/sports_scraper/jobs/mlb_advanced_stats_tasks.py`
 
 ## Odds
 
@@ -319,6 +344,7 @@ Implementation: `queue_job_run()`, `activate_queued_job_run()`, `enforce_social_
   - 09:30 UTC (4:30 AM ET) — NBA flow generation
   - 10:00 UTC (5:00 AM ET) — NHL flow generation
   - 10:30 UTC (5:30 AM ET) — NCAAB flow generation (capped at 10 games)
+  - 11:00 UTC (6:00 AM ET) — MLB flow generation
 
 Configuration: `scraper/sports_scraper/celery_app.py`
 

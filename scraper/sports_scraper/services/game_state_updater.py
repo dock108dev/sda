@@ -6,12 +6,14 @@ via Celery beat. State transitions:
 - scheduled → pregame: when now() >= tip_time - pregame_window_hours
 - pregame → live: when tip_time < now() AND tip_time + estimated_game_duration > now()
   (time-based fallback when scoreboard APIs don't report "live")
-- scheduled/pregame → final: when tip_time + estimated_game_duration_hours
-  + postgame_window_hours < now() (stale timeout safety net)
+- scheduled/pregame/live → final: when tip_time + estimated_game_duration_hours
+  + postgame_window_hours < now() (stale timeout safety net — also catches
+  live games whose polling missed the final update)
 - final → archived: when game has timeline artifacts AND end_time < now() - 7 days
 
-The live → final transition is NOT handled here — it comes from API responses
-in the PBP polling task when the data source reports the game as finished.
+The live → final transition normally comes from API responses in the PBP
+polling task. The stale timeout acts as a safety net in case polling misses
+the final update (network issue, API glitch, worker crash).
 """
 
 from __future__ import annotations
@@ -132,8 +134,8 @@ def _promote_pregame_to_live(session: Session) -> int:
                 db_models.SportsGame.league_id == league_id,
                 db_models.SportsGame.status == db_models.GameStatus.pregame.value,
                 db_models.SportsGame.tip_time.isnot(None),
-                db_models.SportsGame.tip_time < now,              # past tip-off
-                db_models.SportsGame.tip_time > now - duration,   # not yet expired
+                db_models.SportsGame.tip_time < now,  # past tip-off
+                db_models.SportsGame.tip_time > now - duration,  # not yet expired
             )
             .all()
         )
@@ -156,11 +158,13 @@ def _promote_pregame_to_live(session: Session) -> int:
 
 
 def _promote_stale_to_final(session: Session) -> int:
-    """Force overdue pregame/scheduled games to final.
+    """Force overdue scheduled/pregame/live games to final.
 
-    Safety net for when APIs fail to report correct status.
-    Uses per-league estimated_game_duration_hours + postgame_window_hours
-    as the maximum time a game can remain in pregame before we infer it's over.
+    Safety net for when APIs fail to report correct status. Also catches
+    live games whose PBP polling missed the final update (network issue,
+    API glitch, worker crash). Uses per-league estimated_game_duration_hours
+    + postgame_window_hours as the maximum time before we infer the game
+    is over.
     """
     now = now_utc()
     promoted = 0
@@ -181,10 +185,13 @@ def _promote_stale_to_final(session: Session) -> int:
             session.query(db_models.SportsGame)
             .filter(
                 db_models.SportsGame.league_id == league_id,
-                db_models.SportsGame.status.in_([
-                    db_models.GameStatus.scheduled.value,
-                    db_models.GameStatus.pregame.value,
-                ]),
+                db_models.SportsGame.status.in_(
+                    [
+                        db_models.GameStatus.scheduled.value,
+                        db_models.GameStatus.pregame.value,
+                        db_models.GameStatus.live.value,
+                    ]
+                ),
                 db_models.SportsGame.tip_time.isnot(None),
                 db_models.SportsGame.tip_time < stale_cutoff,
             )
@@ -194,20 +201,29 @@ def _promote_stale_to_final(session: Session) -> int:
         for game in games:
             old_status = game.status
             game.status = db_models.GameStatus.final.value
-            game.end_time = game.tip_time + timedelta(
-                hours=config.estimated_game_duration_hours
-            )
+            game.end_time = game.tip_time + timedelta(hours=config.estimated_game_duration_hours)
             game.updated_at = now
             promoted += 1
-            logger.info(
-                "game_state_transition",
-                game_id=game.id,
-                league=league_code,
-                from_status=old_status,
-                to_status="final",
-                tip_time=str(game.tip_time),
-                reason="stale_timeout",
-            )
+            if old_status == db_models.GameStatus.live.value:
+                logger.warning(
+                    "game_state_transition",
+                    game_id=game.id,
+                    league=league_code,
+                    from_status=old_status,
+                    to_status="final",
+                    tip_time=str(game.tip_time),
+                    reason="stale_live_timeout",
+                )
+            else:
+                logger.info(
+                    "game_state_transition",
+                    game_id=game.id,
+                    league=league_code,
+                    from_status=old_status,
+                    to_status="final",
+                    tip_time=str(game.tip_time),
+                    reason="stale_timeout",
+                )
 
     return promoted
 
@@ -225,11 +241,8 @@ def _promote_final_to_archived(session: Session) -> int:
     promoted = 0
 
     # Subquery: games with timeline artifacts
-    has_artifacts = (
-        exists()
-        .where(
-            db_models.SportsGameTimelineArtifact.game_id == db_models.SportsGame.id
-        )
+    has_artifacts = exists().where(
+        db_models.SportsGameTimelineArtifact.game_id == db_models.SportsGame.id
     )
 
     games = (

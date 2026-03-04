@@ -303,6 +303,7 @@ def summarize_game(
         has_social=has_social,
         has_pbp=has_pbp,
         has_flow=has_flow,
+        has_advanced_stats=getattr(game, "last_advanced_stats_at", None) is not None,
         play_count=play_count,
         social_post_count=social_post_count,
         scrape_version=getattr(game, "scrape_version", None),

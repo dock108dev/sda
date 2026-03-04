@@ -7,7 +7,6 @@ import pytest
 from app.services.ev import evaluate_ev_eligibility
 from app.services.ev_config import EVStrategyConfig, get_strategy
 from app.services.ev_consensus import (
-    ConsensusMetadata,
     _iqr,
     _median,
     compute_ev_median_consensus,

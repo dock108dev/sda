@@ -52,10 +52,11 @@ from ..utils.redis_lock import acquire_redis_lock as _acquire_redis_lock  # noqa
 from ..utils.redis_lock import release_redis_lock as _release_redis_lock  # noqa: E402
 
 
-def _dispatch_final_actions(game_id: int) -> None:
+def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
     """Dispatch social scrape and flow generation for a game that just went final."""
     try:
         from .final_whistle_tasks import run_final_whistle_social
+
         run_final_whistle_social.apply_async(
             args=[game_id],
             countdown=300,
@@ -67,6 +68,7 @@ def _dispatch_final_actions(game_id: int) -> None:
 
     try:
         from .flow_trigger_tasks import trigger_flow_for_game
+
         trigger_flow_for_game.apply_async(
             args=[game_id],
             countdown=3600,
@@ -74,6 +76,15 @@ def _dispatch_final_actions(game_id: int) -> None:
         logger.info("flow_trigger_dispatched", game_id=game_id, countdown=3600)
     except Exception as exc:
         logger.warning("flow_trigger_dispatch_error", game_id=game_id, error=str(exc))
+
+    if league_code == "MLB":
+        try:
+            from .mlb_advanced_stats_tasks import ingest_mlb_advanced_stats
+
+            ingest_mlb_advanced_stats.apply_async(args=[game_id], countdown=60)
+            logger.info("mlb_advanced_stats_dispatched", game_id=game_id)
+        except Exception as exc:
+            logger.warning("mlb_advanced_stats_dispatch_error", game_id=game_id, error=str(exc))
 
 
 @shared_task(name="update_game_states")
@@ -136,6 +147,7 @@ def poll_live_pbp_task() -> dict:
 
             # Build league lookup and separate NCAAB from NBA/NHL/MLB
             from ..db import db_models
+
             league_map: dict[int, str] = {}
             nba_nhl_pbp_games: list = []
             ncaab_pbp_games: list = []
@@ -223,7 +235,10 @@ def poll_live_pbp_task() -> dict:
                     if result.get("transition"):
                         transitions.append(result["transition"])
                         if result["transition"]["to"] == "final":
-                            _dispatch_final_actions(result["transition"]["game_id"])
+                            _dispatch_final_actions(
+                                result["transition"]["game_id"],
+                                league_code=league_map.get(game.league_id, ""),
+                            )
                     if result.get("pbp_events", 0) > 0:
                         pbp_updated += 1
 
@@ -252,7 +267,8 @@ def poll_live_pbp_task() -> dict:
                 boxscore_games = resolver.get_games_needing_boxscore(session)
                 # Filter to NBA/NHL/MLB (NCAAB boxscores handled in batch phase)
                 nba_nhl_box_games = [
-                    g for g in boxscore_games
+                    g
+                    for g in boxscore_games
                     if league_map.get(g.league_id, "") in ("NBA", "NHL", "MLB")
                 ]
                 # Ensure league_map covers boxscore games too
@@ -266,7 +282,8 @@ def poll_live_pbp_task() -> dict:
                         )
                         league_map.update({lg.id: lg.code for lg in extra})
                     nba_nhl_box_games = [
-                        g for g in boxscore_games
+                        g
+                        for g in boxscore_games
                         if league_map.get(g.league_id, "") in ("NBA", "NHL", "MLB")
                     ]
 
@@ -325,7 +342,7 @@ def poll_live_pbp_task() -> dict:
                     # Dispatch final-whistle social + flow for NCAAB games that went final
                     for tr in ncaab_stats.get("transitions", []):
                         if tr["to"] == "final":
-                            _dispatch_final_actions(tr["game_id"])
+                            _dispatch_final_actions(tr["game_id"], league_code="NCAAB")
 
                 except _RateLimitError:
                     logger.warning("poll_ncaab_rate_limited")
@@ -364,5 +381,3 @@ def poll_live_pbp_task() -> dict:
         raise
     finally:
         _release_redis_lock("lock:poll_live_pbp")
-
-

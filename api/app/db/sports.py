@@ -25,6 +25,7 @@ from .base import Base
 
 if TYPE_CHECKING:
     from .flow import SportsGameTimelineArtifact
+    from .mlb_advanced import MLBGameAdvancedStats
     from .odds import SportsGameOdds
     from .scraper import SportsScrapeRun
     from .social import TeamSocialAccount, TeamSocialPost
@@ -223,6 +224,9 @@ class SportsGame(Base):
     )
     last_social_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_odds_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_advanced_stats_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     external_ids: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
@@ -271,6 +275,11 @@ class SportsGame(Base):
     )
     timeline_artifacts: Mapped[list[SportsGameTimelineArtifact]] = relationship(
         "SportsGameTimelineArtifact",
+        back_populates="game",
+        cascade="all, delete-orphan",
+    )
+    advanced_stats: Mapped[list[MLBGameAdvancedStats]] = relationship(
+        "MLBGameAdvancedStats",
         back_populates="game",
         cascade="all, delete-orphan",
     )

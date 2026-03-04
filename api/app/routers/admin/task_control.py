@@ -127,6 +127,12 @@ TASK_REGISTRY: dict[str, TaskRegistryEntry] = {
             queue="sports-scraper",
             description="Run scheduled timeline generation for all leagues",
         ),
+        # MLB Advanced Stats
+        TaskRegistryEntry(
+            name="ingest_mlb_advanced_stats",
+            queue="sports-scraper",
+            description="Ingest Statcast-derived advanced stats for an MLB game",
+        ),
         # Utility
         TaskRegistryEntry(
             name="clear_scraper_cache",

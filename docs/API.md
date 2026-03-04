@@ -121,8 +121,9 @@ GET /api/admin/sports/games/123/flow
 | League | Code | Data Available |
 |--------|------|----------------|
 | NBA | `NBA` | Boxscores, PBP, Social, Odds, Game Flow, Timelines |
-| NHL | `NHL` | Boxscores, PBP, Social, Odds, Timelines |
-| NCAAB | `NCAAB` | Boxscores, PBP, Social, Odds, Timelines |
+| NHL | `NHL` | Boxscores, PBP, Social, Odds, Game Flow, Timelines |
+| NCAAB | `NCAAB` | Boxscores, PBP, Social, Odds, Game Flow, Timelines |
+| MLB | `MLB` | Boxscores, PBP, Social, Odds, Game Flow, Timelines, Advanced Stats |
 
 ---
 
@@ -264,6 +265,7 @@ List games with filtering and pagination.
       "hasSocial": true,
       "hasPbp": true,
       "hasFlow": true,
+      "hasAdvancedStats": false,
       "playCount": 450,
       "socialPostCount": 12,
       "scrapeVersion": 2,
@@ -315,6 +317,7 @@ Full game detail including stats, odds, social posts, and plays.
     "hasSocial": true,
     "hasPbp": true,
     "hasFlow": true,
+    "hasAdvancedStats": false,
     "playCount": 450,
     "socialPostCount": 12,
     "homeTeamXHandle": "@Lakers",
@@ -335,6 +338,7 @@ Full game detail including stats, odds, social posts, and plays.
   "plays": [PlayEntry, ...],
   "groupedPlays": [TieredPlayGroup, ...],
   "derivedMetrics": {...},
+  "mlbAdvancedStats": [MLBAdvancedTeamStats, ...] | null,
   "rawPayloads": {...},
   "dataHealth": NHLDataHealth | null
 }
@@ -1175,6 +1179,7 @@ interface GameSummary {
   hasSocial: boolean;
   hasPbp: boolean;
   hasFlow: boolean;
+  hasAdvancedStats: boolean;   // MLB Statcast-derived advanced stats available
   playCount: number;
   socialPostCount: number;
   scrapeVersion: number | null;
@@ -1605,6 +1610,7 @@ interface GameDetailResponse {
   plays: PlayEntry[];
   groupedPlays: TieredPlayGroup[];
   derivedMetrics: Record<string, any>;
+  mlbAdvancedStats: MLBAdvancedTeamStats[] | null;  // MLB only — Statcast-derived advanced batting stats
   rawPayloads: Record<string, any>;
   dataHealth: NHLDataHealth | null;     // NHL only
   oddsTable: OddsTableGroup[] | null;   // Structured odds table (see below)
@@ -1651,6 +1657,7 @@ interface GameMeta {
   hasSocial: boolean;
   hasPbp: boolean;
   hasFlow: boolean;
+  hasAdvancedStats: boolean;       // MLB Statcast-derived advanced stats available
   playCount: number;
   socialPostCount: number;
   lastScrapedAt: string | null;
@@ -1689,6 +1696,30 @@ interface NHLDataHealth {
   goalieCount: number;
   isHealthy: boolean;
   issues: string[];     // e.g. ["missing_goalie_stats", "low_skater_count"]
+}
+```
+
+---
+
+### MLBAdvancedTeamStats
+
+Statcast-derived advanced batting stats for one team in an MLB game. Returned in `mlbAdvancedStats` (MLB games only, null for other leagues).
+
+```typescript
+interface MLBAdvancedTeamStats {
+  team: string;                    // Team name
+  isHome: boolean;
+  totalPitches: number;            // Total pitches seen
+  ballsInPlay: number;            // Batted balls with launch speed data
+  // Plate discipline
+  zSwingPct: number | null;       // Zone swing rate (zone_swings / zone_pitches)
+  oSwingPct: number | null;       // Outside swing rate (outside_swings / outside_pitches)
+  zContactPct: number | null;     // Zone contact rate (zone_contact / zone_swings)
+  oContactPct: number | null;     // Outside contact rate (outside_contact / outside_swings)
+  // Quality of contact
+  avgExitVelo: number | null;     // Average exit velocity (mph)
+  hardHitPct: number | null;      // Hard-hit rate (launch speed >= 95 mph)
+  barrelPct: number | null;       // Barrel rate (MLB barrel formula)
 }
 ```
 

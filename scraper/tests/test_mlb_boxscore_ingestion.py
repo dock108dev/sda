@@ -7,8 +7,6 @@ import sys
 from datetime import UTC, date, datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

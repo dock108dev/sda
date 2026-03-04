@@ -21,6 +21,7 @@ from .common import (
     TeamStat,
     TieredPlayGroup,
 )
+from .mlb_advanced import MLBAdvancedTeamStats
 
 
 class GameSummary(BaseModel):
@@ -44,6 +45,7 @@ class GameSummary(BaseModel):
     has_social: bool = Field(..., alias="hasSocial")
     has_pbp: bool = Field(..., alias="hasPbp")
     has_flow: bool = Field(..., alias="hasFlow")
+    has_advanced_stats: bool = Field(False, alias="hasAdvancedStats")
     play_count: int = Field(..., alias="playCount")
     social_post_count: int = Field(..., alias="socialPostCount")
     scrape_version: int | None = Field(None, alias="scrapeVersion")
@@ -112,6 +114,7 @@ class GameMeta(BaseModel):
     has_social: bool = Field(..., alias="hasSocial")
     has_pbp: bool = Field(..., alias="hasPbp")
     has_flow: bool = Field(..., alias="hasFlow")
+    has_advanced_stats: bool = Field(False, alias="hasAdvancedStats")
     play_count: int = Field(..., alias="playCount")
     social_post_count: int = Field(..., alias="socialPostCount")
     home_team_x_handle: str | None = Field(None, alias="homeTeamXHandle")
@@ -146,6 +149,8 @@ class GameDetailResponse(BaseModel):
     # MLB-specific player stats (only populated for MLB games)
     mlb_batters: list[MLBBatterStat] | None = Field(None, alias="mlbBatters")
     mlb_pitchers: list[MLBPitcherStat] | None = Field(None, alias="mlbPitchers")
+    # MLB advanced stats (Statcast-derived, only populated for MLB games)
+    mlb_advanced_stats: list[MLBAdvancedTeamStats] | None = Field(None, alias="mlbAdvancedStats")
     odds: list[OddsEntry]
     social_posts: list[SocialPostEntry] = Field(..., alias="socialPosts")
     plays: list[PlayEntry]
