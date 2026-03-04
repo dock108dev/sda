@@ -195,14 +195,18 @@ def _apply_display_ev(
     books: list[BookOdds],
     confidence: float,
 ) -> list[BookOdds]:
-    """Set display_ev = ev_percent * confidence on each BookOdds.
+    """Set display_ev = ev_percent (raw mathematical EV) on each BookOdds.
+
+    Confidence is communicated separately via ev_confidence_tier, not baked
+    into the displayed number.  This keeps the card chip consistent with the
+    explanation-step walkthrough that derives EV from first principles.
 
     Returns a new list with display_ev populated.
     """
     result: list[BookOdds] = []
     for b in books:
         display_ev = (
-            round(b.ev_percent * confidence, 2)
+            round(b.ev_percent, 2)
             if b.ev_percent is not None
             else None
         )

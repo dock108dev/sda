@@ -454,7 +454,7 @@ def _try_extrapolated_ev(
                 impl_prob = None
 
             display_ev = (
-                round(ev_pct * num_confidence, 2)
+                round(ev_pct, 2)
                 if ev_pct is not None
                 else None
             )

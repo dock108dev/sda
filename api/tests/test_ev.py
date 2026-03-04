@@ -734,7 +734,10 @@ class TestBookSpreadFactor:
 
 
 class TestDisplayEVComputation:
-    """Tests verifying display_ev = raw_ev * confidence end-to-end."""
+    """Tests verifying display_ev = raw_ev (no confidence multiplier).
+
+    Confidence is communicated via ev_confidence_tier, not baked into display_ev.
+    """
 
     @pytest.fixture
     def nba_mainline_config(self) -> EVStrategyConfig:
@@ -756,12 +759,10 @@ class TestDisplayEVComputation:
         conf = probability_confidence(result.true_prob_a)
         assert conf == 1.0
 
-    def test_low_prob_confidence_decays(self) -> None:
-        """15% true prob → confidence ≈ 0.77, display_ev < raw_ev."""
-        raw_ev = 14.2
+    def test_low_prob_confidence_still_decays(self) -> None:
+        """15% true prob → probability_confidence still returns < 1.0 for tier classification."""
         conf = probability_confidence(0.15)
-        display = raw_ev * conf
-        assert abs(display - 11.0) < 0.5  # ~10.93
+        assert conf < 1.0  # ~0.77 — used for tier, not for display_ev
 
     def test_extreme_longshot_confidence(self) -> None:
         """8% true prob → confidence ≈ 0.57, significant reduction."""
