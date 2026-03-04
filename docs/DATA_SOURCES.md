@@ -233,10 +233,10 @@ This architecture allows collecting tweets once and mapping to multiple games if
 ### Schedule
 
 Social collection uses four complementary mechanisms:
-- **Hourly collection** (`collect_game_social`): Runs every 60 minutes, collects tweets for all teams with games today across all phases (scheduled, pregame, live, final). Iterates game-by-game with team dedup and configurable inter-game cooldown.
-- **Tweet mapping** (`map_social_to_games`): Runs every 30 minutes to map unmapped tweets in `team_social_posts` to games based on team and posting time.
+- **Live collection** (`collect_game_social`): Runs every 30 minutes on the `social-scraper` queue. Targets games with odds but missing or stale (>2h) social data from today and yesterday. Iterates game-by-game with team dedup and configurable inter-game cooldown. Protected by a Redis lock (30 min timeout) to prevent overlap.
+- **Tweet mapping** (`map_social_to_games`): Runs every 30 minutes (staggered at :15/:45) to map unmapped tweets in `team_social_posts` to games based on team and posting time.
 - **Final-whistle scrape** (`run_final_whistle_social`): Triggered automatically when games transition to FINAL status
-- **Daily sweep catch-up**: Runs at **4:00 AM EST** as part of the daily sweep for any missed games
+- **Daily sweep catch-up**: Runs at **4:00 AM EST** as part of the daily sweep for any missed games. Bulk social tasks (`collect_team_social`, `collect_social_for_league`) are routed to the `social-bulk` queue so they don't starve live collection.
 
 Cooldown and batch sizes are configurable via `SocialConfig` in `scraper/sports_scraper/config.py`. See `scraper/sports_scraper/celery_app.py` for schedule configuration.
 
@@ -338,7 +338,7 @@ Implementation: `queue_job_run()`, `activate_queued_job_run()`, `enforce_social_
 - **Live PBP + Boxscore Polling**: Every 60s — disabled 3–11 AM EST (08–16 UTC)
 - **Mainline Odds Sync**: Every 60s (`sync_mainline_odds`: spreads, totals, moneyline)
 - **Prop Odds Sync**: Every 60s (`sync_prop_odds`: player/team props)
-- **Game Social Collection**: Every 60 minutes (`collect_game_social`)
+- **Game Social Collection**: Every 30 minutes (`collect_game_social`)
 
 **Daily (timed):**
 - **Ingestion**: 08:30 UTC (3:30 AM ET) — boxscores, PBP
@@ -354,7 +354,7 @@ Configuration: `scraper/sports_scraper/celery_app.py`
 ### Manual (Admin UI)
 - Dispatch any registered Celery task via the Control Panel (`POST /api/admin/tasks/trigger`)
 - Tasks include ingestion, odds sync, social collection, flow generation, cache clearing, and more
-- Task dispatch is routed to the appropriate Celery queue (`sports-scraper` or `social-scraper`)
+- Task dispatch is routed to the appropriate Celery queue (`sports-scraper`, `social-scraper`, or `social-bulk`)
 - Job run history viewable in the RunsDrawer (bottom panel on all admin pages)
 
 ### Execution Flow

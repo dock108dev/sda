@@ -2,7 +2,28 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-03] - Current
+## [2026-03-04] - Current
+
+### Social Scraping Hardening
+
+- **Redis visibility timeout**: Set `broker_transport_options.visibility_timeout` to 86400s (24h) to prevent Redis from re-delivering long-running social tasks (root cause of infinite loop where NHL tasks ran 15+ times)
+- **Redis distributed locks**: `collect_team_social` (2h lock per league) and `collect_game_social` (30 min lock) use `acquire_redis_lock`/`release_redis_lock` to prevent duplicate execution
+- **Live vs bulk queue split**: New `social-bulk` queue for heavy tasks (`collect_team_social`, `collect_social_for_league`); live tasks (`collect_game_social`, `run_final_whistle_social`, `map_social_to_games`) stay on `social-scraper` queue. Single social worker consumes both with live priority (`--queues=social-scraper,social-bulk`)
+- **Rewritten `collect_game_social`**: Now targets games with odds but missing or stale (>2h) social data instead of all games in any status. Frequency increased from hourly to every 30 minutes. `map_social_to_games` staggered to :15/:45.
+- **Date range cap**: Bulk social dispatch capped to yesterday+today (was unbounded), reducing NHL from ~32 teams to ~12-16 and cutting task time from ~67 min to ~25-30 min
+- **Admin registry fixes**: `collect_social_for_league` queue updated to `social-bulk`; `collect_game_social` description updated to reflect new targeting logic
+
+### Documentation
+
+- **DATA_SOURCES.md**: Updated social schedule from "hourly" to "every 30 minutes"; added bulk queue routing info; updated task dispatch queue list
+- **ARCHITECTURE.md**: Fixed PostgreSQL version from 15+ to 16+ (matches `postgres:16-alpine` in docker-compose)
+- **INFRA.md**: Updated social-scraper service to document dual-queue consumption (`social-scraper` + `social-bulk`)
+- **GAMEFLOW_PIPELINE.md**: Reduced duplication with GAMEFLOW_CONTRACT.md; added cross-references instead of repeating block/role definitions
+- **GAME_FLOW_GUIDE.md**: Added cross-references to GAMEFLOW_CONTRACT.md for authoritative spec details
+
+---
+
+## [2026-03-03]
 
 ### MLB Advanced Stats (Statcast-derived)
 

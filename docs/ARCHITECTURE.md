@@ -201,7 +201,7 @@ See [API.md](API.md) for complete endpoint reference.
 
 ### Backend
 - **Framework:** FastAPI
-- **Database:** PostgreSQL 15+
+- **Database:** PostgreSQL 16+
 - **ORM:** SQLAlchemy (async)
 - **Migrations:** Alembic
 - **Task Queue:** Celery + Redis

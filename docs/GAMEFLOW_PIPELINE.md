@@ -14,16 +14,7 @@ NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → ANALYZE_DRAMA → GR
 
 ## Output: Blocks vs Moments
 
-The pipeline produces two related outputs:
-
-| Output | Purpose | Count | Content |
-|--------|---------|-------|---------|
-| **Blocks** | Consumer-facing narrative | 3-7 per game | 1-5 sentences (~65 words) |
-| **Moments** | Internal traceability | 15-25 per game | Play references, scores, timing |
-
-**Blocks are the primary output.** They contain short narratives with semantic roles (SETUP, MOMENTUM_SHIFT, etc.).
-
-**Moments remain for traceability.** They link blocks back to specific plays but do not contain narrative text.
+The pipeline produces **blocks** (consumer-facing narratives, 3-7 per game) and **moments** (internal traceability, 15-25 per game). See [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) for the authoritative specification of block fields, semantic roles, guardrail invariants, and narrative rules.
 
 ## Stages
 
@@ -121,12 +112,7 @@ if total_plays > 400: base += 1
 return min(base, 7)
 ```
 
-**Semantic Roles:**
-- `SETUP` - First block (always)
-- `MOMENTUM_SHIFT` - First significant lead change
-- `RESPONSE` - Counter-run, stabilization
-- `DECISION_POINT` - Sequence that decided outcome
-- `RESOLUTION` - Last block (always)
+**Semantic Roles:** SETUP → MOMENTUM_SHIFT → RESPONSE → DECISION_POINT → RESOLUTION (see [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) for definitions and constraints).
 
 **Output Schema:**
 ```python
@@ -204,18 +190,7 @@ return min(base, 7)
 
 **Implementation:** `stages/validate_blocks.py`
 
-**Guardrail Invariants (Non-negotiable):**
-- Block count: 3-7 (hard limits)
-- Embedded social posts: ≤ 5 per game, ≤ 1 per block
-- Total word count: ≤ 600 words (~60-90 second read)
-- Each block: 30-120 words (1-5 sentences)
-
-**Validation Rules:**
-1. Block count in range [3, 7]
-2. No role appears more than twice
-3. First block role = SETUP
-4. Last block role = RESOLUTION
-5. Score continuity across block boundaries
+**Guardrail invariants and validation rules** are defined in [GAMEFLOW_CONTRACT.md §6](GAMEFLOW_CONTRACT.md). The pipeline enforces all invariants listed there.
 
 ### 8. FINALIZE_MOMENTS
 

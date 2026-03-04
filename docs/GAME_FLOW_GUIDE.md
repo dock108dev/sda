@@ -553,6 +553,8 @@ func fetchGameFlow(gameId: Int) async throws -> GameFlowResponse {
 
 ---
 
-## Questions?
+## See Also
 
-Contact the Sports Data Admin team or check the full [API documentation](./API.md).
+- [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) — Authoritative specification (block fields, semantic roles, guardrails, narrative rules)
+- [GAMEFLOW_PIPELINE.md](GAMEFLOW_PIPELINE.md) — Pipeline implementation details (8 stages, execution modes)
+- [API.md](API.md) — Complete API reference

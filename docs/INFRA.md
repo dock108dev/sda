@@ -32,7 +32,7 @@ docker compose --profile prod up -d --build
 | api-worker | — | Celery worker for API tasks (pipeline, flow generation) |
 | scraper | — | Celery worker for data ingestion |
 | scraper-beat | — | Celery scheduler (see [DATA_SOURCES.md](DATA_SOURCES.md) for full schedule) |
-| social-scraper | — | Social media scraper (X/Twitter) |
+| social-scraper | — | Social media scraper (X/Twitter) — consumes `social-scraper` (live) and `social-bulk` queues |
 | migrate | — | One-shot Alembic migration runner |
 | web | 3000 | Next.js admin UI |
 | backup | — | Daily backup service |
