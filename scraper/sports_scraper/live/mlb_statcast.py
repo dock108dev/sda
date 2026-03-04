@@ -222,6 +222,6 @@ class MLBStatcastFetcher:
 
         has_data = bool(payload.get("allPlays"))
         if should_cache_final(has_data, game_status):
-            self._cache.set(cache_key, payload)
+            self._cache.put(cache_key, payload)
 
         return aggregate_from_payload(payload)
