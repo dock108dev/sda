@@ -14,7 +14,7 @@ from datetime import date
 
 from celery import shared_task
 
-from ..celery_app import SOCIAL_QUEUE
+from ..celery_app import SOCIAL_BULK_QUEUE, SOCIAL_QUEUE
 from ..config import settings
 from ..logging import logger
 
@@ -101,18 +101,18 @@ def handle_social_task_failure(
 
 @shared_task(
     name="collect_social_for_league",
-    queue=SOCIAL_QUEUE,
+    queue=SOCIAL_BULK_QUEUE,
     autoretry_for=(Exception,),
     retry_backoff=True,
     retry_kwargs={"max_retries": 2},
 )
 def collect_social_for_league(league: str) -> dict:
-    """Collect social posts for a league. Runs on dedicated social-scraper worker.
+    """Collect social posts for a league. Runs on social-bulk queue.
 
     Manual social collection triggered from admin UI / API. It runs asynchronously
     (fire-and-forget) so sports ingestion doesn't wait for social.
 
-    Collects tweets for all teams that played in the last 3 days, then
+    Collects tweets for all teams that played yesterday or today, then
     maps unmapped tweets to games.
 
     Args:
@@ -131,7 +131,7 @@ def collect_social_for_league(league: str) -> dict:
     logger.info("social_task_started", league=league)
 
     end_date = today_et()
-    start_date = end_date - timedelta(days=3)
+    start_date = end_date - timedelta(days=1)
 
     with get_session() as session:
         collector = TeamTweetCollector()
