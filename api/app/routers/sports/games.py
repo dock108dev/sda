@@ -233,6 +233,9 @@ async def list_games(
     with_pbp_count = (await session.execute(with_pbp_count_stmt)).scalar_one()
     with_flow_count = (await session.execute(with_flow_count_stmt)).scalar_one()
 
+    with_advanced_stats_count_stmt = count_stmt.where(SportsGame.last_advanced_stats_at.isnot(None))
+    with_advanced_stats_count = (await session.execute(with_advanced_stats_count_stmt)).scalar_one()
+
     # Query which games have flows in SportsGameFlow table
     game_ids = [game.id for game in games]
     if game_ids:
@@ -258,6 +261,7 @@ async def list_games(
         with_social_count=with_social_count,
         with_pbp_count=with_pbp_count,
         with_flow_count=with_flow_count,
+        with_advanced_stats_count=with_advanced_stats_count,
     )
 
 
@@ -474,6 +478,7 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         last_pbp_at=game.last_pbp_at,
         last_social_at=game.last_social_at,
         last_odds_at=game.last_odds_at,
+        last_advanced_stats_at=getattr(game, "last_advanced_stats_at", None),
         has_boxscore=bool(game.team_boxscores),
         has_player_stats=bool(game.player_boxscores),
         has_odds=bool(game.odds),

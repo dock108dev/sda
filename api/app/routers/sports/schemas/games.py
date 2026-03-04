@@ -54,6 +54,7 @@ class GameSummary(BaseModel):
     last_pbp_at: datetime | None = Field(None, alias="lastPbpAt")
     last_social_at: datetime | None = Field(None, alias="lastSocialAt")
     last_odds_at: datetime | None = Field(None, alias="lastOddsAt")
+    last_advanced_stats_at: datetime | None = Field(None, alias="lastAdvancedStatsAt")
     derived_metrics: dict[str, Any] | None = Field(None, alias="derivedMetrics")
     home_team_abbr: str | None = Field(None, alias="homeTeamAbbr")
     away_team_abbr: str | None = Field(None, alias="awayTeamAbbr")
@@ -85,6 +86,7 @@ class GameListResponse(BaseModel):
     with_social_count: int | None = Field(0, alias="withSocialCount")
     with_pbp_count: int | None = Field(0, alias="withPbpCount")
     with_flow_count: int | None = Field(0, alias="withFlowCount")
+    with_advanced_stats_count: int | None = Field(0, alias="withAdvancedStatsCount")
 
 
 class GameMeta(BaseModel):
@@ -108,6 +110,7 @@ class GameMeta(BaseModel):
     last_pbp_at: datetime | None = Field(None, alias="lastPbpAt")
     last_social_at: datetime | None = Field(None, alias="lastSocialAt")
     last_odds_at: datetime | None = Field(None, alias="lastOddsAt")
+    last_advanced_stats_at: datetime | None = Field(None, alias="lastAdvancedStatsAt")
     has_boxscore: bool = Field(..., alias="hasBoxscore")
     has_player_stats: bool = Field(..., alias="hasPlayerStats")
     has_odds: bool = Field(..., alias="hasOdds")

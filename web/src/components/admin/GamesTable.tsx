@@ -22,6 +22,7 @@ function getFieldStatus(game: GameSummary, field: DataField) {
     social: game.lastSocialAt,
     pbp: game.lastPbpAt,
     flow: game.lastScrapedAt,
+    advancedStats: game.lastAdvancedStatsAt,
   };
 
   const hasMap: Record<DataField, boolean> = {
@@ -31,6 +32,7 @@ function getFieldStatus(game: GameSummary, field: DataField) {
     social: game.hasSocial,
     pbp: game.hasPbp,
     flow: game.hasFlow,
+    advancedStats: game.hasAdvancedStats,
   };
 
   return deriveDataStatus(field, hasMap[field], game.gameDate, tsMap[field]);
@@ -58,6 +60,7 @@ export function GamesTable({ games, detailLink = ROUTES.SPORTS_GAME, showComplet
                 <th>Social</th>
                 <th>PBP</th>
                 <th>Flow</th>
+                <th>Adv Stats</th>
               </>
             )}
           </tr>
@@ -65,7 +68,7 @@ export function GamesTable({ games, detailLink = ROUTES.SPORTS_GAME, showComplet
         <tbody>
           {games.length === 0 ? (
             <tr>
-                <td colSpan={showCompleteness ? 10 : 4} className={styles.emptyCell}>
+                <td colSpan={showCompleteness ? 11 : 4} className={styles.emptyCell}>
                 No games found
               </td>
             </tr>
@@ -114,6 +117,9 @@ export function GamesTable({ games, detailLink = ROUTES.SPORTS_GAME, showComplet
                     </td>
                     <td>
                       <DataStatusIndicator status={getFieldStatus(game, "flow")} />
+                    </td>
+                    <td>
+                      <DataStatusIndicator status={getFieldStatus(game, "advancedStats")} />
                     </td>
                   </>
                 )}

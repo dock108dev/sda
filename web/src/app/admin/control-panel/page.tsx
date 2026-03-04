@@ -177,7 +177,7 @@ function ChipToggle({
 
 // ── Data Backfill card ──
 
-const DATA_TYPES = ["Boxscores", "Odds", "PBP", "Social"] as const;
+const DATA_TYPES = ["Boxscores", "Odds", "PBP", "Social", "Advanced Stats"] as const;
 
 function DataBackfillCard() {
   const [startDate, setStartDate] = useState("");
@@ -225,6 +225,7 @@ function DataBackfillCard() {
           odds: dataTypes.has("Odds"),
           pbp: dataTypes.has("PBP"),
           social: dataTypes.has("Social"),
+          advancedStats: dataTypes.has("Advanced Stats"),
           onlyMissing: false,
         });
         newResults.push({ league, jobId: res.job_id ?? `run#${res.id}` });

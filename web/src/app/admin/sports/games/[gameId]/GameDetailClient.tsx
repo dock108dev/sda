@@ -57,6 +57,7 @@ export default function GameDetailClient() {
       { label: `Social (${g.socialPostCount || 0})`, field: "social", hasData: g.hasSocial, ts: g.lastSocialAt },
       { label: `PBP (${g.playCount || 0})`, field: "pbp", hasData: g.hasPbp, ts: g.lastPbpAt },
       { label: "Flow", field: "flow", hasData: g.hasFlow, ts: g.lastScrapedAt },
+      { label: "Adv Stats", field: "advancedStats" as DataField, hasData: g.hasAdvancedStats, ts: g.lastAdvancedStatsAt ?? g.lastScrapedAt },
     ];
     return fields.map((f) => ({
       label: f.label,

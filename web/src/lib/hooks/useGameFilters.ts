@@ -48,6 +48,7 @@ interface UseGameFiltersReturn {
     withSocial: number;
     withPbp: number;
     withFlow: number;
+    withAdvancedStats: number;
   } | null;
   loading: boolean;
   error: string | null;
@@ -79,6 +80,7 @@ export function useGameFilters(options: UseGameFiltersOptions = {}): UseGameFilt
     withPbp: number;
     withSocial: number;
     withFlow: number;
+    withAdvancedStats: number;
   } | null>(null);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,6 +109,7 @@ export function useGameFilters(options: UseGameFiltersOptions = {}): UseGameFilt
           withSocial: response.withSocialCount ?? 0,
           withPbp: response.withPbpCount ?? 0,
           withFlow: response.withFlowCount ?? 0,
+          withAdvancedStats: response.withAdvancedStatsCount ?? 0,
         });
         setNextOffset(response.nextOffset);
       } catch (err) {
