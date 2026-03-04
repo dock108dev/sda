@@ -22,7 +22,7 @@ celery_config = {
     "enable_utc": True,
     "task_track_started": True,
     "worker_prefetch_multiplier": 1,
-    "task_time_limit": 43200,       # 12 hours hard limit
+    "task_time_limit": 43200,  # 12 hours hard limit
     "task_soft_time_limit": 42600,  # 11h 50m soft limit
     "task_default_queue": DEFAULT_QUEUE,
 }
@@ -124,7 +124,9 @@ _scheduled_tasks = {
     },
     "daily-mlb-flow-generation-6am-eastern": {
         "task": "run_scheduled_mlb_flow_generation",
-        "schedule": crontab(minute=0, hour=11),  # 6:00 AM EST = 11:00 UTC (+30 min after NCAAB flow)
+        "schedule": crontab(
+            minute=0, hour=11
+        ),  # 6:00 AM EST = 11:00 UTC (+30 min after NCAAB flow)
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     },
     # === Daily sweep (status repair, social scrape #2, embedded tweets, archive) ===
@@ -179,9 +181,13 @@ def mark_stale_runs_interrupted():
     try:
         with get_session() as session:
             # --- SportsScrapeRun (ingestion runs) ---
-            stale_runs = session.query(db_models.SportsScrapeRun).filter(
-                db_models.SportsScrapeRun.status.in_(["running", "pending"]),
-            ).all()
+            stale_runs = (
+                session.query(db_models.SportsScrapeRun)
+                .filter(
+                    db_models.SportsScrapeRun.status.in_(["running", "pending"]),
+                )
+                .all()
+            )
 
             if stale_runs:
                 for run in stale_runs:
@@ -198,15 +204,21 @@ def mark_stale_runs_interrupted():
                 logger.info("stale_runs_marked_interrupted", count=len(stale_runs))
 
             # --- SportsJobRun (task runs) ---
-            stale_job_runs = session.query(db_models.SportsJobRun).filter(
-                db_models.SportsJobRun.status.in_(["running", "queued"]),
-            ).all()
+            stale_job_runs = (
+                session.query(db_models.SportsJobRun)
+                .filter(
+                    db_models.SportsJobRun.status.in_(["running", "queued"]),
+                )
+                .all()
+            )
 
             if stale_job_runs:
                 for jr in stale_job_runs:
                     jr.status = "interrupted"
                     jr.finished_at = now_utc()
-                    jr.duration_seconds = (now_utc() - jr.started_at).total_seconds() if jr.started_at else None
+                    jr.duration_seconds = (
+                        (now_utc() - jr.started_at).total_seconds() if jr.started_at else None
+                    )
                     jr.error_summary = "Task was interrupted (worker restart or container killed)"
                     logger.warning(
                         "marking_stale_job_run_interrupted",
@@ -242,9 +254,13 @@ def on_worker_shutting_down(sender=None, **kwargs):
     try:
         with get_session() as session:
             # --- SportsScrapeRun ---
-            running_runs = session.query(db_models.SportsScrapeRun).filter(
-                db_models.SportsScrapeRun.status == "running",
-            ).all()
+            running_runs = (
+                session.query(db_models.SportsScrapeRun)
+                .filter(
+                    db_models.SportsScrapeRun.status == "running",
+                )
+                .all()
+            )
 
             for run in running_runs:
                 run.status = "interrupted"
@@ -257,14 +273,20 @@ def on_worker_shutting_down(sender=None, **kwargs):
                 )
 
             # --- SportsJobRun ---
-            running_jobs = session.query(db_models.SportsJobRun).filter(
-                db_models.SportsJobRun.status.in_(["running", "queued"]),
-            ).all()
+            running_jobs = (
+                session.query(db_models.SportsJobRun)
+                .filter(
+                    db_models.SportsJobRun.status.in_(["running", "queued"]),
+                )
+                .all()
+            )
 
             for jr in running_jobs:
                 jr.status = "interrupted"
                 jr.finished_at = now_utc()
-                jr.duration_seconds = (now_utc() - jr.started_at).total_seconds() if jr.started_at else None
+                jr.duration_seconds = (
+                    (now_utc() - jr.started_at).total_seconds() if jr.started_at else None
+                )
                 jr.error_summary = "Task was interrupted (worker shutdown)"
                 logger.warning(
                     "marking_job_run_interrupted_on_shutdown",

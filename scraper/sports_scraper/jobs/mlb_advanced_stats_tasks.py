@@ -5,7 +5,6 @@ from __future__ import annotations
 from celery import shared_task
 
 from ..db import get_session
-from ..logging import logger
 
 
 @shared_task(
@@ -19,7 +18,6 @@ def ingest_mlb_advanced_stats(game_id: int) -> dict:
     """Ingest Statcast-derived advanced stats for an MLB game.
 
     Dispatched when a game goes final (with 60s countdown).
-    Validates league=MLB internally, so dispatching for non-MLB is a harmless no-op.
 
     Args:
         game_id: The sports_games.id to ingest stats for.

@@ -98,11 +98,7 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         }
 
         stmt = pg_insert(db_models.MLBGameAdvancedStats).values(**row)
-        update_cols = {
-            col: stmt.excluded[col]
-            for col in row
-            if col not in ("game_id", "team_id")
-        }
+        update_cols = {col: stmt.excluded[col] for col in row if col not in ("game_id", "team_id")}
         stmt = stmt.on_conflict_do_update(
             constraint="uq_mlb_advanced_game_team",
             set_=update_cols,

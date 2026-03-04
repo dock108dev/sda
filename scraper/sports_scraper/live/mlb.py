@@ -173,8 +173,6 @@ class MLBLiveFeedClient:
         return self._statcast_fetcher.fetch_statcast_aggregates(game_pk, game_status=game_status)
 
     # Delegate boxscore methods to boxscore fetcher
-    def fetch_boxscore(
-        self, game_pk: int, game_status: str | None = None
-    ) -> MLBBoxscore | None:
+    def fetch_boxscore(self, game_pk: int, game_status: str | None = None) -> MLBBoxscore | None:
         """Fetch boxscore from MLB Stats API."""
         return self._boxscore_fetcher.fetch_boxscore(game_pk, game_status=game_status)

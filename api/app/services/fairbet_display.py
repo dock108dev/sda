@@ -6,7 +6,6 @@ so clients don't need to duplicate formatting/lookup logic.
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 from .ev import american_to_implied, calculate_ev, implied_to_american

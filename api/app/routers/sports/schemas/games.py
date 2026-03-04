@@ -150,9 +150,7 @@ class GameDetailResponse(BaseModel):
     mlb_batters: list[MLBBatterStat] | None = Field(None, alias="mlbBatters")
     mlb_pitchers: list[MLBPitcherStat] | None = Field(None, alias="mlbPitchers")
     # MLB advanced stats (Statcast-derived, only populated for MLB games)
-    mlb_advanced_stats: list[MLBAdvancedTeamStats] | None = Field(
-        None, alias="mlbAdvancedStats"
-    )
+    mlb_advanced_stats: list[MLBAdvancedTeamStats] | None = Field(None, alias="mlbAdvancedStats")
     odds: list[OddsEntry]
     social_posts: list[SocialPostEntry] = Field(..., alias="socialPosts")
     plays: list[PlayEntry]

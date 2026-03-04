@@ -134,8 +134,8 @@ def _promote_pregame_to_live(session: Session) -> int:
                 db_models.SportsGame.league_id == league_id,
                 db_models.SportsGame.status == db_models.GameStatus.pregame.value,
                 db_models.SportsGame.tip_time.isnot(None),
-                db_models.SportsGame.tip_time < now,              # past tip-off
-                db_models.SportsGame.tip_time > now - duration,   # not yet expired
+                db_models.SportsGame.tip_time < now,  # past tip-off
+                db_models.SportsGame.tip_time > now - duration,  # not yet expired
             )
             .all()
         )
@@ -185,11 +185,13 @@ def _promote_stale_to_final(session: Session) -> int:
             session.query(db_models.SportsGame)
             .filter(
                 db_models.SportsGame.league_id == league_id,
-                db_models.SportsGame.status.in_([
-                    db_models.GameStatus.scheduled.value,
-                    db_models.GameStatus.pregame.value,
-                    db_models.GameStatus.live.value,
-                ]),
+                db_models.SportsGame.status.in_(
+                    [
+                        db_models.GameStatus.scheduled.value,
+                        db_models.GameStatus.pregame.value,
+                        db_models.GameStatus.live.value,
+                    ]
+                ),
                 db_models.SportsGame.tip_time.isnot(None),
                 db_models.SportsGame.tip_time < stale_cutoff,
             )
@@ -199,9 +201,7 @@ def _promote_stale_to_final(session: Session) -> int:
         for game in games:
             old_status = game.status
             game.status = db_models.GameStatus.final.value
-            game.end_time = game.tip_time + timedelta(
-                hours=config.estimated_game_duration_hours
-            )
+            game.end_time = game.tip_time + timedelta(hours=config.estimated_game_duration_hours)
             game.updated_at = now
             promoted += 1
             if old_status == db_models.GameStatus.live.value:
@@ -241,11 +241,8 @@ def _promote_final_to_archived(session: Session) -> int:
     promoted = 0
 
     # Subquery: games with timeline artifacts
-    has_artifacts = (
-        exists()
-        .where(
-            db_models.SportsGameTimelineArtifact.game_id == db_models.SportsGame.id
-        )
+    has_artifacts = exists().where(
+        db_models.SportsGameTimelineArtifact.game_id == db_models.SportsGame.id
     )
 
     games = (

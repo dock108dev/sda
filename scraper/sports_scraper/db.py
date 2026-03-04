@@ -33,11 +33,11 @@ try:
     from app.db.config import (  # type: ignore
         GameReadingPosition,
     )
-    from app.db.mlb_advanced import MLBGameAdvancedStats  # type: ignore
     from app.db.flow import (  # type: ignore
         SportsGameFlow,
         SportsGameTimelineArtifact,
     )
+    from app.db.mlb_advanced import MLBGameAdvancedStats  # type: ignore
     from app.db.odds import (  # type: ignore
         FairbetGameOddsWork,
         SportsGameOdds,
@@ -142,12 +142,7 @@ engine = create_engine(
     future=True,
     pool_pre_ping=True,
 )
-SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False,
-    class_=Session
-)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
 
 
 @contextmanager

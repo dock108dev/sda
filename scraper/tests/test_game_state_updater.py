@@ -59,7 +59,9 @@ class TestUpdateGameStates:
     @patch(f"{_MOD}._promote_stale_to_final", return_value=0)
     @patch(f"{_MOD}._promote_pregame_to_live", return_value=0)
     @patch(f"{_MOD}._promote_scheduled_to_pregame", return_value=2)
-    def test_logs_info_when_transitions(self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger):
+    def test_logs_info_when_transitions(
+        self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger
+    ):
         session = MagicMock()
         result = update_game_states(session)
         assert result["scheduled_to_pregame"] == 2
@@ -71,7 +73,9 @@ class TestUpdateGameStates:
     @patch(f"{_MOD}._promote_stale_to_final", return_value=0)
     @patch(f"{_MOD}._promote_pregame_to_live", return_value=0)
     @patch(f"{_MOD}._promote_scheduled_to_pregame", return_value=0)
-    def test_logs_debug_when_no_transitions(self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger):
+    def test_logs_debug_when_no_transitions(
+        self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger
+    ):
         session = MagicMock()
         update_game_states(session)
         mock_logger.debug.assert_called_once_with("game_state_updater_no_transitions")
@@ -261,9 +265,7 @@ class TestPromoteStaleToFinal:
         result = _promote_stale_to_final(session)
         assert result == 1
         assert game.status == "final"
-        assert game.end_time == game.tip_time + timedelta(
-            hours=_ESTIMATED_GAME_DURATION_HOURS
-        )
+        assert game.end_time == game.tip_time + timedelta(hours=_ESTIMATED_GAME_DURATION_HOURS)
         assert game.updated_at == now
 
     @patch(f"{_MOD}.LEAGUE_CONFIG")

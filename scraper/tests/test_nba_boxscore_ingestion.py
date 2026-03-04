@@ -5,9 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import UTC, date, datetime
-from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from pathlib import Path
 

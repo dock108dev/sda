@@ -11,10 +11,10 @@ from sqlalchemy.orm import selectinload
 
 from ...db import AsyncSession, get_db
 from ...db.flow import SportsGameFlow
+from ...db.mlb_advanced import MLBGameAdvancedStats
 from ...db.odds import SportsGameOdds
 from ...db.scraper import SportsGameConflict
 from ...db.social import TeamSocialPost
-from ...db.mlb_advanced import MLBGameAdvancedStats
 from ...db.sports import (
     SportsGame,
     SportsGamePlay,
@@ -25,11 +25,11 @@ from ...game_metadata.nuggets import generate_nugget
 from ...game_metadata.scoring import excitement_score, quality_score
 from ...game_metadata.services import RatingsService, StandingsService
 from ...services.derived_metrics import compute_derived_metrics
-from ...services.stat_annotations import compute_team_annotations
 from ...services.game_status import compute_status_flags
 from ...services.odds_table import build_odds_table
 from ...services.period_labels import period_label, time_label
 from ...services.play_tiers import classify_all_tiers, group_tier3_plays
+from ...services.stat_annotations import compute_team_annotations
 from ...services.team_colors import get_matchup_colors
 from .common import (
     serialize_mlb_batter,
@@ -384,7 +384,10 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         mlb_pitchers = pitchers
     else:
         # Non-NHL/MLB: use generic player stats
-        player_stats = [serialize_player_stat(player, league_code=league_code) for player in game.player_boxscores]
+        player_stats = [
+            serialize_player_stat(player, league_code=league_code)
+            for player in game.player_boxscores
+        ]
 
     odds_entries = [
         OddsEntry(
@@ -410,7 +413,7 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
     # Classify play tiers and build grouped plays
     if plays_entries and league_code:
         tiers = classify_all_tiers(plays_entries, league_code)
-        for entry, t in zip(plays_entries, tiers):
+        for entry, t in zip(plays_entries, tiers, strict=False):
             entry.tier = t
         grouped_plays = group_tier3_plays(plays_entries, tiers)
     else:

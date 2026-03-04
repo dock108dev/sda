@@ -26,7 +26,6 @@ from sports_scraper.live.mlb_statcast import (
     is_swing,
 )
 
-
 # ---------------------------------------------------------------------------
 # Zone classification
 # ---------------------------------------------------------------------------
@@ -317,7 +316,9 @@ class TestAggregation:
                     is_top_inning=False,
                     events=[
                         self._build_pitch_event(zone=1, code="S"),  # swinging strike in zone
-                        self._build_pitch_event(zone=14, code="W"),  # swinging strike blocked outside
+                        self._build_pitch_event(
+                            zone=14, code="W"
+                        ),  # swinging strike blocked outside
                     ],
                 ),
             ]

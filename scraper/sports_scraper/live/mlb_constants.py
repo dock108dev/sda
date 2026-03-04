@@ -26,8 +26,8 @@ MLB_HALF_INNING_BOTTOM_OFFSET = 5000
 # Statcast thresholds
 HARD_HIT_THRESHOLD_MPH = 95.0
 BARREL_MIN_EXIT_VELO_MPH = 98.0
-ZONE_STRIKE = range(1, 10)       # zones 1-9 = in the strike zone
-ZONE_OUTSIDE = range(11, 15)     # zones 11-14 = outside the strike zone
+ZONE_STRIKE = range(1, 10)  # zones 1-9 = in the strike zone
+ZONE_OUTSIDE = range(11, 15)  # zones 11-14 = outside the strike zone
 
 # Pitch detail codes classified as swings
 SWING_CODES = {"S", "F", "X", "T", "W", "E", "D", "L"}
