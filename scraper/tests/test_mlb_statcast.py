@@ -18,7 +18,6 @@ os.environ.setdefault("ENVIRONMENT", "development")
 import pytest
 
 from sports_scraper.live.mlb_statcast import (
-    TeamStatcastAggregates,
     aggregate_from_payload,
     is_barrel,
     is_contact,

@@ -7,7 +7,7 @@ quality of contact (exit velocity, hard-hit rate, barrel rate).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
