@@ -379,6 +379,11 @@ async def get_fairbet_odds(
             }
         )
 
+    # Step 5a: Drop non-sharp books with stale observed_at (>2 min behind sharp book)
+    from .ev_staleness import filter_stale_books
+
+    bets_map = filter_stale_books(bets_map, sharp_books={"Pinnacle"})
+
     # Step 5b: Drop bets with insufficient book coverage
     pre_filter_count = len(bets_map)
     bets_map = {

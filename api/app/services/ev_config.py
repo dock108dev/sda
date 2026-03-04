@@ -18,9 +18,9 @@ class ConfidenceTier(str, Enum):
     two-way action keeping the line honest.
     """
 
-    FULL = "full"      # 5+ non-sharp books — deep, efficient market
+    FULL = "full"  # 5+ non-sharp books — deep, efficient market
     DECENT = "decent"  # 3-4 non-sharp books — reasonable price discovery
-    THIN = "thin"      # ≤2 non-sharp books — low liquidity, line may be stale/unbalanced
+    THIN = "thin"  # ≤2 non-sharp books — low liquidity, line may be stale/unbalanced
 
 
 def market_confidence_tier(non_sharp_book_count: int) -> str:
@@ -56,7 +56,9 @@ class EligibilityResult:
 
     eligible: bool
     strategy_config: EVStrategyConfig | None
-    disabled_reason: str | None  # "no_strategy" | "reference_missing" | "reference_stale" | "insufficient_books" | "fair_odds_outlier"
+    disabled_reason: (
+        str | None
+    )  # "no_strategy" | "reference_missing" | "reference_stale" | "insufficient_books" | "fair_odds_outlier"
     ev_method: str | None  # e.g., "pinnacle_devig"
     confidence_tier: str | None  # "full" | "decent" | "thin"
 
@@ -305,6 +307,10 @@ MAINLINE_DISAGREEMENT_MAX_POINTS: float = 2.0
 # Max age (seconds) for a sharp reference used in extrapolation.  Stale
 # references can amplify mismatch when market lines move.
 SHARP_REF_MAX_AGE_SECONDS: int = 3600
+
+# Max lag (seconds) a non-sharp book's observed_at can trail behind the sharp
+# book in the same market before being excluded from EV computation.
+STALE_BOOK_MAX_LAG_SECONDS: int = 120
 
 
 def extrapolation_confidence(non_sharp_book_count: int) -> str:
