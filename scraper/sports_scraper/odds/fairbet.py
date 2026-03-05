@@ -24,6 +24,7 @@ The same selection_key can appear with different market_keys:
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -282,3 +283,48 @@ def upsert_fairbet_odds(
 
     session.execute(stmt)
     return True
+
+
+def delete_stale_fairbet_odds(session: Session, batch_ts: datetime) -> int:
+    """Delete fairbet rows not refreshed in this batch.
+
+    For each (game_id, book, market_category) scope that WAS touched
+    (updated_at >= batch_ts), delete rows that were NOT touched
+    (updated_at < batch_ts). This removes alt lines or bets that a
+    sportsbook no longer offers.
+
+    Args:
+        session: Database session (caller manages commit)
+        batch_ts: Timestamp captured before the upsert loop
+
+    Returns:
+        Number of stale rows deleted
+    """
+    from sqlalchemy import and_, delete, select
+
+    from ..db import db_models
+
+    model = db_models.FairbetGameOddsWork
+
+    # Subquery: scopes touched in this batch
+    touched = (
+        select(model.game_id, model.book, model.market_category)
+        .where(model.updated_at >= batch_ts)
+        .distinct()
+        .subquery()
+    )
+
+    stmt = (
+        delete(model)
+        .where(
+            and_(
+                model.game_id == touched.c.game_id,
+                model.book == touched.c.book,
+                model.market_category == touched.c.market_category,
+                model.updated_at < batch_ts,
+            )
+        )
+    )
+
+    result = session.execute(stmt)
+    return result.rowcount

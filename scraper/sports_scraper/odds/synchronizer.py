@@ -15,8 +15,9 @@ from ..logging import logger
 from ..models import IngestionConfig
 from ..persistence import upsert_odds
 from ..persistence.odds import OddsUpsertResult
-from ..utils.datetime_utils import today_et
+from ..utils.datetime_utils import now_utc, today_et
 from .client import OddsAPIClient
+from .fairbet import delete_stale_fairbet_odds
 
 
 class OddsSynchronizer:
@@ -227,6 +228,7 @@ class OddsSynchronizer:
         inserted = 0
         skipped = 0
         skipped_live = 0
+        batch_ts = now_utc()
 
         with get_session() as session:
             for snapshot in snapshots:
@@ -250,6 +252,16 @@ class OddsSynchronizer:
                         exc_info=True,
                     )
                     skipped += 1
+
+            if inserted > 0:
+                stale_deleted = delete_stale_fairbet_odds(session, batch_ts)
+                if stale_deleted:
+                    logger.info(
+                        "fairbet_stale_rows_deleted",
+                        league=league_code,
+                        stale_deleted=stale_deleted,
+                    )
+
             session.commit()
 
         logger.info(

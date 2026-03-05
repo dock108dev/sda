@@ -6,7 +6,8 @@ import os
 import sys
 from datetime import date
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from datetime import datetime, timezone
+from unittest.mock import MagicMock, call, patch
 
 # Ensure the scraper package is importable
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -291,3 +292,53 @@ class TestOddsSynchronizerPersistSnapshots:
         # Should have rolled back and continued
         mock_session.rollback.assert_called()
         assert result == 0
+
+    @patch("sports_scraper.odds.synchronizer.delete_stale_fairbet_odds")
+    @patch("sports_scraper.odds.synchronizer.now_utc")
+    @patch("sports_scraper.odds.synchronizer.get_session")
+    @patch("sports_scraper.odds.synchronizer.upsert_odds")
+    @patch("sports_scraper.odds.synchronizer.OddsAPIClient")
+    def test_calls_delete_stale_after_upserts(
+        self, mock_client_cls, mock_upsert, mock_get_session, mock_now, mock_delete_stale
+    ):
+        """Calls delete_stale_fairbet_odds after upserts with batch timestamp."""
+        batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        mock_now.return_value = batch_ts
+
+        mock_session = MagicMock()
+        mock_get_session.return_value.__enter__.return_value = mock_session
+        mock_upsert.return_value = OddsUpsertResult.PERSISTED
+        mock_delete_stale.return_value = 3
+
+        mock_snapshot = MagicMock()
+        snapshots = [mock_snapshot]
+
+        sync = OddsSynchronizer()
+        result = sync._persist_snapshots(snapshots, "NBA")
+
+        assert result == 1
+        mock_delete_stale.assert_called_once_with(mock_session, batch_ts)
+
+    @patch("sports_scraper.odds.synchronizer.delete_stale_fairbet_odds")
+    @patch("sports_scraper.odds.synchronizer.now_utc")
+    @patch("sports_scraper.odds.synchronizer.get_session")
+    @patch("sports_scraper.odds.synchronizer.upsert_odds")
+    @patch("sports_scraper.odds.synchronizer.OddsAPIClient")
+    def test_skips_delete_stale_when_no_inserts(
+        self, mock_client_cls, mock_upsert, mock_get_session, mock_now, mock_delete_stale
+    ):
+        """Skips delete_stale_fairbet_odds when no rows were inserted."""
+        mock_now.return_value = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+        mock_session = MagicMock()
+        mock_get_session.return_value.__enter__.return_value = mock_session
+        mock_upsert.return_value = OddsUpsertResult.SKIPPED_NO_MATCH
+
+        mock_snapshot = MagicMock()
+        snapshots = [mock_snapshot]
+
+        sync = OddsSynchronizer()
+        result = sync._persist_snapshots(snapshots, "NBA")
+
+        assert result == 0
+        mock_delete_stale.assert_not_called()

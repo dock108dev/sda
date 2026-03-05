@@ -16,7 +16,9 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
-from sports_scraper.odds.fairbet import build_selection_key, slugify
+from unittest.mock import MagicMock, patch
+
+from sports_scraper.odds.fairbet import build_selection_key, delete_stale_fairbet_odds, slugify
 
 
 class TestSlugify:
@@ -214,3 +216,36 @@ class TestBuildSelectionKeyTeamTotals:
             description="Lakers",
         )
         assert key == "total:los_angeles_lakers:under"
+
+
+class TestDeleteStaleFairbetOdds:
+    """Tests for delete_stale_fairbet_odds function."""
+
+    def test_stale_rows_deleted(self):
+        """Executes DELETE and returns rowcount."""
+        from datetime import datetime, timezone
+
+        mock_session = MagicMock()
+        mock_result = MagicMock()
+        mock_result.rowcount = 5
+        mock_session.execute.return_value = mock_result
+
+        batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        count = delete_stale_fairbet_odds(mock_session, batch_ts)
+
+        assert count == 5
+        mock_session.execute.assert_called_once()
+
+    def test_returns_zero_when_no_stale(self):
+        """Returns 0 when nothing to delete."""
+        from datetime import datetime, timezone
+
+        mock_session = MagicMock()
+        mock_result = MagicMock()
+        mock_result.rowcount = 0
+        mock_session.execute.return_value = mock_result
+
+        batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        count = delete_stale_fairbet_odds(mock_session, batch_ts)
+
+        assert count == 0
