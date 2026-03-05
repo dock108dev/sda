@@ -19,7 +19,7 @@ import time
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func as sqlfunc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import _get_session_factory
@@ -453,8 +453,6 @@ class DBPoller:
 
         session_factory = _get_session_factory()
         async with session_factory() as session:
-            from sqlalchemy import func as sqlfunc
-
             stmt = select(sqlfunc.count()).select_from(
                 select(FairbetGameOddsWork.game_id)
                 .where(FairbetGameOddsWork.updated_at >= check_since)

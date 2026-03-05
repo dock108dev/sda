@@ -7,6 +7,7 @@ Auth: X-API-Key header or api_key query param
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -57,7 +58,6 @@ async def sse_endpoint(
     async def _event_generator():
         try:
             # Send initial confirmation
-            import json
             confirm = json.dumps({"type": "subscribed", "channels": valid})
             yield f"data: {confirm}\n\n"
 

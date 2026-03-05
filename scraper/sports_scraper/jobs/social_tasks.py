@@ -190,13 +190,11 @@ def collect_team_social(
     Returns:
         Summary stats dict
     """
-    from datetime import timedelta
-
     from ..db import get_session
     from ..services.job_runs import track_job_run
     from ..social.team_collector import TeamTweetCollector
     from ..social.tweet_mapper import map_unmapped_tweets
-    from ..utils.datetime_utils import today_et
+    from ..utils.datetime_utils import cap_social_date_range
     from ..utils.redis_lock import acquire_redis_lock, release_redis_lock
 
     lock_name = f"lock:collect_team_social:{league_code}"
@@ -209,13 +207,8 @@ def collect_team_social(
         start = date.fromisoformat(start_date)
         end = date.fromisoformat(end_date)
 
-        # Fix 2: Re-cap date range at execution time (not just dispatch time).
-        # Stale queued tasks may carry week-old ranges; clamp to yesterday+today.
-        yesterday = today_et() - timedelta(days=1)
-        today = today_et()
-        if end >= yesterday:
-            start = max(start, yesterday)
-            end = min(end, today)
+        # Re-cap date range at execution time (stale queued tasks may carry old ranges)
+        start, end = cap_social_date_range(start, end)
 
         logger.info(
             "collect_team_social_start",

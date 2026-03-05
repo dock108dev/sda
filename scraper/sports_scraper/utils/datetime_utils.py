@@ -59,6 +59,20 @@ def date_to_utc_datetime(day: date) -> datetime:
     return datetime.combine(day, datetime.min.time()).replace(tzinfo=UTC)
 
 
+def cap_social_date_range(start: date, end: date) -> tuple[date, date]:
+    """Clamp a social-collection date range to yesterday+today.
+
+    For recent ranges (end >= yesterday), caps to yesterday..today to reduce
+    team count and task duration. For historical backfills (end < yesterday),
+    returns the original range as-is.
+    """
+    yesterday = today_et() - timedelta(days=1)
+    today = today_et()
+    if end >= yesterday:
+        return max(start, yesterday), min(end, today)
+    return start, end
+
+
 def date_window_for_matching(day: date, days_before: int = 1, days_after: int = 1) -> tuple[datetime, datetime]:
     """Get a datetime window for matching games by date.
 

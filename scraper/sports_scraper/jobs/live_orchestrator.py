@@ -23,22 +23,9 @@ from ..logging import logger
 from ..utils.redis_lock import acquire_redis_lock, release_redis_lock, LOCK_TIMEOUT_5MIN
 
 # ---------------------------------------------------------------------------
-# Cadence configs (seconds) per league
+# Cadence configs (seconds) — live odds only.
+# PBP/stats polling is handled by the Beat-scheduled poll_live_pbp_task.
 # ---------------------------------------------------------------------------
-
-PBP_CADENCE = {
-    "MLB": 3,
-    "NBA": 7,
-    "NHL": 7,
-    "NCAAB": 7,
-}
-
-STATS_CADENCE = {
-    "MLB": 20,
-    "NBA": 15,
-    "NHL": 15,
-    "NCAAB": 15,
-}
 
 ODDS_MAINLINE_CADENCE = 15   # All leagues
 ODDS_PROPS_CADENCE = 45      # All leagues
@@ -113,23 +100,9 @@ def live_orchestrator_tick() -> dict:
         for game_id, status, league_code in live_games:
             games_by_league.setdefault(league_code, []).append(game_id)
 
-            # --- PBP ---
-            if status == "live":
-                pbp_cadence = PBP_CADENCE.get(league_code, 7)
-                key = _sched_key("pbp", league_code, game_id)
-                if _is_due(r, key, _jitter(pbp_cadence)):
-                    _mark_scheduled(r, key)
-                    dispatched += 1
-                    # PBP is handled by the existing poll_live_pbp task
-                    # The orchestrator just tracks cadence; actual polling is in poll_live_pbp
-
-            # --- Stats ---
-            if status == "live":
-                stats_cadence = STATS_CADENCE.get(league_code, 15)
-                key = _sched_key("stats", league_code, game_id)
-                if _is_due(r, key, _jitter(stats_cadence)):
-                    _mark_scheduled(r, key)
-                    dispatched += 1
+            # PBP and boxscore polling are handled by the Beat-scheduled
+            # poll_live_pbp_task (every 60s). The orchestrator only manages
+            # live odds dispatch, which requires sport-specific cadences.
 
         # --- Live odds (league-batched) ---
         for league_code, game_ids in games_by_league.items():
