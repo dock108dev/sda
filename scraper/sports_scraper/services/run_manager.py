@@ -496,8 +496,21 @@ class ScrapeRunManager:
             # Enforce FIFO queue cap before adding a new task
             enforce_social_queue_limit(10)
 
-            # Cap social date range to yesterday+today to reduce team count
-            social_start = max(start, today_et() - timedelta(days=1))
+            # Cap social date range to yesterday+today to reduce team count.
+            # For historical backfills where end < yesterday, use the original range as-is.
+            yesterday = today_et() - timedelta(days=1)
+            social_start = max(start, yesterday) if end >= yesterday else start
+
+            if social_start > end:
+                logger.info(
+                    "social_dispatch_skipped_empty_range",
+                    run_id=run_id,
+                    league=config.league_code,
+                    social_start=str(social_start),
+                    end=str(end),
+                    reason="Capped social_start exceeds end date",
+                )
+                return
 
             # Pre-generate Celery task ID so we can store it in the DB
             task_id = str(uuid.uuid4())

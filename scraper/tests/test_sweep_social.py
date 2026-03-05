@@ -25,7 +25,8 @@ def _make_game(
     game.end_time = end_time
     game.home_team_id = home_team_id
     game.away_team_id = away_team_id
-    gd = game_date or datetime(2026, 2, 5, 0, 0, tzinfo=UTC)
+    # Default: midnight ET on Feb 5 = 05:00 UTC (EST convention)
+    gd = game_date or datetime(2026, 2, 5, 5, 0, tzinfo=UTC)
     game.game_date = gd
     return game
 
@@ -58,7 +59,7 @@ class TestSocialScrape2:
         game = _make_game(
             social_scrape_1_at=now - timedelta(hours=12),
             end_time=now - timedelta(hours=14),
-            game_date=datetime(2026, 2, 5, 0, 0, tzinfo=UTC),
+            game_date=datetime(2026, 2, 5, 5, 0, tzinfo=UTC),  # midnight ET = 05:00 UTC
         )
 
         session = MagicMock()

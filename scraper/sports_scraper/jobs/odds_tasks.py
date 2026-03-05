@@ -43,7 +43,8 @@ def sync_mainline_odds(league_code: str | None = None) -> dict:
     """Sync mainline odds (spreads, totals, moneyline) for all leagues."""
     from ..services.job_runs import track_job_run
 
-    if not acquire_redis_lock("lock:sync_mainline_odds", timeout=LOCK_TIMEOUT_10MIN):
+    lock_token = acquire_redis_lock("lock:sync_mainline_odds", timeout=LOCK_TIMEOUT_10MIN)
+    if not lock_token:
         logger.debug("sync_mainline_odds_skipped_locked")
         return {"skipped": True, "reason": "locked"}
 
@@ -118,7 +119,7 @@ def sync_mainline_odds(league_code: str | None = None) -> dict:
             }
 
     finally:
-        release_redis_lock("lock:sync_mainline_odds")
+        release_redis_lock("lock:sync_mainline_odds", lock_token)
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +136,8 @@ def sync_prop_odds(league_code: str | None = None) -> dict:
     """Sync prop odds for pregame events across all leagues."""
     from ..services.job_runs import track_job_run
 
-    if not acquire_redis_lock("lock:sync_prop_odds", timeout=LOCK_TIMEOUT_1HOUR):
+    lock_token = acquire_redis_lock("lock:sync_prop_odds", timeout=LOCK_TIMEOUT_1HOUR)
+    if not lock_token:
         logger.debug("sync_prop_odds_skipped_locked")
         return {"skipped": True, "reason": "locked"}
 
@@ -216,4 +218,4 @@ def sync_prop_odds(league_code: str | None = None) -> dict:
             }
 
     finally:
-        release_redis_lock("lock:sync_prop_odds")
+        release_redis_lock("lock:sync_prop_odds", lock_token)

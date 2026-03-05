@@ -35,7 +35,8 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
     league_code = config_payload.get("league_code", "UNKNOWN")
     lock_name = f"lock:ingest:{league_code}"
 
-    if not acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR):
+    lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR)
+    if not lock_token:
         logger.warning("scrape_job_skipped_locked", run_id=run_id, league=league_code)
         # Update the run record so UI can surface the skip reason
         from ..services.run_manager import ScrapeRunManager
@@ -54,7 +55,7 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
         logger.info("scrape_job_completed", run_id=run_id, result=result)
         return result
     finally:
-        release_redis_lock(lock_name)
+        release_redis_lock(lock_name, lock_token)
 
 
 @shared_task(

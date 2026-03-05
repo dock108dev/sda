@@ -94,7 +94,7 @@ def _run_social_scrape_2() -> dict:
     from ..db import db_models
     from ..social.team_collector import TeamTweetCollector
     from ..social.tweet_mapper import map_tweets_for_team
-    from ..utils.datetime_utils import now_utc
+    from ..utils.datetime_utils import ET, now_utc
 
     now = now_utc()
     lookback = now - timedelta(hours=48)
@@ -129,7 +129,7 @@ def _run_social_scrape_2() -> dict:
         total_postgame_kept = 0
 
         for game in games:
-            game_date = game.game_date.date() if hasattr(game.game_date, "date") else game.game_date
+            game_date = game.game_date.astimezone(ET).date() if hasattr(game.game_date, "date") else game.game_date
             next_day = game_date + timedelta(days=1)
             team_ids = [game.home_team_id, game.away_team_id]
 

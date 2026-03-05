@@ -98,7 +98,8 @@ def update_game_states_task() -> dict:
     from ..services.game_state_updater import update_game_states
     from ..services.job_runs import complete_job_run, start_job_run
 
-    if not _acquire_redis_lock("lock:update_game_states", timeout=180):
+    lock_token = _acquire_redis_lock("lock:update_game_states", timeout=180)
+    if not lock_token:
         logger.debug("update_game_states_skipped_locked")
         return {"skipped": True, "reason": "locked"}
 
@@ -112,7 +113,7 @@ def update_game_states_task() -> dict:
         complete_job_run(job_run_id, status="error", error_summary=str(exc)[:500])
         raise
     finally:
-        _release_redis_lock("lock:update_game_states")
+        _release_redis_lock("lock:update_game_states", lock_token)
 
 
 @shared_task(name="poll_live_pbp")
@@ -127,7 +128,8 @@ def poll_live_pbp_task() -> dict:
     from ..services.active_games import ActiveGamesResolver
     from ..services.job_runs import complete_job_run, start_job_run
 
-    if not _acquire_redis_lock("lock:poll_live_pbp", timeout=LOCK_TIMEOUT_5MIN):
+    lock_token = _acquire_redis_lock("lock:poll_live_pbp", timeout=LOCK_TIMEOUT_5MIN)
+    if not lock_token:
         logger.debug("poll_live_pbp_skipped_locked")
         return {"skipped": True, "reason": "locked"}
 
@@ -380,4 +382,4 @@ def poll_live_pbp_task() -> dict:
         complete_job_run(job_run_id, status="error", error_summary=str(exc)[:500])
         raise
     finally:
-        _release_redis_lock("lock:poll_live_pbp")
+        _release_redis_lock("lock:poll_live_pbp", lock_token)

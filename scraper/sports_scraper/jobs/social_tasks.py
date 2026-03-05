@@ -191,7 +191,8 @@ def collect_team_social(
     from ..utils.redis_lock import acquire_redis_lock, release_redis_lock
 
     lock_name = f"lock:collect_team_social:{league_code}"
-    if not acquire_redis_lock(lock_name, timeout=7200):  # 2h
+    lock_token = acquire_redis_lock(lock_name, timeout=7200)  # 2h
+    if not lock_token:
         logger.info("collect_team_social_skipped_locked", league_code=league_code)
         return {"status": "skipped", "reason": "already_running"}
 
@@ -236,7 +237,7 @@ def collect_team_social(
 
         return result
     finally:
-        release_redis_lock(lock_name)
+        release_redis_lock(lock_name, lock_token)
 
 
 @shared_task(
@@ -295,10 +296,17 @@ def collect_game_social() -> dict:
     from ..services.job_runs import track_job_run
     from ..social.team_collector import TeamTweetCollector
     from ..social.tweet_mapper import map_unmapped_tweets
-    from ..utils.datetime_utils import now_utc, today_et
+    from ..utils.datetime_utils import (
+        ET,
+        end_of_et_day_utc,
+        now_utc,
+        start_of_et_day_utc,
+        today_et,
+    )
     from ..utils.redis_lock import acquire_redis_lock, release_redis_lock
 
-    if not acquire_redis_lock("lock:collect_game_social", timeout=1800):  # 30min
+    lock_token = acquire_redis_lock("lock:collect_game_social", timeout=3600)  # 1h
+    if not lock_token:
         logger.info("collect_game_social_skipped_locked")
         return {"status": "skipped", "reason": "already_running"}
 
@@ -307,6 +315,10 @@ def collect_game_social() -> dict:
         yesterday = game_date - timedelta(days=1)
         utc_now = now_utc()
         stale_cutoff = utc_now - timedelta(hours=2)
+
+        # Use proper UTC datetime bounds for timestamptz comparisons
+        window_start = start_of_et_day_utc(yesterday)
+        window_end = end_of_et_day_utc(game_date)
 
         logger.info("collect_game_social_start", game_date=str(game_date))
 
@@ -322,8 +334,8 @@ def collect_game_social() -> dict:
             no_social_games = (
                 session.query(db_models.SportsGame)
                 .filter(
-                    db_models.SportsGame.game_date >= yesterday,
-                    db_models.SportsGame.game_date <= game_date,
+                    db_models.SportsGame.game_date >= window_start,
+                    db_models.SportsGame.game_date < window_end,
                     db_models.SportsGame.last_odds_at.isnot(None),
                     db_models.SportsGame.last_social_at.is_(None),
                     db_models.SportsGame.status.in_(active_statuses),
@@ -335,8 +347,8 @@ def collect_game_social() -> dict:
             stale_games = (
                 session.query(db_models.SportsGame)
                 .filter(
-                    db_models.SportsGame.game_date >= yesterday,
-                    db_models.SportsGame.game_date <= game_date,
+                    db_models.SportsGame.game_date >= window_start,
+                    db_models.SportsGame.game_date < window_end,
                     db_models.SportsGame.last_odds_at.isnot(None),
                     db_models.SportsGame.last_social_at < stale_cutoff,
                     db_models.SportsGame.status.in_([
@@ -401,11 +413,12 @@ def collect_game_social() -> dict:
                     scraped_team_ids.add(team_id)
 
                     try:
+                        sports_day = game.game_date.astimezone(ET).date()
                         new_tweets = collector.collect_team_tweets(
                             session=session,
                             team_id=team_id,
-                            start_date=game.game_date,
-                            end_date=game.game_date,
+                            start_date=sports_day,
+                            end_date=sports_day,
                         )
                         total_new += new_tweets
                         teams_processed += 1
@@ -453,6 +466,6 @@ def collect_game_social() -> dict:
 
         return result
     finally:
-        release_redis_lock("lock:collect_game_social")
+        release_redis_lock("lock:collect_game_social", lock_token)
 
 

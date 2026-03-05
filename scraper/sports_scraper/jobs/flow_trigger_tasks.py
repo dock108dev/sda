@@ -78,7 +78,8 @@ def trigger_flow_for_game(game_id: int) -> dict:
         # Acquire per-game lock to prevent races between edge-trigger,
         # daily sweep, and scheduled batch flow gen
         lock_name = f"lock:flow_gen:{game_id}"
-        if not acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_5MIN):
+        lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_5MIN)
+        if not lock_token:
             logger.info("flow_trigger_skipped_locked", game_id=game_id)
             return {"game_id": game_id, "status": "skipped", "reason": "locked"}
 
@@ -119,7 +120,7 @@ def trigger_flow_for_game(game_id: int) -> dict:
         complete_job_run(job_run_id, status="error", error_summary=str(exc)[:500])
         raise
     finally:
-        release_redis_lock(lock_name)
+        release_redis_lock(lock_name, lock_token)
 
 
 def _call_pipeline_api(game_id: int, league_code: str) -> dict:
