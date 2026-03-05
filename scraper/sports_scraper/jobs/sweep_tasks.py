@@ -80,7 +80,7 @@ def run_daily_sweep() -> dict:
 def _run_social_scrape_2() -> dict:
     """Social Scrape #2: capture postgame reactions for recently-final games.
 
-    Query: games WHERE status='final' AND social_scrape_1_at IS NOT NULL
+    Query: games WHERE status='final' AND last_social_at IS NOT NULL
            AND social_scrape_2_at IS NULL AND end_time > now() - 48 hours
 
     For each game (sequentially, configurable cooldown between games):
@@ -104,7 +104,7 @@ def _run_social_scrape_2() -> dict:
             session.query(db_models.SportsGame)
             .filter(
                 db_models.SportsGame.status == db_models.GameStatus.final.value,
-                db_models.SportsGame.social_scrape_1_at.isnot(None),
+                db_models.SportsGame.last_social_at.isnot(None),
                 db_models.SportsGame.social_scrape_2_at.is_(None),
                 db_models.SportsGame.end_time.isnot(None),
                 db_models.SportsGame.end_time > lookback,

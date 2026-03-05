@@ -53,8 +53,6 @@ app.conf.task_routes = {
     "sync_prop_odds": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     "trigger_flow_for_game": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     "run_daily_sweep": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
-    # Final-whistle social scrape runs on social-scraper queue (concurrency=1)
-    "run_final_whistle_social": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE},
     # Game social collection every 30 min (odds-gated + staleness targeting)
     "collect_game_social": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE},
     # MLB advanced stats (Statcast-derived, post-game)

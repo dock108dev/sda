@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 def _make_game(
     game_id: int = 1,
     status: str = "final",
-    social_scrape_1_at=None,
+    last_social_at=None,
     social_scrape_2_at=None,
     end_time=None,
     home_team_id: int = 10,
@@ -20,7 +20,7 @@ def _make_game(
     game = MagicMock()
     game.id = game_id
     game.status = status
-    game.social_scrape_1_at = social_scrape_1_at
+    game.last_social_at = last_social_at
     game.social_scrape_2_at = social_scrape_2_at
     game.end_time = end_time
     game.home_team_id = home_team_id
@@ -57,7 +57,7 @@ class TestSocialScrape2:
 
         now = datetime(2026, 2, 6, 10, 0, tzinfo=UTC)
         game = _make_game(
-            social_scrape_1_at=now - timedelta(hours=12),
+            last_social_at=now - timedelta(hours=12),
             end_time=now - timedelta(hours=14),
             game_date=datetime(2026, 2, 5, 5, 0, tzinfo=UTC),  # midnight ET = 05:00 UTC
         )
@@ -91,12 +91,12 @@ class TestSocialScrape2:
                     assert c.kwargs["end_date"] == date(2026, 2, 6)
 
     @patch("sports_scraper.jobs.sweep_tasks.get_session")
-    def test_skips_if_scrape_1_not_done(self, mock_get_session):
-        """Games without Scrape #1 complete are not processed."""
+    def test_skips_if_no_social_data(self, mock_get_session):
+        """Games without any social data are not processed."""
         from sports_scraper.jobs.sweep_tasks import _run_social_scrape_2
 
-        # The query filter includes social_scrape_1_at.isnot(None),
-        # so games without Scrape #1 won't be returned
+        # The query filter includes last_social_at.isnot(None),
+        # so games without social data won't be returned
         session = MagicMock()
         session.query.return_value.filter.return_value.all.return_value = []
         mock_get_session.return_value.__enter__ = MagicMock(return_value=session)
@@ -113,7 +113,7 @@ class TestSocialScrape2:
 
         now = datetime(2026, 2, 6, 10, 0, tzinfo=UTC)
         game = _make_game(
-            social_scrape_1_at=now - timedelta(hours=12),
+            last_social_at=now - timedelta(hours=12),
             end_time=now - timedelta(hours=14),
         )
 
