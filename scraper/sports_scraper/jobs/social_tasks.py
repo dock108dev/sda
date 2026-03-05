@@ -135,9 +135,7 @@ def collect_social_for_league(league: str) -> dict:
     start_date = end_date - timedelta(days=1)
 
     with track_job_run("collect_social_for_league", [league]) as tracker:
-        with get_session() as session:
-            collector = TeamTweetCollector()
-
+        with get_session() as session, TeamTweetCollector() as collector:
             def _map_after_batch():
                 map_unmapped_tweets(
                     session=session,
@@ -224,9 +222,7 @@ def collect_team_social(
         )
 
         with track_job_run("social", [league_code], job_run_id=job_run_id) as tracker:
-            with get_session() as session:
-                collector = TeamTweetCollector()
-
+            with get_session() as session, TeamTweetCollector() as collector:
                 # Fix 4: Map tweets incrementally after each batch commit
                 def _map_after_batch():
                     map_unmapped_tweets(
@@ -481,6 +477,9 @@ def collect_game_social() -> dict:
                         games_processed=games_completed,
                         total_new=total_new,
                     )
+
+            # Shut down browser before mapping (no more scrapes needed)
+            collector.close()
 
             # Final commit for remaining games (< batch size)
             session.commit()

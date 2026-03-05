@@ -51,6 +51,17 @@ class TeamTweetCollector:
             window_seconds=social_config.platform_rate_limit_window_seconds,
         )
 
+    def close(self) -> None:
+        """Shut down the underlying browser if it's running."""
+        if hasattr(self.strategy, "close"):
+            self.strategy.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
     def _normalize_posted_at(self, posted_at: datetime) -> datetime:
         if posted_at.tzinfo is None:
             return posted_at.replace(tzinfo=UTC)

@@ -78,10 +78,61 @@ class PlaywrightXCollector:
         self.auth_token = auth_token or os.environ.get("X_AUTH_TOKEN")
         self.ct0 = ct0 or os.environ.get("X_CT0")
 
+        # Persistent browser state — started lazily, reused across scrapes
+        self._pw = None
+        self._browser = None
+        self._context = None
+
         if self.auth_token and self.ct0:
             logger.info("x_auth_configured", token_len=len(self.auth_token), ct0_len=len(self.ct0))
         else:
             logger.warning("x_auth_missing", message="X_AUTH_TOKEN and/or X_CT0 not set - search will not work")
+
+    def _ensure_browser(self) -> None:  # pragma: no cover - browser lifecycle
+        """Lazily start Playwright + Chromium if not already running."""
+        if self._browser is not None:
+            return
+
+        self._pw = sync_playwright().start()
+        self._browser = self._pw.chromium.launch(headless=True)
+        self._context = self._browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        )
+        if self.auth_token and self.ct0:
+            self._context.add_cookies(
+                [
+                    {"name": "auth_token", "value": self.auth_token, "domain": ".x.com", "path": "/"},
+                    {"name": "ct0", "value": self.ct0, "domain": ".x.com", "path": "/"},
+                ]
+            )
+        logger.info("x_browser_started")
+
+    def close(self) -> None:  # pragma: no cover - browser lifecycle
+        """Shut down the browser and Playwright server."""
+        if self._browser is not None:
+            try:
+                self._browser.close()
+            except Exception:
+                pass
+            self._browser = None
+            self._context = None
+        if self._pw is not None:
+            try:
+                self._pw.stop()
+            except Exception:
+                pass
+            self._pw = None
+            logger.info("x_browser_stopped")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+    def __del__(self):  # pragma: no cover
+        self.close()
 
     def _polite_delay(self) -> None:  # pragma: no cover - timing-dependent
         """Wait between requests to be a good citizen (30-60 seconds)."""
@@ -143,192 +194,178 @@ class PlaywrightXCollector:
         posts: list[CollectedPost] = []
         page_error_message: str | None = None
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            )
+        self._ensure_browser()
+        page = self._context.new_page()
 
-            if self.auth_token and self.ct0:
-                context.add_cookies(
-                    [
-                        {"name": "auth_token", "value": self.auth_token, "domain": ".x.com", "path": "/"},
-                        {"name": "ct0", "value": self.ct0, "domain": ".x.com", "path": "/"},
-                    ]
-                )
+        try:
+            search_url = self._build_search_url(x_handle, window_start, window_end)
+            logger.debug("x_playwright_search_url", url=search_url)
 
-            page = context.new_page()
+            page.goto(search_url, timeout=self.timeout_ms, wait_until="domcontentloaded")
 
+            # Wait for tweets to appear. X's JS rendering can be slow
+            # under sequential load, so try twice with increasing timeouts.
+            tweet_selector = 'article[data-testid="tweet"]'
+            tweets_found = False
             try:
-                search_url = self._build_search_url(x_handle, window_start, window_end)
-                logger.debug("x_playwright_search_url", url=search_url)
+                page.wait_for_selector(tweet_selector, timeout=15000, state="attached")
+                tweets_found = True
+            except Exception:
+                pass
 
-                page.goto(search_url, timeout=self.timeout_ms, wait_until="domcontentloaded")
-
-                # Wait for tweets to appear. X's JS rendering can be slow
-                # under sequential load, so try twice with increasing timeouts.
-                tweet_selector = 'article[data-testid="tweet"]'
-                tweets_found = False
-                try:
-                    page.wait_for_selector(tweet_selector, timeout=15000, state="attached")
-                    tweets_found = True
-                except Exception:
-                    pass
-
-                if not tweets_found:
-                    # Check for explicit error pages before giving up
-                    content = page.content()
-                    if "Something went wrong" in content:
-                        page_error_message = "X returned 'Something went wrong' - possible rate limit or auth issue"
-                        logger.error("x_page_error", handle=x_handle, error=page_error_message)
-                    elif page.url and "/login" in page.url:
-                        page_error_message = "X returned login wall - auth tokens may be expired"
-                        logger.error("x_page_error", handle=x_handle, error=page_error_message)
-                    elif "No results" in content:
-                        logger.debug("x_page_no_results", handle=x_handle)
-                        page_error_message = "no_results"
-                    else:
-                        # No error detected but no tweets yet — wait longer and try once more
-                        logger.debug("x_slow_render_retry", handle=x_handle)
-                        page.wait_for_timeout(5000)
-                        try:
-                            page.wait_for_selector(tweet_selector, timeout=10000, state="attached")
-                        except Exception:
-                            # Still nothing — check for login wall in final content
-                            final_content = page.content()
-                            if "Log in to X" in final_content or "Sign in to X" in final_content:
-                                page_error_message = "X returned login wall - auth tokens may be expired"
-                                logger.error("x_page_error", handle=x_handle, error=page_error_message)
-                            else:
-                                page_error_message = "no_results"
-                                logger.debug("x_page_no_results_after_retry", handle=x_handle)
-
-                page.wait_for_timeout(self.wait_ms)
-
-                def extract_posts_from_page() -> set[str]:
-                    """Extract all posts currently visible and return set of post IDs."""
-                    extracted_ids: set[str] = set()
-                    articles = page.query_selector_all('article[data-testid="tweet"]')
-
-                    for article in articles:
-                        # Skip retweets
-                        social_context = article.query_selector('[data-testid="socialContext"]')
-                        if social_context:
-                            context_text = social_context.inner_text()
-                            if context_text and "Retweeted" in context_text:
-                                continue
-
-                        # Extract post URL
-                        anchor = article.query_selector('a[href*="/status/"]')
-                        post_url = None
-                        if anchor:
-                            href = anchor.get_attribute("href")
-                            if href:
-                                post_url = f"https://x.com{href}" if href.startswith("/") else href
-
-                        if not post_url:
-                            continue
-
-                        post_id = extract_x_post_id(post_url)
-                        if not post_id or post_id in seen_post_ids:
-                            continue
-
-                        extracted_ids.add(post_id)
-                        seen_post_ids.add(post_id)
-
-                        # Extract timestamp
-                        time_el = article.query_selector("time")
-                        posted_at = None
-                        if time_el:
-                            datetime_str = time_el.get_attribute("datetime")
-                            if datetime_str:
-                                posted_at = self._parse_post_time(datetime_str)
-
-                        if not posted_at:
-                            continue
-
-                        # Extract text content
-                        text_content = None
-                        text_el = article.query_selector('[data-testid="tweetText"]')
-                        if text_el:
-                            text_content = text_el.inner_text()
-
-                        # Detect media
-                        video_url = None
-                        image_url = None
-                        media_type = "none"
-
-                        video_container = (
-                            article.query_selector('[data-testid="videoPlayer"]')
-                            or article.query_selector('[data-testid="videoComponent"]')
-                            or article.query_selector('[data-testid="previewInterstitial"]')
-                            or article.query_selector('video')
-                        )
-                        has_video = video_container is not None
-
-                        if has_video:
-                            media_type = "video"
-                            video_el = article.query_selector("video")
-                            if video_el:
-                                video_url = video_el.get_attribute("src")
+            if not tweets_found:
+                # Check for explicit error pages before giving up
+                content = page.content()
+                if "Something went wrong" in content:
+                    page_error_message = "X returned 'Something went wrong' - possible rate limit or auth issue"
+                    logger.error("x_page_error", handle=x_handle, error=page_error_message)
+                elif page.url and "/login" in page.url:
+                    page_error_message = "X returned login wall - auth tokens may be expired"
+                    logger.error("x_page_error", handle=x_handle, error=page_error_message)
+                elif "No results" in content:
+                    logger.debug("x_page_no_results", handle=x_handle)
+                    page_error_message = "no_results"
+                else:
+                    # No error detected but no tweets yet — wait longer and try once more
+                    logger.debug("x_slow_render_retry", handle=x_handle)
+                    page.wait_for_timeout(5000)
+                    try:
+                        page.wait_for_selector(tweet_selector, timeout=10000, state="attached")
+                    except Exception:
+                        # Still nothing — check for login wall in final content
+                        final_content = page.content()
+                        if "Log in to X" in final_content or "Sign in to X" in final_content:
+                            page_error_message = "X returned login wall - auth tokens may be expired"
+                            logger.error("x_page_error", handle=x_handle, error=page_error_message)
                         else:
-                            img_el = article.query_selector('[data-testid="tweetPhoto"] img')
-                            if img_el:
-                                image_url = img_el.get_attribute("src")
-                                media_type = "image"
+                            page_error_message = "no_results"
+                            logger.debug("x_page_no_results_after_retry", handle=x_handle)
 
-                        posts.append(
-                            CollectedPost(
-                                post_url=post_url,
-                                external_post_id=post_id,
-                                posted_at=posted_at,
-                                has_video=has_video,
-                                text=text_content,
-                                author_handle=x_handle.lstrip("@"),
-                                video_url=video_url,
-                                image_url=image_url,
-                                media_type=media_type,
-                            )
+            page.wait_for_timeout(self.wait_ms)
+
+            def extract_posts_from_page() -> set[str]:
+                """Extract all posts currently visible and return set of post IDs."""
+                extracted_ids: set[str] = set()
+                articles = page.query_selector_all('article[data-testid="tweet"]')
+
+                for article in articles:
+                    # Skip retweets
+                    social_context = article.query_selector('[data-testid="socialContext"]')
+                    if social_context:
+                        context_text = social_context.inner_text()
+                        if context_text and "Retweeted" in context_text:
+                            continue
+
+                    # Extract post URL
+                    anchor = article.query_selector('a[href*="/status/"]')
+                    post_url = None
+                    if anchor:
+                        href = anchor.get_attribute("href")
+                        if href:
+                            post_url = f"https://x.com{href}" if href.startswith("/") else href
+
+                    if not post_url:
+                        continue
+
+                    post_id = extract_x_post_id(post_url)
+                    if not post_id or post_id in seen_post_ids:
+                        continue
+
+                    extracted_ids.add(post_id)
+                    seen_post_ids.add(post_id)
+
+                    # Extract timestamp
+                    time_el = article.query_selector("time")
+                    posted_at = None
+                    if time_el:
+                        datetime_str = time_el.get_attribute("datetime")
+                        if datetime_str:
+                            posted_at = self._parse_post_time(datetime_str)
+
+                    if not posted_at:
+                        continue
+
+                    # Extract text content
+                    text_content = None
+                    text_el = article.query_selector('[data-testid="tweetText"]')
+                    if text_el:
+                        text_content = text_el.inner_text()
+
+                    # Detect media
+                    video_url = None
+                    image_url = None
+                    media_type = "none"
+
+                    video_container = (
+                        article.query_selector('[data-testid="videoPlayer"]')
+                        or article.query_selector('[data-testid="videoComponent"]')
+                        or article.query_selector('[data-testid="previewInterstitial"]')
+                        or article.query_selector('video')
+                    )
+                    has_video = video_container is not None
+
+                    if has_video:
+                        media_type = "video"
+                        video_el = article.query_selector("video")
+                        if video_el:
+                            video_url = video_el.get_attribute("src")
+                    else:
+                        img_el = article.query_selector('[data-testid="tweetPhoto"] img')
+                        if img_el:
+                            image_url = img_el.get_attribute("src")
+                            media_type = "image"
+
+                    posts.append(
+                        CollectedPost(
+                            post_url=post_url,
+                            external_post_id=post_id,
+                            posted_at=posted_at,
+                            has_video=has_video,
+                            text=text_content,
+                            author_handle=x_handle.lstrip("@"),
+                            video_url=video_url,
+                            image_url=image_url,
+                            media_type=media_type,
                         )
-
-                    return extracted_ids
-
-                # Track seen posts to dedupe across scrolls
-                seen_post_ids: set[str] = set()
-
-                # Initial extraction
-                new_ids = extract_posts_from_page()
-                logger.debug("x_initial_extract", handle=x_handle, new_posts=len(new_ids), total=len(posts))
-
-                # Scroll and extract until no new posts appear
-                for scroll_num in range(self.max_scrolls):
-                    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    # Random 5-10s delay per scroll to mimic human behavior
-                    import random as _rng
-                    page.wait_for_timeout(int(_rng.uniform(5, 10) * 1000))
-
-                    new_ids = extract_posts_from_page()
-                    logger.debug(
-                        "x_scroll_extract",
-                        handle=x_handle,
-                        scroll=scroll_num + 1,
-                        new_posts=len(new_ids),
-                        total=len(posts),
                     )
 
-                    # Stop early if no new posts or all posts already known
-                    if len(new_ids) == 0:
-                        logger.debug("x_scroll_complete_early", handle=x_handle, reason="no_new_posts")
-                        break
-                    if known_post_ids and new_ids.issubset(known_post_ids):
-                        logger.debug("x_scroll_complete_early", handle=x_handle, reason="all_posts_known")
-                        break
+                return extracted_ids
 
-                self._mark_request_done()
+            # Track seen posts to dedupe across scrolls
+            seen_post_ids: set[str] = set()
 
-            finally:
-                browser.close()
+            # Initial extraction
+            new_ids = extract_posts_from_page()
+            logger.debug("x_initial_extract", handle=x_handle, new_posts=len(new_ids), total=len(posts))
+
+            # Scroll and extract until no new posts appear
+            for scroll_num in range(self.max_scrolls):
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                # Random 5-10s delay per scroll to mimic human behavior
+                import random as _rng
+                page.wait_for_timeout(int(_rng.uniform(5, 10) * 1000))
+
+                new_ids = extract_posts_from_page()
+                logger.debug(
+                    "x_scroll_extract",
+                    handle=x_handle,
+                    scroll=scroll_num + 1,
+                    new_posts=len(new_ids),
+                    total=len(posts),
+                )
+
+                # Stop early if no new posts or all posts already known
+                if len(new_ids) == 0:
+                    logger.debug("x_scroll_complete_early", handle=x_handle, reason="no_new_posts")
+                    break
+                if known_post_ids and new_ids.issubset(known_post_ids):
+                    logger.debug("x_scroll_complete_early", handle=x_handle, reason="all_posts_known")
+                    break
+
+            self._mark_request_done()
+
+        finally:
+            page.close()
 
         return posts, page_error_message
 

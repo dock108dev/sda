@@ -193,6 +193,7 @@ def _run_social_scrape_2() -> dict:
             if game != games[-1]:
                 time.sleep(settings.social_config.sweep_inter_game_delay_seconds)
 
+        collector.close()
         session.commit()
 
     logger.info(
