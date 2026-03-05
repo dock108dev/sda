@@ -129,3 +129,50 @@ class FairbetGameOddsWork(Base):
         Index("idx_fairbet_odds_game", "game_id"),
         Index("idx_fairbet_odds_observed", "observed_at"),
     )
+
+
+class ClosingLine(Base):
+    """Durable closing-line snapshot captured when a game transitions to LIVE.
+
+    One row per (game, provider, market_key, selection, line_value).
+    Used as the stable baseline for CLV tracking and FairBet Live comparisons.
+    """
+
+    __tablename__ = "closing_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("sports_games.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    league: Mapped[str] = mapped_column(String(10), nullable=False)
+    market_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    selection: Mapped[str] = mapped_column(String(200), nullable=False)
+    line_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_american: Mapped[float] = mapped_column(Float, nullable=False)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    source_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'closing'")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    game: Mapped[SportsGame] = relationship("SportsGame")
+
+    __table_args__ = (
+        Index(
+            "uq_closing_lines_identity",
+            "game_id",
+            "provider",
+            "market_key",
+            "selection",
+            "line_value",
+            unique=True,
+        ),
+    )

@@ -59,6 +59,13 @@ from .timeline_tasks import (
 from .utility_tasks import (
     clear_scraper_cache_task,
 )
+from .live_orchestrator import (
+    live_orchestrator_tick,
+)
+from .live_odds_tasks import (
+    poll_live_odds_mainline,
+    poll_live_odds_props,
+)
 
 __all__ = [
     "run_final_whistle_social",
@@ -83,4 +90,7 @@ __all__ = [
     "trigger_flow_for_game",
     "run_daily_sweep",
     "clear_scraper_cache_task",
+    "live_orchestrator_tick",
+    "poll_live_odds_mainline",
+    "poll_live_odds_props",
 ]

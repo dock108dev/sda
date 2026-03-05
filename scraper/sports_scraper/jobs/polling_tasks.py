@@ -53,7 +53,14 @@ from ..utils.redis_lock import release_redis_lock as _release_redis_lock  # noqa
 
 
 def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
-    """Dispatch social scrape and flow generation for a game that just went final."""
+    """Dispatch social scrape, flow generation, and closing line capture for a game that just went final."""
+    # Ensure closing lines are captured (idempotent — skips if already captured)
+    try:
+        from ..live_odds.closing_lines import capture_closing_lines
+        capture_closing_lines(game_id, league_code)
+    except Exception as exc:
+        logger.warning("closing_lines_capture_error", game_id=game_id, error=str(exc))
+
     try:
         from .final_whistle_tasks import run_final_whistle_social
 

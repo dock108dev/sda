@@ -2,7 +2,7 @@
 
 How odds enter the system, get matched to games, populate the FairBet work table, and are served to downstream apps with EV annotations.
 
-**Audience:** Developers consuming `GET /api/fairbet/odds` or working on the odds pipeline.
+**Audience:** Developers consuming `GET /api/fairbet/odds`, `GET /api/fairbet/live`, or working on the odds pipeline.
 
 ---
 
@@ -265,7 +265,7 @@ When Pinnacle doesn't have the exact line but has a nearby reference, the system
 
 ### Excluded Books
 
-20 books are excluded from display and EV computation at query time. They are still ingested and persisted. Exclusion list: `api/app/services/ev_config.py` → `EXCLUDED_BOOKS`.
+4 books are excluded from display and EV computation at query time (BetOnline.ag, Bovada, Kalshi, Polymarket). They are still ingested and persisted. Exclusion list: `api/app/services/ev_config.py` → `EXCLUDED_BOOKS`.
 
 For the detailed mathematical walkthrough (Shin's formula, conversion formulas, worked examples), see [EV Math](EV_LIFECYCLE.md).
 
@@ -526,7 +526,7 @@ GET /api/fairbet/odds?market_category=player_prop&has_fair=true
 
 3. **EV not persisted.** EV is computed per-request at query time. No historical EV tracking.
 
-4. **No CLV tracking.** Opening vs closing EV is not compared.
+4. **CLV tracking: infrastructure only.** Closing-line snapshots are captured to the `closing_lines` table when games go LIVE, but CLV comparison (closing vs live EV) is not yet computed or exposed via the API.
 
 5. **Static staleness thresholds.** Limits are hardcoded per strategy, not adjusted dynamically based on time-to-game.
 
@@ -557,6 +557,13 @@ GET /api/fairbet/odds?market_category=player_prop&has_fair=true
 | EV math functions | `api/app/services/ev.py` |
 | EV strategy config | `api/app/services/ev_config.py` |
 | DB models (odds tables) | `api/app/db/odds.py` |
+| Closing line capture | `scraper/sports_scraper/live_odds/closing_lines.py` |
+| Live odds Redis store | `scraper/sports_scraper/live_odds/redis_store.py` |
+| Live odds polling tasks | `scraper/sports_scraper/jobs/live_odds_tasks.py` |
+| Live orchestrator | `scraper/sports_scraper/jobs/live_orchestrator.py` |
+| FairBet Live endpoint | `api/app/routers/fairbet/live.py` |
+| API Redis reader | `api/app/services/live_odds_redis.py` |
+| Provider rate limiter | `scraper/sports_scraper/utils/provider_request.py` |
 
 ## See Also
 

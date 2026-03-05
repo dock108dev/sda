@@ -18,6 +18,8 @@ flowchart LR
     Web[Admin UI (Next.js)]
     API[FastAPI API]
     Worker[Celery Worker (Scraper)]
+    SocialWorker[Social Scraper]
+    BulkWorker[Social Bulk]
   end
 
   subgraph Data
@@ -33,6 +35,10 @@ flowchart LR
   Worker --> Postgres
   Worker --> Redis
   Worker --> Storage
+  SocialWorker --> Postgres
+  SocialWorker --> Redis
+  BulkWorker --> Postgres
+  BulkWorker --> Redis
 ```
 
 ---

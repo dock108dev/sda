@@ -26,8 +26,9 @@
 16. [Entity Resolution](#entity-resolution)
 17. [Social](#social)
 18. [FairBet](#fairbet)
-19. [Reading Positions](#reading-positions)
-20. [Response Models](#response-models)
+19. [Realtime](#realtime)
+20. [Reading Positions](#reading-positions)
+21. [Response Models](#response-models)
 
 ---
 
@@ -178,13 +179,13 @@ Source: `scraper/sports_scraper/models/schemas.py` &rarr; `classify_market()`
 
 Source: `scraper/sports_scraper/odds/client.py` &rarr; `PROP_MARKETS`
 
-### Included Sportsbooks (17)
+### Included Sportsbooks (13)
 
-BetMGM, Caesars, DraftKings, ESPNBet, FanDuel, Fanatics, Hard Rock Bet, Pinnacle, PointsBet (US), bet365, Betway, Circa Sports, Fliff, SI Sportsbook, theScore Bet, Tipico, Unibet
+BetMGM, BetRivers, Caesars, DraftKings, FanDuel, Pinnacle, 888sport, William Hill, Betfair Exchange, Betfair Sportsbook, Ladbrokes, Paddy Power, William Hill (UK)
 
-### Excluded Sportsbooks (20)
+### Excluded Sportsbooks (4)
 
-BetOnline.ag, BetRivers, BetUS, Bovada, GTbets, LowVig.ag, MyBookie.ag, Nitrogen, SuperBook, TwinSpires, Wind Creek (Betfred PA), WynnBET, Bally Bet, Betsson, Coolbet, Marathonbet, Matchbook, NordicBet, William Hill (US), 1xBet
+BetOnline.ag, Bovada, Kalshi, Polymarket
 
 > **Note:** All books are still scraped and persisted; exclusion happens at query time for quality filtering.
 
@@ -473,7 +474,7 @@ Get the AI-generated game flow for a game.
 
 ### Game Flow Structure
 
-Game flows are AI-generated narrative summaries built from play-by-play data. Each game flow contains 3-7 **blocks** — short narratives (2-4 sentences each, ~65 words) designed for 60-90 second total read time.
+Game flows are AI-generated narrative summaries built from play-by-play data. Each game flow contains 3-7 **blocks** — short narratives (1-5 sentences each, ~65 words) designed for 60-90 second total read time.
 
 **Blocks** are the consumer-facing output:
 - Each block has a semantic role (SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION)
@@ -794,7 +795,7 @@ List all tasks available for manual dispatch.
 ]
 ```
 
-17 tasks are registered across categories: Ingestion, Polling, Odds, Social, Flows, Timelines, and Utility. Each task specifies which Celery queue it routes to (`sports-scraper` or `social-scraper`).
+22 tasks are registered across categories: Ingestion, Polling, Odds, Social, Flows, Timelines, MLB Advanced Stats, Live Orchestration, and Utility. Each task specifies which Celery queue it routes to (`sports-scraper`, `social-scraper`, or `social-bulk`).
 
 ### `POST /tasks/trigger`
 
@@ -1147,6 +1148,125 @@ Evaluate a parlay by multiplying true probabilities. Returns combined fair proba
 | `combinedConfidence` | `float` | Geometric mean of leg confidences (1.0 if none provided) |
 | `legCount` | `int` | Number of legs |
 
+### `GET /live`
+
+Get closing-line snapshot (DB) + live odds (Redis) for a game. Combines durable closing lines captured when the game went LIVE with ephemeral live line snapshots and movement history from Redis.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `game_id` | `int` | **Required.** Game ID |
+| `market_key` | `string` | Market key (`spread`, `total`, `moneyline`). Omit for all markets. |
+| `history_count` | `int` | Number of history entries (0-300, default 50) |
+
+**Response:**
+
+```json
+{
+  "game_id": 123,
+  "market_key": "spread",
+  "closing": [
+    {
+      "provider": "DraftKings",
+      "market_key": "spread",
+      "selection": "home",
+      "line_value": -3.5,
+      "price_american": -110,
+      "captured_at": "2026-03-05T19:00:00+00:00",
+      "source_type": "closing"
+    }
+  ],
+  "live": {
+    "last_updated_at": 1741209600.0,
+    "provider": "DraftKings",
+    "selections": [{"selection": "home", "line": -4.5, "price": -115}],
+    "ttl_seconds_remaining": 21000
+  },
+  "history": [
+    {"t": 1741209590, "selections": [{"s": "home", "p": -110}]}
+  ],
+  "meta": {
+    "league": "NBA",
+    "live_updated_at": "2026-03-05T19:00:00",
+    "closing_count": 6
+  }
+}
+```
+
+When `market_key` is omitted, `live` is a dict keyed by market (`{"spread": {...}, "total": {...}}`). When specified, `live` is a single `LiveSnapshotResponse`.
+
+---
+
+## Realtime
+
+Live game updates via WebSocket or Server-Sent Events. Both transports deliver the same event envelope format.
+
+### Channel Types
+
+| Channel | Format | Description |
+|---------|--------|-------------|
+| Games list | `games:{league}:{date}` | Score/status patches for all games on a date |
+| Game summary | `game:{gameId}:summary` | Single-game detail patch |
+| Game PBP | `game:{gameId}:pbp` | Append-only play-by-play events |
+| FairBet odds | `fairbet:odds` | Minimal FairBet odds change stream |
+
+### `WS /v1/ws`
+
+WebSocket endpoint for realtime subscriptions.
+
+**Auth:** `X-API-Key` header or `api_key` query parameter.
+
+**Subscribe:**
+```json
+{"action": "subscribe", "channels": ["games:NBA:2026-03-05", "game:123:summary"]}
+```
+
+**Unsubscribe:**
+```json
+{"action": "unsubscribe", "channels": ["game:123:summary"]}
+```
+
+### `GET /v1/sse`
+
+Server-Sent Events endpoint. Same data as WS, alternative transport.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `channels` | `string` | **Required.** Comma-separated channel list |
+
+**Auth:** `X-API-Key` header or `api_key` query parameter.
+
+### `GET /v1/realtime/status`
+
+Debug endpoint showing connected clients, channel subscriptions, and poller stats.
+
+### Event Envelope
+
+All events share this structure:
+
+```json
+{
+  "type": "game_patch",
+  "channel": "games:NBA:2026-03-05",
+  "ts": 1741209600,
+  "seq": 42,
+  "boot_epoch": 1741200000,
+  "gameId": 123,
+  "patch": {}
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | `string` | `game_patch`, `pbp_append`, or `fairbet_patch` |
+| `channel` | `string` | Channel this event was published to |
+| `ts` | `int` | Unix timestamp |
+| `seq` | `int` | Monotonic sequence number per channel (for gap detection) |
+| `boot_epoch` | `int` | Server boot timestamp (detect restarts → resubscribe) |
+
 ---
 
 ## Reading Positions
@@ -1267,7 +1387,7 @@ interface GameFlowContent {
   moments: GameFlowMoment[];     // Internal traceability (15-25 per game)
 }
 
-// Consumer-facing narrative block (2-4 sentences, ~65 words)
+// Consumer-facing narrative block (1-5 sentences, ~65 words)
 interface GameFlowBlock {
   blockIndex: number;         // Position (0-6)
   role: SemanticRole;         // SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION
@@ -1278,7 +1398,7 @@ interface GameFlowBlock {
   scoreAfter: number[];       // [away, home]
   playIds: number[];          // All play indices in this block
   keyPlayIds: number[];       // Highlighted plays
-  narrative: string;          // 2-4 sentences (~65 words)
+  narrative: string;          // 1-5 sentences (~65 words)
   miniBox: BlockMiniBox | null;  // Player stats for this segment
   embeddedSocialPostId?: number | null;  // Optional social post ID (max 1 per block, 5 per game)
   peak_margin?: number;       // Largest absolute margin within this block (omitted when 0)

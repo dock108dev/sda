@@ -139,6 +139,22 @@ TASK_REGISTRY: dict[str, TaskRegistryEntry] = {
             queue="sports-scraper",
             description="Clear scraper cache for a league (optionally limit by days)",
         ),
+        # Live orchestrator + odds
+        TaskRegistryEntry(
+            name="live_orchestrator_tick",
+            queue="sports-scraper",
+            description="Run one live orchestrator tick (dispatches per-game polling tasks)",
+        ),
+        TaskRegistryEntry(
+            name="poll_live_odds_mainline",
+            queue="sports-scraper",
+            description="Poll live mainline odds for a league (args: [league_code, [game_ids]])",
+        ),
+        TaskRegistryEntry(
+            name="poll_live_odds_props",
+            queue="sports-scraper",
+            description="Poll live prop odds for a league (args: [league_code, [game_ids]])",
+        ),
     ]
 }
 

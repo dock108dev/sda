@@ -12,7 +12,8 @@ This document describes where data comes from and how it's ingested.
 | Boxscores | MLB Stats API (statsapi.mlb.com) | MLB | Post-game |
 | Play-by-Play | NBA API / NHL API / CBB API / MLB Stats API | NBA, NHL, NCAAB, MLB | Post-game |
 | Play-by-Play (Live) | League APIs | NBA, NHL, NCAAB, MLB | During game (5 min polling) |
-| Odds | The Odds API | NBA, NHL, NCAAB, MLB | Pre-game only (live games skipped) |
+| Odds (pre-game) | The Odds API | NBA, NHL, NCAAB, MLB | Every 60s (pre-game lines) |
+| Odds (live) | The Odds API | NBA, NHL, NCAAB, MLB | Every 15-45s during live games (via live orchestrator) |
 | Social | X/Twitter | NBA, NHL, NCAAB, MLB | 24-hour game window |
 
 ## Boxscores & Player Stats
@@ -165,8 +166,8 @@ The Odds API (v4): `https://api.the-odds-api.com`
 Configuration: `scraper/sports_scraper/celery_app.py`
 
 ### Bookmakers
-- 17 included books participate in display and EV computation (DraftKings, FanDuel, BetMGM, Caesars, Pinnacle, etc.)
-- 20 excluded books (offshore, promo, prediction markets) are filtered at query time
+- 13 included books participate in display and EV computation (DraftKings, FanDuel, BetMGM, Caesars, Pinnacle, 888sport, William Hill, Betfair Exchange, Betfair Sportsbook, Ladbrokes, Paddy Power, William Hill (UK), BetRivers)
+- 4 excluded books (offshore, prediction markets) are filtered at query time (BetOnline.ag, Bovada, Kalshi, Polymarket)
 - **All books are still ingested and persisted** — exclusion is query-time only
 - Full lists: `api/app/services/ev_config.py` → `INCLUDED_BOOKS`, `EXCLUDED_BOOKS`
 
@@ -198,18 +199,40 @@ Code: `scraper/sports_scraper/persistence/odds.py`, `scraper/sports_scraper/pers
 
 See [Odds & FairBet Pipeline](ODDS_AND_FAIRBET.md) for the full data flow including EV computation.
 
+### Live Odds (During Games)
+
+When games are live, the **live orchestrator** dispatches per-game odds polling at sport-appropriate cadences:
+
+| Task | Cadence | Markets |
+|------|---------|---------|
+| `poll_live_odds_mainline` | Every 15s | h2h, spreads, totals (league-batched) |
+| `poll_live_odds_props` | Every 45s | Player/team props (per-event) |
+
+**Closing line snapshots** are captured to the `closing_lines` table when a game transitions to LIVE, providing a durable baseline for CLV (closing line value) tracking. Live odds are stored ephemerally in Redis with TTL (6h snapshots, 12h history ring buffer of 300 entries per game/market).
+
+The live orchestrator (`live_orchestrator_tick`) runs every 5 seconds via Celery Beat and uses Redis scheduling keys to track per-game cadences with jitter. It dispatches work only when live games exist.
+
+**Implementation:**
+- Orchestrator: `scraper/sports_scraper/jobs/live_orchestrator.py`
+- Live odds tasks: `scraper/sports_scraper/jobs/live_odds_tasks.py`
+- Redis store: `scraper/sports_scraper/live_odds/redis_store.py`
+- Closing lines: `scraper/sports_scraper/live_odds/closing_lines.py`
+
 ### Rate Limiting & Credit Management
 - Historical endpoint: 1-second pause every 5 days of iteration
-- Live games excluded from odds polling to preserve pre-game closing lines
+- Pre-game odds polling preserves closing lines in `sports_game_odds`
 - Props sync aborts gracefully if API credits drop below 500 (mainlines prioritized)
+- Live odds polling uses a token bucket rate limiter with configurable QPS + burst per provider
+- Provider request wrapper handles 429 responses with Retry-After parsing and backoff
 - Caching: Per-league, per-date JSON files under scraper cache directory
 
-### Implementation
+### Implementation (Pre-game)
 - Client: `scraper/sports_scraper/odds/client.py`
 - Sync: `scraper/sports_scraper/odds/synchronizer.py`
 - FairBet upsert: `scraper/sports_scraper/odds/fairbet.py`
 - Persistence: `scraper/sports_scraper/persistence/odds.py`
 - Game matching: `scraper/sports_scraper/persistence/odds_matching.py`
+- Provider rate limiter: `scraper/sports_scraper/utils/provider_request.py`
 
 ## Social Media (X/Twitter)
 
@@ -339,6 +362,9 @@ Implementation: `queue_job_run()`, `activate_queued_job_run()`, `enforce_social_
 - **Mainline Odds Sync**: Every 60s (`sync_mainline_odds`: spreads, totals, moneyline)
 - **Prop Odds Sync**: Every 60s (`sync_prop_odds`: player/team props)
 - **Game Social Collection**: Every 30 minutes (`collect_game_social`)
+
+**Live orchestrator (every 5 seconds):**
+- **Live Orchestrator Tick**: Discovers live/pregame games and dynamically dispatches per-game polling tasks at sport-appropriate cadences (PBP, stats, live odds). Only dispatches work when live games exist.
 
 **Daily (timed):**
 - **Ingestion**: 08:30 UTC (3:30 AM ET) — boxscores, PBP

@@ -59,6 +59,10 @@ app.conf.task_routes = {
     "collect_game_social": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE},
     # MLB advanced stats (Statcast-derived, post-game)
     "ingest_mlb_advanced_stats": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+    # Live orchestrator + live odds polling
+    "live_orchestrator_tick": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+    "poll_live_odds_mainline": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+    "poll_live_odds_props": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
 }
 # Daily pipeline schedule (all times US Eastern / UTC during EST):
 #
@@ -100,6 +104,14 @@ _polling_schedule = {
         "task": "sync_prop_odds",
         "schedule": crontab(minute="*/1"),
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45},
+    },
+    # Live orchestrator: runs every 5 seconds to dynamically dispatch
+    # per-game polling at sport-appropriate cadences (PBP, stats, odds).
+    # Only dispatches work when live games exist.
+    "live-orchestrator-every-5s": {
+        "task": "live_orchestrator_tick",
+        "schedule": 5.0,  # Every 5 seconds (numeric = seconds interval)
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     },
 }
 

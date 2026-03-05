@@ -39,6 +39,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 |-------|-------------|
 | `sports_game_odds` | Game-centric historical odds (opening + closing lines per book/market/side) |
 | `fairbet_game_odds_work` | Bet-centric work table for cross-book comparison and EV computation |
+| `closing_lines` | Durable closing-line snapshots captured when games go LIVE (baseline for CLV tracking) |
 
 ### Social Media
 

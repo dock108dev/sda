@@ -27,8 +27,8 @@ Each game flow contains **3-7 narrative blocks** designed for a **60-90 second r
 | Property | Value |
 |----------|-------|
 | Blocks per game | 3-7 |
-| Words per block | 30-100 (~65 avg) |
-| Sentences per block | 2-4 |
+| Words per block | 30-120 (~65 avg) |
+| Sentences per block | 1-5 |
 | Total words | ≤ 600 |
 | Read time | 60-90 seconds |
 
@@ -191,7 +191,7 @@ Blocks are the consumer-facing output. Each block is a narrative segment:
 | `role` | `string` | Semantic role (see below) |
 | `scoreBefore` | `[away, home]` | Score at block start |
 | `scoreAfter` | `[away, home]` | Score at block end |
-| `narrative` | `string` | 2-4 sentences (~65 words) |
+| `narrative` | `string` | 1-5 sentences (~65 words) |
 | `miniBox` | `object` | Player stats for this segment |
 | `embeddedSocialPostId` | `number?` | Optional social post ID (max 1 per block) |
 

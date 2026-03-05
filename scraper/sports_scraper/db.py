@@ -39,6 +39,7 @@ try:
     )
     from app.db.mlb_advanced import MLBGameAdvancedStats, MLBPlayerAdvancedStats  # type: ignore
     from app.db.odds import (  # type: ignore
+        ClosingLine,
         FairbetGameOddsWork,
         SportsGameOdds,
     )
@@ -123,6 +124,7 @@ try:
         # Odds models
         SportsGameOdds=SportsGameOdds,
         FairbetGameOddsWork=FairbetGameOddsWork,
+        ClosingLine=ClosingLine,
         # Config models
         GameReadingPosition=GameReadingPosition,
         # Cache models

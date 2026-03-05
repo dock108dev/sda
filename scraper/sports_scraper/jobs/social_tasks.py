@@ -135,17 +135,23 @@ def collect_social_for_league(league: str) -> dict:
 
     with get_session() as session:
         collector = TeamTweetCollector()
+
+        def _map_after_batch():
+            map_unmapped_tweets(
+                session=session,
+                batch_size=settings.social_config.tweet_mapper_batch_size,
+            )
+
         result = collector.collect_for_date_range(
             session=session,
             league_code=league,
             start_date=start_date,
             end_date=end_date,
+            on_batch_commit=_map_after_batch,
         )
 
-        # Flush pending INSERTs so the mapper's query can see them
+        # Final mapping pass
         session.flush()
-
-        # Map newly collected tweets to games
         map_result = map_unmapped_tweets(session=session, batch_size=settings.social_config.tweet_mapper_batch_size)
         result["mapping"] = map_result
 
@@ -188,6 +194,7 @@ def collect_team_social(
     from ..services.job_runs import track_job_run
     from ..social.team_collector import TeamTweetCollector
     from ..social.tweet_mapper import map_unmapped_tweets
+    from ..utils.datetime_utils import cap_social_date_range
     from ..utils.redis_lock import acquire_redis_lock, release_redis_lock
 
     lock_name = f"lock:collect_team_social:{league_code}"
@@ -197,30 +204,42 @@ def collect_team_social(
         return {"status": "skipped", "reason": "already_running"}
 
     try:
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+
+        # Re-cap date range at execution time (stale queued tasks may carry old ranges)
+        start, end = cap_social_date_range(start, end)
+
         logger.info(
             "collect_team_social_start",
             league_code=league_code,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=str(start),
+            end_date=str(end),
+            original_start=start_date,
+            original_end=end_date,
         )
-
-        start = date.fromisoformat(start_date)
-        end = date.fromisoformat(end_date)
 
         with track_job_run("social", [league_code], job_run_id=job_run_id) as tracker:
             with get_session() as session:
                 collector = TeamTweetCollector()
+
+                # Fix 4: Map tweets incrementally after each batch commit
+                def _map_after_batch():
+                    map_unmapped_tweets(
+                        session=session,
+                        batch_size=settings.social_config.tweet_mapper_batch_size,
+                    )
+
                 result = collector.collect_for_date_range(
                     session=session,
                     league_code=league_code,
                     start_date=start,
                     end_date=end,
+                    on_batch_commit=_map_after_batch,
                 )
 
-                # Flush pending INSERTs so the mapper's query can see them
+                # Final mapping pass for any remaining unmapped tweets
                 session.flush()
-
-                # Always map tweets to games after collection
                 map_result = map_unmapped_tweets(session=session, batch_size=settings.social_config.tweet_mapper_batch_size)
                 result["mapping"] = map_result
 
@@ -397,16 +416,23 @@ def collect_game_social() -> dict:
             teams_processed = 0
             errors = 0
             games_completed = 0
+            game_new_tweets = 0
             scraped_team_ids: set[int] = set()
 
             for i, game in enumerate(games):
-                # Inter-game cooldown — skip before the first game
+                # Inter-game cooldown — skip before the first game.
+                # Use shorter delay when previous game had no new tweets.
                 if i > 0:
-                    time.sleep(random.uniform(
-                        social_cfg.inter_game_delay_seconds,
-                        social_cfg.inter_game_delay_max_seconds,
-                    ))
+                    if game_new_tweets == 0:
+                        delay = social_cfg.early_exit_delay_seconds
+                    else:
+                        delay = random.uniform(
+                            social_cfg.inter_game_delay_seconds,
+                            social_cfg.inter_game_delay_max_seconds,
+                        )
+                    time.sleep(delay)
 
+                game_new_tweets = 0
                 for team_id in (game.home_team_id, game.away_team_id):
                     if team_id in scraped_team_ids:
                         continue
@@ -421,6 +447,7 @@ def collect_game_social() -> dict:
                             end_date=sports_day,
                         )
                         total_new += new_tweets
+                        game_new_tweets += new_tweets
                         teams_processed += 1
                         logger.info(
                             "collect_game_social_team_done",

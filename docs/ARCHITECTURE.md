@@ -20,15 +20,19 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 │                           INGESTION                                          │
 │                                                                             │
 │  [External Sources]  ──scrape──▶  [Scraper]  ──persist──▶  [PostgreSQL]    │
-│  League APIs, Odds API           Celery/uv                  Normalized      │
+│  League APIs, Odds API           Celery/uv       │         Normalized      │
+│                                                  ▼                         │
+│                                              [Redis]                       │
+│                                         Task queue + live odds             │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           SERVING                                            │
 │                                                                             │
-│  [PostgreSQL]  ──▶  [REST API]  ──▶  [Dock108 Apps]                        │
-│                     FastAPI          All products                           │
+│  [PostgreSQL + Redis]  ──▶  [REST API]  ──▶  [Dock108 Apps]               │
+│                              FastAPI          All products                  │
+│                              + WS/SSE         Realtime feeds               │
 │                                                                             │
 │  [PostgreSQL]  ──▶  [Admin UI]  ──▶  [Operators]                           │
 │                     Next.js          Data management                        │
@@ -51,7 +55,8 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 
 - **Framework:** FastAPI
 - **Database:** PostgreSQL (async SQLAlchemy)
-- **Endpoints:** Games, plays, box scores, odds, social, teams, FairBet (odds + parlay)
+- **Endpoints:** Games, plays, box scores, odds, social, teams, FairBet (odds + parlay + live)
+- **Realtime:** WebSocket and SSE feeds for live game updates (scores, PBP, odds changes)
 - **Admin Endpoints:** Scraper management, data browser
 - **Server-Side Services:** Status flags (`game_status.py`), date sections (`date_section.py`), FairBet display helpers (`fairbet_display.py`), odds table builder (`odds_table.py`), stat normalization (`stat_normalization.py`), stat annotations (`stat_annotations.py`), play timeline enrichment (`play_tiers.py`), period labels (`period_labels.py`), derived metrics (`derived_metrics.py`)
 
@@ -83,7 +88,7 @@ The game flow system converts play-by-play data into block-based narratives thro
 
 ### Architecture
 
-A game flow consists of **3-7 narrative blocks**, each containing 2-4 sentences (~65 words). Blocks are designed for 60-90 second total read time.
+A game flow consists of **3-7 narrative blocks**, each containing 1-5 sentences (~65 words). Blocks are designed for 60-90 second total read time.
 
 ```
 NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → ANALYZE_DRAMA → GROUP_BLOCKS → RENDER_BLOCKS → VALIDATE_BLOCKS → FINALIZE_MOMENTS
@@ -108,7 +113,7 @@ A narrative block contains:
 - `block_index`: Position (0-6)
 - `role`: Semantic role (SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION)
 - `moment_indices`: Which moments are grouped
-- `narrative`: 2-4 sentences (~65 words)
+- `narrative`: 1-5 sentences (~65 words)
 - Score and time context
 
 ### Key Properties
@@ -155,6 +160,7 @@ See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
 - `sports_player_boxscores` - Player stats
 - `sports_game_odds` - Betting lines (game-centric)
 - `fairbet_game_odds_work` - Bet-centric odds for cross-book comparison
+- `closing_lines` - Durable closing-line snapshots captured when games go LIVE
 - `mlb_game_advanced_stats` - Statcast-derived advanced batting stats per team per game
 - `mlb_player_advanced_stats` - Statcast-derived advanced batting stats per batter per game
 - `team_social_posts` - Social media content (mapped to games via `mapping_status`)
@@ -189,6 +195,12 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 ### FairBet Endpoints
 - `GET /api/fairbet/odds` — Cross-book odds comparison with EV annotations and display fields
 - `POST /api/fairbet/parlay/evaluate` — Parlay evaluation (combined fair probability + odds)
+- `GET /api/fairbet/live` — Live odds with closing-line baseline, live Redis snapshot, and movement history
+
+### Realtime Endpoints
+- `WS /v1/realtime/ws` — WebSocket feed for live game updates (scores, PBP, odds)
+- `GET /v1/realtime/sse` — SSE feed (same data as WS, alternative transport)
+- `GET /v1/realtime/status` — Connected clients, channel subscriptions, and poller stats
 
 FairBet reads from the `fairbet_game_odds_work` table (populated during odds ingestion with canonical DB team names) and annotates each bet with expected value computed at query time using Pinnacle as the sharp reference. Each bet includes server-computed display fields (fair American odds, selection display name, market display name, book abbreviations, confidence labels, EV method explanations) so clients don't need to maintain their own formatting logic.
 
