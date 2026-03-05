@@ -183,6 +183,13 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
                 tip_time=str(snapshot.tip_time),
             )
 
+        # Store odds_api_event_id for downstream prop fetching (cached path)
+        if game and snapshot.event_id:
+            ext = dict(game.external_ids) if game.external_ids else {}
+            if ext.get("odds_api_event_id") != snapshot.event_id:
+                ext["odds_api_event_id"] = snapshot.event_id
+                game.external_ids = ext
+
         side_value = snapshot.side if snapshot.side else None
         _execute_odds_upsert(session, game_id, snapshot, side_value)
 
