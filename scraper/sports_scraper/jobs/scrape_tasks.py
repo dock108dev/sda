@@ -76,55 +76,59 @@ def run_scheduled_ingestion() -> dict:
     social-scraper worker after each league's PBP completes.
     This is fire-and-forget - we don't wait for social to complete.
     """
+    from ..services.job_runs import track_job_run
     from ..services.scheduler import (
         run_pbp_ingestion_for_league,
         schedule_single_league_and_wait,
     )
 
-    results = {}
+    leagues = ["NBA", "NHL", "NCAAB"]
 
-    # === NBA ===
-    logger.info("scheduled_ingestion_nba_start")
-    nba_result = schedule_single_league_and_wait("NBA")
-    results["NBA"] = nba_result
-    logger.info("scheduled_ingestion_nba_complete", **nba_result)
+    with track_job_run("scheduled_ingestion", leagues) as tracker:
+        results = {}
 
-    logger.info("scheduled_ingestion_nba_pbp_start")
-    nba_pbp_result = run_pbp_ingestion_for_league("NBA")
-    results["NBA_PBP"] = nba_pbp_result
-    _append_pbp_to_run_summary(nba_result.get("run_id"), nba_pbp_result.get("pbp_games", 0))
-    logger.info("scheduled_ingestion_nba_pbp_complete", **nba_pbp_result)
+        # === NBA ===
+        logger.info("scheduled_ingestion_nba_start")
+        nba_result = schedule_single_league_and_wait("NBA")
+        results["NBA"] = nba_result
+        logger.info("scheduled_ingestion_nba_complete", **nba_result)
 
-    # Social collection is now handled by the two-scrape-per-game model
-    # (run_final_whistle_social on FINAL + daily sweep Scrape #2)
+        logger.info("scheduled_ingestion_nba_pbp_start")
+        nba_pbp_result = run_pbp_ingestion_for_league("NBA")
+        results["NBA_PBP"] = nba_pbp_result
+        _append_pbp_to_run_summary(nba_result.get("run_id"), nba_pbp_result.get("pbp_games", 0))
+        logger.info("scheduled_ingestion_nba_pbp_complete", **nba_pbp_result)
 
-    # === NHL ===
-    logger.info("scheduled_ingestion_nhl_start")
-    nhl_result = schedule_single_league_and_wait("NHL")
-    results["NHL"] = nhl_result
-    logger.info("scheduled_ingestion_nhl_complete", **nhl_result)
+        # === NHL ===
+        logger.info("scheduled_ingestion_nhl_start")
+        nhl_result = schedule_single_league_and_wait("NHL")
+        results["NHL"] = nhl_result
+        logger.info("scheduled_ingestion_nhl_complete", **nhl_result)
 
-    logger.info("scheduled_ingestion_nhl_pbp_start")
-    nhl_pbp_result = run_pbp_ingestion_for_league("NHL")
-    results["NHL_PBP"] = nhl_pbp_result
-    _append_pbp_to_run_summary(nhl_result.get("run_id"), nhl_pbp_result.get("pbp_games", 0))
-    logger.info("scheduled_ingestion_nhl_pbp_complete", **nhl_pbp_result)
+        logger.info("scheduled_ingestion_nhl_pbp_start")
+        nhl_pbp_result = run_pbp_ingestion_for_league("NHL")
+        results["NHL_PBP"] = nhl_pbp_result
+        _append_pbp_to_run_summary(nhl_result.get("run_id"), nhl_pbp_result.get("pbp_games", 0))
+        logger.info("scheduled_ingestion_nhl_pbp_complete", **nhl_pbp_result)
 
-    # === NCAAB ===
-    logger.info("scheduled_ingestion_ncaab_start")
-    ncaab_result = schedule_single_league_and_wait("NCAAB")
-    results["NCAAB"] = ncaab_result
-    logger.info("scheduled_ingestion_ncaab_complete", **ncaab_result)
+        # === NCAAB ===
+        logger.info("scheduled_ingestion_ncaab_start")
+        ncaab_result = schedule_single_league_and_wait("NCAAB")
+        results["NCAAB"] = ncaab_result
+        logger.info("scheduled_ingestion_ncaab_complete", **ncaab_result)
 
-    logger.info("scheduled_ingestion_ncaab_pbp_start")
-    ncaab_pbp_result = run_pbp_ingestion_for_league("NCAAB")
-    results["NCAAB_PBP"] = ncaab_pbp_result
-    _append_pbp_to_run_summary(ncaab_result.get("run_id"), ncaab_pbp_result.get("pbp_games", 0))
-    logger.info("scheduled_ingestion_ncaab_pbp_complete", **ncaab_pbp_result)
+        logger.info("scheduled_ingestion_ncaab_pbp_start")
+        ncaab_pbp_result = run_pbp_ingestion_for_league("NCAAB")
+        results["NCAAB_PBP"] = ncaab_pbp_result
+        _append_pbp_to_run_summary(ncaab_result.get("run_id"), ncaab_pbp_result.get("pbp_games", 0))
+        logger.info("scheduled_ingestion_ncaab_pbp_complete", **ncaab_pbp_result)
 
-    return {
-        "leagues": results,
-        "total_runs_created": nba_result["runs_created"] + nhl_result["runs_created"] + ncaab_result["runs_created"],
-        "total_pbp_games": nba_pbp_result["pbp_games"] + nhl_pbp_result["pbp_games"] + ncaab_pbp_result["pbp_games"],
-    }
+        summary = {
+            "leagues": results,
+            "total_runs_created": nba_result["runs_created"] + nhl_result["runs_created"] + ncaab_result["runs_created"],
+            "total_pbp_games": nba_pbp_result["pbp_games"] + nhl_pbp_result["pbp_games"] + ncaab_pbp_result["pbp_games"],
+        }
+        tracker.summary_data = summary
+
+    return summary
 

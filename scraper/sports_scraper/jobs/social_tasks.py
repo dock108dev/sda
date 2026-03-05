@@ -124,6 +124,7 @@ def collect_social_for_league(league: str) -> dict:
     from datetime import timedelta
 
     from ..db import get_session
+    from ..services.job_runs import track_job_run
     from ..social.team_collector import TeamTweetCollector
     from ..social.tweet_mapper import map_unmapped_tweets
     from ..utils.datetime_utils import today_et
@@ -133,27 +134,30 @@ def collect_social_for_league(league: str) -> dict:
     end_date = today_et()
     start_date = end_date - timedelta(days=1)
 
-    with get_session() as session:
-        collector = TeamTweetCollector()
+    with track_job_run("collect_social_for_league", [league]) as tracker:
+        with get_session() as session:
+            collector = TeamTweetCollector()
 
-        def _map_after_batch():
-            map_unmapped_tweets(
+            def _map_after_batch():
+                map_unmapped_tweets(
+                    session=session,
+                    batch_size=settings.social_config.tweet_mapper_batch_size,
+                )
+
+            result = collector.collect_for_date_range(
                 session=session,
-                batch_size=settings.social_config.tweet_mapper_batch_size,
+                league_code=league,
+                start_date=start_date,
+                end_date=end_date,
+                on_batch_commit=_map_after_batch,
             )
 
-        result = collector.collect_for_date_range(
-            session=session,
-            league_code=league,
-            start_date=start_date,
-            end_date=end_date,
-            on_batch_commit=_map_after_batch,
-        )
+            # Final mapping pass
+            session.flush()
+            map_result = map_unmapped_tweets(session=session, batch_size=settings.social_config.tweet_mapper_batch_size)
+            result["mapping"] = map_result
 
-        # Final mapping pass
-        session.flush()
-        map_result = map_unmapped_tweets(session=session, batch_size=settings.social_config.tweet_mapper_batch_size)
-        result["mapping"] = map_result
+        tracker.summary_data = result
 
     logger.info("social_task_complete", league=league, **{
         k: v for k, v in result.items() if k != "mapping"
@@ -278,12 +282,15 @@ def map_social_to_games(batch_size: int = 1000) -> dict:
         Summary stats dict with mapped, no_game counts
     """
     from ..db import get_session
+    from ..services.job_runs import track_job_run
     from ..social.tweet_mapper import map_unmapped_tweets
 
     logger.info("map_social_to_games_start", batch_size=batch_size)
 
-    with get_session() as session:
-        result = map_unmapped_tweets(session=session, batch_size=batch_size)
+    with track_job_run("map_social_to_games") as tracker:
+        with get_session() as session:
+            result = map_unmapped_tweets(session=session, batch_size=batch_size)
+        tracker.summary_data = result
 
     logger.info("map_social_to_games_complete", result=result)
 

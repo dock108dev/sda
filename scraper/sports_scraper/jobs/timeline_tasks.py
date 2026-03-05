@@ -162,8 +162,9 @@ def run_scheduled_timeline_generation() -> dict:
     Uses the same lookback window as the scheduler (96 hours / 4 days).
     """
     from ..config_sports import get_scheduled_leagues
+    from ..services.job_runs import track_job_run
 
-    leagues = get_scheduled_leagues()
+    leagues = list(get_scheduled_leagues())
 
     total_summary = {
         "leagues_processed": 0,
@@ -177,32 +178,35 @@ def run_scheduled_timeline_generation() -> dict:
 
     logger.info(
         "scheduled_timeline_gen_start",
-        leagues=list(leagues),
+        leagues=leagues,
         days_back=SCHEDULED_DAYS_BACK,
     )
 
-    for league_code in leagues:
-        try:
-            summary = generate_all_needed_timelines(
-                league_code=league_code,
-                days_back=SCHEDULED_DAYS_BACK,
-                max_games=None,  # Process all games
-            )
+    with track_job_run("timeline_generation", leagues) as tracker:
+        for league_code in leagues:
+            try:
+                summary = generate_all_needed_timelines(
+                    league_code=league_code,
+                    days_back=SCHEDULED_DAYS_BACK,
+                    max_games=None,  # Process all games
+                )
 
-            total_summary["leagues_processed"] += 1
-            total_summary["total_games_found"] += summary.get("games_found", 0)
-            total_summary["total_games_missing"] += summary.get("games_missing", 0)
-            total_summary["total_games_stale"] += summary.get("games_stale", 0)
-            total_summary["total_games_processed"] += summary.get("games_processed", 0)
-            total_summary["total_games_successful"] += summary.get("games_successful", 0)
-            total_summary["total_games_failed"] += summary.get("games_failed", 0)
+                total_summary["leagues_processed"] += 1
+                total_summary["total_games_found"] += summary.get("games_found", 0)
+                total_summary["total_games_missing"] += summary.get("games_missing", 0)
+                total_summary["total_games_stale"] += summary.get("games_stale", 0)
+                total_summary["total_games_processed"] += summary.get("games_processed", 0)
+                total_summary["total_games_successful"] += summary.get("games_successful", 0)
+                total_summary["total_games_failed"] += summary.get("games_failed", 0)
 
-        except Exception as exc:
-            logger.exception(
-                "scheduled_timeline_gen_league_failed",
-                league=league_code,
-                error=str(exc),
-            )
+            except Exception as exc:
+                logger.exception(
+                    "scheduled_timeline_gen_league_failed",
+                    league=league_code,
+                    error=str(exc),
+                )
+
+        tracker.summary_data = total_summary
 
     logger.info("scheduled_timeline_gen_complete", **total_summary)
 
