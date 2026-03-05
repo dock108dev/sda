@@ -28,8 +28,7 @@ def dispatch_social(
     immediately visible (and cancellable) in the RunsDrawer.  Oldest
     queued social tasks are evicted when the queue exceeds 10.
 
-    Dispatches one task per calendar day to keep task duration
-    manageable and improve fault tolerance.
+    Dispatches one task per league covering the full date range.
     """
     import uuid
 
@@ -70,30 +69,25 @@ def dispatch_social(
             summary["social_posts"] = "skipped (already queued)"
             return
 
-        # Dispatch one task per calendar day for smaller, faster jobs.
-        dispatched = 0
-        current_day = social_start
-        while current_day <= social_end:
-            task_id = str(uuid.uuid4())
-            job_run_id = queue_job_run("social", [config.league_code], celery_task_id=task_id)
+        # Dispatch a single task covering the full date range per league.
+        task_id = str(uuid.uuid4())
+        job_run_id = queue_job_run("social", [config.league_code], celery_task_id=task_id)
 
-            logger.info(
-                "social_dispatched_to_worker",
-                run_id=run_id,
-                league=config.league_code,
-                start_date=str(current_day),
-                end_date=str(current_day),
-                job_run_id=job_run_id,
-                celery_task_id=task_id,
-            )
-            collect_team_social.apply_async(
-                args=[config.league_code, str(current_day), str(current_day)],
-                kwargs={"scrape_run_id": run_id, "job_run_id": job_run_id},
-                queue=SOCIAL_BULK_QUEUE,
-                task_id=task_id,
-                link_error=handle_social_task_failure.s(run_id),
-            )
-            dispatched += 1
-            current_day += timedelta(days=1)
+        logger.info(
+            "social_dispatched_to_worker",
+            run_id=run_id,
+            league=config.league_code,
+            start_date=str(social_start),
+            end_date=str(social_end),
+            job_run_id=job_run_id,
+            celery_task_id=task_id,
+        )
+        collect_team_social.apply_async(
+            args=[config.league_code, str(social_start), str(social_end)],
+            kwargs={"scrape_run_id": run_id, "job_run_id": job_run_id},
+            queue=SOCIAL_BULK_QUEUE,
+            task_id=task_id,
+            link_error=handle_social_task_failure.s(run_id),
+        )
 
-        summary["social_posts"] = f"dispatched ({dispatched} day tasks)"
+        summary["social_posts"] = "dispatched to worker"

@@ -333,7 +333,7 @@ class TestDispatchSocial:
     @patch("sports_scraper.jobs.social_tasks.collect_team_social")
     @patch("sports_scraper.jobs.social_tasks.handle_social_task_failure")
     @patch("sports_scraper.services.phases.social_phase.cap_social_date_range")
-    def test_dispatches_per_day(self, mock_cap, mock_fail, mock_collect):
+    def test_dispatches_single_task_per_league(self, mock_cap, mock_fail, mock_collect):
         mock_cap.return_value = (date(2025, 3, 1), date(2025, 3, 3))
         mock_collect.apply_async = MagicMock()
         mock_fail.s = MagicMock()
@@ -349,10 +349,12 @@ class TestDispatchSocial:
             queue_job_run=mock_queue,
             enforce_social_queue_limit=MagicMock(),
         )
-        # 3 days: Mar 1, 2, 3
-        assert mock_collect.apply_async.call_count == 3
-        assert mock_queue.call_count == 3
-        assert "dispatched (3 day tasks)" in summary["social_posts"]
+        # Single task per league covering full date range
+        assert mock_collect.apply_async.call_count == 1
+        assert mock_queue.call_count == 1
+        call_args = mock_collect.apply_async.call_args
+        assert call_args[1]["args"] == ["NBA", "2025-03-01", "2025-03-03"]
+        assert summary["social_posts"] == "dispatched to worker"
 
 
 # ===========================================================================
