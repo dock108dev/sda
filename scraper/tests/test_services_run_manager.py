@@ -1190,3 +1190,83 @@ class TestModuleImports:
         """Module has ScrapeRunManager class."""
         from sports_scraper.services import run_manager
         assert hasattr(run_manager, 'ScrapeRunManager')
+
+
+class TestSocialTaskExistsForLeague:
+    """Tests for _social_task_exists_for_league helper."""
+
+    @patch("sports_scraper.services.run_manager.get_session")
+    def test_returns_true_when_exists(self, mock_get_session):
+        from sports_scraper.services.run_manager import _social_task_exists_for_league
+
+        mock_session = MagicMock()
+        mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
+        mock_session.query.return_value.filter.return_value.first.return_value = MagicMock()
+
+        assert _social_task_exists_for_league("NBA") is True
+
+    @patch("sports_scraper.services.run_manager.get_session")
+    def test_returns_false_when_not_exists(self, mock_get_session):
+        from sports_scraper.services.run_manager import _social_task_exists_for_league
+
+        mock_session = MagicMock()
+        mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
+        mock_session.query.return_value.filter.return_value.first.return_value = None
+
+        assert _social_task_exists_for_league("NBA") is False
+
+    @patch("sports_scraper.services.run_manager.get_session")
+    def test_returns_false_on_exception(self, mock_get_session):
+        from sports_scraper.services.run_manager import _social_task_exists_for_league
+
+        mock_get_session.return_value.__enter__ = MagicMock(side_effect=Exception("db err"))
+        mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
+
+        assert _social_task_exists_for_league("NBA") is False
+
+
+class TestSyncOdds:
+    """Tests for _sync_odds method."""
+
+    @patch("sports_scraper.odds.synchronizer.OddsSynchronizer")
+    @patch("sports_scraper.services.run_manager.complete_job_run")
+    @patch("sports_scraper.services.run_manager.start_job_run", return_value=5)
+    @patch("sports_scraper.services.run_manager.get_session")
+    @patch("sports_scraper.services.run_manager.LiveFeedManager")
+    @patch("sports_scraper.services.run_manager.get_all_scrapers")
+    def test_sync_odds_success(self, mock_scrapers, mock_live, mock_gs, mock_start, mock_complete, mock_sync_cls):
+        mock_scrapers.return_value = {}
+        mock_sync = MagicMock()
+        mock_sync.sync.return_value = 42
+        mock_sync_cls.return_value = mock_sync
+
+        manager = ScrapeRunManager()
+        config = MagicMock()
+        config.league_code = "NBA"
+        summary = {"odds": 0}
+
+        manager._sync_odds(1, config, summary, MagicMock(), MagicMock())
+        assert summary["odds"] == 42
+        mock_complete.assert_called_with(5, "success")
+
+    @patch("sports_scraper.odds.synchronizer.OddsSynchronizer")
+    @patch("sports_scraper.services.run_manager.complete_job_run")
+    @patch("sports_scraper.services.run_manager.start_job_run", return_value=5)
+    @patch("sports_scraper.services.run_manager.get_session")
+    @patch("sports_scraper.services.run_manager.LiveFeedManager")
+    @patch("sports_scraper.services.run_manager.get_all_scrapers")
+    def test_sync_odds_failure(self, mock_scrapers, mock_live, mock_gs, mock_start, mock_complete, mock_sync_cls):
+        mock_scrapers.return_value = {}
+        mock_sync = MagicMock()
+        mock_sync.sync.side_effect = Exception("api down")
+        mock_sync_cls.return_value = mock_sync
+
+        manager = ScrapeRunManager()
+        config = MagicMock()
+        config.league_code = "NBA"
+        summary = {"odds": 0}
+
+        manager._sync_odds(1, config, summary, MagicMock(), MagicMock())
+        mock_complete.assert_called_with(5, "error", "api down")
