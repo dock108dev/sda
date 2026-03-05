@@ -35,20 +35,6 @@ class TestClosingLineModel:
 
 
 # ---------------------------------------------------------------------------
-# Provider request wrapper
-# ---------------------------------------------------------------------------
-
-
-class TestProviderRequestWrapper:
-    def test_token_bucket_acquire(self):
-        """Verify imports and basic structure."""
-        # Can't fully test scraper code from API tests, but verify the module exists
-        # and the pattern is correct
-        from app.db.odds import ClosingLine
-        assert ClosingLine.__tablename__ == "closing_lines"
-
-
-# ---------------------------------------------------------------------------
 # Live odds Redis store (API reader side)
 # ---------------------------------------------------------------------------
 

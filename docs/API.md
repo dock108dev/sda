@@ -794,7 +794,7 @@ List all tasks available for manual dispatch.
 ]
 ```
 
-17 tasks are registered across categories: Ingestion, Polling, Odds, Social, Flows, Timelines, and Utility. Each task specifies which Celery queue it routes to (`sports-scraper` or `social-scraper`).
+20 tasks are registered across categories: Ingestion, Polling, Odds, Social, Flows, Timelines, Live Orchestration, and Utility. Each task specifies which Celery queue it routes to (`sports-scraper`, `social-scraper`, or `social-bulk`).
 
 ### `POST /tasks/trigger`
 

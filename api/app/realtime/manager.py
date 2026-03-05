@@ -2,9 +2,6 @@
 
 Single-instance design. Upgradeable to Redis pub/sub later by replacing
 the publish() method with a Redis PUBLISH + subscriber relay.
-
-TODO: Replace DB polling with Postgres LISTEN/NOTIFY or app-level emits
-from writers for lower latency and reduced DB load.
 """
 
 from __future__ import annotations

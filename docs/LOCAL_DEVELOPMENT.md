@@ -27,7 +27,8 @@ The Docker Compose setup starts:
 | api-worker | — | Celery worker for API tasks (pipeline, flow generation) |
 | scraper | — | Celery worker for data ingestion |
 | scraper-beat | — | Celery scheduler (see [DATA_SOURCES.md](DATA_SOURCES.md) for full schedule) |
-| social-scraper | — | Social media scraper (X/Twitter, concurrency=1) |
+| social-scraper | — | Social media scraper — live tasks only (`social-scraper` queue, concurrency=1) |
+| social-bulk | — | Bulk social collection (`social-bulk` queue, concurrency=1) |
 | migrate | — | One-shot Alembic migration runner |
 | web | 3000 | Next.js admin UI |
 | backup | — | Daily backup service |

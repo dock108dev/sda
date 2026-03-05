@@ -19,8 +19,8 @@ docker compose --profile prod up -d --build
 
 | Profile | Services | Use Case |
 |---------|----------|----------|
-| `dev` | postgres, redis, api, api-worker, scraper, scraper-beat, social-scraper, migrate, web, backup, log-relay | Local development |
-| `prod` | postgres, redis, api, api-worker, scraper, scraper-beat, social-scraper, migrate, web, backup, log-relay | Production |
+| `dev` | postgres, redis, api, api-worker, scraper, scraper-beat, social-scraper, social-bulk, migrate, web, backup, log-relay | Local development |
+| `prod` | postgres, redis, api, api-worker, scraper, scraper-beat, social-scraper, social-bulk, migrate, web, backup, log-relay | Production |
 
 ## Services
 
@@ -32,7 +32,8 @@ docker compose --profile prod up -d --build
 | api-worker | — | Celery worker for API tasks (pipeline, flow generation) |
 | scraper | — | Celery worker for data ingestion |
 | scraper-beat | — | Celery scheduler (see [DATA_SOURCES.md](DATA_SOURCES.md) for full schedule) |
-| social-scraper | — | Social media scraper (X/Twitter) — consumes `social-scraper` (live) and `social-bulk` queues |
+| social-scraper | — | Social media scraper (X/Twitter) — live tasks only (`social-scraper` queue) |
+| social-bulk | — | Bulk social collection worker (`social-bulk` queue) — isolated from live tasks |
 | migrate | — | One-shot Alembic migration runner |
 | web | 3000 | Next.js admin UI |
 | backup | — | Daily backup service |
