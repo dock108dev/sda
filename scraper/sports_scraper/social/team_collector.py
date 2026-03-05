@@ -64,6 +64,7 @@ class TeamTweetCollector:
         end_date: date,
         *,
         skip_if_fresh: bool = False,
+        min_posts_per_day: int | None = None,
     ) -> int:
         """
         Scrape all tweets for a team in date range.
@@ -79,6 +80,11 @@ class TeamTweetCollector:
             skip_if_fresh: If True, skip the scrape entirely when the team
                 already has posts in our DB for the requested window. Used
                 by collect_game_social to avoid redundant Playwright loads.
+            min_posts_per_day: If set, count existing posts per day in the
+                window. Days with >= this many posts are considered covered.
+                The scrape range is narrowed to only uncovered days. If all
+                days are covered, the scrape is skipped entirely. Used by
+                backfill to avoid re-scraping days already collected.
 
         Returns:
             Count of new tweets saved
@@ -166,6 +172,59 @@ class TeamTweetCollector:
                     end_date=str(end_date),
                 )
                 return 0
+
+        # Narrow the scrape range by skipping days that already have
+        # sufficient coverage.  Used by backfill so we don't re-scrape
+        # days that are already fully collected.
+        if min_posts_per_day is not None and start_date <= end_date:
+            from sqlalchemy import cast, func
+            from sqlalchemy.types import Date
+
+            post_day = cast(db_models.TeamSocialPost.posted_at, Date)
+            day_counts = dict(
+                session.query(post_day, func.count())
+                .filter(
+                    db_models.TeamSocialPost.team_id == team_id,
+                    db_models.TeamSocialPost.posted_at >= date_to_utc_datetime(start_date),
+                    db_models.TeamSocialPost.posted_at < date_to_utc_datetime(end_date) + timedelta(days=2),
+                )
+                .group_by(post_day)
+                .all()
+            )
+
+            # Find earliest and latest uncovered days
+            uncovered_days = []
+            current = start_date
+            while current <= end_date:
+                if day_counts.get(current, 0) < min_posts_per_day:
+                    uncovered_days.append(current)
+                current += timedelta(days=1)
+
+            if not uncovered_days:
+                logger.info(
+                    "team_collector_skip_covered",
+                    team_id=team_id,
+                    team_abbr=team.abbreviation,
+                    start_date=str(start_date),
+                    end_date=str(end_date),
+                    threshold=min_posts_per_day,
+                    days_total=(end_date - start_date).days + 1,
+                )
+                return 0
+
+            new_start = uncovered_days[0]
+            new_end = uncovered_days[-1]
+            if new_start != start_date or new_end != end_date:
+                logger.info(
+                    "team_collector_range_narrowed",
+                    team_id=team_id,
+                    team_abbr=team.abbreviation,
+                    original=f"{start_date} to {end_date}",
+                    narrowed=f"{new_start} to {new_end}",
+                    days_skipped=(end_date - start_date).days + 1 - len(uncovered_days),
+                )
+                start_date = new_start
+                end_date = new_end
 
         # Collect tweets using the configured strategy
         try:
@@ -382,6 +441,7 @@ class TeamTweetCollector:
                         team_id=team_id,
                         start_date=start_date,
                         end_date=end_date,
+                        min_posts_per_day=10,
                     )
                     teams_processed += 1
                     total_new_tweets += new_tweets
