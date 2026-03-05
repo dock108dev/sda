@@ -300,31 +300,25 @@ def delete_stale_fairbet_odds(session: Session, batch_ts: datetime) -> int:
     Returns:
         Number of stale rows deleted
     """
-    from sqlalchemy import and_, delete, select
+    from sqlalchemy import text
 
-    from ..db import db_models
+    from ..logging import logger
 
-    model = db_models.FairbetGameOddsWork
+    sql = text("""
+        DELETE FROM fairbet_game_odds_work AS stale
+        USING (
+            SELECT DISTINCT game_id, book, market_category
+            FROM fairbet_game_odds_work
+            WHERE updated_at >= :batch_ts
+        ) AS touched
+        WHERE stale.game_id = touched.game_id
+          AND stale.book = touched.book
+          AND stale.market_category = touched.market_category
+          AND stale.updated_at < :batch_ts
+    """)
 
-    # Subquery: scopes touched in this batch
-    touched = (
-        select(model.game_id, model.book, model.market_category)
-        .where(model.updated_at >= batch_ts)
-        .distinct()
-        .subquery()
-    )
-
-    stmt = (
-        delete(model)
-        .where(
-            and_(
-                model.game_id == touched.c.game_id,
-                model.book == touched.c.book,
-                model.market_category == touched.c.market_category,
-                model.updated_at < batch_ts,
-            )
-        )
-    )
-
-    result = session.execute(stmt)
-    return result.rowcount
+    result = session.execute(sql, {"batch_ts": batch_ts})
+    deleted = result.rowcount
+    if deleted:
+        logger.debug("fairbet_stale_delete_detail", deleted=deleted, batch_ts=str(batch_ts))
+    return deleted
