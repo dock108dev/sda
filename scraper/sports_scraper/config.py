@@ -60,6 +60,8 @@ class SocialConfig(BaseModel):
     inter_game_delay_seconds: int = Field(default=30)
     # Max inter-game cooldown (seconds) — actual delay is uniform(min, max)
     inter_game_delay_max_seconds: int = Field(default=60)
+    # Shorter delay when previous game found 0 new tweets (early-exit)
+    early_exit_delay_seconds: int = Field(default=5)
     # Sweep task uses a longer cooldown between games
     sweep_inter_game_delay_seconds: int = Field(default=180)
     # Number of games to process before committing a batch

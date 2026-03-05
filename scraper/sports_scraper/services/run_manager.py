@@ -26,6 +26,25 @@ from .pbp_ingestion import (
 )
 
 
+def _social_task_exists_for_league(league_code: str) -> bool:
+    """Check if a social task is already queued or running for this league."""
+    try:
+        with get_session() as session:
+            existing = (
+                session.query(db_models.SportsJobRun)
+                .filter(
+                    db_models.SportsJobRun.phase == "social",
+                    db_models.SportsJobRun.status.in_(["queued", "running"]),
+                    db_models.SportsJobRun.leagues.contains([league_code.upper()]),
+                )
+                .first()
+            )
+            return existing is not None
+    except Exception as exc:
+        logger.warning("social_task_exists_check_failed", error=str(exc))
+        return False
+
+
 class ScrapeRunManager:
     def __init__(self) -> None:
         self.scrapers = get_all_scrapers()
@@ -479,6 +498,9 @@ class ScrapeRunManager:
         Creates a 'queued' DB record *before* dispatching so the task is
         immediately visible (and cancellable) in the RunsDrawer.  Oldest
         queued social tasks are evicted when the queue exceeds 10.
+
+        Dispatches one task per calendar day (Fix 6) to keep task duration
+        manageable and improve fault tolerance.
         """
         import uuid
         from datetime import timedelta
@@ -499,40 +521,63 @@ class ScrapeRunManager:
             # Cap social date range to yesterday+today to reduce team count.
             # For historical backfills where end < yesterday, use the original range as-is.
             yesterday = today_et() - timedelta(days=1)
-            social_start = max(start, yesterday) if end >= yesterday else start
+            today = today_et()
+            if end >= yesterday:
+                social_start = max(start, yesterday)
+                social_end = min(end, today)
+            else:
+                social_start = start
+                social_end = end
 
-            if social_start > end:
+            if social_start > social_end:
                 logger.info(
                     "social_dispatch_skipped_empty_range",
                     run_id=run_id,
                     league=config.league_code,
                     social_start=str(social_start),
-                    end=str(end),
+                    end=str(social_end),
                     reason="Capped social_start exceeds end date",
                 )
                 return
 
-            # Pre-generate Celery task ID so we can store it in the DB
-            task_id = str(uuid.uuid4())
-            job_run_id = queue_job_run("social", [config.league_code], celery_task_id=task_id)
+            # Fix 5: Skip dispatch if a task is already queued/running for this league
+            if _social_task_exists_for_league(config.league_code):
+                logger.info(
+                    "social_dispatch_skipped_duplicate",
+                    run_id=run_id,
+                    league=config.league_code,
+                    reason="A social task is already queued or running for this league",
+                )
+                summary["social_posts"] = "skipped (already queued)"
+                return
 
-            logger.info(
-                "social_dispatched_to_worker",
-                run_id=run_id,
-                league=config.league_code,
-                start_date=str(social_start),
-                end_date=str(end),
-                job_run_id=job_run_id,
-                celery_task_id=task_id,
-            )
-            collect_team_social.apply_async(
-                args=[config.league_code, str(social_start), str(end)],
-                kwargs={"scrape_run_id": run_id, "job_run_id": job_run_id},
-                queue=SOCIAL_BULK_QUEUE,
-                task_id=task_id,
-                link_error=handle_social_task_failure.s(run_id),
-            )
-            summary["social_posts"] = "dispatched"
+            # Fix 6: Dispatch one task per calendar day for smaller, faster jobs.
+            dispatched = 0
+            current_day = social_start
+            while current_day <= social_end:
+                task_id = str(uuid.uuid4())
+                job_run_id = queue_job_run("social", [config.league_code], celery_task_id=task_id)
+
+                logger.info(
+                    "social_dispatched_to_worker",
+                    run_id=run_id,
+                    league=config.league_code,
+                    start_date=str(current_day),
+                    end_date=str(current_day),
+                    job_run_id=job_run_id,
+                    celery_task_id=task_id,
+                )
+                collect_team_social.apply_async(
+                    args=[config.league_code, str(current_day), str(current_day)],
+                    kwargs={"scrape_run_id": run_id, "job_run_id": job_run_id},
+                    queue=SOCIAL_BULK_QUEUE,
+                    task_id=task_id,
+                    link_error=handle_social_task_failure.s(run_id),
+                )
+                dispatched += 1
+                current_day += timedelta(days=1)
+
+            summary["social_posts"] = f"dispatched ({dispatched} day tasks)"
 
     def _ingest_advanced_stats(
         self,

@@ -235,6 +235,7 @@ class TeamTweetCollector:
         league_code: str,
         start_date: date,
         end_date: date,
+        on_batch_commit: callable | None = None,
     ) -> dict:
         """
         Collect tweets for all teams that played in date range.
@@ -244,6 +245,8 @@ class TeamTweetCollector:
             league_code: League code (NBA, NHL, NCAAB)
             start_date: Start date (inclusive)
             end_date: End date (inclusive)
+            on_batch_commit: Optional callback invoked after each batch commit
+                (e.g. to run incremental tweet mapping)
 
         Returns:
             Summary stats dict with teams_processed, total_new_tweets, errors
@@ -313,21 +316,29 @@ class TeamTweetCollector:
         scraped_team_ids: set[int] = set()
         games_completed = 0
         batch_new_tweets = 0
+        game_new_tweets = 0  # Track per-game new tweets for adaptive delay
 
         for i, game in enumerate(games):
-            # Wait between games (skip before the first one)
+            # Wait between games (skip before the first one).
+            # Use a short delay when the previous game found no new tweets
+            # (early-exit means minimal X load, so full delay is wasteful).
             if i > 0:
-                delay = random.uniform(
-                    social_cfg.inter_game_delay_seconds,
-                    social_cfg.inter_game_delay_max_seconds,
-                )
+                if game_new_tweets == 0:
+                    delay = social_cfg.early_exit_delay_seconds
+                else:
+                    delay = random.uniform(
+                        social_cfg.inter_game_delay_seconds,
+                        social_cfg.inter_game_delay_max_seconds,
+                    )
                 logger.info(
                     "team_collector_inter_game_delay",
                     delay_seconds=round(delay, 1),
                     games_remaining=len(games) - i,
+                    fast=game_new_tweets == 0,
                 )
                 time.sleep(delay)
 
+            game_new_tweets = 0
             for team_id in (game.home_team_id, game.away_team_id):
                 if team_id in scraped_team_ids:
                     continue
@@ -343,6 +354,7 @@ class TeamTweetCollector:
                     teams_processed += 1
                     total_new_tweets += new_tweets
                     batch_new_tweets += new_tweets
+                    game_new_tweets += new_tweets
                     consecutive_breaker_hits = 0  # Reset on success
                 except XCircuitBreakerError as exc:
                     consecutive_breaker_hits += 1
@@ -382,6 +394,15 @@ class TeamTweetCollector:
                         posts=batch_new_tweets,
                     )
                     batch_new_tweets = 0
+                    # Run incremental mapping after each batch commit
+                    if on_batch_commit:
+                        try:
+                            on_batch_commit()
+                        except Exception as exc:
+                            logger.warning(
+                                "team_collector_on_batch_commit_error",
+                                error=str(exc),
+                            )
                 continue
             # Inner loop broke (batch abort) — stop outer loop too
             break
@@ -394,6 +415,15 @@ class TeamTweetCollector:
                 games_processed=games_completed,
                 posts=batch_new_tweets,
             )
+        # Run mapping for the final partial batch
+        if on_batch_commit:
+            try:
+                on_batch_commit()
+            except Exception as exc:
+                logger.warning(
+                    "team_collector_on_batch_commit_error",
+                    error=str(exc),
+                )
 
         logger.info(
             "team_collector_range_complete",

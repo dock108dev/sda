@@ -197,9 +197,42 @@ services:
     container_name: sports-social-scraper
     profiles: ["dev", "prod"]
     logging: *default-logging
-    # Single worker (concurrency=1) ensures consistent IP and sequential X requests.
-    # social-scraper listed first so live tasks drain before bulk tasks.
-    command: ["celery", "-A", "sports_scraper.celery_app.app", "worker", "--loglevel=info", "--queues=social-scraper,social-bulk", "--concurrency=1"]
+    # Live social tasks only (final-whistle, game polling, mapping).
+    # Concurrency=1 for consistent IP and sequential X requests.
+    # Separated from bulk so multi-hour bulk jobs never block live tasks.
+    command: ["celery", "-A", "sports_scraper.celery_app.app", "worker", "--loglevel=info", "--queues=social-scraper", "--concurrency=1"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
+      REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: "2"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      SCRAPER_ROLE: social
+      # X auth cookies — injected directly into each browser context
+      X_AUTH_TOKEN: ${X_AUTH_TOKEN:-}
+      X_CT0: ${X_CT0:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+      - app
+    # No healthcheck needed - social scraping is best-effort
+
+  social-bulk:
+    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:latest
+    build:
+      context: ..
+      dockerfile: infra/scraper.Dockerfile
+    container_name: sports-social-bulk
+    profiles: ["dev", "prod"]
+    logging: *default-logging
+    # Bulk social collection (collect_team_social, collect_social_for_league).
+    # Runs on its own worker so long-running bulk jobs never block live tasks.
+    command: ["celery", "-A", "sports_scraper.celery_app.app", "worker", "--loglevel=info", "--queues=social-bulk", "--concurrency=1"]
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
       REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2

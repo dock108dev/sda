@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +14,10 @@ from app.dependencies.auth import verify_api_key
 from app.logging_config import configure_logging
 from app.middleware.logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.realtime.manager import realtime_manager
+from app.realtime.poller import db_poller
+from app.realtime.sse import router as sse_router
+from app.realtime.ws import router as ws_router
 from app.routers import fairbet, reading_positions, social, sports
 from app.routers.admin import odds_sync, pbp, pipeline, resolution, task_control, timeline_jobs
 
@@ -22,7 +27,15 @@ configure_logging(
     log_level=settings.log_level,
 )
 
-app = FastAPI(title="sports-data-admin", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start/stop background tasks (DB poller for realtime events)."""
+    db_poller.start()
+    yield
+    await db_poller.stop()
+
+
+app = FastAPI(title="sports-data-admin", version="1.0.0", lifespan=lifespan)
 logger = logging.getLogger(__name__)
 
 app.add_middleware(StructuredLoggingMiddleware)
@@ -78,6 +91,19 @@ app.include_router(
     dependencies=auth_dependency,
 )
 app.include_router(fairbet.router, dependencies=auth_dependency)
+
+# Realtime endpoints — WS uses its own auth (query param / header),
+# SSE uses dependency-level auth. No router-level auth_dependency needed.
+app.include_router(ws_router, tags=["realtime"])
+app.include_router(sse_router, tags=["realtime"])
+
+
+@app.get("/v1/realtime/status", dependencies=auth_dependency, tags=["realtime"])
+async def realtime_status() -> JSONResponse:
+    """Connected counts per channel and mode, plus poller debug info."""
+    data = realtime_manager.status()
+    data["poller"] = db_poller.stats()
+    return JSONResponse(data)
 
 
 @app.get("/healthz")
