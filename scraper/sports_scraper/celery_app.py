@@ -252,10 +252,14 @@ def mark_stale_runs_interrupted():
 
 @signals.worker_ready.connect
 def on_worker_ready(sender=None, **kwargs):
-    """Called when Celery worker is ready. Mark any stale runs as interrupted."""
+    """Called when Celery worker is ready. Clear stale locks and mark stale runs."""
     # sender is the worker Consumer object with .hostname attribute
     worker_name = getattr(sender, "hostname", None) or str(sender) if sender else "unknown"
     logger.info("celery_worker_ready", worker=worker_name)
+
+    from .utils.redis_lock import clear_all_locks
+
+    clear_all_locks()
     mark_stale_runs_interrupted()
 
 

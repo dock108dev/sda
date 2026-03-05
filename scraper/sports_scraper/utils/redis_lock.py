@@ -54,3 +54,23 @@ def release_redis_lock(lock_name: str, token: str) -> None:
         r.eval(_RELEASE_SCRIPT, 1, lock_name, token)
     except Exception as exc:
         logger.warning("redis_unlock_failed", lock=lock_name, error=str(exc))
+
+
+def clear_all_locks() -> int:
+    """Delete all ``lock:*`` keys in Redis. Call on worker startup to clear stale locks
+    left behind by a crashed/restarted container."""
+    try:
+        import redis as redis_lib
+
+        from ..config import settings
+
+        r = redis_lib.from_url(settings.redis_url)
+        keys = r.keys("lock:*")
+        if keys:
+            deleted = r.delete(*keys)
+            logger.info("stale_locks_cleared", count=deleted, keys=[k.decode() for k in keys])
+            return deleted
+        return 0
+    except Exception as exc:
+        logger.warning("clear_locks_failed", error=str(exc))
+        return 0
