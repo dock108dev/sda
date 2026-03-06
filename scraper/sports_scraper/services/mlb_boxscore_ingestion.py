@@ -24,6 +24,86 @@ from ..utils.date_utils import season_ending_year
 from ..utils.datetime_utils import date_to_utc_datetime
 
 
+def populate_mlb_games_from_schedule(
+    session: Session,
+    *,
+    run_id: int = 0,
+    start_date: date,
+    end_date: date,
+) -> int:
+    """Pre-populate MLB game stubs from the official MLB Schedule API.
+
+    Ensures every MLB game exists in the database regardless of Odds API coverage.
+    Uses upsert_game_stub which is idempotent — games already created by
+    the Odds API won't be duplicated.
+
+    Returns:
+        Number of new games created.
+    """
+    from ..live.mlb import MLBLiveFeedClient
+    from ..persistence.games import upsert_game_stub
+
+    client = MLBLiveFeedClient()
+    mlb_games = client.fetch_schedule(start_date, end_date)
+
+    if not mlb_games:
+        logger.info(
+            "mlb_schedule_no_games",
+            run_id=run_id,
+            start_date=str(start_date),
+            end_date=str(end_date),
+        )
+        return 0
+
+    logger.info(
+        "mlb_schedule_pre_populate_start",
+        run_id=run_id,
+        schedule_games=len(mlb_games),
+        start_date=str(start_date),
+        end_date=str(end_date),
+    )
+
+    created = 0
+    for mg in mlb_games:
+        game_day_et = mg.game_date.astimezone(ET).date()
+        game_date_utc = datetime.combine(game_day_et, datetime.min.time(), tzinfo=UTC)
+
+        external_ids = {"mlb_game_pk": str(mg.game_pk)}
+
+        try:
+            _game_id, was_created = upsert_game_stub(
+                session,
+                league_code="MLB",
+                game_date=game_date_utc,
+                home_team=mg.home_team,
+                away_team=mg.away_team,
+                status=mg.status,
+                home_score=mg.home_score,
+                away_score=mg.away_score,
+                venue=mg.venue,
+                external_ids=external_ids,
+                tip_time=mg.game_date,
+            )
+            if was_created:
+                created += 1
+        except Exception as exc:
+            logger.warning(
+                "mlb_schedule_stub_failed",
+                run_id=run_id,
+                game_pk=mg.game_pk,
+                error=str(exc),
+            )
+
+    session.flush()
+    logger.info(
+        "mlb_schedule_pre_populate_complete",
+        run_id=run_id,
+        schedule_games=len(mlb_games),
+        created=created,
+    )
+    return created
+
+
 def populate_mlb_game_ids(
     session: Session,
     *,

@@ -65,7 +65,33 @@ def ingest_boxscores(
                 "nba_boxscore_ingestion_failed",
             )
         elif config.league_code == "MLB":
-            from ..mlb_boxscore_ingestion import ingest_boxscores_via_mlb_api
+            from ..mlb_boxscore_ingestion import (
+                ingest_boxscores_via_mlb_api,
+                populate_mlb_games_from_schedule,
+            )
+
+            # Pre-populate game stubs from MLB Schedule API so every game
+            # exists regardless of Odds API coverage.
+            try:
+                with get_session() as session:
+                    schedule_created = populate_mlb_games_from_schedule(
+                        session,
+                        run_id=run_id,
+                        start_date=start,
+                        end_date=boxscore_end,
+                    )
+                    session.commit()
+                logger.info(
+                    "mlb_schedule_pre_populate_done",
+                    run_id=run_id,
+                    created=schedule_created,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "mlb_schedule_pre_populate_failed",
+                    run_id=run_id,
+                    error=str(exc),
+                )
 
             _LEAGUE_DISPATCH["MLB"] = (
                 ingest_boxscores_via_mlb_api,

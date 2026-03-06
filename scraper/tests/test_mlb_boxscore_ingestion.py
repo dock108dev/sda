@@ -23,6 +23,7 @@ from sports_scraper.services.mlb_boxscore_ingestion import (
     convert_mlb_boxscore_to_normalized_game,
     ingest_boxscores_via_mlb_api,
     populate_mlb_game_ids,
+    populate_mlb_games_from_schedule,
     select_games_for_boxscores_mlb_api,
 )
 
@@ -390,3 +391,103 @@ class TestConvertMlbBoxscore:
         result = convert_mlb_boxscore_to_normalized_game(boxscore, date(2024, 7, 15))
 
         assert result.status == "live"
+
+
+# ---------------------------------------------------------------------------
+# populate_mlb_games_from_schedule
+# ---------------------------------------------------------------------------
+
+class TestPopulateMlbGamesFromSchedule:
+    @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
+    def test_no_games_returns_zero(self, mock_client_cls):
+        mock_client_cls.return_value.fetch_schedule.return_value = []
+        session = MagicMock()
+
+        result = populate_mlb_games_from_schedule(
+            session, run_id=1, start_date=date(2024, 7, 1), end_date=date(2024, 7, 2),
+        )
+        assert result == 0
+
+    @patch("sports_scraper.persistence.games.upsert_game_stub")
+    @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
+    def test_creates_stubs_for_schedule_games(self, mock_client_cls, mock_upsert):
+        home = TeamIdentity(league_code="MLB", name="Boston Red Sox", abbreviation="BOS")
+        away = TeamIdentity(league_code="MLB", name="New York Yankees", abbreviation="NYY")
+
+        game1 = MagicMock()
+        game1.game_pk = 717001
+        game1.game_date = datetime(2024, 7, 15, 23, 10, tzinfo=UTC)
+        game1.home_team = home
+        game1.away_team = away
+        game1.status = "Final"
+        game1.home_score = 5
+        game1.away_score = 3
+        game1.venue = "Fenway Park"
+
+        game2 = MagicMock()
+        game2.game_pk = 717002
+        game2.game_date = datetime(2024, 7, 16, 0, 5, tzinfo=UTC)  # late game, still July 15 ET
+        game2.home_team = away
+        game2.away_team = home
+        game2.status = "Final"
+        game2.home_score = 2
+        game2.away_score = 1
+        game2.venue = "Yankee Stadium"
+
+        mock_client_cls.return_value.fetch_schedule.return_value = [game1, game2]
+        mock_upsert.return_value = (100, True)  # game_id, was_created
+
+        session = MagicMock()
+        result = populate_mlb_games_from_schedule(
+            session, run_id=1, start_date=date(2024, 7, 15), end_date=date(2024, 7, 16),
+        )
+
+        assert result == 2
+        assert mock_upsert.call_count == 2
+
+        # Verify external_ids contain mlb_game_pk
+        first_call = mock_upsert.call_args_list[0]
+        assert first_call.kwargs["external_ids"] == {"mlb_game_pk": "717001"}
+        assert first_call.kwargs["league_code"] == "MLB"
+
+    @patch("sports_scraper.persistence.games.upsert_game_stub")
+    @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
+    def test_counts_only_new_games(self, mock_client_cls, mock_upsert):
+        game1 = MagicMock()
+        game1.game_pk = 717001
+        game1.game_date = datetime(2024, 7, 15, 23, 10, tzinfo=UTC)
+        game1.status = "Final"
+        game1.home_score = 5
+        game1.away_score = 3
+        game1.venue = None
+
+        mock_client_cls.return_value.fetch_schedule.return_value = [game1]
+        mock_upsert.return_value = (100, False)  # already existed
+
+        session = MagicMock()
+        result = populate_mlb_games_from_schedule(
+            session, run_id=1, start_date=date(2024, 7, 15), end_date=date(2024, 7, 15),
+        )
+
+        assert result == 0  # no new games created
+
+    @patch("sports_scraper.persistence.games.upsert_game_stub")
+    @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
+    def test_handles_upsert_exception(self, mock_client_cls, mock_upsert):
+        game1 = MagicMock()
+        game1.game_pk = 717001
+        game1.game_date = datetime(2024, 7, 15, 23, 10, tzinfo=UTC)
+        game1.status = "Final"
+        game1.home_score = 5
+        game1.away_score = 3
+        game1.venue = None
+
+        mock_client_cls.return_value.fetch_schedule.return_value = [game1]
+        mock_upsert.side_effect = Exception("db error")
+
+        session = MagicMock()
+        result = populate_mlb_games_from_schedule(
+            session, run_id=1, start_date=date(2024, 7, 15), end_date=date(2024, 7, 15),
+        )
+
+        assert result == 0  # gracefully handled
