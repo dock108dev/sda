@@ -374,7 +374,8 @@ def collect_game_social() -> dict:
                 .all()
             )
 
-            # Query 2: pregame/live games with stale social data (>2h old)
+            # Query 2: games with stale social data (>2h since last scrape)
+            # Includes pregame, live, AND final — postgame tweets matter too
             stale_games = (
                 session.query(db_models.SportsGame)
                 .filter(
@@ -382,10 +383,7 @@ def collect_game_social() -> dict:
                     db_models.SportsGame.game_date < window_end,
                     db_models.SportsGame.last_odds_at.isnot(None),
                     db_models.SportsGame.last_social_at < stale_cutoff,
-                    db_models.SportsGame.status.in_([
-                        db_models.GameStatus.pregame.value,
-                        db_models.GameStatus.live.value,
-                    ]),
+                    db_models.SportsGame.status.in_(active_statuses),
                 )
                 .all()
             )
@@ -457,7 +455,6 @@ def collect_game_social() -> dict:
                             team_id=team_id,
                             start_date=sports_day,
                             end_date=sports_day,
-                            skip_if_fresh=True,
                         )
                         total_new += new_tweets
                         game_new_tweets += new_tweets

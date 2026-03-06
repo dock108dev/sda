@@ -74,7 +74,6 @@ class TeamTweetCollector:
         start_date: date,
         end_date: date,
         *,
-        skip_if_fresh: bool = False,
         min_posts_per_day: int | None = None,
     ) -> int:
         """
@@ -88,14 +87,12 @@ class TeamTweetCollector:
             team_id: ID of the team in sports_teams
             start_date: Start date (inclusive)
             end_date: End date (inclusive)
-            skip_if_fresh: If True, skip the scrape entirely when the team
-                already has posts in our DB for the requested window. Used
-                by collect_game_social to avoid redundant Playwright loads.
             min_posts_per_day: If set, count existing posts per day in the
                 window. Days with >= this many posts are considered covered.
                 The scrape range is narrowed to only uncovered days. If all
-                days are covered, the scrape is skipped entirely. Used by
-                backfill to avoid re-scraping days already collected.
+                days are covered, the scrape is skipped entirely. New tweets
+                are still captured on covered days via collect_game_social
+                (the consecutive-known-posts early exit handles efficiency).
 
         Returns:
             Count of new tweets saved
@@ -156,33 +153,6 @@ class TeamTweetCollector:
             recent_post_ids = {row[0] for row in recent_rows}
         except Exception:
             pass  # Non-critical — scrolling just won't terminate early
-
-        # Skip the Playwright scrape entirely if this team already has
-        # recent posts in the window.  Used by collect_game_social to
-        # avoid launching a browser for teams we already covered.
-        if skip_if_fresh and recent_post_ids:
-            # Check if we have any posts within the requested date range
-            window_start_dt = date_to_utc_datetime(start_date)
-            window_end_dt = date_to_utc_datetime(end_date) + timedelta(days=2)
-            existing_in_window = (
-                session.query(db_models.TeamSocialPost.id)
-                .filter(
-                    db_models.TeamSocialPost.team_id == team_id,
-                    db_models.TeamSocialPost.posted_at >= window_start_dt,
-                    db_models.TeamSocialPost.posted_at < window_end_dt,
-                )
-                .limit(1)
-                .count()
-            )
-            if existing_in_window > 0:
-                logger.info(
-                    "team_collector_skip_fresh",
-                    team_id=team_id,
-                    team_abbr=team.abbreviation,
-                    start_date=str(start_date),
-                    end_date=str(end_date),
-                )
-                return 0
 
         # Narrow the scrape range by skipping days that already have
         # sufficient coverage.  Used by backfill so we don't re-scrape
@@ -259,7 +229,10 @@ class TeamTweetCollector:
 
         self.rate_limiter.record()
 
-        # Save tweets to team_social_posts
+        # Save tweets to team_social_posts using upsert (ON CONFLICT) to handle
+        # race conditions with collect_game_social running concurrently.
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
         new_count = 0
         consecutive_known = 0
         for post in posts:
@@ -303,8 +276,8 @@ class TeamTweetCollector:
                     break
             else:
                 consecutive_known = 0
-                # Insert new record with mapping_status='unmapped'
-                new_post = db_models.TeamSocialPost(
+                # Upsert: insert new post or skip if another worker already inserted it
+                stmt = pg_insert(db_models.TeamSocialPost).values(
                     team_id=team_id,
                     platform=self.platform,
                     external_post_id=external_id,
@@ -317,9 +290,10 @@ class TeamTweetCollector:
                     media_type=post.media_type or "none",
                     source_handle=post.author_handle,
                     mapping_status="unmapped",
-                )
-                session.add(new_post)
-                new_count += 1
+                ).on_conflict_do_nothing(index_elements=["external_post_id"])
+                result = session.execute(stmt)
+                if result.rowcount:
+                    new_count += 1
 
         logger.info(
             "team_collector_complete",
