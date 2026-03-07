@@ -18,6 +18,7 @@ from app.realtime.manager import realtime_manager
 from app.realtime.poller import db_poller
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
+from app.analytics.api.analytics_routes import router as analytics_router
 from app.routers import fairbet, reading_positions, social, sports
 from app.routers.admin import odds_sync, pbp, pipeline, resolution, task_control, timeline_jobs
 
@@ -91,6 +92,7 @@ app.include_router(
     dependencies=auth_dependency,
 )
 app.include_router(fairbet.router, dependencies=auth_dependency)
+app.include_router(analytics_router, dependencies=auth_dependency)
 
 # Realtime endpoints — WS uses its own auth (query param / header),
 # SSE uses dependency-level auth. No router-level auth_dependency needed.
