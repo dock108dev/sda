@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { AdminCard, AdminTable } from "@/components/admin";
 import { getModelPerformance, type ModelPerformance } from "@/lib/api/analytics";
 import styles from "../analytics.module.css";
@@ -8,10 +8,10 @@ import styles from "../analytics.module.css";
 export default function ModelPerformancePage() {
   const [sport, setSport] = useState<string>("");
   const [data, setData] = useState<ModelPerformance | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const handleLoad = useCallback(() => {
     setLoading(true);
     setError(null);
     getModelPerformance(sport || undefined)
@@ -37,6 +37,13 @@ export default function ModelPerformancePage() {
             <option value="mlb">MLB</option>
           </select>
         </div>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary}`}
+          onClick={handleLoad}
+          disabled={loading}
+        >
+          {loading ? "Loading..." : "Load Metrics"}
+        </button>
       </div>
 
       {loading && <div className={styles.loading}>Loading metrics...</div>}
