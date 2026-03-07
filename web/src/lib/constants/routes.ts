@@ -24,4 +24,5 @@ export const ROUTES = {
   ANALYTICS_FEATURE_CONFIG: "/admin/analytics/feature-config",
   ANALYTICS_MODELS: "/admin/analytics/models",
   ANALYTICS_ENSEMBLE: "/admin/analytics/ensemble",
+  ANALYTICS_BASEBALL_MODELS: "/admin/analytics/baseball-models",
 } as const;

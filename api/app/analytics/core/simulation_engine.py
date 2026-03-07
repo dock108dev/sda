@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+import random
 from typing import Any
 
 from .simulation_runner import SimulationRunner
@@ -133,6 +134,10 @@ class SimulationEngine:
         probability_mode = context.pop("probability_mode", None)
         ml_model_type = context.pop("ml_model", None)
 
+        # Pitch-level simulation uses a different simulator entirely
+        if probability_mode == "pitch_level" and self.sport == "mlb":
+            return self._run_pitch_level(context, iterations, seed)
+
         if probability_mode in ("ml", "ensemble") or ml_model_type:
             model_type = ml_model_type or "plate_appearance"
             context, prob_meta = self._apply_probability_resolver(
@@ -156,6 +161,44 @@ class SimulationEngine:
             result["probability_meta"] = prob_meta
 
         return result
+
+    def _run_pitch_level(
+        self,
+        game_context: dict[str, Any],
+        iterations: int,
+        seed: int | None,
+    ) -> dict[str, Any]:
+        """Run pitch-level simulation using PitchLevelGameSimulator."""
+        from app.analytics.simulation.mlb.pitch_simulator import (
+            PitchLevelGameSimulator,
+        )
+
+        sim = PitchLevelGameSimulator()
+        rng = random.Random(seed)
+
+        home_wins = 0
+        total_home = 0
+        total_away = 0
+        total_pitches = 0
+
+        for _ in range(iterations):
+            result = sim.simulate_game(game_context, rng=random.Random(rng.random()))
+            total_home += result["home_score"]
+            total_away += result["away_score"]
+            total_pitches += result.get("total_pitches", 0)
+            if result["winner"] == "home":
+                home_wins += 1
+
+        n = max(iterations, 1)
+        return {
+            "home_win_probability": round(home_wins / n, 4),
+            "away_win_probability": round(1.0 - home_wins / n, 4),
+            "average_home_score": round(total_home / n, 2),
+            "average_away_score": round(total_away / n, 2),
+            "iterations": iterations,
+            "probability_source": "pitch_level",
+            "average_pitches_per_game": round(total_pitches / n, 1),
+        }
 
     def _apply_probability_resolver(
         self,

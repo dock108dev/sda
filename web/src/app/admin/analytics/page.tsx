@@ -46,6 +46,11 @@ const sections = [
     title: "Ensemble Config",
     desc: "Configure ensemble weights for combining probability sources",
   },
+  {
+    href: ROUTES.ANALYTICS_BASEBALL_MODELS,
+    title: "Baseball Models",
+    desc: "Pitch, batted ball, and run expectancy models with test simulations",
+  },
 ];
 
 export default function AnalyticsPage() {

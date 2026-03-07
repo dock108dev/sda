@@ -5354,3 +5354,268 @@ class TestEnsembleSimulation:
         assert "home_win_probability" in result
         assert "away_win_probability" in result
         assert result.get("probability_source") == "ensemble"
+
+
+# ---------------------------------------------------------------------------
+# MLB Advanced Models — Pitch, Batted Ball, Run Expectancy, Pitch Simulator
+# ---------------------------------------------------------------------------
+
+
+class TestMLBPitchOutcomeModel:
+    """Test pitch outcome model probabilities."""
+
+    def test_probabilities_sum_to_one(self):
+        from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+
+        model = MLBPitchOutcomeModel()
+        probs = model.predict_proba({})
+        assert abs(sum(probs.values()) - 1.0) < 0.01
+
+    def test_all_outcomes_present(self):
+        from app.analytics.models.sports.mlb.pitch_model import (
+            MLBPitchOutcomeModel,
+            PITCH_OUTCOMES,
+        )
+
+        model = MLBPitchOutcomeModel()
+        probs = model.predict_proba({"pitcher_k_rate": 0.24, "batter_swing_rate": 0.50})
+        for outcome in PITCH_OUTCOMES:
+            assert outcome in probs
+            assert probs[outcome] > 0
+
+    def test_count_affects_probabilities(self):
+        from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+
+        model = MLBPitchOutcomeModel()
+        probs_0_0 = model.predict_proba({"count_balls": 0, "count_strikes": 0})
+        probs_3_0 = model.predict_proba({"count_balls": 3, "count_strikes": 0})
+        # With 3 balls, ball probability should be higher
+        assert probs_3_0["ball"] > probs_0_0["ball"]
+
+    def test_predict_returns_structure(self):
+        from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+
+        model = MLBPitchOutcomeModel()
+        result = model.predict({})
+        assert "pitch_probabilities" in result
+        assert "predicted_outcome" in result
+
+
+class TestMLBBattedBallModel:
+    """Test batted ball outcome model probabilities."""
+
+    def test_probabilities_sum_to_one(self):
+        from app.analytics.models.sports.mlb.batted_ball_model import MLBBattedBallModel
+
+        model = MLBBattedBallModel()
+        probs = model.predict_proba({})
+        assert abs(sum(probs.values()) - 1.0) < 0.01
+
+    def test_all_outcomes_present(self):
+        from app.analytics.models.sports.mlb.batted_ball_model import (
+            MLBBattedBallModel,
+            BATTED_BALL_OUTCOMES,
+        )
+
+        model = MLBBattedBallModel()
+        probs = model.predict_proba({"exit_velocity": 95.0, "launch_angle": 22.0})
+        for outcome in BATTED_BALL_OUTCOMES:
+            assert outcome in probs
+
+    def test_high_ev_increases_extra_base(self):
+        from app.analytics.models.sports.mlb.batted_ball_model import MLBBattedBallModel
+
+        model = MLBBattedBallModel()
+        probs_low = model.predict_proba({"exit_velocity": 80.0})
+        probs_high = model.predict_proba({"exit_velocity": 105.0})
+        assert probs_high["home_run"] > probs_low["home_run"]
+
+    def test_predict_returns_structure(self):
+        from app.analytics.models.sports.mlb.batted_ball_model import MLBBattedBallModel
+
+        model = MLBBattedBallModel()
+        result = model.predict({"exit_velocity": 95.0})
+        assert "batted_ball_probabilities" in result
+        assert "predicted_outcome" in result
+
+
+class TestMLBRunExpectancyModel:
+    """Test run expectancy model."""
+
+    def test_bases_empty_0_outs(self):
+        from app.analytics.models.sports.mlb.run_expectancy_model import (
+            MLBRunExpectancyModel,
+        )
+
+        model = MLBRunExpectancyModel()
+        result = model.predict({"base_state": 0, "outs": 0})
+        assert result["expected_runs"] > 0
+        assert result["expected_runs"] < 1.0
+
+    def test_bases_loaded_higher(self):
+        from app.analytics.models.sports.mlb.run_expectancy_model import (
+            MLBRunExpectancyModel,
+        )
+
+        model = MLBRunExpectancyModel()
+        empty = model.predict({"base_state": 0, "outs": 0})
+        loaded = model.predict({"base_state": 7, "outs": 0})
+        assert loaded["expected_runs"] > empty["expected_runs"]
+
+    def test_more_outs_lower(self):
+        from app.analytics.models.sports.mlb.run_expectancy_model import (
+            MLBRunExpectancyModel,
+        )
+
+        model = MLBRunExpectancyModel()
+        outs_0 = model.predict({"base_state": 1, "outs": 0})
+        outs_2 = model.predict({"base_state": 1, "outs": 2})
+        assert outs_0["expected_runs"] > outs_2["expected_runs"]
+
+    def test_encode_base_state(self):
+        from app.analytics.models.sports.mlb.run_expectancy_model import (
+            encode_base_state,
+        )
+
+        assert encode_base_state(False, False, False) == 0
+        assert encode_base_state(True, False, False) == 1
+        assert encode_base_state(True, True, True) == 7
+        assert encode_base_state(False, False, True) == 4
+
+
+class TestPitchSimulator:
+    """Test pitch-level plate appearance simulation."""
+
+    def test_simulate_pa_returns_valid_result(self):
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+
+        sim = PitchSimulator()
+        result = sim.simulate_plate_appearance()
+        valid = {"walk", "strikeout", "out", "single", "double", "triple", "home_run"}
+        assert result["result"] in valid
+        assert result["pitches"] >= 1
+
+    def test_walk_rule(self):
+        """Walk requires exactly 4 balls."""
+        import random as stdlib_random
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+        from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+
+        # Force all pitches to be balls via a mock model
+        class AllBalls(MLBPitchOutcomeModel):
+            def predict_proba(self, features):
+                return {"ball": 1.0, "called_strike": 0, "swinging_strike": 0, "foul": 0, "in_play": 0}
+
+        sim = PitchSimulator(pitch_model=AllBalls())
+        result = sim.simulate_plate_appearance(rng=stdlib_random.Random(1))
+        assert result["result"] == "walk"
+        assert result["pitches"] == 4
+
+    def test_strikeout_rule(self):
+        """Strikeout requires 3 strikes."""
+        import random as stdlib_random
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+        from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+
+        class AllStrikes(MLBPitchOutcomeModel):
+            def predict_proba(self, features):
+                return {"ball": 0, "called_strike": 1.0, "swinging_strike": 0, "foul": 0, "in_play": 0}
+
+        sim = PitchSimulator(pitch_model=AllStrikes())
+        result = sim.simulate_plate_appearance(rng=stdlib_random.Random(1))
+        assert result["result"] == "strikeout"
+        assert result["pitches"] == 3
+
+    def test_foul_with_two_strikes_stays(self):
+        """Foul with 2 strikes should not result in strikeout."""
+        import random as stdlib_random
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+        from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+
+        call_count = 0
+
+        class FoulThenStrike(MLBPitchOutcomeModel):
+            def predict_proba(self, features):
+                nonlocal call_count
+                call_count += 1
+                # First 5 pitches foul, then called strike
+                if call_count <= 5:
+                    return {"ball": 0, "called_strike": 0, "swinging_strike": 0, "foul": 1.0, "in_play": 0}
+                return {"ball": 0, "called_strike": 1.0, "swinging_strike": 0, "foul": 0, "in_play": 0}
+
+        sim = PitchSimulator(pitch_model=FoulThenStrike())
+        result = sim.simulate_plate_appearance(rng=stdlib_random.Random(1))
+        assert result["result"] == "strikeout"
+        # 2 fouls get strikes to 2, then 3 more fouls don't advance, then 1 strike = K
+        assert result["pitches"] == 6
+
+    def test_deterministic_with_seed(self):
+        import random as stdlib_random
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+
+        sim = PitchSimulator()
+        r1 = sim.simulate_plate_appearance(rng=stdlib_random.Random(42))
+        r2 = sim.simulate_plate_appearance(rng=stdlib_random.Random(42))
+        assert r1["result"] == r2["result"]
+        assert r1["pitches"] == r2["pitches"]
+
+
+class TestPitchLevelGameSimulator:
+    """Test full game simulation at the pitch level."""
+
+    def test_simulate_game_returns_scores(self):
+        from app.analytics.simulation.mlb.pitch_simulator import (
+            PitchLevelGameSimulator,
+        )
+        import random as stdlib_random
+
+        sim = PitchLevelGameSimulator()
+        result = sim.simulate_game({}, rng=stdlib_random.Random(42))
+        assert "home_score" in result
+        assert "away_score" in result
+        assert "winner" in result
+        assert result["winner"] in ("home", "away")
+        assert result["total_pitches"] > 0
+
+    def test_simulation_engine_pitch_level_mode(self):
+        from app.analytics.core.simulation_engine import SimulationEngine
+
+        engine = SimulationEngine("mlb")
+        result = engine.run_simulation(
+            {"probability_mode": "pitch_level"},
+            iterations=50,
+            seed=42,
+        )
+        assert "home_win_probability" in result
+        assert "away_win_probability" in result
+        assert result.get("probability_source") == "pitch_level"
+        assert result.get("average_pitches_per_game", 0) > 0
+
+
+class TestMLBTrainingLabels:
+    """Test training label functions for new models."""
+
+    def test_pitch_label_fn(self):
+        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
+
+        mlb = MLBTrainingPipeline()
+        assert mlb.pitch_label_fn({"pitch_result": "ball"}) == "ball"
+        assert mlb.pitch_label_fn({"pitch_result": "in_play"}) == "in_play"
+        assert mlb.pitch_label_fn({"pitch_result": "invalid"}) is None
+        assert mlb.pitch_label_fn({}) is None
+
+    def test_batted_ball_label_fn(self):
+        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
+
+        mlb = MLBTrainingPipeline()
+        assert mlb.batted_ball_label_fn({"batted_ball_result": "single"}) == "single"
+        assert mlb.batted_ball_label_fn({"batted_ball_result": "home_run"}) == "home_run"
+        assert mlb.batted_ball_label_fn({"batted_ball_result": "invalid"}) is None
+
+    def test_run_expectancy_label_fn(self):
+        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
+
+        mlb = MLBTrainingPipeline()
+        assert mlb.run_expectancy_label_fn({"runs_scored_after_state": 2.5}) == 2.5
+        assert mlb.run_expectancy_label_fn({"runs_scored_after_state": 0}) == 0.0
+        assert mlb.run_expectancy_label_fn({}) is None

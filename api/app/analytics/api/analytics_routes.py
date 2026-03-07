@@ -671,3 +671,66 @@ async def post_ensemble_config(req: EnsembleConfigRequest) -> dict[str, Any]:
     )
     set_ensemble_config(config)
     return {"status": "updated", **config.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# MLB Advanced Model endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/mlb/pitch-model")
+async def get_pitch_model(
+    pitcher_k_rate: float = Query(0.22, description="Pitcher K rate"),
+    batter_contact_rate: float = Query(0.80, description="Batter contact rate"),
+    count_balls: int = Query(0, ge=0, le=3, description="Balls"),
+    count_strikes: int = Query(0, ge=0, le=2, description="Strikes"),
+) -> dict[str, Any]:
+    """Get pitch outcome probabilities from the pitch model."""
+    from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+
+    model = MLBPitchOutcomeModel()
+    probs = model.predict_proba({
+        "pitcher_k_rate": pitcher_k_rate,
+        "batter_contact_rate": batter_contact_rate,
+        "count_balls": count_balls,
+        "count_strikes": count_strikes,
+    })
+    return {"pitch_probabilities": probs}
+
+
+@router.get("/mlb/pitch-sim")
+async def get_pitch_sim(
+    pitcher_k_rate: float = Query(0.22, description="Pitcher K rate"),
+    batter_contact_rate: float = Query(0.80, description="Batter contact rate"),
+) -> dict[str, Any]:
+    """Simulate a single plate appearance at the pitch level."""
+    from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+
+    sim = PitchSimulator()
+    result = sim.simulate_plate_appearance({
+        "pitcher_k_rate": pitcher_k_rate,
+        "batter_contact_rate": batter_contact_rate,
+    })
+    return result
+
+
+@router.get("/mlb/run-expectancy")
+async def get_run_expectancy(
+    base_state: int = Query(0, ge=0, le=7, description="Base state (0-7)"),
+    outs: int = Query(0, ge=0, le=2, description="Outs"),
+    batter_quality: float = Query(0.0, description="Batter quality (0-1)"),
+    pitcher_quality: float = Query(0.0, description="Pitcher quality (0-1)"),
+) -> dict[str, Any]:
+    """Get run expectancy for a given game state."""
+    from app.analytics.models.sports.mlb.run_expectancy_model import (
+        MLBRunExpectancyModel,
+    )
+
+    model = MLBRunExpectancyModel()
+    result = model.predict({
+        "base_state": base_state,
+        "outs": outs,
+        "batter_quality": batter_quality,
+        "pitcher_quality": pitcher_quality,
+    })
+    return result

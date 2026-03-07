@@ -28,6 +28,24 @@ PA_OUTCOMES: list[str] = [
     "home_run",
 ]
 
+# Pitch outcome classes
+PITCH_OUTCOMES: list[str] = [
+    "ball",
+    "called_strike",
+    "swinging_strike",
+    "foul",
+    "in_play",
+]
+
+# Batted ball outcome classes
+BATTED_BALL_OUTCOMES: list[str] = [
+    "out",
+    "single",
+    "double",
+    "triple",
+    "home_run",
+]
+
 
 class MLBTrainingPipeline:
     """MLB-specific training data and label helpers.
@@ -110,6 +128,41 @@ class MLBTrainingPipeline:
             "pitcher_profile": {"metrics": pitcher_metrics},
             "outcome": outcome,
         }
+
+    @staticmethod
+    def pitch_label_fn(record: dict[str, Any]) -> str | None:
+        """Extract pitch outcome label from a record."""
+        outcome = record.get("pitch_result") or record.get("outcome") or record.get("label")
+        if outcome is None:
+            return None
+        outcome = str(outcome).lower().strip()
+        if outcome in PITCH_OUTCOMES:
+            return outcome
+        return None
+
+    @staticmethod
+    def batted_ball_label_fn(record: dict[str, Any]) -> str | None:
+        """Extract batted ball outcome label from a record."""
+        outcome = record.get("batted_ball_result") or record.get("outcome") or record.get("label")
+        if outcome is None:
+            return None
+        outcome = str(outcome).lower().strip()
+        if outcome in BATTED_BALL_OUTCOMES:
+            return outcome
+        return None
+
+    @staticmethod
+    def run_expectancy_label_fn(record: dict[str, Any]) -> float | None:
+        """Extract runs scored label for run expectancy training."""
+        val = record.get("runs_scored_after_state")
+        if val is None:
+            val = record.get("label")
+        if val is None:
+            return None
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def build_game_record(
