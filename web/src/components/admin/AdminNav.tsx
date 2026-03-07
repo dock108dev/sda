@@ -27,6 +27,13 @@ const navSections: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: "Analytics",
+    items: [
+      { href: ROUTES.ANALYTICS, label: "Overview", exact: true },
+      { href: ROUTES.ANALYTICS_SIMULATOR, label: "Simulator" },
+    ],
+  },
+  {
     title: "System",
     items: [
       { href: ROUTES.CONTROL_PANEL, label: "Control Panel" },

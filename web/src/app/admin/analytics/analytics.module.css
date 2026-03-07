@@ -1,0 +1,239 @@
+/* Shared analytics page styles */
+.container {
+  color: var(--text-secondary);
+}
+
+.pageHeader {
+  margin-bottom: var(--space-page-section);
+}
+
+.pageTitle {
+  font-size: var(--font-page-title-size);
+  font-weight: var(--font-page-title-weight);
+  letter-spacing: var(--font-page-title-spacing);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-row) 0;
+}
+
+.pageSubtitle {
+  color: var(--text-muted);
+  font-size: var(--font-body-size);
+  margin: 0;
+}
+
+/* Overview nav grid */
+.navGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-card-inner);
+}
+
+.navLink {
+  text-decoration: none;
+  transition: transform 0.1s ease;
+}
+
+.navLink:hover {
+  transform: translateY(-2px);
+}
+
+.navArrow {
+  color: var(--text-muted);
+  font-size: 1.25rem;
+}
+
+/* Form controls */
+.formRow {
+  display: flex;
+  gap: var(--space-card-inner);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: var(--space-card-inner);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formGroup label {
+  font-size: var(--font-label-size);
+  color: var(--text-muted);
+  font-weight: var(--font-table-header-weight);
+}
+
+.formGroup input,
+.formGroup select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: var(--font-body-size);
+  color: var(--text-secondary);
+  background: #fff;
+  min-width: 180px;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.btn {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  font-size: var(--font-body-size);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btnPrimary {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: #2563eb;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Metrics table */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-card-inner);
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  background: #fafbfc;
+  border-radius: 6px;
+}
+
+.metricLabel {
+  font-size: var(--font-label-size);
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.metricValue {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Results section */
+.resultsSection {
+  margin-top: var(--space-page-section);
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-card-inner);
+  margin-bottom: var(--space-card-inner);
+}
+
+.statBox {
+  text-align: center;
+  padding: 1rem;
+  background: #fafbfc;
+  border-radius: 6px;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.statLabel {
+  font-size: var(--font-label-size);
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Loading & error */
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-card);
+  padding: var(--space-card-inner);
+  color: #dc2626;
+  margin-top: var(--space-card-inner);
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+
+/* Probability bars */
+.probBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.probLabel {
+  min-width: 140px;
+  font-size: var(--font-body-size);
+  color: var(--text-secondary);
+}
+
+.probTrack {
+  flex: 1;
+  height: 20px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.probFill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.probValue {
+  min-width: 50px;
+  text-align: right;
+  font-size: var(--font-body-size);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .formRow {
+    flex-direction: column;
+  }
+
+  .formGroup input,
+  .formGroup select {
+    min-width: 100%;
+  }
+
+  .statsRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1196,3 +1196,108 @@ class TestAnalyticsService:
         result = svc.run_simulation("mlb", {}, iterations=50)
         assert isinstance(result, SimulationResult)
         assert result.iterations == 50
+
+    def test_run_full_simulation(self) -> None:
+        svc = AnalyticsService()
+        result = svc.run_full_simulation("mlb", {}, iterations=100, seed=42)
+        assert "home_win_probability" in result
+        assert "average_total" in result
+        assert result["iterations"] == 100
+
+    def test_run_full_simulation_with_sportsbook(self) -> None:
+        svc = AnalyticsService()
+        sportsbook = {"moneyline": {"home": -150, "away": 130}}
+        result = svc.run_full_simulation(
+            "mlb", {}, iterations=100, seed=42, sportsbook=sportsbook,
+        )
+        assert "sportsbook_comparison" in result
+
+
+class TestAnalyticsRoutes:
+    """Verify API route responses via FastAPI test client."""
+
+    def test_get_team_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.get("/api/analytics/team?sport=mlb&team_id=NYY")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["team_id"] == "NYY"
+        assert data["sport"] == "mlb"
+        assert "metrics" in data
+
+    def test_get_player_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.get("/api/analytics/player?sport=mlb&player_id=p1")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["player_id"] == "p1"
+
+    def test_get_matchup_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.get("/api/analytics/matchup?sport=mlb&entity_a=A&entity_b=B")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["entity_a"] == "A"
+        assert data["entity_b"] == "B"
+        assert "probabilities" in data
+
+    def test_post_simulate_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.post("/api/analytics/simulate", json={
+            "sport": "mlb",
+            "home_team": "LAD",
+            "away_team": "TOR",
+            "iterations": 100,
+            "seed": 42,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sport"] == "mlb"
+        assert data["home_team"] == "LAD"
+        assert data["away_team"] == "TOR"
+        assert "home_win_probability" in data
+        assert "average_home_score" in data
+        assert data["iterations"] == 100
+
+    def test_get_simulation_legacy_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.get("/api/analytics/simulation?sport=mlb&iterations=50")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sport"] == "mlb"
+        assert data["iterations"] == 50
