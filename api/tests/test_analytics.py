@@ -367,6 +367,219 @@ class TestMLBTransforms:
         assert isinstance(transform_matchup_data({}, {}), dict)
 
 
+class TestAggregationEngine:
+    """Verify AggregationEngine routes to sport-specific modules."""
+
+    def test_aggregate_player_history_mlb(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+
+        engine = AggregationEngine("mlb")
+        games = [
+            {"zone_swing_pct": 0.70, "zone_contact_pct": 0.85, "avg_exit_velocity": 90.0, "hard_hit_pct": 0.40, "pitches": 80},
+            {"zone_swing_pct": 0.80, "zone_contact_pct": 0.90, "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45, "pitches": 90},
+        ]
+        result = engine.aggregate_player_history("p1", games)
+        assert result["player_id"] == "p1"
+        assert result["zone_swing_pct"] == 0.75
+        assert result["avg_exit_velocity"] == 91.0
+        assert result["pitches"] == 170.0
+
+    def test_aggregate_player_history_empty(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+
+        engine = AggregationEngine("mlb")
+        result = engine.aggregate_player_history("p1", [])
+        assert result == {"player_id": "p1"}
+
+    def test_aggregate_player_history_with_recency(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+
+        engine = AggregationEngine("mlb")
+        games = [
+            {"avg_exit_velocity": 85.0, "hard_hit_pct": 0.30},
+            {"avg_exit_velocity": 86.0, "hard_hit_pct": 0.31},
+            {"avg_exit_velocity": 87.0, "hard_hit_pct": 0.32},
+            {"avg_exit_velocity": 95.0, "hard_hit_pct": 0.50},
+            {"avg_exit_velocity": 96.0, "hard_hit_pct": 0.52},
+        ]
+        result = engine.aggregate_player_history("p1", games, recent_n=2)
+        # Recent avg EV = 95.5, season avg EV = 89.8
+        # Blended = 95.5 * 0.7 + 89.8 * 0.3 = 66.85 + 26.94 = 93.79
+        assert result["avg_exit_velocity"] == pytest.approx(93.79, abs=0.01)
+
+    def test_aggregate_team_history_mlb(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+
+        engine = AggregationEngine("mlb")
+        games = [
+            {"zone_contact_pct": 0.80, "outside_contact_pct": 0.55},
+            {"zone_contact_pct": 0.90, "outside_contact_pct": 0.65},
+        ]
+        result = engine.aggregate_team_history("NYY", games)
+        assert result["team_id"] == "NYY"
+        assert result["zone_contact_pct"] == 0.85
+
+    def test_unsupported_sport_returns_id_only(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+
+        engine = AggregationEngine("cricket")
+        result = engine.aggregate_player_history("p1", [{"foo": 1}])
+        assert result == {"player_id": "p1"}
+
+    def test_build_matchup_dataset(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+
+        engine = AggregationEngine("mlb")
+        a_games = [{"avg_exit_velocity": 90.0}]
+        b_games = [{"avg_exit_velocity": 85.0}]
+        result = engine.build_matchup_dataset("a1", "b1", a_games, b_games)
+        assert result["entity_a_profile"]["player_id"] == "a1"
+        assert result["entity_b_profile"]["player_id"] == "b1"
+
+
+class TestProfileBuilder:
+    """Verify ProfileBuilder creates typed profiles from aggregated stats."""
+
+    def test_build_player_profile(self) -> None:
+        from app.analytics.core.profile_builder import ProfileBuilder
+
+        builder = ProfileBuilder("mlb")
+        agg = {
+            "name": "Test Player",
+            "zone_swing_pct": 0.75,
+            "outside_swing_pct": 0.30,
+            "zone_contact_pct": 0.88,
+            "outside_contact_pct": 0.60,
+            "avg_exit_velocity": 90.0,
+            "hard_hit_pct": 0.40,
+        }
+        profile = builder.build_player_profile("p1", agg)
+        assert isinstance(profile, PlayerProfile)
+        assert profile.player_id == "p1"
+        assert profile.sport == "mlb"
+        assert profile.name == "Test Player"
+        assert "contact_rate" in profile.metrics
+        assert "power_index" in profile.metrics
+
+    def test_build_team_profile(self) -> None:
+        from app.analytics.core.profile_builder import ProfileBuilder
+
+        builder = ProfileBuilder("mlb")
+        agg = {
+            "name": "Yankees",
+            "zone_contact_pct": 0.85,
+            "outside_contact_pct": 0.55,
+            "avg_exit_velocity": 89.0,
+            "hard_hit_pct": 0.38,
+        }
+        profile = builder.build_team_profile("NYY", agg)
+        assert isinstance(profile, TeamProfile)
+        assert profile.team_id == "NYY"
+        assert profile.name == "Yankees"
+        assert "team_contact_rate" in profile.metrics
+
+
+class TestMLBAggregation:
+    """Verify MLB aggregation helpers."""
+
+    def test_compute_averages(self) -> None:
+        from app.analytics.sports.mlb.aggregation import MLBAggregation
+
+        agg = MLBAggregation()
+        games = [
+            {"zone_swing_pct": 0.70, "barrel_pct": 0.08},
+            {"zone_swing_pct": 0.80, "barrel_pct": 0.12},
+        ]
+        result = agg.aggregate_player_games(games)
+        assert result["zone_swing_pct"] == 0.75
+        assert result["barrel_pct"] == 0.10
+
+    def test_rate_contact_derived(self) -> None:
+        from app.analytics.sports.mlb.aggregation import MLBAggregation
+
+        agg = MLBAggregation()
+        games = [
+            {"contacts": 10, "swings": 20},
+            {"contacts": 15, "swings": 30},
+        ]
+        result = agg.aggregate_player_games(games)
+        assert result["rate_contact"] == 0.5
+
+    def test_weighted_blend_with_recent(self) -> None:
+        from app.analytics.sports.mlb.aggregation import MLBAggregation
+
+        agg = MLBAggregation()
+        games = [
+            {"avg_exit_velocity": 85.0},
+            {"avg_exit_velocity": 86.0},
+            {"avg_exit_velocity": 87.0},
+            {"avg_exit_velocity": 95.0},
+        ]
+        result = agg.aggregate_player_games(games, recent_n=1)
+        # recent=95, season=88.25, blend=95*0.7+88.25*0.3=66.5+26.475=92.975
+        assert result["avg_exit_velocity"] == pytest.approx(92.975, abs=0.001)
+
+    def test_rolling_average(self) -> None:
+        from app.analytics.sports.mlb.aggregation import rolling_average
+
+        result = rolling_average([1.0, 2.0, 3.0, 4.0, 5.0], window=3)
+        assert len(result) == 5
+        assert result[2] == 2.0  # avg(1,2,3)
+        assert result[4] == 4.0  # avg(3,4,5)
+
+    def test_weighted_average(self) -> None:
+        from app.analytics.sports.mlb.aggregation import weighted_average
+
+        assert weighted_average([10.0, 20.0], [1.0, 3.0]) == 17.5
+        assert weighted_average([10.0, 20.0]) == 15.0
+        assert weighted_average([]) is None
+
+    def test_rate_calculation(self) -> None:
+        from app.analytics.sports.mlb.aggregation import rate_calculation
+
+        assert rate_calculation(10.0, 20.0) == 0.5
+        assert rate_calculation(10.0, 0.0) is None
+
+
+class TestEndToEndPipeline:
+    """Verify full pipeline: Games → Aggregation → Metrics → Profiles."""
+
+    def test_full_pipeline(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+        from app.analytics.core.profile_builder import ProfileBuilder
+
+        games = [
+            {
+                "zone_swing_pct": 0.72, "outside_swing_pct": 0.28,
+                "zone_contact_pct": 0.86, "outside_contact_pct": 0.58,
+                "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
+                "barrel_pct": 0.10,
+            },
+            {
+                "zone_swing_pct": 0.78, "outside_swing_pct": 0.32,
+                "zone_contact_pct": 0.90, "outside_contact_pct": 0.62,
+                "avg_exit_velocity": 94.0, "hard_hit_pct": 0.48,
+                "barrel_pct": 0.12,
+            },
+        ]
+
+        # Step 1: Aggregate
+        engine = AggregationEngine("mlb")
+        agg = engine.aggregate_player_history("trout_123", games)
+        assert agg["player_id"] == "trout_123"
+        assert "avg_exit_velocity" in agg
+
+        # Step 2: Build profile (runs MetricsEngine internally)
+        builder = ProfileBuilder("mlb")
+        profile = builder.build_player_profile("trout_123", agg)
+        assert isinstance(profile, PlayerProfile)
+        assert profile.player_id == "trout_123"
+        assert "contact_rate" in profile.metrics
+        assert "power_index" in profile.metrics
+        assert "expected_slug" in profile.metrics
+        assert profile.metrics["power_index"] > 1.0  # above baseline
+
+
 class TestAnalyticsService:
     """Verify service layer wiring."""
 
