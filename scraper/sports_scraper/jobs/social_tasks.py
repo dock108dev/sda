@@ -254,6 +254,19 @@ def collect_team_social(
         # Update parent SportsScrapeRun summary (replace "dispatched" placeholder)
         _report_social_completion(scrape_run_id, result, error=None)
 
+        # Queue one collect_game_social + map after this backfill so
+        # newly collected tweets get mapped and today's games refreshed.
+        # The singleton lock inside collect_game_social prevents overlap
+        # if one is already running.
+        try:
+            collect_game_social.apply_async(
+                queue=SOCIAL_QUEUE,
+                countdown=10,  # small delay so lock from any prior run clears
+            )
+            logger.info("collect_team_social_chained_game_social", league_code=league_code)
+        except Exception as exc:
+            logger.warning("collect_team_social_chain_failed", error=str(exc))
+
         return result
     finally:
         release_redis_lock(lock_name, lock_token)
@@ -312,7 +325,8 @@ def map_social_to_games(batch_size: int = 1000) -> dict:
 def collect_game_social() -> dict:
     """Collect social posts for games with odds but missing/stale social data.
 
-    Runs every 30 min. Targets:
+    Singleton: if already running, new invocations return immediately.
+    Runs every 60 min via beat. Targets:
     1. Games (today + yesterday) with odds but NO social data yet
     2. Pregame/live games with stale social data (>2h since last scrape)
 

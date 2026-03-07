@@ -43,7 +43,7 @@ app.conf.task_routes = {
     # Bulk social tasks route to lower-priority queue so live tasks aren't starved
     "collect_social_for_league": {"queue": SOCIAL_BULK_QUEUE, "routing_key": SOCIAL_BULK_QUEUE},
     "collect_team_social": {"queue": SOCIAL_BULK_QUEUE, "routing_key": SOCIAL_BULK_QUEUE},
-    "map_social_to_games": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE},
+    "map_social_to_games": {"queue": SOCIAL_BULK_QUEUE, "routing_key": SOCIAL_BULK_QUEUE},
     # Social error callback runs on main scraper queue (DB writes only)
     "handle_social_task_failure": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     # Game-state-machine polling tasks
@@ -154,15 +154,15 @@ _scheduled_tasks = {
 
 # Social polling — game social collection every 30 min, mapping staggered at :15/:45
 _live_polling_schedule = {
-    "game-social-every-30-min": {
+    "game-social-every-60-min": {
         "task": "collect_game_social",
-        "schedule": crontab(minute="0,30"),
+        "schedule": crontab(minute="0"),
         "options": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE},
     },
     "map-social-to-games-every-30-min": {
         "task": "map_social_to_games",
         "schedule": crontab(minute="15,45"),
-        "options": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE},
+        "options": {"queue": SOCIAL_BULK_QUEUE, "routing_key": SOCIAL_BULK_QUEUE},
     },
 }
 
