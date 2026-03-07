@@ -2616,3 +2616,310 @@ class TestFullMLPipeline:
         )
         assert result["home_win_probability"] > 0
         assert result["iterations"] == 200
+
+
+class TestFeatureVector:
+    """Verify FeatureVector ordering and output."""
+
+    def test_to_array_deterministic_order(self) -> None:
+        from app.analytics.features.core.feature_vector import FeatureVector
+
+        vec = FeatureVector(
+            {"b": 2.0, "a": 1.0, "c": 3.0},
+            feature_order=["a", "b", "c"],
+        )
+        assert vec.to_array() == [1.0, 2.0, 3.0]
+
+    def test_to_array_sorted_default(self) -> None:
+        from app.analytics.features.core.feature_vector import FeatureVector
+
+        vec = FeatureVector({"z": 9.0, "a": 1.0, "m": 5.0})
+        assert vec.to_array() == [1.0, 5.0, 9.0]
+        assert vec.feature_names == ["a", "m", "z"]
+
+    def test_to_dict(self) -> None:
+        from app.analytics.features.core.feature_vector import FeatureVector
+
+        data = {"x": 1.0, "y": 2.0}
+        vec = FeatureVector(data)
+        assert vec.to_dict() == data
+
+    def test_missing_features_default_to_zero(self) -> None:
+        from app.analytics.features.core.feature_vector import FeatureVector
+
+        vec = FeatureVector(
+            {"a": 1.0},
+            feature_order=["a", "b", "c"],
+        )
+        assert vec.to_array() == [1.0, 0.0, 0.0]
+
+    def test_size_and_len(self) -> None:
+        from app.analytics.features.core.feature_vector import FeatureVector
+
+        vec = FeatureVector({"a": 1.0, "b": 2.0})
+        assert vec.size == 2
+        assert len(vec) == 2
+
+    def test_get_feature(self) -> None:
+        from app.analytics.features.core.feature_vector import FeatureVector
+
+        vec = FeatureVector({"a": 1.5, "b": 2.5})
+        assert vec.get("a") == 1.5
+        assert vec.get("missing") == 0.0
+        assert vec.get("missing", -1.0) == -1.0
+
+
+class TestFeatureBuilder:
+    """Verify sport-agnostic FeatureBuilder routing."""
+
+    def test_build_features_mlb_pa(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+
+        builder = FeatureBuilder()
+        profiles = {
+            "batter_profile": {"metrics": {"contact_rate": 0.83, "power_index": 1.2}},
+            "pitcher_profile": {"metrics": {"contact_rate": 0.70, "whiff_rate": 0.28}},
+        }
+        vec = builder.build_features("mlb", profiles, "plate_appearance")
+        assert vec.size > 0
+        arr = vec.to_array()
+        assert len(arr) == vec.size
+        assert all(isinstance(v, float) for v in arr)
+
+    def test_build_features_mlb_game(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+
+        builder = FeatureBuilder()
+        profiles = {
+            "home_profile": {"metrics": {"contact_rate": 0.80, "power_index": 1.1}},
+            "away_profile": {"metrics": {"contact_rate": 0.75, "power_index": 0.9}},
+        }
+        vec = builder.build_features("mlb", profiles, "game")
+        assert vec.size > 0
+        d = vec.to_dict()
+        assert "home_contact_rate" in d
+        assert "away_contact_rate" in d
+
+    def test_unsupported_sport_returns_empty(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+
+        builder = FeatureBuilder()
+        vec = builder.build_features("cricket", {}, "game")
+        assert vec.size == 0
+
+    def test_config_disables_features(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+
+        builder = FeatureBuilder()
+        profiles = {
+            "batter_profile": {"metrics": {"contact_rate": 0.83}},
+            "pitcher_profile": {"metrics": {}},
+        }
+        config = {"batter_contact_rate": {"enabled": False}}
+        vec = builder.build_features("mlb", profiles, "plate_appearance", config=config)
+        assert "batter_contact_rate" not in vec.to_dict()
+        # Other features should still be present
+        assert vec.size > 0
+
+    def test_build_dataset(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+
+        builder = FeatureBuilder()
+        records = [
+            {
+                "batter_profile": {"metrics": {"contact_rate": 0.80}},
+                "pitcher_profile": {"metrics": {"contact_rate": 0.70}},
+            },
+            {
+                "batter_profile": {"metrics": {"contact_rate": 0.85}},
+                "pitcher_profile": {"metrics": {"contact_rate": 0.65}},
+            },
+        ]
+        X, names = builder.build_dataset("mlb", records, "plate_appearance")
+        assert len(X) == 2
+        assert len(names) > 0
+        assert len(X[0]) == len(names)
+
+    def test_build_dataset_empty(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+
+        X, names = FeatureBuilder().build_dataset("mlb", [], "plate_appearance")
+        assert X == []
+        assert names == []
+
+
+class TestMLBFeatureBuilder:
+    """Verify MLB-specific feature construction."""
+
+    def test_pa_features_have_batter_and_pitcher_prefix(self) -> None:
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+
+        builder = MLBFeatureBuilder()
+        vec = builder.build_plate_appearance_features(
+            {"contact_rate": 0.83, "power_index": 1.2},
+            {"contact_rate": 0.70},
+        )
+        names = vec.feature_names
+        batter_feats = [n for n in names if n.startswith("batter_")]
+        pitcher_feats = [n for n in names if n.startswith("pitcher_")]
+        assert len(batter_feats) > 0
+        assert len(pitcher_feats) > 0
+
+    def test_pa_features_ordering_is_deterministic(self) -> None:
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+
+        builder = MLBFeatureBuilder()
+        v1 = builder.build_plate_appearance_features(
+            {"contact_rate": 0.83}, {"contact_rate": 0.70},
+        )
+        v2 = builder.build_plate_appearance_features(
+            {"contact_rate": 0.83}, {"contact_rate": 0.70},
+        )
+        assert v1.feature_names == v2.feature_names
+        assert v1.to_array() == v2.to_array()
+
+    def test_game_features_have_home_and_away_prefix(self) -> None:
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+
+        builder = MLBFeatureBuilder()
+        vec = builder.build_game_features(
+            {"contact_rate": 0.80, "power_index": 1.1},
+            {"contact_rate": 0.75, "power_index": 0.9},
+        )
+        names = vec.feature_names
+        assert any(n.startswith("home_") for n in names)
+        assert any(n.startswith("away_") for n in names)
+
+    def test_normalization_clamps_rates(self) -> None:
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+
+        builder = MLBFeatureBuilder()
+        # Extreme contact rate should be clamped to 1.0
+        vec = builder.build_plate_appearance_features(
+            {"contact_rate": 1.5}, {},
+        )
+        d = vec.to_dict()
+        assert d["batter_contact_rate"] <= 1.0
+
+    def test_normalization_ratios_for_absolute_stats(self) -> None:
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+
+        builder = MLBFeatureBuilder()
+        # avg_exit_velocity 96 mph / 88 baseline = ~1.09
+        vec = builder.build_plate_appearance_features(
+            {"avg_exit_velocity": 96.0}, {},
+        )
+        d = vec.to_dict()
+        assert 1.0 < d["batter_avg_exit_velocity"] < 1.2
+
+    def test_missing_metrics_use_defaults(self) -> None:
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+
+        builder = MLBFeatureBuilder()
+        vec = builder.build_plate_appearance_features({}, {})
+        arr = vec.to_array()
+        # All features should have default values (no NaN or None)
+        assert all(isinstance(v, float) for v in arr)
+        assert all(v >= 0 for v in arr)
+
+    def test_profile_object_extraction(self) -> None:
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+        from app.analytics.core.types import PlayerProfile
+
+        builder = MLBFeatureBuilder()
+        batter = PlayerProfile(
+            player_id="b1", sport="mlb",
+            metrics={"contact_rate": 0.85, "power_index": 1.3},
+        )
+        # Build via the generic route that extracts .metrics
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+        fb = FeatureBuilder()
+        vec = fb.build_features("mlb", {
+            "batter_profile": batter,
+            "pitcher_profile": PlayerProfile(player_id="p1", sport="mlb", metrics={}),
+        }, "plate_appearance")
+        assert vec.get("batter_contact_rate") == 0.85
+
+
+class TestFeatureMLModelIntegration:
+    """Verify feature vectors work with ML models."""
+
+    def test_pa_features_to_ml_model(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+        from app.analytics.models.sports.mlb.pa_model import MLBPlateAppearanceModel
+
+        builder = FeatureBuilder()
+        profiles = {
+            "batter_profile": {"metrics": {"contact_rate": 0.85, "power_index": 1.3}},
+            "pitcher_profile": {"metrics": {"contact_rate": 0.70}},
+        }
+        vec = builder.build_features("mlb", profiles, "plate_appearance")
+
+        # ML model accepts feature dict
+        model = MLBPlateAppearanceModel()
+        probs = model.predict_proba(vec.to_dict())
+        assert sum(probs.values()) == pytest.approx(1.0, abs=0.01)
+
+    def test_game_features_to_ml_model(self) -> None:
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+        from app.analytics.models.sports.mlb.game_model import MLBGameModel
+
+        builder = FeatureBuilder()
+        profiles = {
+            "home_profile": {"metrics": {"contact_rate": 0.80, "power_index": 1.1}},
+            "away_profile": {"metrics": {"contact_rate": 0.75, "power_index": 0.9}},
+        }
+        vec = builder.build_features("mlb", profiles, "game")
+
+        model = MLBGameModel()
+        result = model.predict(vec.to_dict())
+        assert "home_win_probability" in result
+
+    def test_full_pipeline_aggregation_to_features_to_model(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+        from app.analytics.core.profile_builder import ProfileBuilder
+        from app.analytics.features.core.feature_builder import FeatureBuilder
+        from app.analytics.models.sports.mlb.pa_model import MLBPlateAppearanceModel
+
+        # Aggregate -> Profile
+        agg = AggregationEngine("mlb")
+        batter_agg = agg.aggregate_player_history("b1", [
+            {"zone_swing_pct": 0.75, "outside_swing_pct": 0.30,
+             "zone_contact_pct": 0.88, "outside_contact_pct": 0.60,
+             "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
+             "barrel_pct": 0.11},
+        ])
+        builder = ProfileBuilder("mlb")
+        batter_profile = builder.build_player_profile("b1", batter_agg)
+
+        pitcher_agg = agg.aggregate_player_history("p1", [
+            {"zone_swing_pct": 0.65, "outside_swing_pct": 0.35,
+             "zone_contact_pct": 0.72, "outside_contact_pct": 0.50,
+             "avg_exit_velocity": 85.0, "hard_hit_pct": 0.28,
+             "barrel_pct": 0.05},
+        ])
+        pitcher_profile = builder.build_player_profile("p1", pitcher_agg)
+
+        # Profile -> Features
+        fb = FeatureBuilder()
+        vec = fb.build_features("mlb", {
+            "batter_profile": batter_profile,
+            "pitcher_profile": pitcher_profile,
+        }, "plate_appearance")
+
+        assert vec.size > 0
+        arr = vec.to_array()
+        assert all(isinstance(v, float) for v in arr)
+
+        # Features -> ML Model
+        model = MLBPlateAppearanceModel()
+        probs = model.predict_proba(batter_profile.metrics)
+        sim_probs = model.to_simulation_probs(probs)
+
+        # ML Model -> Simulation
+        engine = SimulationEngine("mlb")
+        result = engine.run_simulation(
+            {"home_probabilities": sim_probs, "away_probabilities": sim_probs},
+            iterations=100, seed=42,
+        )
+        assert result["home_win_probability"] > 0
