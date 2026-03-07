@@ -1,7 +1,7 @@
 import styles from "./AdminTable.module.css";
 
 interface AdminTableProps {
-  headers: string[];
+  headers: React.ReactNode[];
   children: React.ReactNode;
 }
 
@@ -11,8 +11,8 @@ export function AdminTable({ headers, children }: AdminTableProps) {
       <table className={styles.table}>
         <thead>
           <tr>
-            {headers.map((header) => (
-              <th key={header}>{header}</th>
+            {headers.map((header, i) => (
+              <th key={i}>{header}</th>
             ))}
           </tr>
         </thead>

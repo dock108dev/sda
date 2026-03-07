@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import importlib
+
 import pytest
+
+_has_sklearn = importlib.util.find_spec("sklearn") is not None
+_has_joblib = importlib.util.find_spec("joblib") is not None
 
 from app.analytics.core.analytics_engine import AnalyticsEngine
 from app.analytics.core.metrics_engine import MetricsEngine
@@ -3461,6 +3466,9 @@ class TestDatasetBuilder:
         assert all(isinstance(l, str) for l in labels)
 
 
+@pytest.mark.skipif(
+    not _has_sklearn, reason="scikit-learn not installed"
+)
 class TestModelEvaluator:
     """Tests for ModelEvaluator."""
 
@@ -3598,6 +3606,9 @@ class TestMLBTrainingPipeline:
         assert mlb.load_game_training_data() == []
 
 
+@pytest.mark.skipif(
+    not _has_sklearn, reason="scikit-learn not installed"
+)
 class TestTrainingPipeline:
     """Tests for end-to-end TrainingPipeline."""
 
@@ -3733,6 +3744,9 @@ from app.analytics.inference.model_inference_engine import ModelInferenceEngine
 from app.analytics.models.core.model_registry import ModelRegistry
 
 
+@pytest.mark.skipif(
+    not _has_joblib, reason="joblib not installed"
+)
 class TestInferenceCache:
     """Tests for InferenceCache."""
 
@@ -3897,6 +3911,7 @@ class TestModelInferenceEngine:
         probs = engine.predict_proba("nfl", "game", {})
         assert probs == {}
 
+    @pytest.mark.skipif(not _has_joblib, reason="joblib not installed")
     def test_with_trained_model(self, tmp_path: Path) -> None:
         """Test inference with a trained model artifact."""
         import joblib
@@ -3936,6 +3951,7 @@ class TestModelInferenceEngine:
         # Trained model should produce probabilities
         assert all(isinstance(v, float) for v in probs.values())
 
+    @pytest.mark.skipif(not _has_joblib, reason="joblib not installed")
     def test_cache_prevents_reload(self, tmp_path: Path) -> None:
         """Verify inference cache prevents repeated disk reads."""
         import joblib
@@ -4743,6 +4759,7 @@ class TestModelMetricsReport:
 class TestModelMetricsTrainingIntegration:
     """Test that training pipeline stores metrics including Brier score."""
 
+    @pytest.mark.skipif(not _has_sklearn, reason="scikit-learn not installed")
     def test_pipeline_includes_brier_score(self, tmp_path):
         from app.analytics.training.core.training_pipeline import TrainingPipeline
 
@@ -4930,3 +4947,189 @@ class TestModelServiceCompare:
         svc = ModelService(registry=registry)
         result = svc.compare_models("mlb", "pa", ["nope1", "nope2"])
         assert result["models"] == []
+
+
+# ---------------------------------------------------------------------------
+# Prompt 20 – Model Activation Controls
+# ---------------------------------------------------------------------------
+
+
+class TestActivationControls:
+    """Test model activation safety checks and registry updates."""
+
+    def test_activation_updates_registry_json(self, tmp_path):
+        import json
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        reg_path = tmp_path / "reg.json"
+        registry = ModelRegistry(registry_path=reg_path)
+        registry.register_model("mlb", "pa", "v1", "/tmp/v1.pkl")
+        registry.register_model("mlb", "pa", "v2", "/tmp/v2.pkl")
+
+        result = registry.activate_model("mlb", "pa", "v1")
+        assert result["status"] == "success"
+
+        # Verify JSON on disk
+        data = json.loads(reg_path.read_text())
+        assert data["mlb"]["pa"]["active_model"] == "v1"
+
+    def test_only_one_active_model_per_bucket(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model("mlb", "pa", "v1", "/tmp/v1.pkl")
+        registry.register_model("mlb", "pa", "v2", "/tmp/v2.pkl")
+
+        registry.activate_model("mlb", "pa", "v1")
+        registry.activate_model("mlb", "pa", "v2")
+
+        models = registry.list_models(sport="mlb", model_type="pa")
+        active = [m for m in models if m["active"]]
+        assert len(active) == 1
+        assert active[0]["model_id"] == "v2"
+
+    def test_rollback_to_previous_model(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model("mlb", "pa", "v1", "/tmp/v1.pkl")
+        registry.register_model("mlb", "pa", "v2", "/tmp/v2.pkl")
+
+        registry.activate_model("mlb", "pa", "v2")
+        assert registry.get_active_model("mlb", "pa")["model_id"] == "v2"
+
+        # Rollback
+        result = registry.activate_model("mlb", "pa", "v1")
+        assert result["status"] == "success"
+        assert registry.get_active_model("mlb", "pa")["model_id"] == "v1"
+
+    def test_activate_nonexistent_model_returns_error(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        result = registry.activate_model("mlb", "pa", "ghost")
+        assert result["status"] == "error"
+        assert "not found" in result["message"].lower()
+
+    def test_activate_missing_artifact_returns_error(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model("mlb", "pa", "v1", "/nonexistent/v1.pkl")
+
+        result = registry.activate_model("mlb", "pa", "v1", validate_paths=True)
+        assert result["status"] == "error"
+        assert "artifact" in result["message"].lower()
+
+    def test_activate_with_valid_artifact_succeeds(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        artifact = tmp_path / "model.pkl"
+        artifact.write_bytes(b"fake")
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model("mlb", "pa", "v1", str(artifact))
+
+        result = registry.activate_model("mlb", "pa", "v1", validate_paths=True)
+        assert result["status"] == "success"
+
+    def test_activate_missing_metadata_returns_error(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        artifact = tmp_path / "model.pkl"
+        artifact.write_bytes(b"fake")
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model(
+            "mlb", "pa", "v1", str(artifact),
+            metadata_path="/nonexistent/meta.json",
+        )
+
+        result = registry.activate_model("mlb", "pa", "v1", validate_paths=True)
+        assert result["status"] == "error"
+        assert "metadata" in result["message"].lower()
+
+    def test_multiple_sports_independent_activation(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model("mlb", "pa", "mlb_v1", "/tmp/mlb.pkl")
+        registry.register_model("nba", "game", "nba_v1", "/tmp/nba.pkl")
+
+        registry.activate_model("mlb", "pa", "mlb_v1")
+        registry.activate_model("nba", "game", "nba_v1")
+
+        assert registry.get_active_model("mlb", "pa")["model_id"] == "mlb_v1"
+        assert registry.get_active_model("nba", "game")["model_id"] == "nba_v1"
+
+
+class TestActivationModelService:
+    """Test ModelService.activate_model with validation."""
+
+    def test_service_activate_success(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+        from app.analytics.services.model_service import ModelService
+
+        artifact = tmp_path / "model.pkl"
+        artifact.write_bytes(b"fake")
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model("mlb", "pa", "v1", str(artifact))
+
+        svc = ModelService(registry=registry)
+        result = svc.activate_model("mlb", "pa", "v1")
+        assert result["status"] == "success"
+        assert result["active_model"] == "v1"
+
+    def test_service_activate_validates_paths(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+        from app.analytics.services.model_service import ModelService
+
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        registry.register_model("mlb", "pa", "v1", "/nonexistent/v1.pkl")
+
+        svc = ModelService(registry=registry)
+        result = svc.activate_model("mlb", "pa", "v1")
+        assert result["status"] == "error"
+
+    def test_service_activate_nonexistent(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+        from app.analytics.services.model_service import ModelService
+
+        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
+        svc = ModelService(registry=registry)
+        result = svc.activate_model("mlb", "pa", "ghost")
+        assert result["status"] == "error"
+
+
+class TestActivationInferenceReload:
+    """Test that inference engine detects active model changes."""
+
+    def test_engine_tracks_loaded_model_id(self):
+        from app.analytics.models.core.model_registry import ModelRegistry
+        from app.analytics.inference.model_inference_engine import ModelInferenceEngine
+
+        registry = ModelRegistry(registry_path=None)
+        engine = ModelInferenceEngine(registry=registry)
+        assert engine._loaded_model_ids == {}
+
+    def test_engine_clears_cache_on_model_switch(self, tmp_path):
+        from app.analytics.models.core.model_registry import ModelRegistry
+        from app.analytics.inference.model_inference_engine import ModelInferenceEngine
+        from app.analytics.inference.inference_cache import InferenceCache
+
+        registry = ModelRegistry(registry_path=None)
+        registry.register_model("mlb", "plate_appearance", "v1", "/fake/v1.pkl")
+        registry.register_model("mlb", "plate_appearance", "v2", "/fake/v2.pkl")
+        registry.activate_model("mlb", "plate_appearance", "v1")
+
+        cache = InferenceCache()
+        engine = ModelInferenceEngine(registry=registry, cache=cache)
+
+        # Simulate having loaded v1 previously
+        engine._loaded_model_ids["mlb:plate_appearance"] = "v1"
+        cache._cache["/fake/v1.pkl"] = "fake_model"
+
+        # Switch active to v2
+        registry.activate_model("mlb", "plate_appearance", "v2")
+
+        # Next _get_model call should detect the switch and clear cache
+        engine._get_model("mlb", "plate_appearance")
+        assert cache.size == 0 or "/fake/v1.pkl" not in cache._cache

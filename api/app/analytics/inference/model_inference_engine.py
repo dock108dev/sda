@@ -170,7 +170,7 @@ class ModelInferenceEngine:
                     wrapper._loaded = True
                     self._loaded_model_ids[cache_key] = current_id
                     return wrapper
-            except (FileNotFoundError, RuntimeError) as exc:
+            except (FileNotFoundError, RuntimeError, ModuleNotFoundError) as exc:
                 logger.warning(
                     "artifact_load_failed",
                     extra={"path": path, "error": str(exc)},
