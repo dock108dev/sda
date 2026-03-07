@@ -7,7 +7,7 @@ dicts in a standard format.
 Supported implementations:
     - ``RuleBasedProvider`` — uses MatchupEngine/static defaults
     - ``MLProvider`` — uses ModelInferenceEngine
-    - Future: ``EnsembleProvider``
+    - ``EnsembleProvider`` — combines multiple providers
 
 Usage::
 
@@ -237,3 +237,63 @@ class MLProvider(ProbabilityProvider):
 
         valid_events = MLB_PA_EVENTS if sport.lower() == "mlb" else None
         return normalize_probabilities(probs, valid_events)
+
+
+class EnsembleProvider(ProbabilityProvider):
+    """Combine predictions from multiple providers using weighted average.
+
+    Uses the EnsembleEngine and EnsembleConfig to collect predictions
+    from rule-based and ML providers and produce a single blended
+    probability distribution.
+    """
+
+    def __init__(self, model_type: str = "plate_appearance") -> None:
+        self._model_type = model_type
+        self._rule = RuleBasedProvider()
+        self._ml = MLProvider(model_type=model_type)
+
+    @property
+    def provider_name(self) -> str:
+        return "ensemble"
+
+    def get_event_probabilities(
+        self,
+        sport: str,
+        context: dict[str, Any],
+    ) -> dict[str, float]:
+        """Generate ensemble-blended event probabilities.
+
+        Collects from rule-based and ML providers, combines with
+        configured weights, and normalizes.
+        """
+        from app.analytics.ensemble.ensemble_config import get_ensemble_config
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+
+        config = get_ensemble_config(sport, self._model_type)
+        provider_names = {p.name for p in config.providers}
+
+        predictions: dict[str, dict[str, float]] = {}
+
+        if "rule_based" in provider_names:
+            try:
+                predictions["rule_based"] = self._rule.get_event_probabilities(
+                    sport, context,
+                )
+            except Exception as exc:
+                logger.warning("ensemble_rule_based_failed", extra={"error": str(exc)})
+
+        if "ml" in provider_names:
+            try:
+                predictions["ml"] = self._ml.get_event_probabilities(sport, context)
+            except Exception as exc:
+                logger.warning("ensemble_ml_failed", extra={"error": str(exc)})
+
+        if not predictions:
+            valid_events = MLB_PA_EVENTS if sport.lower() == "mlb" else None
+            return normalize_probabilities(_MLB_DEFAULTS, valid_events)
+
+        engine = EnsembleEngine()
+        combined = engine.combine_from_config(predictions, config)
+
+        valid_events = MLB_PA_EVENTS if sport.lower() == "mlb" else None
+        return normalize_probabilities(combined, valid_events)

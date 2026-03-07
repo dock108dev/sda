@@ -4211,7 +4211,7 @@ class TestProbabilityResolver:
     def test_unsupported_mode_raises(self) -> None:
         resolver = ProbabilityResolver()
         with pytest.raises(ValueError, match="Unsupported"):
-            resolver.resolve_provider("mlb", "pa", mode="ensemble")
+            resolver.resolve_provider("mlb", "pa", mode="nonexistent_mode")
 
 
 class TestSimulationProbabilityIntegration:
@@ -5133,3 +5133,224 @@ class TestActivationInferenceReload:
         # Next _get_model call should detect the switch and clear cache
         engine._get_model("mlb", "plate_appearance")
         assert cache.size == 0 or "/fake/v1.pkl" not in cache._cache
+
+
+# ---------------------------------------------------------------------------
+# Prompt 21 – Ensemble Modeling System
+# ---------------------------------------------------------------------------
+
+
+class TestEnsembleEngine:
+    """Test EnsembleEngine weighted combination."""
+
+    def test_combine_sums_to_one(self):
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+
+        engine = EnsembleEngine()
+        rule = {"strikeout": 0.22, "walk": 0.07, "single": 0.16, "out": 0.55}
+        ml = {"strikeout": 0.19, "walk": 0.09, "single": 0.18, "out": 0.54}
+
+        result = engine.combine(
+            {"rule_based": rule, "ml": ml},
+            {"rule_based": 0.4, "ml": 0.6},
+        )
+        assert abs(sum(result.values()) - 1.0) < 0.001
+
+    def test_combine_weighted_correctly(self):
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+
+        engine = EnsembleEngine()
+        a = {"x": 0.4, "y": 0.6}
+        b = {"x": 0.8, "y": 0.2}
+
+        result = engine.combine({"a": a, "b": b}, {"a": 0.5, "b": 0.5})
+        # x: 0.4*0.5 + 0.8*0.5 = 0.6, y: 0.6*0.5 + 0.2*0.5 = 0.4
+        assert abs(result["x"] - 0.6) < 0.01
+        assert abs(result["y"] - 0.4) < 0.01
+
+    def test_combine_unequal_weights(self):
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+
+        engine = EnsembleEngine()
+        a = {"x": 1.0, "y": 0.0}
+        b = {"x": 0.0, "y": 1.0}
+
+        result = engine.combine({"a": a, "b": b}, {"a": 0.75, "b": 0.25})
+        assert abs(result["x"] - 0.75) < 0.01
+        assert abs(result["y"] - 0.25) < 0.01
+
+    def test_combine_single_provider(self):
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+
+        engine = EnsembleEngine()
+        probs = {"strikeout": 0.22, "out": 0.78}
+
+        result = engine.combine({"rule": probs}, {"rule": 1.0})
+        assert abs(sum(result.values()) - 1.0) < 0.001
+        assert abs(result["strikeout"] - 0.22) < 0.01
+
+    def test_combine_empty_returns_empty(self):
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+
+        engine = EnsembleEngine()
+        assert engine.combine({}, {}) == {}
+
+    def test_combine_missing_events_treated_as_zero(self):
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+
+        engine = EnsembleEngine()
+        a = {"x": 0.5, "y": 0.5}
+        b = {"x": 0.5, "z": 0.5}
+
+        result = engine.combine({"a": a, "b": b}, {"a": 0.5, "b": 0.5})
+        assert abs(sum(result.values()) - 1.0) < 0.001
+        assert "y" in result
+        assert "z" in result
+
+    def test_combine_from_config(self):
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
+        from app.analytics.ensemble.ensemble_config import (
+            EnsembleConfig,
+            ProviderWeight,
+        )
+
+        engine = EnsembleEngine()
+        config = EnsembleConfig(
+            sport="mlb",
+            model_type="pa",
+            providers=[
+                ProviderWeight(name="rule", weight=0.3),
+                ProviderWeight(name="ml", weight=0.7),
+            ],
+        )
+        rule = {"x": 0.4, "y": 0.6}
+        ml = {"x": 0.8, "y": 0.2}
+
+        result = engine.combine_from_config({"rule": rule, "ml": ml}, config)
+        assert abs(sum(result.values()) - 1.0) < 0.001
+
+
+class TestEnsembleConfig:
+    """Test EnsembleConfig data class and registry."""
+
+    def test_default_config_exists_for_mlb_pa(self):
+        from app.analytics.ensemble.ensemble_config import get_ensemble_config
+
+        config = get_ensemble_config("mlb", "plate_appearance")
+        assert config.sport == "mlb"
+        assert len(config.providers) >= 2
+
+    def test_set_and_get_custom_config(self):
+        from app.analytics.ensemble.ensemble_config import (
+            EnsembleConfig,
+            ProviderWeight,
+            get_ensemble_config,
+            set_ensemble_config,
+            _custom_configs,
+        )
+
+        custom = EnsembleConfig(
+            sport="nba",
+            model_type="game",
+            providers=[
+                ProviderWeight(name="rule_based", weight=0.3),
+                ProviderWeight(name="ml", weight=0.7),
+            ],
+        )
+        set_ensemble_config(custom)
+        try:
+            result = get_ensemble_config("nba", "game")
+            assert result.sport == "nba"
+            assert result.providers[1].weight == 0.7
+        finally:
+            _custom_configs.pop(("nba", "game"), None)
+
+    def test_to_dict_roundtrip(self):
+        from app.analytics.ensemble.ensemble_config import (
+            EnsembleConfig,
+            ProviderWeight,
+        )
+
+        config = EnsembleConfig(
+            sport="mlb",
+            model_type="pa",
+            providers=[ProviderWeight(name="rule", weight=0.4)],
+        )
+        d = config.to_dict()
+        restored = EnsembleConfig.from_dict(d)
+        assert restored.sport == "mlb"
+        assert restored.providers[0].name == "rule"
+        assert restored.providers[0].weight == 0.4
+
+    def test_list_configs(self):
+        from app.analytics.ensemble.ensemble_config import list_ensemble_configs
+
+        configs = list_ensemble_configs()
+        assert len(configs) >= 2  # mlb/pa and mlb/game defaults
+
+    def test_total_weight(self):
+        from app.analytics.ensemble.ensemble_config import (
+            EnsembleConfig,
+            ProviderWeight,
+        )
+
+        config = EnsembleConfig(
+            sport="mlb",
+            model_type="pa",
+            providers=[
+                ProviderWeight(name="a", weight=0.4),
+                ProviderWeight(name="b", weight=0.6),
+            ],
+        )
+        assert abs(config.total_weight - 1.0) < 0.001
+
+
+class TestEnsembleResolver:
+    """Test ProbabilityResolver with ensemble mode."""
+
+    def test_resolver_supports_ensemble_mode(self):
+        from app.analytics.probabilities.probability_resolver import (
+            ProbabilityResolver,
+        )
+
+        resolver = ProbabilityResolver(config={"probability_mode": "ensemble"})
+        provider = resolver.resolve_provider("mlb", "plate_appearance", "ensemble")
+        assert provider.provider_name == "ensemble"
+
+    def test_resolver_ensemble_returns_probabilities(self):
+        from app.analytics.probabilities.probability_resolver import (
+            ProbabilityResolver,
+        )
+
+        resolver = ProbabilityResolver()
+        probs = resolver.get_probabilities(
+            "mlb", "plate_appearance", {}, mode="ensemble",
+        )
+        assert isinstance(probs, dict)
+        assert len(probs) > 0
+        assert abs(sum(probs.values()) - 1.0) < 0.01
+
+    def test_ensemble_provider_produces_normalized_output(self):
+        from app.analytics.probabilities.probability_provider import EnsembleProvider
+
+        provider = EnsembleProvider(model_type="plate_appearance")
+        probs = provider.get_event_probabilities("mlb", {})
+        assert abs(sum(probs.values()) - 1.0) < 0.01
+        assert "strikeout" in probs
+
+
+class TestEnsembleSimulation:
+    """Test that the simulation engine runs with ensemble mode."""
+
+    def test_simulation_engine_ensemble_mode(self):
+        from app.analytics.core.simulation_engine import SimulationEngine
+
+        engine = SimulationEngine("mlb")
+        result = engine.run_simulation(
+            {"home_team": "NYY", "away_team": "BOS", "probability_mode": "ensemble"},
+            iterations=100,
+            seed=42,
+        )
+        assert "home_win_probability" in result
+        assert "away_win_probability" in result
+        assert result.get("probability_source") == "ensemble"

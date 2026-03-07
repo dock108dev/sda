@@ -616,3 +616,58 @@ async def get_model_metrics(
         })
 
     return {"models": results, "count": len(results)}
+
+
+# ---------------------------------------------------------------------------
+# Ensemble Configuration endpoints
+# ---------------------------------------------------------------------------
+
+
+class EnsembleConfigRequest(BaseModel):
+    """Request body for POST /api/analytics/ensemble-config."""
+    sport: str = Field(..., description="Sport code (e.g., mlb)")
+    model_type: str = Field(..., description="Model type (e.g., plate_appearance)")
+    providers: list[dict[str, Any]] = Field(
+        ..., description="List of {name, weight} dicts",
+    )
+
+
+@router.get("/ensemble-config")
+async def get_ensemble_config_endpoint(
+    sport: str = Query(..., description="Sport code"),
+    model_type: str = Query(..., description="Model type"),
+) -> dict[str, Any]:
+    """Get the ensemble configuration for a sport + model type."""
+    from app.analytics.ensemble.ensemble_config import get_ensemble_config
+    config = get_ensemble_config(sport, model_type)
+    return config.to_dict()
+
+
+@router.get("/ensemble-configs")
+async def list_ensemble_configs_endpoint() -> dict[str, Any]:
+    """List all ensemble configurations."""
+    from app.analytics.ensemble.ensemble_config import list_ensemble_configs
+    configs = list_ensemble_configs()
+    return {"configs": [c.to_dict() for c in configs], "count": len(configs)}
+
+
+@router.post("/ensemble-config")
+async def post_ensemble_config(req: EnsembleConfigRequest) -> dict[str, Any]:
+    """Update ensemble configuration for a sport + model type."""
+    from app.analytics.ensemble.ensemble_config import (
+        EnsembleConfig,
+        ProviderWeight,
+        set_ensemble_config,
+    )
+
+    providers = [
+        ProviderWeight(name=p["name"], weight=float(p["weight"]))
+        for p in req.providers
+    ]
+    config = EnsembleConfig(
+        sport=req.sport,
+        model_type=req.model_type,
+        providers=providers,
+    )
+    set_ensemble_config(config)
+    return {"status": "updated", **config.to_dict()}

@@ -19,6 +19,7 @@ import logging
 from typing import Any
 
 from .probability_provider import (
+    EnsembleProvider,
     MLProvider,
     ProbabilityProvider,
     RuleBasedProvider,
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Supported modes.
 MODE_RULE_BASED = "rule_based"
 MODE_ML = "ml"
-MODE_ENSEMBLE = "ensemble"  # reserved
+MODE_ENSEMBLE = "ensemble"
 
 _DEFAULT_CONFIG: dict[str, Any] = {
     "probability_mode": MODE_RULE_BASED,
@@ -94,6 +95,12 @@ class ProbabilityResolver:
             key = f"{MODE_ML}:{model_type}"
             if key not in self._providers:
                 self._providers[key] = MLProvider(model_type=model_type)
+            return self._providers[key]
+
+        if mode == MODE_ENSEMBLE:
+            key = f"{MODE_ENSEMBLE}:{model_type}"
+            if key not in self._providers:
+                self._providers[key] = EnsembleProvider(model_type=model_type)
             return self._providers[key]
 
         raise ValueError(f"Unsupported probability mode: {mode}")

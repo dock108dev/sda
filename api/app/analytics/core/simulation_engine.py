@@ -133,7 +133,7 @@ class SimulationEngine:
         probability_mode = context.pop("probability_mode", None)
         ml_model_type = context.pop("ml_model", None)
 
-        if probability_mode in ("ml",) or ml_model_type:
+        if probability_mode in ("ml", "ensemble") or ml_model_type:
             model_type = ml_model_type or "plate_appearance"
             context, prob_meta = self._apply_probability_resolver(
                 context, probability_mode or "ml", model_type,

@@ -337,3 +337,45 @@ export async function compareModels(
   });
   return fetchJson<ModelComparison>(`${base()}/api/analytics/models/compare?${params}`);
 }
+
+// ---------------------------------------------------------------------------
+// Ensemble Configuration
+// ---------------------------------------------------------------------------
+
+export interface EnsembleProviderWeight {
+  name: string;
+  weight: number;
+}
+
+export interface EnsembleConfigResponse {
+  sport: string;
+  model_type: string;
+  providers: EnsembleProviderWeight[];
+}
+
+export async function getEnsembleConfig(
+  sport: string,
+  modelType: string,
+): Promise<EnsembleConfigResponse> {
+  const params = new URLSearchParams({ sport, model_type: modelType });
+  return fetchJson<EnsembleConfigResponse>(`${base()}/api/analytics/ensemble-config?${params}`);
+}
+
+export async function listEnsembleConfigs(): Promise<{
+  configs: EnsembleConfigResponse[];
+  count: number;
+}> {
+  return fetchJson(`${base()}/api/analytics/ensemble-configs`);
+}
+
+export async function saveEnsembleConfig(
+  sport: string,
+  modelType: string,
+  providers: EnsembleProviderWeight[],
+): Promise<{ status: string } & EnsembleConfigResponse> {
+  return fetchJson(`${base()}/api/analytics/ensemble-config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sport, model_type: modelType, providers }),
+  });
+}

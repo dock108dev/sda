@@ -41,6 +41,11 @@ const sections = [
     title: "Model Registry",
     desc: "View trained models, versions, metrics, and activate deployments",
   },
+  {
+    href: ROUTES.ANALYTICS_ENSEMBLE,
+    title: "Ensemble Config",
+    desc: "Configure ensemble weights for combining probability sources",
+  },
 ];
 
 export default function AnalyticsPage() {
