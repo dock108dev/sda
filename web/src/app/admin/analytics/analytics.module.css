@@ -179,6 +179,15 @@
   margin-top: var(--space-card-inner);
 }
 
+.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-card);
+  padding: var(--space-card-inner);
+  color: #16a34a;
+  margin-top: var(--space-card-inner);
+}
+
 .empty {
   text-align: center;
   padding: 2rem;

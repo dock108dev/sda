@@ -12,7 +12,9 @@ export function AdminTable({ headers, children }: AdminTableProps) {
         <thead>
           <tr>
             {headers.map((header, i) => (
-              <th key={i}>{header}</th>
+              <th key={typeof header === "string" ? header : `col-${i}`}>
+                {header}
+              </th>
             ))}
           </tr>
         </thead>

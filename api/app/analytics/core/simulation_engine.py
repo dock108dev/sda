@@ -151,7 +151,7 @@ class SimulationEngine:
         total_pitches = 0
 
         for _ in range(iterations):
-            result = sim.simulate_game(game_context, rng=random.Random(rng.random()))
+            result = sim.simulate_game(game_context, rng=rng)
             total_home += result["home_score"]
             total_away += result["away_score"]
             total_pitches += result.get("total_pitches", 0)

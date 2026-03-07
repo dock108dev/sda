@@ -26,6 +26,11 @@ _SPORT_MODULES: dict[str, str] = {
     "mlb": "app.analytics.sports.mlb",
 }
 
+# Registry mapping sport codes to (metrics_module_path, class_name).
+_SPORT_METRICS: dict[str, tuple[str, str]] = {
+    "mlb": ("app.analytics.sports.mlb.metrics", "MLBMetrics"),
+}
+
 
 class AnalyticsEngine:
     """Top-level analytics orchestrator.
@@ -37,6 +42,15 @@ class AnalyticsEngine:
     def __init__(self, sport: str) -> None:
         self.sport = sport.lower()
         self._module: Any | None = None
+
+    def _get_metrics_class(self) -> type | None:
+        """Resolve the sport-specific metrics class, if registered."""
+        entry = _SPORT_METRICS.get(self.sport)
+        if entry is None:
+            return None
+        module_path, class_name = entry
+        mod = importlib.import_module(module_path)
+        return getattr(mod, class_name)
 
     def _load_module(self) -> Any:
         """Lazily load the sport-specific analytics module."""
@@ -57,6 +71,9 @@ class AnalyticsEngine:
         Delegates to the sport module's ``build_team_profile`` if available,
         otherwise returns an empty profile.
         """
+        metrics_cls = self._get_metrics_class()
+        if metrics_cls is not None:
+            return metrics_cls().build_team_profile({"team_id": team_id})
         return TeamProfile(team_id=team_id, sport=self.sport)
 
     def get_player_profile(self, player_id: str) -> PlayerProfile:
@@ -65,14 +82,30 @@ class AnalyticsEngine:
         Delegates to the sport module's ``build_player_profile`` if available,
         otherwise returns an empty profile.
         """
+        metrics_cls = self._get_metrics_class()
+        if metrics_cls is not None:
+            return metrics_cls().build_player_profile({"player_id": player_id})
         return PlayerProfile(player_id=player_id, sport=self.sport)
 
     def get_matchup(self, entity_a: str, entity_b: str) -> MatchupProfile:
         """Analyze a head-to-head matchup between two entities.
 
-        Delegates to the sport module's ``analyze_matchup`` if available,
+        Delegates to the sport module's ``build_matchup_metrics`` if available,
         otherwise returns an empty matchup profile.
         """
+        metrics_cls = self._get_metrics_class()
+        if metrics_cls is not None:
+            m = metrics_cls()
+            probabilities = m.build_matchup_metrics(
+                {"player_id": entity_a},
+                {"player_id": entity_b},
+            )
+            return MatchupProfile(
+                entity_a_id=entity_a,
+                entity_b_id=entity_b,
+                sport=self.sport,
+                probabilities=probabilities,
+            )
         return MatchupProfile(
             entity_a_id=entity_a,
             entity_b_id=entity_b,

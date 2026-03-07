@@ -121,7 +121,7 @@ export default function FeatureConfigPage() {
 
       {error && <div className={styles.error}>{error}</div>}
       {message && (
-        <div className={styles.error} style={{ color: "green" }}>
+        <div className={styles.success}>
           {message}
         </div>
       )}

@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 import time
 from typing import Any
 
@@ -39,6 +40,7 @@ class SimulationCache:
 
     def __init__(self, max_entries: int = _MAX_ENTRIES) -> None:
         self._store: dict[str, _CacheEntry] = {}
+        self._lock = threading.Lock()
         self._max_entries = max_entries
 
     def generate_cache_key(self, params: dict[str, Any]) -> str:
@@ -62,16 +64,17 @@ class SimulationCache:
         Returns:
             Cached result dict or ``None`` if miss/expired.
         """
-        entry = self._store.get(key)
-        if entry is None:
-            return None
+        with self._lock:
+            entry = self._store.get(key)
+            if entry is None:
+                return None
 
-        if entry.ttl is not None and (time.monotonic() - entry.created_at) > entry.ttl:
-            del self._store[key]
-            return None
+            if entry.ttl is not None and (time.monotonic() - entry.created_at) > entry.ttl:
+                del self._store[key]
+                return None
 
-        entry.last_accessed = time.monotonic()
-        return entry.value
+            entry.last_accessed = time.monotonic()
+            return entry.value
 
     def set(
         self,
@@ -88,15 +91,16 @@ class SimulationCache:
         """
         ttl = _TTL_POLICY.get(mode)
 
-        if len(self._store) >= self._max_entries and key not in self._store:
-            self._evict_one()
+        with self._lock:
+            if len(self._store) >= self._max_entries and key not in self._store:
+                self._evict_one()
 
-        self._store[key] = _CacheEntry(
-            value=value,
-            ttl=ttl,
-            created_at=time.monotonic(),
-            last_accessed=time.monotonic(),
-        )
+            self._store[key] = _CacheEntry(
+                value=value,
+                ttl=ttl,
+                created_at=time.monotonic(),
+                last_accessed=time.monotonic(),
+            )
 
     def invalidate(self, key: str) -> bool:
         """Remove a specific entry from the cache.
@@ -104,19 +108,22 @@ class SimulationCache:
         Returns:
             ``True`` if the entry existed and was removed.
         """
-        return self._store.pop(key, None) is not None
+        with self._lock:
+            return self._store.pop(key, None) is not None
 
     def clear(self) -> None:
         """Remove all entries from the cache."""
-        self._store.clear()
+        with self._lock:
+            self._store.clear()
 
     @property
     def size(self) -> int:
         """Current number of entries in the cache."""
-        return len(self._store)
+        with self._lock:
+            return len(self._store)
 
     def _evict_one(self) -> None:
-        """Evict the least recently accessed entry."""
+        """Evict the least recently accessed entry. Caller must hold ``_lock``."""
         if not self._store:
             return
         oldest_key = min(
