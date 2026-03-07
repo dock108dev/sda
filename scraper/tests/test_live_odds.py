@@ -57,9 +57,11 @@ class TestWriteLiveSnapshot:
         mock_r.pipeline.return_value = mock_pipe
         mock_get_redis.return_value = mock_r
 
-        selections = [{"selection": "Over", "line": 220.5, "price": -110}]
+        books = {
+            "DraftKings": [{"selection": "Over", "line": 220.5, "price": -110}],
+        }
         write_live_snapshot(
-            "NBA", 42, "total", selections, "draftkings",
+            "NBA", 42, "total", books,
             source_request_id="req123", rate_remaining=99,
         )
 
@@ -68,7 +70,7 @@ class TestWriteLiveSnapshot:
         key_arg = mock_r.set.call_args[0][0]
         assert key_arg == "live:odds:NBA:42:total"
         json_arg = json.loads(mock_r.set.call_args[0][1])
-        assert json_arg["provider"] == "draftkings"
+        assert "DraftKings" in json_arg["books"]
         assert json_arg["meta"]["source_request_id"] == "req123"
         assert json_arg["meta"]["rate_remaining"] == 99
         assert mock_r.set.call_args[1]["ex"] == LIVE_SNAPSHOT_TTL_S
@@ -83,7 +85,7 @@ class TestWriteLiveSnapshot:
     def test_write_handles_redis_error(self, mock_get_redis):
         mock_get_redis.side_effect = Exception("connection refused")
         # Should not raise
-        write_live_snapshot("NBA", 1, "spread", [], "test")
+        write_live_snapshot("NBA", 1, "spread", {})
 
 
 # ===========================================================================
