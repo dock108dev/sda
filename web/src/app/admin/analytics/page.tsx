@@ -26,6 +26,11 @@ const sections = [
     title: "Game Simulator",
     desc: "Run Monte Carlo simulations and view score distributions",
   },
+  {
+    href: ROUTES.ANALYTICS_MODEL_PERFORMANCE,
+    title: "Model Performance",
+    desc: "Track prediction accuracy, calibration, and model bias",
+  },
 ];
 
 export default function AnalyticsPage() {

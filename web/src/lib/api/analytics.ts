@@ -138,3 +138,36 @@ export async function runLiveSimulation(
     body: JSON.stringify(req),
   });
 }
+
+export interface ModelPerformance {
+  total_predictions: number;
+  brier_score: number;
+  log_loss: number;
+  average_score_error: number;
+  average_total_error: number;
+  winner_accuracy: number;
+  mae_score: number;
+  mae_total: number;
+  prediction_bias: {
+    home_bias: number;
+    total_bias: number;
+    home_score_bias: number;
+  };
+  calibration_buckets: {
+    bucket: string;
+    count: number;
+    avg_predicted: number;
+    avg_actual: number;
+  }[];
+}
+
+export async function getModelPerformance(
+  sport?: string,
+): Promise<ModelPerformance> {
+  const params = new URLSearchParams();
+  if (sport) params.set("sport", sport);
+  const qs = params.toString();
+  return fetchJson<ModelPerformance>(
+    `${base()}/api/analytics/model-performance${qs ? `?${qs}` : ""}`,
+  );
+}

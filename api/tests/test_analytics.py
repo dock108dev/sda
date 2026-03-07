@@ -1878,3 +1878,390 @@ class TestJobRoutes:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "not_found"
+
+
+class TestPredictionRepository:
+    """Verify prediction storage and retrieval."""
+
+    def test_save_and_get(self) -> None:
+        from app.analytics.core.prediction_repository import PredictionRepository
+
+        repo = PredictionRepository()
+        pred_id = repo.save_prediction({
+            "sport": "mlb",
+            "game_id": "game_1",
+            "home_team": "LAD",
+            "away_team": "TOR",
+            "model_output": {"home_win_probability": 0.61},
+        })
+        pred = repo.get_prediction(pred_id)
+        assert pred is not None
+        assert pred["sport"] == "mlb"
+        assert pred["model_output"]["home_win_probability"] == 0.61
+
+    def test_get_predictions_for_game(self) -> None:
+        from app.analytics.core.prediction_repository import PredictionRepository
+
+        repo = PredictionRepository()
+        repo.save_prediction({"game_id": "g1", "sport": "mlb"})
+        repo.save_prediction({"game_id": "g1", "sport": "mlb"})
+        repo.save_prediction({"game_id": "g2", "sport": "mlb"})
+        assert len(repo.get_predictions_for_game("g1")) == 2
+        assert len(repo.get_predictions_for_game("g2")) == 1
+
+    def test_record_outcome(self) -> None:
+        from app.analytics.core.prediction_repository import PredictionRepository
+
+        repo = PredictionRepository()
+        pred_id = repo.save_prediction({"sport": "mlb", "game_id": "g1"})
+        assert repo.record_outcome(pred_id, {"home_score": 5, "away_score": 3})
+        pred = repo.get_prediction(pred_id)
+        assert pred["actual_result"]["home_score"] == 5
+
+    def test_record_outcome_not_found(self) -> None:
+        from app.analytics.core.prediction_repository import PredictionRepository
+
+        repo = PredictionRepository()
+        assert repo.record_outcome("nope", {"home_score": 1, "away_score": 2}) is False
+
+    def test_get_evaluated_predictions(self) -> None:
+        from app.analytics.core.prediction_repository import PredictionRepository
+
+        repo = PredictionRepository()
+        p1 = repo.save_prediction({"sport": "mlb"})
+        p2 = repo.save_prediction({"sport": "mlb"})
+        repo.record_outcome(p1, {"home_score": 3, "away_score": 2})
+        evaluated = repo.get_evaluated_predictions()
+        assert len(evaluated) == 1
+
+    def test_list_predictions_filtered(self) -> None:
+        from app.analytics.core.prediction_repository import PredictionRepository
+
+        repo = PredictionRepository()
+        repo.save_prediction({"sport": "mlb"})
+        repo.save_prediction({"sport": "nba"})
+        assert len(repo.list_predictions(sport="mlb")) == 1
+        assert len(repo.list_predictions()) == 2
+
+
+class TestModelCalibration:
+    """Verify calibration calculations."""
+
+    def test_evaluate_prediction_home_win(self) -> None:
+        from app.analytics.core.model_calibration import ModelCalibration
+
+        cal = ModelCalibration()
+        pred = {
+            "prediction_id": "p1",
+            "model_output": {
+                "home_win_probability": 0.61,
+                "expected_home_score": 4.8,
+                "expected_away_score": 3.9,
+            },
+        }
+        actual = {"home_score": 5, "away_score": 3}
+        result = cal.evaluate_prediction(pred, actual)
+        # Brier: (0.61 - 1)^2 = 0.1521
+        assert abs(result["brier_score"] - 0.1521) < 0.001
+        assert result["correct_winner"] is True
+        assert result["home_score_error"] == pytest.approx(0.2, abs=0.01)
+
+    def test_evaluate_prediction_away_win(self) -> None:
+        from app.analytics.core.model_calibration import ModelCalibration
+
+        cal = ModelCalibration()
+        pred = {
+            "model_output": {
+                "home_win_probability": 0.61,
+                "expected_home_score": 4.8,
+                "expected_away_score": 3.9,
+            },
+        }
+        actual = {"home_score": 2, "away_score": 5}
+        result = cal.evaluate_prediction(pred, actual)
+        # Brier: (0.61 - 0)^2 = 0.3721
+        assert abs(result["brier_score"] - 0.3721) < 0.001
+        assert result["correct_winner"] is False
+
+    def test_calibration_report(self) -> None:
+        from app.analytics.core.model_calibration import ModelCalibration
+
+        cal = ModelCalibration()
+        predictions = [
+            {
+                "model_output": {"home_win_probability": 0.7, "expected_home_score": 5, "expected_away_score": 3},
+                "actual_result": {"home_score": 6, "away_score": 2},
+            },
+            {
+                "model_output": {"home_win_probability": 0.4, "expected_home_score": 3, "expected_away_score": 4},
+                "actual_result": {"home_score": 2, "away_score": 5},
+            },
+        ]
+        report = cal.calibration_report(predictions)
+        assert report["total_predictions"] == 2
+        assert report["winner_accuracy"] == 1.0  # both correct
+        assert report["brier_score"] > 0
+        assert "prediction_bias" in report
+
+    def test_calibration_report_empty(self) -> None:
+        from app.analytics.core.model_calibration import ModelCalibration
+
+        report = ModelCalibration().calibration_report([])
+        assert report["total_predictions"] == 0
+
+    def test_bias_detection(self) -> None:
+        from app.analytics.core.model_calibration import ModelCalibration
+
+        cal = ModelCalibration()
+        # Model consistently overestimates home team
+        predictions = [
+            {
+                "model_output": {"home_win_probability": 0.8, "expected_home_score": 6, "expected_away_score": 3},
+                "actual_result": {"home_score": 3, "away_score": 4},
+            },
+            {
+                "model_output": {"home_win_probability": 0.75, "expected_home_score": 5, "expected_away_score": 3},
+                "actual_result": {"home_score": 2, "away_score": 5},
+            },
+        ]
+        bias = cal._detect_bias(predictions)
+        assert bias["home_bias"] > 0  # overestimates home win prob
+        assert bias["home_score_bias"] > 0  # overestimates home score
+
+    def test_sportsbook_comparison(self) -> None:
+        from app.analytics.core.model_calibration import ModelCalibration
+
+        cal = ModelCalibration()
+        pred = {
+            "model_output": {"home_win_probability": 0.61},
+            "sportsbook_lines": {"home_ml": -150},
+        }
+        actual = {"home_score": 5, "away_score": 3}
+        result = cal.evaluate_prediction(pred, actual)
+        assert "sportsbook_comparison" in result
+        comp = result["sportsbook_comparison"]
+        assert "model_error" in comp
+        assert "sportsbook_error" in comp
+        assert isinstance(comp["model_closer"], bool)
+
+
+class TestModelMetrics:
+    """Verify long-term model metrics calculations."""
+
+    def test_brier_score(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        metrics = ModelMetrics()
+        score = metrics.brier_score(0.61, 1)
+        assert abs(score - 0.1521) < 0.001
+
+    def test_brier_score_perfect(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        assert ModelMetrics().brier_score(1.0, 1) == 0.0
+        assert ModelMetrics().brier_score(0.0, 0) == 0.0
+
+    def test_log_loss(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        metrics = ModelMetrics()
+        loss = metrics.log_loss(0.9, 1)
+        assert loss > 0
+        assert loss < 0.2  # high confidence correct prediction
+
+    def test_log_loss_wrong_prediction(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        metrics = ModelMetrics()
+        loss = metrics.log_loss(0.1, 1)
+        assert loss > 2.0  # high loss for wrong prediction
+
+    def test_mean_absolute_error(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        metrics = ModelMetrics()
+        pairs = [(5.0, 4.0), (3.0, 5.0), (4.0, 4.0)]
+        mae = metrics.mean_absolute_error(pairs)
+        assert abs(mae - 1.0) < 0.001
+
+    def test_mean_absolute_error_empty(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        assert ModelMetrics().mean_absolute_error([]) == 0.0
+
+    def test_compute_all(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        metrics = ModelMetrics()
+        predictions = [
+            {
+                "model_output": {"home_win_probability": 0.7, "expected_home_score": 5, "expected_away_score": 3},
+                "actual_result": {"home_score": 6, "away_score": 2},
+            },
+            {
+                "model_output": {"home_win_probability": 0.3, "expected_home_score": 3, "expected_away_score": 5},
+                "actual_result": {"home_score": 2, "away_score": 4},
+            },
+            {
+                "model_output": {"home_win_probability": 0.6, "expected_home_score": 4, "expected_away_score": 3},
+                "actual_result": {"home_score": 5, "away_score": 3},
+            },
+        ]
+        result = metrics.compute_all(predictions)
+        assert result["total_predictions"] == 3
+        assert result["brier_score"] > 0
+        assert result["log_loss"] > 0
+        assert result["winner_accuracy"] > 0
+        assert "calibration_buckets" in result
+
+    def test_compute_all_empty(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        result = ModelMetrics().compute_all([])
+        assert result["total_predictions"] == 0
+
+    def test_calibration_buckets(self) -> None:
+        from app.analytics.core.model_metrics import ModelMetrics
+
+        metrics = ModelMetrics()
+        predictions = [
+            {"model_output": {"home_win_probability": 0.15}, "actual_result": {"home_score": 1, "away_score": 3}},
+            {"model_output": {"home_win_probability": 0.85}, "actual_result": {"home_score": 5, "away_score": 2}},
+            {"model_output": {"home_win_probability": 0.85}, "actual_result": {"home_score": 4, "away_score": 3}},
+        ]
+        buckets = metrics._calibration_buckets(predictions)
+        assert len(buckets) >= 2  # at least two buckets with data
+
+
+class TestCalibrationRoutes:
+    """Verify calibration API endpoints."""
+
+    def test_model_performance_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.get("/api/analytics/model-performance")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "brier_score" in data
+        assert "prediction_bias" in data
+        assert "total_predictions" in data
+
+    def test_predictions_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.get("/api/analytics/predictions")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "predictions" in data
+        assert "count" in data
+
+    def test_record_outcome_not_found(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.post("/api/analytics/record-outcome", json={
+            "prediction_id": "nonexistent",
+            "home_score": 5,
+            "away_score": 3,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "not_found"
+
+    def test_simulate_auto_stores_prediction(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        # Run a simulation (auto-stores prediction)
+        resp = client.post("/api/analytics/simulate", json={
+            "sport": "mlb",
+            "home_team": "LAD",
+            "away_team": "TOR",
+            "iterations": 50,
+            "seed": 42,
+        })
+        assert resp.status_code == 200
+
+        # Check predictions were stored
+        resp = client.get("/api/analytics/predictions")
+        data = resp.json()
+        assert data["count"] > 0
+
+
+class TestFullCalibrationPipeline:
+    """Verify end-to-end: Simulation -> Prediction -> Outcome -> Calibration."""
+
+    def test_end_to_end_calibration(self) -> None:
+        from app.analytics.core.model_calibration import ModelCalibration
+        from app.analytics.core.model_metrics import ModelMetrics
+        from app.analytics.core.prediction_repository import PredictionRepository
+
+        repo = PredictionRepository()
+        cal = ModelCalibration()
+        metrics = ModelMetrics()
+
+        # Store predictions
+        p1 = repo.save_prediction({
+            "sport": "mlb",
+            "game_id": "g1",
+            "home_team": "LAD",
+            "away_team": "TOR",
+            "model_output": {
+                "home_win_probability": 0.65,
+                "expected_home_score": 5.2,
+                "expected_away_score": 3.8,
+            },
+            "sportsbook_lines": {"home_ml": -180},
+        })
+        p2 = repo.save_prediction({
+            "sport": "mlb",
+            "game_id": "g2",
+            "home_team": "NYY",
+            "away_team": "BOS",
+            "model_output": {
+                "home_win_probability": 0.45,
+                "expected_home_score": 3.5,
+                "expected_away_score": 4.2,
+            },
+        })
+
+        # Record outcomes
+        repo.record_outcome(p1, {"home_score": 6, "away_score": 3})
+        repo.record_outcome(p2, {"home_score": 2, "away_score": 5})
+
+        # Evaluate
+        evaluated = repo.get_evaluated_predictions()
+        assert len(evaluated) == 2
+
+        report = cal.calibration_report(evaluated)
+        assert report["total_predictions"] == 2
+        assert report["winner_accuracy"] == 1.0  # both correct
+        assert report["brier_score"] > 0
+
+        all_metrics = metrics.compute_all(evaluated)
+        assert all_metrics["total_predictions"] == 2
+        assert all_metrics["brier_score"] > 0
+        assert all_metrics["log_loss"] > 0
+        assert all_metrics["winner_accuracy"] == 1.0

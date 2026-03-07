@@ -31,6 +31,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       { href: ROUTES.ANALYTICS, label: "Overview", exact: true },
       { href: ROUTES.ANALYTICS_SIMULATOR, label: "Simulator" },
+      { href: ROUTES.ANALYTICS_MODEL_PERFORMANCE, label: "Model Performance" },
     ],
   },
   {
