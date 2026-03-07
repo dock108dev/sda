@@ -18,7 +18,6 @@ from app.analytics.core.simulation_engine import SimulationEngine
 from app.analytics.core.types import (
     MatchupProfile,
     PlayerProfile,
-    SimulationResult,
     TeamProfile,
 )
 
@@ -89,25 +88,6 @@ class AnalyticsService:
         """
         engine = MatchupEngine(sport)
         return engine.calculate_player_vs_player(player_a, player_b)
-
-    def run_simulation(
-        self,
-        sport: str,
-        game_context: dict[str, Any],
-        iterations: int = 1000,
-    ) -> SimulationResult:
-        """Run a game simulation.
-
-        Args:
-            sport: Sport code.
-            game_context: Sport-specific game setup data.
-            iterations: Number of simulation iterations.
-
-        Returns:
-            SimulationResult with outcome distribution.
-        """
-        sim = SimulationEngine(sport)
-        return sim.simulate_game(game_context, iterations=iterations)
 
     def run_full_simulation(
         self,

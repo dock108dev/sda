@@ -8,7 +8,6 @@ Routes:
     GET  /api/analytics/team          — Team analytical profile
     GET  /api/analytics/player        — Player analytical profile
     GET  /api/analytics/matchup       — Head-to-head matchup analysis
-    GET  /api/analytics/simulation    — Game simulation results (legacy)
     POST /api/analytics/simulate      — Full Monte Carlo simulation
     POST /api/analytics/live-simulate — Live game simulation from state
 """
@@ -143,20 +142,6 @@ async def get_matchup_analytics(
         "probabilities": profile.probabilities,
         "comparison": profile.comparison,
         "advantages": profile.advantages,
-    }
-
-
-@router.get("/simulation")
-async def get_simulation(
-    sport: str = Query(..., description="Sport code (e.g., mlb, nba)"),
-    iterations: int = Query(1000, ge=1, le=100000, description="Simulation iterations"),
-) -> dict[str, Any]:
-    """Run a game simulation and return results (legacy endpoint)."""
-    result = _service.run_simulation(sport, game_context={}, iterations=iterations)
-    return {
-        "sport": result.sport,
-        "iterations": result.iterations,
-        "summary": result.summary,
     }
 
 

@@ -144,14 +144,6 @@ class TestSimulationEngine:
         engine = SimulationEngine("mlb")
         assert engine.sport == "mlb"
 
-    def test_simulate_game_returns_result(self) -> None:
-        engine = SimulationEngine("mlb")
-        result = engine.simulate_game({}, iterations=100)
-        assert isinstance(result, SimulationResult)
-        assert result.sport == "mlb"
-        assert result.iterations == 100
-
-
 class TestTypes:
     """Verify data structures."""
 
@@ -931,14 +923,6 @@ class TestSimulationEngineIntegration:
         result = engine.run_simulation({}, iterations=10)
         assert result["iterations"] == 0
 
-    def test_simulate_game_backward_compat(self) -> None:
-        engine = SimulationEngine("mlb")
-        result = engine.simulate_game({}, iterations=50)
-        assert isinstance(result, SimulationResult)
-        assert result.iterations == 50
-        assert result.sport == "mlb"
-
-
 class TestFullSimulationPipeline:
     """Verify Aggregation → Metrics → Profiles → Matchups → Simulation."""
 
@@ -1196,12 +1180,6 @@ class TestAnalyticsService:
         matchup = svc.get_matchup_analysis("mlb", "NYY", "BOS")
         assert isinstance(matchup, MatchupProfile)
 
-    def test_run_simulation(self) -> None:
-        svc = AnalyticsService()
-        result = svc.run_simulation("mlb", {}, iterations=50)
-        assert isinstance(result, SimulationResult)
-        assert result.iterations == 50
-
     def test_run_full_simulation(self) -> None:
         svc = AnalyticsService()
         result = svc.run_full_simulation("mlb", {}, iterations=100, seed=42)
@@ -1291,21 +1269,6 @@ class TestAnalyticsRoutes:
         assert "home_win_probability" in data
         assert "average_home_score" in data
         assert data["iterations"] == 100
-
-    def test_get_simulation_legacy_endpoint(self) -> None:
-        from fastapi.testclient import TestClient
-        from app.analytics.api.analytics_routes import router
-        from fastapi import FastAPI
-
-        app = FastAPI()
-        app.include_router(router)
-        client = TestClient(app)
-
-        resp = client.get("/api/analytics/simulation?sport=mlb&iterations=50")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["sport"] == "mlb"
-        assert data["iterations"] == 50
 
     def test_post_live_simulate_endpoint(self) -> None:
         from fastapi.testclient import TestClient
@@ -2379,17 +2342,6 @@ class TestModelRegistry:
         registry = ModelRegistry(registry_path=None)
         assert registry.get_active_model_instance("cricket", "plate_appearance") is None
 
-    def test_set_active_switches(self) -> None:
-        from app.analytics.models.core.model_registry import ModelRegistry
-
-        registry = ModelRegistry(registry_path=None)
-        registry.register_model("mlb", "plate_appearance", "v1", "/tmp/v1.pkl", version=1)
-        registry.register_model("mlb", "plate_appearance", "v2", "/tmp/v2.pkl", version=2)
-        registry.activate_model("mlb", "plate_appearance", "v1")
-        registry.set_active("v2")
-        active = registry.get_active_model("mlb", "plate_appearance")
-        assert active["model_id"] == "v2"
-
     def test_list_models_filtered(self) -> None:
         from app.analytics.models.core.model_registry import ModelRegistry
 
@@ -2518,36 +2470,26 @@ class TestMLBGameModel:
 class TestSimulationEngineMLIntegration:
     """Verify simulation engine can use ML models."""
 
-    def test_ml_model_integration(self) -> None:
+    def test_ml_mode_integration(self) -> None:
         engine = SimulationEngine("mlb")
         result = engine.run_simulation(
-            {"ml_model": "plate_appearance"},
+            {"probability_mode": "ml"},
             iterations=100,
             seed=42,
         )
         assert "home_win_probability" in result
         assert result["iterations"] == 100
 
-    def test_ml_model_does_not_break_without(self) -> None:
+    def test_no_mode_defaults(self) -> None:
         engine = SimulationEngine("mlb")
         result = engine.run_simulation({}, iterations=50, seed=42)
         assert result["iterations"] == 50
 
-    def test_ml_model_nonexistent_type_falls_back(self) -> None:
-        engine = SimulationEngine("mlb")
-        result = engine.run_simulation(
-            {"ml_model": "nonexistent_model"},
-            iterations=50,
-            seed=42,
-        )
-        # Should still work with defaults
-        assert result["iterations"] == 50
-
-    def test_ml_model_with_features(self) -> None:
+    def test_ml_mode_with_features(self) -> None:
         engine = SimulationEngine("mlb")
         result = engine.run_simulation(
             {
-                "ml_model": "plate_appearance",
+                "probability_mode": "ml",
                 "features": {"contact_rate": 0.85, "power_index": 1.3},
             },
             iterations=100,
@@ -3988,17 +3930,17 @@ class TestModelInferenceEngine:
         assert cache.size == 1
 
 
-class TestSimulationEngineMLIntegration:
-    """Tests for simulation engine using ModelInferenceEngine."""
+class TestSimulationEngineProbabilityModes:
+    """Tests for simulation engine probability mode dispatch."""
 
-    def test_simulation_with_ml_model_key(self) -> None:
-        """Simulation engine should use ML model when ml_model is set."""
+    def test_simulation_with_ml_mode(self) -> None:
+        """Simulation engine should use ML model when probability_mode is ml."""
         from app.analytics.core.simulation_engine import SimulationEngine
 
         engine = SimulationEngine("mlb")
         result = engine.run_simulation(
             {
-                "ml_model": "plate_appearance",
+                "probability_mode": "ml",
                 "profiles": {
                     "batter_profile": {"metrics": {"contact_rate": 0.82}},
                     "pitcher_profile": {"metrics": {"contact_rate": 0.70}},
@@ -4011,8 +3953,8 @@ class TestSimulationEngineMLIntegration:
         assert "home_win_probability" in result
         assert result["iterations"] > 0
 
-    def test_simulation_without_ml_model(self) -> None:
-        """Simulation should work normally without ml_model key."""
+    def test_simulation_without_ml_mode(self) -> None:
+        """Simulation should work normally without probability_mode key."""
         from app.analytics.core.simulation_engine import SimulationEngine
 
         engine = SimulationEngine("mlb")
@@ -4259,25 +4201,6 @@ class TestSimulationProbabilityIntegration:
         assert "home_win_probability" in result
         # No probability_source when no mode specified
         assert result["iterations"] == 100
-
-    def test_legacy_ml_model_key(self) -> None:
-        """Legacy ml_model key should still work."""
-        from app.analytics.core.simulation_engine import SimulationEngine
-
-        engine = SimulationEngine("mlb")
-        result = engine.run_simulation(
-            {
-                "ml_model": "plate_appearance",
-                "profiles": {
-                    "batter_profile": {"metrics": {"contact_rate": 0.82}},
-                    "pitcher_profile": {"metrics": {"contact_rate": 0.70}},
-                },
-            },
-            iterations=100,
-            seed=42,
-        )
-        assert "home_win_probability" in result
-        assert result.get("probability_source") in ("ml", "rule_based")
 
     def test_result_includes_metadata(self) -> None:
         from app.analytics.core.simulation_engine import SimulationEngine
@@ -4575,14 +4498,6 @@ class TestModelRegistryTrainingIntegration:
         assert registered[0]["model_id"] == "test_train_reg"
         assert registered[0]["sport"] == "mlb"
         assert registered[0]["artifact_path"] == "/tmp/artifact.pkl"
-
-    def test_set_active_legacy(self, tmp_path):
-        from app.analytics.models.core.model_registry import ModelRegistry
-
-        registry = ModelRegistry(registry_path=tmp_path / "reg.json")
-        registry.register_model("mlb", "pa", "v1", "/tmp/v1.pkl")
-        assert registry.set_active("v1")
-        assert registry.get_active_model("mlb", "pa")["model_id"] == "v1"
 
 
 # ============================================================

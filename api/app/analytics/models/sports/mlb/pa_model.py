@@ -90,7 +90,7 @@ class MLBPlateAppearanceModel(BaseModel):
         """Use the loaded ML model for prediction.
 
         Builds a feature vector from the input dict. If the model
-        expects more features than the legacy ``FEATURE_KEYS``, uses
+        expects more features than ``FEATURE_KEYS``, uses
         all float values from the dict in sorted key order.
         """
         n_expected = getattr(self._model, "n_features_in_", len(FEATURE_KEYS))

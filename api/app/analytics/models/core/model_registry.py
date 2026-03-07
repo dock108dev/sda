@@ -307,24 +307,6 @@ class ModelRegistry:
         return self._load_builtin(sport.lower(), model_type)
 
     # ------------------------------------------------------------------
-    # Legacy compatibility — used by existing code
-    # ------------------------------------------------------------------
-
-    def set_active(self, model_id: str) -> bool:
-        """Activate a model by its ID (searches all sport/type buckets).
-
-        Legacy method for backward compatibility with existing code.
-        """
-        for sport, sport_data in self._data.items():
-            for model_type, bucket in sport_data.items():
-                for model in bucket.get("models", []):
-                    if model["model_id"] == model_id:
-                        bucket["active_model"] = model_id
-                        self._save()
-                        return True
-        return False
-
-    # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
 

@@ -4,14 +4,12 @@ Each sport provides its own simulation implementation that plugs into
 this interface. The core engine handles iteration counting, result
 aggregation, and output formatting.
 
-Supports three usage modes:
+Supports two usage modes:
 
-1. **Legacy** — ``SimulationEngine("mlb").simulate_game(ctx)`` returns a
-   ``SimulationResult`` placeholder (backward-compatible).
-2. **Full Monte Carlo** — ``SimulationEngine("mlb").run_simulation(ctx,
+1. **Full Monte Carlo** — ``SimulationEngine("mlb").run_simulation(ctx,
    iterations=10000, seed=42)`` delegates to a sport-specific game
    simulator via ``SimulationRunner`` and returns aggregated results.
-3. **ML-enhanced** — When ``probability_mode`` is ``"ml"`` in the game
+2. **ML-enhanced** — When ``probability_mode`` is ``"ml"`` in the game
    context, the engine uses the ``ProbabilityResolver`` to generate
    event probabilities from trained ML models.
 """
@@ -24,7 +22,6 @@ import random
 from typing import Any
 
 from .simulation_runner import SimulationRunner
-from .types import SimulationResult
 
 logger = logging.getLogger(__name__)
 
@@ -62,37 +59,6 @@ class SimulationEngine:
         self._simulator = cls()
         return self._simulator
 
-    def simulate_game(
-        self,
-        game_context: dict[str, Any],
-        iterations: int = 1000,
-    ) -> SimulationResult:
-        """Run a game simulation over N iterations.
-
-        Backward-compatible entry point. For full Monte Carlo results
-        with aggregated statistics, use ``run_simulation()`` instead.
-
-        Args:
-            game_context: Sport-specific game setup data.
-            iterations: Number of simulation iterations.
-
-        Returns:
-            Aggregated simulation result.
-        """
-        simulator = self._get_sport_simulator()
-        if simulator is None:
-            return SimulationResult(sport=self.sport, iterations=iterations)
-
-        runner = SimulationRunner()
-        summary = runner.run_simulations(
-            simulator, game_context, iterations=iterations,
-        )
-        return SimulationResult(
-            sport=self.sport,
-            iterations=iterations,
-            summary=summary,
-        )
-
     def run_simulation(
         self,
         game_context: dict[str, Any],
@@ -103,8 +69,8 @@ class SimulationEngine:
 
         Supports probability mode selection via ``game_context`` keys:
 
-        - ``probability_mode``: ``"rule_based"`` (default) or ``"ml"``
-        - ``ml_model``: Legacy key — sets mode to ``"ml"`` if present
+        - ``probability_mode``: ``"rule_based"``, ``"ml"``, ``"ensemble"``,
+          or ``"pitch_level"``
         - ``profiles``: Entity profiles for ML probability generation
 
         Args:
@@ -132,16 +98,14 @@ class SimulationEngine:
 
         # Resolve probability mode
         probability_mode = context.pop("probability_mode", None)
-        ml_model_type = context.pop("ml_model", None)
 
         # Pitch-level simulation uses a different simulator entirely
         if probability_mode == "pitch_level" and self.sport == "mlb":
             return self._run_pitch_level(context, iterations, seed)
 
-        if probability_mode in ("ml", "ensemble") or ml_model_type:
-            model_type = ml_model_type or "plate_appearance"
+        if probability_mode in ("ml", "ensemble"):
             context, prob_meta = self._apply_probability_resolver(
-                context, probability_mode or "ml", model_type,
+                context, probability_mode, "plate_appearance",
             )
         elif probability_mode == "rule_based":
             context, prob_meta = self._apply_probability_resolver(
