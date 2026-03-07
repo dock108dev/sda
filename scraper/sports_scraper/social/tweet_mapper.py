@@ -175,17 +175,19 @@ def _search_dates_for_tweet(posted_at: datetime) -> tuple[datetime, datetime]:
     tweet_et = _to_et(posted_at)
     tweet_et_date = tweet_et.date()
 
-    # Search the tweet's ET date and the day before (for games that cross midnight)
+    # Search the tweet's ET date and the day before (for games that cross midnight).
+    # game_date is stored as midnight ET → UTC (e.g. 05:00 UTC for EST),
+    # so bounds must also be midnight ET → UTC to match.
     search_start = datetime.combine(
         tweet_et_date - timedelta(days=1),
         datetime.min.time(),
-        tzinfo=UTC,
-    )
+        tzinfo=EASTERN,
+    ).astimezone(UTC)
     search_end = datetime.combine(
         tweet_et_date,
         datetime.min.time(),
-        tzinfo=UTC,
-    )
+        tzinfo=EASTERN,
+    ).astimezone(UTC)
     return search_start, search_end
 
 

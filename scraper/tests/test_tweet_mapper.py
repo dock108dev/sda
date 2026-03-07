@@ -188,11 +188,14 @@ class TestGetGameWindow:
 # ---------------------------------------------------------------------------
 class TestSearchDatesForTweet:
     def test_afternoon_tweet_searches_today_and_yesterday(self):
-        """A tweet at 3 PM ET on Feb 6 should search game_dates Feb 5 and Feb 6."""
+        """A tweet at 3 PM ET on Feb 6 should search game_dates Feb 5 and Feb 6.
+        game_date is stored as midnight ET → UTC, so bounds are midnight ET → UTC.
+        During EST: midnight ET = 05:00 UTC.
+        """
         posted_at = _utc(2026, 2, 6, 20, 0)  # 3 PM EST
         search_start, search_end = _search_dates_for_tweet(posted_at)
-        assert search_start == _utc(2026, 2, 5, 0, 0)
-        assert search_end == _utc(2026, 2, 6, 0, 0)
+        assert search_start == _utc(2026, 2, 5, 5, 0)  # midnight EST Feb 5 = 05:00 UTC
+        assert search_end == _utc(2026, 2, 6, 5, 0)    # midnight EST Feb 6 = 05:00 UTC
 
     def test_postgame_tweet_after_midnight_et(self):
         """A tweet at 1 AM ET on Feb 7 (06:00 UTC) should find Feb 6 games.
@@ -201,8 +204,8 @@ class TestSearchDatesForTweet:
         posted_at = _utc(2026, 2, 7, 6, 0)  # 1 AM EST Feb 7
         search_start, search_end = _search_dates_for_tweet(posted_at)
         # ET date = Feb 7, search Feb 6 (yesterday) and Feb 7 (today)
-        assert search_start == _utc(2026, 2, 6, 0, 0)
-        assert search_end == _utc(2026, 2, 7, 0, 0)
+        assert search_start == _utc(2026, 2, 6, 5, 0)  # midnight EST Feb 6
+        assert search_end == _utc(2026, 2, 7, 5, 0)    # midnight EST Feb 7
 
     def test_early_morning_utc_tweet(self):
         """A tweet at 3 AM UTC on Feb 7 = 10 PM EST Feb 6.
@@ -210,8 +213,8 @@ class TestSearchDatesForTweet:
         """
         posted_at = _utc(2026, 2, 7, 3, 0)  # 10 PM EST Feb 6
         search_start, search_end = _search_dates_for_tweet(posted_at)
-        assert search_start == _utc(2026, 2, 5, 0, 0)
-        assert search_end == _utc(2026, 2, 6, 0, 0)
+        assert search_start == _utc(2026, 2, 5, 5, 0)  # midnight EST Feb 5
+        assert search_end == _utc(2026, 2, 6, 5, 0)    # midnight EST Feb 6
 
 
 # ---------------------------------------------------------------------------
