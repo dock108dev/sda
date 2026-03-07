@@ -7,49 +7,29 @@ import styles from "./analytics.module.css";
 
 const sections = [
   {
-    href: ROUTES.ANALYTICS_TEAM,
-    title: "Team Analytics",
-    desc: "View team-level metrics and performance profiles",
-  },
-  {
-    href: ROUTES.ANALYTICS_PLAYER,
-    title: "Player Analytics",
-    desc: "Browse player metrics, power index, and contact rates",
-  },
-  {
-    href: ROUTES.ANALYTICS_MATCHUP,
-    title: "Matchup Explorer",
-    desc: "Compare two players and view probability distributions",
-  },
-  {
-    href: ROUTES.ANALYTICS_SIMULATOR,
-    title: "Game Simulator",
-    desc: "Run Monte Carlo simulations and view score distributions",
-  },
-  {
-    href: ROUTES.ANALYTICS_MODEL_PERFORMANCE,
-    title: "Model Performance",
-    desc: "Track prediction accuracy, calibration, and model bias",
-  },
-  {
-    href: ROUTES.ANALYTICS_FEATURE_CONFIG,
-    title: "Feature Config",
-    desc: "Manage ML feature selection, weighting, and experimentation",
+    href: ROUTES.ANALYTICS_WORKBENCH,
+    title: "Workbench",
+    desc: "Build feature loadouts, train models, and view results",
   },
   {
     href: ROUTES.ANALYTICS_MODELS,
-    title: "Model Registry",
-    desc: "View trained models, versions, metrics, and activate deployments",
+    title: "Models",
+    desc: "Registry of trained models — compare, activate, and deploy",
   },
   {
-    href: ROUTES.ANALYTICS_ENSEMBLE,
-    title: "Ensemble Config",
-    desc: "Configure ensemble weights for combining probability sources",
+    href: ROUTES.ANALYTICS_SIMULATOR,
+    title: "Simulator",
+    desc: "Run Monte Carlo simulations on single or batch games",
   },
   {
-    href: ROUTES.ANALYTICS_BASEBALL_MODELS,
-    title: "Baseball Models",
-    desc: "Pitch, batted ball, and run expectancy models with test simulations",
+    href: ROUTES.ANALYTICS_MODEL_PERFORMANCE,
+    title: "Performance",
+    desc: "Track prediction accuracy, calibration, and model drift",
+  },
+  {
+    href: ROUTES.ANALYTICS_EXPLORER,
+    title: "Explorer",
+    desc: "Browse team, player, and matchup data with advanced stats",
   },
 ];
 
@@ -59,7 +39,7 @@ export default function AnalyticsPage() {
       <header className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Analytics</h1>
         <p className={styles.pageSubtitle}>
-          Team profiles, matchup analysis, and game simulation tools
+          Build models, run simulations, and track prediction performance
         </p>
       </header>
 

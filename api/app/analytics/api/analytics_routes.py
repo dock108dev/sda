@@ -1,8 +1,7 @@
 """Analytics API endpoints.
 
 Provides REST endpoints for team analysis, player analysis, matchup
-comparison, and game simulation. All endpoints return structured JSON
-and delegate to the AnalyticsService layer.
+comparison, game simulation, and feature loadout management.
 
 Routes:
     GET  /api/analytics/team          — Team analytical profile
@@ -10,14 +9,28 @@ Routes:
     GET  /api/analytics/matchup       — Head-to-head matchup analysis
     POST /api/analytics/simulate      — Full Monte Carlo simulation
     POST /api/analytics/live-simulate — Live game simulation from state
+    Feature Loadout CRUD:
+        GET    /api/analytics/feature-configs       — List all loadouts
+        GET    /api/analytics/feature-config/{id}   — Get loadout by ID
+        POST   /api/analytics/feature-config        — Create new loadout
+        PUT    /api/analytics/feature-config/{id}   — Update loadout
+        DELETE /api/analytics/feature-config/{id}   — Delete loadout
+        POST   /api/analytics/feature-config/{id}/clone — Clone loadout
+        GET    /api/analytics/available-features    — List available features
+    Training:
+        POST   /api/analytics/train                 — Start training job
+        GET    /api/analytics/training-jobs         — List training jobs
+        GET    /api/analytics/training-job/{id}     — Get training job details
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.core.model_calibration import ModelCalibration
 from app.analytics.core.model_metrics import ModelMetrics
@@ -31,6 +44,8 @@ from app.analytics.inference.model_inference_engine import ModelInferenceEngine
 from app.analytics.models.core.model_registry import ModelRegistry
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.services.model_service import ModelService
+from app.db import get_db
+from app.db.analytics import AnalyticsFeatureConfig
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -365,24 +380,262 @@ async def get_predictions(
 
 
 # ---------------------------------------------------------------------------
-# Feature Configuration endpoints
+# Feature Loadout CRUD endpoints (DB-backed)
 # ---------------------------------------------------------------------------
 
 
-class FeatureConfigUpdateRequest(BaseModel):
+class FeatureLoadoutCreateRequest(BaseModel):
     """Request body for POST /api/analytics/feature-config."""
-    model: str = Field(..., description="Config model name (e.g., mlb_pa_model_v1)")
-    sport: str = Field(..., description="Sport code")
-    features: dict[str, dict[str, Any]] = Field(
-        ..., description="Feature definitions with enabled/weight",
+    name: str = Field(..., description="Loadout name")
+    sport: str = Field(..., description="Sport code (e.g., mlb)")
+    model_type: str = Field(..., description="Model type (e.g., plate_appearance, game)")
+    features: list[dict[str, Any]] = Field(
+        ..., description="Array of {name, enabled, weight} dicts",
     )
+    is_default: bool = Field(False, description="Whether this is the default loadout")
 
 
+class FeatureLoadoutUpdateRequest(BaseModel):
+    """Request body for PUT /api/analytics/feature-config/{id}."""
+    name: str | None = Field(None, description="New loadout name")
+    sport: str | None = Field(None, description="Sport code")
+    model_type: str | None = Field(None, description="Model type")
+    features: list[dict[str, Any]] | None = Field(
+        None, description="Array of {name, enabled, weight} dicts",
+    )
+    is_default: bool | None = Field(None, description="Default flag")
+
+
+def _serialize_loadout(row: AnalyticsFeatureConfig) -> dict[str, Any]:
+    """Serialize a DB feature config row to API response dict."""
+    features = row.features or []
+    enabled = [f["name"] for f in features if f.get("enabled", True)]
+    return {
+        "id": row.id,
+        "name": row.name,
+        "sport": row.sport,
+        "model_type": row.model_type,
+        "features": features,
+        "is_default": row.is_default,
+        "enabled_count": len(enabled),
+        "total_count": len(features),
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+@router.get("/feature-configs")
+async def list_feature_configs(
+    sport: str = Query(None, description="Filter by sport"),
+    model_type: str = Query(None, description="Filter by model type"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List all saved feature loadouts."""
+    stmt = select(AnalyticsFeatureConfig).order_by(
+        AnalyticsFeatureConfig.updated_at.desc()
+    )
+    if sport:
+        stmt = stmt.where(AnalyticsFeatureConfig.sport == sport)
+    if model_type:
+        stmt = stmt.where(AnalyticsFeatureConfig.model_type == model_type)
+
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    loadouts = [_serialize_loadout(r) for r in rows]
+
+    # Also include YAML-based configs for backwards compatibility
+    yaml_available = _feature_config_registry.list_available()
+
+    return {
+        "loadouts": loadouts,
+        "yaml_configs": yaml_available,
+        "count": len(loadouts),
+    }
+
+
+@router.get("/feature-config/{config_id}")
+async def get_feature_config_by_id(
+    config_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Get a feature loadout by ID."""
+    row = await db.get(AnalyticsFeatureConfig, config_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Feature config not found")
+    return _serialize_loadout(row)
+
+
+@router.post("/feature-config")
+async def create_feature_config(
+    req: FeatureLoadoutCreateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Create a new feature loadout."""
+    row = AnalyticsFeatureConfig(
+        name=req.name,
+        sport=req.sport.lower(),
+        model_type=req.model_type,
+        features=req.features,
+        is_default=req.is_default,
+    )
+    db.add(row)
+    await db.flush()
+    await db.refresh(row)
+    return {"status": "created", **_serialize_loadout(row)}
+
+
+@router.put("/feature-config/{config_id}")
+async def update_feature_config(
+    config_id: int,
+    req: FeatureLoadoutUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Update an existing feature loadout."""
+    row = await db.get(AnalyticsFeatureConfig, config_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Feature config not found")
+
+    if req.name is not None:
+        row.name = req.name
+    if req.sport is not None:
+        row.sport = req.sport.lower()
+    if req.model_type is not None:
+        row.model_type = req.model_type
+    if req.features is not None:
+        row.features = req.features
+    if req.is_default is not None:
+        row.is_default = req.is_default
+
+    await db.flush()
+    await db.refresh(row)
+    return {"status": "updated", **_serialize_loadout(row)}
+
+
+@router.delete("/feature-config/{config_id}")
+async def delete_feature_config(
+    config_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete a feature loadout."""
+    row = await db.get(AnalyticsFeatureConfig, config_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Feature config not found")
+    name = row.name
+    await db.delete(row)
+    return {"status": "deleted", "id": config_id, "name": name}
+
+
+@router.post("/feature-config/{config_id}/clone")
+async def clone_feature_config(
+    config_id: int,
+    name: str = Query(None, description="Name for the cloned loadout"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Clone an existing feature loadout."""
+    row = await db.get(AnalyticsFeatureConfig, config_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Feature config not found")
+
+    clone_name = name or f"{row.name} (copy)"
+    clone = AnalyticsFeatureConfig(
+        name=clone_name,
+        sport=row.sport,
+        model_type=row.model_type,
+        features=list(row.features),
+        is_default=False,
+    )
+    db.add(clone)
+    await db.flush()
+    await db.refresh(clone)
+    return {"status": "cloned", **_serialize_loadout(clone)}
+
+
+@router.get("/available-features")
+async def get_available_features(
+    sport: str = Query("mlb", description="Sport code"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List available features from data for a given sport.
+
+    Returns feature definitions with descriptions, data types,
+    and coverage stats from the database.
+    """
+    if sport.lower() == "mlb":
+        return await _get_mlb_available_features(db)
+    return {"sport": sport, "features": [], "message": "Sport not supported yet"}
+
+
+async def _get_mlb_available_features(db: AsyncSession) -> dict[str, Any]:
+    """Get available MLB features from the MLBFeatureBuilder and DB stats."""
+    from app.analytics.features.sports.mlb_features import _PA_FEATURES, _GAME_FEATURES
+    from app.db.mlb_advanced import MLBGameAdvancedStats
+
+    # Count total games with advanced stats for coverage calculation
+    from sqlalchemy import func as sa_func
+    count_result = await db.execute(
+        select(sa_func.count(MLBGameAdvancedStats.id))
+    )
+    total_games = count_result.scalar() or 0
+
+    # Build feature catalog from the MLBFeatureBuilder specs
+    pa_features = []
+    for feat_name, entity, source_key in _PA_FEATURES:
+        pa_features.append({
+            "name": feat_name,
+            "entity": entity,
+            "source_key": source_key,
+            "description": _feature_description(feat_name, source_key),
+            "data_type": "float",
+            "model_types": ["plate_appearance"],
+        })
+
+    game_features = []
+    for feat_name, entity, source_key in _GAME_FEATURES:
+        game_features.append({
+            "name": feat_name,
+            "entity": entity,
+            "source_key": source_key,
+            "description": _feature_description(feat_name, source_key),
+            "data_type": "float",
+            "model_types": ["game"],
+        })
+
+    return {
+        "sport": "mlb",
+        "total_games_with_data": total_games,
+        "plate_appearance_features": pa_features,
+        "game_features": game_features,
+        "all_features": pa_features + game_features,
+    }
+
+
+def _feature_description(feat_name: str, source_key: str) -> str:
+    """Generate a human-readable description for a feature."""
+    descriptions: dict[str, str] = {
+        "contact_rate": "Rate of contact made on swings",
+        "power_index": "Composite power metric based on exit velocity and barrel rate",
+        "barrel_rate": "Percentage of batted balls classified as barrels",
+        "hard_hit_rate": "Percentage of batted balls with exit velocity >= 95 mph",
+        "swing_rate": "Percentage of pitches swung at",
+        "whiff_rate": "Percentage of swings that miss (swinging strikes / swings)",
+        "avg_exit_velocity": "Average exit velocity on batted balls (mph)",
+        "expected_slug": "Expected slugging percentage based on quality of contact",
+    }
+    prefix = feat_name.split("_")[0]
+    entity_label = {
+        "batter": "Batter's", "pitcher": "Pitcher's",
+        "home": "Home team's", "away": "Away team's",
+    }.get(prefix, "")
+    base_desc = descriptions.get(source_key, source_key.replace("_", " "))
+    return f"{entity_label} {base_desc}".strip()
+
+
+# Legacy YAML-based endpoint (kept for backwards compatibility)
 @router.get("/feature-config")
-async def get_feature_config(
+async def get_feature_config_by_name(
     model: str = Query(..., description="Config name (e.g., mlb_pa_model)"),
 ) -> dict[str, Any]:
-    """Get a feature configuration by model name."""
+    """Get a YAML-based feature configuration by model name."""
     config = _feature_config_registry.get_config(model)
     if config is None:
         return {"status": "not_found", "model": model}
@@ -396,28 +649,131 @@ async def get_feature_config(
     }
 
 
-@router.get("/feature-configs")
-async def list_feature_configs() -> dict[str, Any]:
-    """List all available feature configurations."""
-    available = _feature_config_registry.list_available()
-    registered = _feature_config_registry.list_configs()
-    return {"available": available, "registered": registered}
+# ---------------------------------------------------------------------------
+# Training Pipeline endpoints
+# ---------------------------------------------------------------------------
 
 
-@router.post("/feature-config")
-async def post_feature_config(req: FeatureConfigUpdateRequest) -> dict[str, Any]:
-    """Register or update a feature configuration.
+class TrainModelRequest(BaseModel):
+    """Request body for POST /api/analytics/train."""
+    feature_config_id: int | None = Field(None, description="Feature loadout ID from DB")
+    sport: str = Field("mlb", description="Sport code")
+    model_type: str = Field("game", description="Model type")
+    date_start: str | None = Field(None, description="Training data start date (YYYY-MM-DD)")
+    date_end: str | None = Field(None, description="Training data end date (YYYY-MM-DD)")
+    test_split: float = Field(0.2, ge=0.05, le=0.5, description="Test set fraction")
+    algorithm: str = Field("gradient_boosting", description="Algorithm: gradient_boosting, random_forest, xgboost")
+    random_state: int = Field(42, description="Random seed for reproducibility")
 
-    Accepts a full feature config and registers it in the registry.
-    """
-    config = _feature_config_loader.load_from_dict(req.model_dump())
-    _feature_config_registry.register(req.model, config)
+
+def _serialize_training_job(job) -> dict[str, Any]:
+    """Serialize a training job row to API response."""
     return {
-        "status": "registered",
-        "model": config.model,
-        "sport": config.sport,
-        "enabled_features": config.get_enabled_features(),
+        "id": job.id,
+        "feature_config_id": job.feature_config_id,
+        "sport": job.sport,
+        "model_type": job.model_type,
+        "algorithm": job.algorithm,
+        "date_start": job.date_start,
+        "date_end": job.date_end,
+        "test_split": job.test_split,
+        "random_state": job.random_state,
+        "status": job.status,
+        "celery_task_id": job.celery_task_id,
+        "model_id": job.model_id,
+        "artifact_path": job.artifact_path,
+        "metrics": job.metrics,
+        "train_count": job.train_count,
+        "test_count": job.test_count,
+        "feature_names": job.feature_names,
+        "error_message": job.error_message,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
+
+
+@router.post("/train")
+async def start_training(
+    req: TrainModelRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Start a model training job.
+
+    Creates a training job record and dispatches a Celery task.
+    Returns the job ID for polling.
+    """
+    from app.db.analytics import AnalyticsTrainingJob
+
+    job = AnalyticsTrainingJob(
+        feature_config_id=req.feature_config_id,
+        sport=req.sport.lower(),
+        model_type=req.model_type,
+        algorithm=req.algorithm,
+        date_start=req.date_start,
+        date_end=req.date_end,
+        test_split=req.test_split,
+        random_state=req.random_state,
+        status="pending",
+    )
+    db.add(job)
+    await db.flush()
+    await db.refresh(job)
+
+    # Dispatch Celery task
+    try:
+        from app.tasks.training_tasks import train_analytics_model
+        task = train_analytics_model.delay(job.id)
+        job.celery_task_id = task.id
+        job.status = "queued"
+        await db.flush()
+    except Exception as exc:
+        job.status = "failed"
+        job.error_message = f"Failed to dispatch task: {exc}"
+        await db.flush()
+
+    return {"status": "submitted", "job": _serialize_training_job(job)}
+
+
+@router.get("/training-jobs")
+async def list_training_jobs(
+    sport: str = Query(None, description="Filter by sport"),
+    status: str = Query(None, description="Filter by status"),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List training jobs with optional filtering."""
+    from app.db.analytics import AnalyticsTrainingJob
+
+    stmt = select(AnalyticsTrainingJob).order_by(
+        AnalyticsTrainingJob.created_at.desc()
+    ).limit(limit)
+
+    if sport:
+        stmt = stmt.where(AnalyticsTrainingJob.sport == sport)
+    if status:
+        stmt = stmt.where(AnalyticsTrainingJob.status == status)
+
+    result = await db.execute(stmt)
+    jobs = result.scalars().all()
+    return {
+        "jobs": [_serialize_training_job(j) for j in jobs],
+        "count": len(jobs),
+    }
+
+
+@router.get("/training-job/{job_id}")
+async def get_training_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Get details for a specific training job."""
+    from app.db.analytics import AnalyticsTrainingJob
+
+    job = await db.get(AnalyticsTrainingJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    return _serialize_training_job(job)
 
 
 # ---------------------------------------------------------------------------

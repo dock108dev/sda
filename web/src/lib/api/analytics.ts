@@ -202,6 +202,187 @@ export async function saveFeatureConfig(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Feature Loadout CRUD (DB-backed)
+// ---------------------------------------------------------------------------
+
+export interface FeatureLoadout {
+  id: number;
+  name: string;
+  sport: string;
+  model_type: string;
+  features: { name: string; enabled: boolean; weight: number }[];
+  is_default: boolean;
+  enabled_count: number;
+  total_count: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface FeatureLoadoutListResponse {
+  loadouts: FeatureLoadout[];
+  yaml_configs: string[];
+  count: number;
+}
+
+export async function listFeatureLoadouts(
+  sport?: string,
+  modelType?: string,
+): Promise<FeatureLoadoutListResponse> {
+  const params = new URLSearchParams();
+  if (sport) params.set("sport", sport);
+  if (modelType) params.set("model_type", modelType);
+  const qs = params.toString();
+  return fetchJson<FeatureLoadoutListResponse>(
+    `${base()}/api/analytics/feature-configs${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export async function getFeatureLoadout(id: number): Promise<FeatureLoadout> {
+  return fetchJson<FeatureLoadout>(`${base()}/api/analytics/feature-config/${id}`);
+}
+
+export async function createFeatureLoadout(data: {
+  name: string;
+  sport: string;
+  model_type: string;
+  features: { name: string; enabled: boolean; weight: number }[];
+  is_default?: boolean;
+}): Promise<{ status: string } & FeatureLoadout> {
+  return fetchJson(`${base()}/api/analytics/feature-config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFeatureLoadout(
+  id: number,
+  data: Partial<{
+    name: string;
+    sport: string;
+    model_type: string;
+    features: { name: string; enabled: boolean; weight: number }[];
+    is_default: boolean;
+  }>,
+): Promise<{ status: string } & FeatureLoadout> {
+  return fetchJson(`${base()}/api/analytics/feature-config/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFeatureLoadout(
+  id: number,
+): Promise<{ status: string; id: number; name: string }> {
+  return fetchJson(`${base()}/api/analytics/feature-config/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function cloneFeatureLoadout(
+  id: number,
+  name?: string,
+): Promise<{ status: string } & FeatureLoadout> {
+  const params = new URLSearchParams();
+  if (name) params.set("name", name);
+  const qs = params.toString();
+  return fetchJson(`${base()}/api/analytics/feature-config/${id}/clone${qs ? `?${qs}` : ""}`, {
+    method: "POST",
+  });
+}
+
+export interface AvailableFeature {
+  name: string;
+  entity: string;
+  source_key: string;
+  description: string;
+  data_type: string;
+  model_types: string[];
+}
+
+export interface AvailableFeaturesResponse {
+  sport: string;
+  total_games_with_data: number;
+  plate_appearance_features: AvailableFeature[];
+  game_features: AvailableFeature[];
+  all_features: AvailableFeature[];
+}
+
+export async function getAvailableFeatures(
+  sport: string = "mlb",
+): Promise<AvailableFeaturesResponse> {
+  const params = new URLSearchParams({ sport });
+  return fetchJson<AvailableFeaturesResponse>(
+    `${base()}/api/analytics/available-features?${params}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Training Pipeline
+// ---------------------------------------------------------------------------
+
+export interface TrainingJobRequest {
+  feature_config_id?: number | null;
+  sport: string;
+  model_type: string;
+  date_start?: string | null;
+  date_end?: string | null;
+  test_split?: number;
+  algorithm?: string;
+  random_state?: number;
+}
+
+export interface TrainingJob {
+  id: number;
+  feature_config_id: number | null;
+  sport: string;
+  model_type: string;
+  algorithm: string;
+  date_start: string | null;
+  date_end: string | null;
+  test_split: number;
+  random_state: number;
+  status: "pending" | "queued" | "running" | "completed" | "failed";
+  celery_task_id: string | null;
+  model_id: string | null;
+  artifact_path: string | null;
+  metrics: Record<string, number> | null;
+  train_count: number | null;
+  test_count: number | null;
+  feature_names: string[] | null;
+  error_message: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  completed_at: string | null;
+}
+
+export async function startTraining(
+  req: TrainingJobRequest,
+): Promise<{ status: string; job: TrainingJob }> {
+  return fetchJson(`${base()}/api/analytics/train`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export async function listTrainingJobs(
+  sport?: string,
+  status?: string,
+): Promise<{ jobs: TrainingJob[]; count: number }> {
+  const params = new URLSearchParams();
+  if (sport) params.set("sport", sport);
+  if (status) params.set("status", status);
+  const qs = params.toString();
+  return fetchJson(`${base()}/api/analytics/training-jobs${qs ? `?${qs}` : ""}`);
+}
+
+export async function getTrainingJob(id: number): Promise<TrainingJob> {
+  return fetchJson<TrainingJob>(`${base()}/api/analytics/training-job/${id}`);
+}
+
 export async function getModelPerformance(
   sport?: string,
 ): Promise<ModelPerformance> {
