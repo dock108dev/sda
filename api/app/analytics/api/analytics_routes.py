@@ -5,11 +5,12 @@ comparison, and game simulation. All endpoints return structured JSON
 and delegate to the AnalyticsService layer.
 
 Routes:
-    GET  /api/analytics/team       — Team analytical profile
-    GET  /api/analytics/player     — Player analytical profile
-    GET  /api/analytics/matchup    — Head-to-head matchup analysis
-    GET  /api/analytics/simulation — Game simulation results (legacy)
-    POST /api/analytics/simulate   — Full Monte Carlo simulation
+    GET  /api/analytics/team          — Team analytical profile
+    GET  /api/analytics/player        — Player analytical profile
+    GET  /api/analytics/matchup       — Head-to-head matchup analysis
+    GET  /api/analytics/simulation    — Game simulation results (legacy)
+    POST /api/analytics/simulate      — Full Monte Carlo simulation
+    POST /api/analytics/live-simulate — Live game simulation from state
 """
 
 from __future__ import annotations
@@ -25,6 +26,30 @@ from app.analytics.services.analytics_service import AnalyticsService
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 _service = AnalyticsService()
+
+
+class LiveSimulateRequest(BaseModel):
+    """Request body for POST /api/analytics/live-simulate."""
+    sport: str = Field(..., description="Sport code (e.g., mlb)")
+    inning: int = Field(1, ge=1, le=20, description="Current inning")
+    half: str = Field("top", description="top or bottom")
+    outs: int = Field(0, ge=0, le=2, description="Current outs")
+    bases: dict[str, bool] = Field(
+        default_factory=lambda: {"first": False, "second": False, "third": False},
+        description="Base runner state",
+    )
+    score: dict[str, int] = Field(
+        default_factory=lambda: {"home": 0, "away": 0},
+        description="Current score",
+    )
+    iterations: int = Field(2000, ge=1, le=50000, description="Simulation iterations")
+    seed: int | None = Field(None, description="Optional seed for determinism")
+    home_probabilities: dict[str, float] | None = Field(
+        None, description="Custom home team probability distribution",
+    )
+    away_probabilities: dict[str, float] | None = Field(
+        None, description="Custom away team probability distribution",
+    )
 
 
 class SimulateRequest(BaseModel):
@@ -139,3 +164,33 @@ async def post_simulate(req: SimulateRequest) -> dict[str, Any]:
         "away_team": req.away_team,
         **result,
     }
+
+
+@router.post("/live-simulate")
+async def post_live_simulate(req: LiveSimulateRequest) -> dict[str, Any]:
+    """Run a simulation from a live game state.
+
+    Accepts current inning, outs, base runners, and score. Returns
+    win probabilities and expected final score.
+    """
+    game_state: dict[str, Any] = {
+        "inning": req.inning,
+        "half": req.half,
+        "outs": req.outs,
+        "bases": req.bases,
+        "score": req.score,
+    }
+
+    if req.home_probabilities:
+        game_state["home_probabilities"] = req.home_probabilities
+    if req.away_probabilities:
+        game_state["away_probabilities"] = req.away_probabilities
+
+    result = _service.run_live_simulation(
+        sport=req.sport,
+        game_state=game_state,
+        iterations=req.iterations,
+        seed=req.seed,
+    )
+
+    return {"sport": req.sport, **result}

@@ -1301,3 +1301,253 @@ class TestAnalyticsRoutes:
         data = resp.json()
         assert data["sport"] == "mlb"
         assert data["iterations"] == 50
+
+    def test_post_live_simulate_endpoint(self) -> None:
+        from fastapi.testclient import TestClient
+        from app.analytics.api.analytics_routes import router
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(router)
+        client = TestClient(app)
+
+        resp = client.post("/api/analytics/live-simulate", json={
+            "sport": "mlb",
+            "inning": 6,
+            "half": "top",
+            "outs": 1,
+            "bases": {"first": True, "second": False, "third": False},
+            "score": {"home": 3, "away": 2},
+            "iterations": 200,
+            "seed": 42,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sport"] == "mlb"
+        assert data["inning"] == 6
+        assert "home_win_probability" in data
+        assert "expected_final_score" in data
+
+
+class TestMLBLiveSimulator:
+    """Verify MLB live game simulator."""
+
+    def test_simulate_from_midgame(self) -> None:
+        import random
+        from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
+
+        sim = MLBLiveSimulator()
+        state = {
+            "inning": 6,
+            "half": "top",
+            "outs": 1,
+            "bases": {"first": True, "second": False, "third": False},
+            "score": {"home": 3, "away": 2},
+        }
+        result = sim.simulate_from_state(state, rng=random.Random(42))
+        assert "home_score" in result
+        assert "away_score" in result
+        assert result["winner"] in ("home", "away")
+        assert result["home_score"] >= 3  # can't lose existing runs
+        assert result["away_score"] >= 2
+
+    def test_simulate_bottom_of_inning(self) -> None:
+        import random
+        from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
+
+        sim = MLBLiveSimulator()
+        state = {
+            "inning": 7,
+            "half": "bottom",
+            "outs": 2,
+            "bases": {"first": False, "second": True, "third": False},
+            "score": {"home": 4, "away": 5},
+        }
+        result = sim.simulate_from_state(state, rng=random.Random(99))
+        assert result["home_score"] >= 4
+        assert result["away_score"] >= 5
+
+    def test_deterministic_with_seed(self) -> None:
+        import random
+        from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
+
+        sim = MLBLiveSimulator()
+        state = {
+            "inning": 5,
+            "half": "top",
+            "outs": 0,
+            "bases": {"first": False, "second": False, "third": False},
+            "score": {"home": 2, "away": 2},
+        }
+        r1 = sim.simulate_from_state(state, rng=random.Random(42))
+        r2 = sim.simulate_from_state(state, rng=random.Random(42))
+        assert r1 == r2
+
+    def test_late_game_home_leading(self) -> None:
+        import random
+        from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
+
+        sim = MLBLiveSimulator()
+        state = {
+            "inning": 9,
+            "half": "top",
+            "outs": 2,
+            "bases": {"first": False, "second": False, "third": False},
+            "score": {"home": 10, "away": 1},
+        }
+        # Run 20 sims - home should win most/all
+        home_wins = 0
+        for seed in range(20):
+            result = sim.simulate_from_state(state, rng=random.Random(seed))
+            if result["winner"] == "home":
+                home_wins += 1
+        assert home_wins >= 15  # strong home lead should almost always win
+
+    def test_walkoff_scenario(self) -> None:
+        import random
+        from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
+
+        sim = MLBLiveSimulator()
+        state = {
+            "inning": 9,
+            "half": "bottom",
+            "outs": 0,
+            "bases": {"first": True, "second": True, "third": True},
+            "score": {"home": 3, "away": 4},
+        }
+        # Bases loaded bottom 9 down 1 - some sims should produce walkoff
+        results = [sim.simulate_from_state(state, rng=random.Random(s)) for s in range(50)]
+        home_wins = sum(1 for r in results if r["winner"] == "home")
+        assert home_wins > 0  # at least some walkoffs
+
+
+class TestLiveSimulationEngine:
+    """Verify LiveSimulationEngine orchestration."""
+
+    def test_simulate_from_state_returns_result(self) -> None:
+        from app.analytics.core.live_simulation_engine import LiveSimulationEngine
+
+        engine = LiveSimulationEngine("mlb")
+        state = {
+            "inning": 4,
+            "half": "top",
+            "outs": 0,
+            "bases": {"first": False, "second": False, "third": False},
+            "score": {"home": 1, "away": 1},
+        }
+        result = engine.simulate_from_state(state, iterations=200, seed=42)
+        assert "home_win_probability" in result
+        assert "away_win_probability" in result
+        assert "expected_final_score" in result
+        assert result["inning"] == 4
+        assert result["iterations"] == 200
+
+    def test_probabilities_sum_to_one(self) -> None:
+        from app.analytics.core.live_simulation_engine import LiveSimulationEngine
+
+        engine = LiveSimulationEngine("mlb")
+        state = {"inning": 5, "half": "bottom", "outs": 1,
+                 "score": {"home": 3, "away": 2}}
+        result = engine.simulate_from_state(state, iterations=500, seed=7)
+        total = result["home_win_probability"] + result["away_win_probability"]
+        assert abs(total - 1.0) < 0.001
+
+    def test_home_lead_late_means_higher_wp(self) -> None:
+        from app.analytics.core.live_simulation_engine import LiveSimulationEngine
+
+        engine = LiveSimulationEngine("mlb")
+        state = {
+            "inning": 8,
+            "half": "bottom",
+            "outs": 2,
+            "score": {"home": 7, "away": 2},
+        }
+        result = engine.simulate_from_state(state, iterations=500, seed=42)
+        assert result["home_win_probability"] > 0.8
+
+    def test_unsupported_sport_returns_default(self) -> None:
+        from app.analytics.core.live_simulation_engine import LiveSimulationEngine
+
+        engine = LiveSimulationEngine("cricket")
+        result = engine.simulate_from_state({}, iterations=10)
+        assert result["home_win_probability"] == 0.5
+        assert result["iterations"] == 0
+
+
+class TestWinProbabilityModel:
+    """Verify WinProbabilityModel calculations."""
+
+    def test_calculate_win_probability(self) -> None:
+        from app.analytics.core.win_probability_model import WinProbabilityModel
+
+        model = WinProbabilityModel()
+        results = [
+            {"winner": "home"}, {"winner": "home"}, {"winner": "away"},
+            {"winner": "home"}, {"winner": "away"},
+        ]
+        wp = model.calculate_win_probability(results)
+        assert wp["home_wp"] == 0.6
+        assert wp["away_wp"] == 0.4
+
+    def test_empty_results(self) -> None:
+        from app.analytics.core.win_probability_model import WinProbabilityModel
+
+        wp = WinProbabilityModel().calculate_win_probability([])
+        assert wp["home_wp"] == 0.5
+
+    def test_build_timeline(self) -> None:
+        from app.analytics.core.win_probability_model import WinProbabilityModel
+
+        model = WinProbabilityModel()
+        snapshots = [
+            {"inning": 1, "half": "top", "home_win_probability": 0.52},
+            {"inning": 3, "half": "bottom", "home_win_probability": 0.48},
+            {"inning": 6, "half": "top", "home_win_probability": 0.65},
+        ]
+        timeline = model.build_timeline(snapshots)
+        assert len(timeline) == 3
+        assert timeline[0]["label"] == "T1"
+        assert timeline[1]["label"] == "B3"
+        assert timeline[2]["home_wp"] == 0.65
+
+    def test_generate_live_timeline(self) -> None:
+        from app.analytics.core.live_simulation_engine import LiveSimulationEngine
+        from app.analytics.core.win_probability_model import WinProbabilityModel
+
+        model = WinProbabilityModel()
+        engine = LiveSimulationEngine("mlb")
+
+        states = [
+            {"inning": 1, "half": "top", "outs": 0, "score": {"home": 0, "away": 0}},
+            {"inning": 3, "half": "top", "outs": 0, "score": {"home": 2, "away": 1}},
+            {"inning": 6, "half": "bottom", "outs": 0, "score": {"home": 4, "away": 2}},
+        ]
+        timeline = model.generate_live_timeline(states, engine, iterations=100, seed=42)
+        assert len(timeline) == 3
+        # Home leading should show increasing WP
+        assert timeline[2]["home_wp"] > timeline[0]["home_wp"]
+
+
+class TestFullLivePipeline:
+    """Verify full pipeline including live simulation."""
+
+    def test_pregame_to_live(self) -> None:
+        from app.analytics.core.live_simulation_engine import LiveSimulationEngine
+
+        # Pregame: start of game
+        engine = LiveSimulationEngine("mlb")
+        pregame = engine.simulate_from_state(
+            {"inning": 1, "half": "top", "outs": 0,
+             "score": {"home": 0, "away": 0}},
+            iterations=300, seed=42,
+        )
+        assert abs(pregame["home_win_probability"] + pregame["away_win_probability"] - 1.0) < 0.001
+
+        # Live: mid-game with home leading
+        live = engine.simulate_from_state(
+            {"inning": 7, "half": "bottom", "outs": 1,
+             "score": {"home": 5, "away": 2}},
+            iterations=300, seed=42,
+        )
+        # Home leading by 3 in 7th should have higher WP than start
+        assert live["home_win_probability"] > pregame["home_win_probability"]

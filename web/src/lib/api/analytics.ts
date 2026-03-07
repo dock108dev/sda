@@ -104,3 +104,37 @@ export async function runSimulation(
     body: JSON.stringify(req),
   });
 }
+
+export interface LiveSimulateRequest {
+  sport: string;
+  inning: number;
+  half: "top" | "bottom";
+  outs: number;
+  bases: { first: boolean; second: boolean; third: boolean };
+  score: { home: number; away: number };
+  iterations?: number;
+  seed?: number | null;
+  home_probabilities?: Record<string, number>;
+  away_probabilities?: Record<string, number>;
+}
+
+export interface LiveSimulateResult {
+  sport: string;
+  inning: number;
+  half: string;
+  score: { home: number; away: number };
+  home_win_probability: number;
+  away_win_probability: number;
+  expected_final_score: { home: number; away: number };
+  iterations: number;
+}
+
+export async function runLiveSimulation(
+  req: LiveSimulateRequest,
+): Promise<LiveSimulateResult> {
+  return fetchJson<LiveSimulateResult>(`${base()}/api/analytics/live-simulate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
