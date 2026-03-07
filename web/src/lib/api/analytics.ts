@@ -247,12 +247,28 @@ export async function activateModel(
   sport: string,
   modelType: string,
   modelId: string,
-): Promise<{ status: string; active_model?: string }> {
+): Promise<{ status: string; active_model?: string; message?: string }> {
   return fetchJson(`${base()}/api/analytics/models/activate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sport, model_type: modelType, model_id: modelId }),
   });
+}
+
+export interface ActiveModelResponse {
+  sport: string;
+  model_type: string;
+  active_model: string | null;
+  version?: number;
+  metrics?: Record<string, number>;
+}
+
+export async function getActiveModel(
+  sport: string,
+  modelType: string,
+): Promise<ActiveModelResponse> {
+  const params = new URLSearchParams({ sport, model_type: modelType });
+  return fetchJson<ActiveModelResponse>(`${base()}/api/analytics/models/active?${params}`);
 }
 
 export interface ModelMetricsEntry {

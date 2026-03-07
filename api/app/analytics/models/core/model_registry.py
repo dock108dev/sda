@@ -185,26 +185,62 @@ class ModelRegistry:
                     results.append(entry)
         return results
 
-    def activate_model(self, sport: str, model_type: str, model_id: str) -> bool:
+    def activate_model(
+        self,
+        sport: str,
+        model_type: str,
+        model_id: str,
+        *,
+        validate_paths: bool = False,
+    ) -> dict[str, Any]:
         """Set a model as the active model for its sport + model_type.
 
-        Returns ``True`` if the model was found and activated.
+        Args:
+            sport: Sport code.
+            model_type: Model type.
+            model_id: Model ID to activate.
+            validate_paths: If ``True``, verify that the artifact (and
+                optionally metadata) file exists on disk before activating.
+
+        Returns:
+            Dict with ``status`` (``"success"`` or ``"error"``),
+            ``active_model``, and optional ``message``.
         """
         sport = sport.lower()
         bucket = self._get_bucket(sport, model_type)
         if bucket is None:
-            return False
+            return {"status": "error", "message": "Model not found"}
 
+        target = None
         for model in bucket.get("models", []):
             if model["model_id"] == model_id:
-                bucket["active_model"] = model_id
-                self._save()
-                logger.info(
-                    "model_activated",
-                    extra={"model_id": model_id, "sport": sport, "model_type": model_type},
-                )
-                return True
-        return False
+                target = model
+                break
+
+        if target is None:
+            return {"status": "error", "message": "Model not found"}
+
+        if validate_paths:
+            artifact = target.get("artifact_path")
+            if artifact and not Path(artifact).exists():
+                return {"status": "error", "message": "Model artifact not found"}
+            metadata = target.get("metadata_path")
+            if metadata and not Path(metadata).exists():
+                return {"status": "error", "message": "Model metadata not found"}
+
+        previous = bucket.get("active_model")
+        bucket["active_model"] = model_id
+        self._save()
+        logger.info(
+            "model_activated",
+            extra={
+                "model_id": model_id,
+                "previous": previous,
+                "sport": sport,
+                "model_type": model_type,
+            },
+        )
+        return {"status": "success", "active_model": model_id}
 
     def deactivate_model(self, sport: str, model_type: str, model_id: str) -> bool:
         """Clear the active model if it matches model_id.

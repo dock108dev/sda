@@ -56,8 +56,12 @@ export default function ModelsPage() {
   async function handleActivate(m: RegisteredModel) {
     setActivating(m.model_id);
     try {
-      await activateModel(m.sport, m.model_type, m.model_id);
-      await load();
+      const res = await activateModel(m.sport, m.model_type, m.model_id);
+      if (res.status === "error") {
+        setError(res.message || "Activation failed");
+      } else {
+        await load();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

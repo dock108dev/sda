@@ -46,6 +46,8 @@ class ModelInferenceEngine:
         self._cache = cache or InferenceCache()
         self._feature_builder = FeatureBuilder()
         self._config_loader = FeatureConfigLoader()
+        # Track loaded model IDs for auto-reload detection
+        self._loaded_model_ids: dict[str, str] = {}  # "sport:model_type" -> model_id
 
     def predict(
         self,
@@ -135,13 +137,30 @@ class ModelInferenceEngine:
         return probs
 
     def _get_model(self, sport: str, model_type: str) -> Any:
-        """Get the active model instance, using cache for artifacts."""
+        """Get the active model instance, using cache for artifacts.
+
+        Automatically detects when the active model has changed in the
+        registry and invalidates the cached artifact so the new model
+        is loaded on the next call.
+        """
         sport = sport.lower()
+        cache_key = f"{sport}:{model_type}"
 
         # Check if there's an active registered model with a path
         info = self._registry.get_active_model_info(sport, model_type)
         if info and info.get("path"):
+            current_id = info["model_id"]
             path = info["path"]
+
+            # Auto-reload: if the active model changed, invalidate old cache
+            prev_id = self._loaded_model_ids.get(cache_key)
+            if prev_id and prev_id != current_id:
+                logger.info(
+                    "model_switch_detected",
+                    extra={"previous": prev_id, "current": current_id},
+                )
+                self._cache.clear()
+
             try:
                 sklearn_model = self._cache.get_model(path)
                 # Wrap in the appropriate model class
@@ -149,6 +168,7 @@ class ModelInferenceEngine:
                 if wrapper is not None:
                     wrapper._model = sklearn_model
                     wrapper._loaded = True
+                    self._loaded_model_ids[cache_key] = current_id
                     return wrapper
             except (FileNotFoundError, RuntimeError) as exc:
                 logger.warning(

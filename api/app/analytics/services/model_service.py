@@ -170,6 +170,25 @@ class ModelService:
 
         return result
 
+    def activate_model(
+        self,
+        sport: str,
+        model_type: str,
+        model_id: str,
+    ) -> dict[str, Any]:
+        """Activate a model with validation.
+
+        Verifies the model exists and that artifact/metadata paths
+        are valid before delegating to the registry.
+
+        Returns:
+            Dict with ``status`` and ``active_model`` on success,
+            or ``status`` and ``message`` on failure.
+        """
+        return self._registry.activate_model(
+            sport, model_type, model_id, validate_paths=True,
+        )
+
 
 def _sort_models(
     models: list[dict[str, Any]],

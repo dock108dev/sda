@@ -4338,21 +4338,24 @@ class TestModelRegistryCore:
         registry.register_model("mlb", "pa", "v1", "/tmp/v1.pkl")
         registry.register_model("mlb", "pa", "v2", "/tmp/v2.pkl")
 
-        assert registry.activate_model("mlb", "pa", "v1")
+        result = registry.activate_model("mlb", "pa", "v1")
+        assert result["status"] == "success"
         active = registry.get_active_model("mlb", "pa")
         assert active is not None
         assert active["model_id"] == "v1"
 
         # Switch to v2 (rollback)
-        assert registry.activate_model("mlb", "pa", "v2")
+        result = registry.activate_model("mlb", "pa", "v2")
+        assert result["status"] == "success"
         active = registry.get_active_model("mlb", "pa")
         assert active["model_id"] == "v2"
 
-    def test_activate_nonexistent_returns_false(self, tmp_path):
+    def test_activate_nonexistent_returns_error(self, tmp_path):
         from app.analytics.models.core.model_registry import ModelRegistry
 
         registry = ModelRegistry(registry_path=tmp_path / "reg.json")
-        assert registry.activate_model("mlb", "pa", "no_such_model") is False
+        result = registry.activate_model("mlb", "pa", "no_such_model")
+        assert result["status"] == "error"
 
     def test_deactivate_model(self, tmp_path):
         from app.analytics.models.core.model_registry import ModelRegistry

@@ -545,17 +545,43 @@ async def get_model_compare(
 
 @router.post("/models/activate")
 async def post_activate_model(req: ModelActivateRequest) -> dict[str, Any]:
-    """Activate a registered model."""
-    success = _model_registry.activate_model(
+    """Activate a registered model.
+
+    Validates the model exists, verifies artifact/metadata paths,
+    updates the registry, and clears the inference cache so the
+    new model is loaded on the next request.
+    """
+    result = _model_service.activate_model(
         sport=req.sport,
         model_type=req.model_type,
         model_id=req.model_id,
     )
-    if not success:
-        return {"status": "not_found", "model_id": req.model_id}
-    # Clear inference cache so the new model is loaded on next request
-    _inference_engine._cache.clear()
-    return {"status": "success", "active_model": req.model_id}
+    if result["status"] == "success":
+        # Clear inference cache so the new model is loaded on next request
+        _inference_engine._cache.clear()
+    return result
+
+
+@router.get("/models/active")
+async def get_active_models(
+    sport: str = Query(..., description="Sport code"),
+    model_type: str = Query(..., description="Model type"),
+) -> dict[str, Any]:
+    """Get the currently active model for a sport + model type."""
+    active = _model_registry.get_active_model(sport, model_type)
+    if active is None:
+        return {
+            "sport": sport,
+            "model_type": model_type,
+            "active_model": None,
+        }
+    return {
+        "sport": sport,
+        "model_type": model_type,
+        "active_model": active["model_id"],
+        "version": active.get("version"),
+        "metrics": active.get("metrics", {}),
+    }
 
 
 @router.get("/model-metrics")
