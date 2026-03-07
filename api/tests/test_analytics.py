@@ -978,6 +978,199 @@ class TestFullSimulationPipeline:
         assert result["iterations"] == 500
 
 
+class TestSimulationAnalysis:
+    """Verify SimulationAnalysis summary methods."""
+
+    _SAMPLE_RESULTS = [
+        {"home_score": 5, "away_score": 3, "winner": "home"},
+        {"home_score": 2, "away_score": 4, "winner": "away"},
+        {"home_score": 6, "away_score": 5, "winner": "home"},
+        {"home_score": 3, "away_score": 3, "winner": "home"},
+        {"home_score": 4, "away_score": 2, "winner": "home"},
+    ]
+
+    def test_summarize_results(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        analysis = SimulationAnalysis("mlb")
+        summary = analysis.summarize_results(self._SAMPLE_RESULTS)
+        assert "home_win_probability" in summary
+        assert "away_win_probability" in summary
+        assert "average_total" in summary
+        assert "median_total" in summary
+        assert "most_common_scores" in summary
+        assert summary["iterations"] == 5
+        # 4 home wins out of 5
+        assert summary["home_win_probability"] == 0.8
+
+    def test_summarize_results_empty(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        summary = SimulationAnalysis("mlb").summarize_results([])
+        assert summary["iterations"] == 0
+
+    def test_summarize_distribution(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        result = SimulationAnalysis("mlb").summarize_distribution(self._SAMPLE_RESULTS)
+        assert "score_distribution" in result
+        assert "top_scores" in result
+        assert len(result["top_scores"]) > 0
+
+    def test_summarize_team_totals(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        result = SimulationAnalysis("mlb").summarize_team_totals(self._SAMPLE_RESULTS)
+        assert "home_score_distribution" in result
+        assert "away_score_distribution" in result
+        assert "median_home_score" in result
+
+    def test_summarize_spreads(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        result = SimulationAnalysis("mlb").summarize_spreads(self._SAMPLE_RESULTS, -1.5)
+        assert result["spread_line"] == -1.5
+        assert "home_cover_probability" in result
+        assert "away_cover_probability" in result
+        assert "push_probability" in result
+        total = result["home_cover_probability"] + result["away_cover_probability"] + result["push_probability"]
+        assert abs(total - 1.0) < 0.001
+
+    def test_summarize_totals(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        result = SimulationAnalysis("mlb").summarize_totals(self._SAMPLE_RESULTS, 8.5)
+        assert result["total_line"] == 8.5
+        assert "over_probability" in result
+        assert "under_probability" in result
+        total = result["over_probability"] + result["under_probability"] + result["push_probability"]
+        assert abs(total - 1.0) < 0.001
+
+    def test_summarize_totals_with_push(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        # Total of game 4 = 6, line = 6 -> push
+        result = SimulationAnalysis("mlb").summarize_totals(self._SAMPLE_RESULTS, 6.0)
+        assert result["push_probability"] > 0
+
+    def test_sportsbook_comparison(self) -> None:
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+
+        sportsbook = {
+            "moneyline": {"home": -200, "away": 170},
+            "spread": {"home_line": -1.5, "home_odds": -110},
+            "total": {"line": 8.5, "over_odds": -110},
+        }
+        summary = SimulationAnalysis("mlb").summarize_results(
+            self._SAMPLE_RESULTS, sportsbook=sportsbook,
+        )
+        assert "sportsbook_comparison" in summary
+        comp = summary["sportsbook_comparison"]
+        assert "moneyline_comparison" in comp
+        assert "edge" in comp["moneyline_comparison"]["home"]
+
+
+class TestOddsAnalysis:
+    """Verify odds conversion and comparison."""
+
+    def test_negative_odds_to_probability(self) -> None:
+        from app.analytics.core.odds_analysis import OddsAnalysis
+
+        odds = OddsAnalysis()
+        prob = odds.american_to_implied_probability(-200)
+        assert abs(prob - 0.6667) < 0.001
+
+    def test_positive_odds_to_probability(self) -> None:
+        from app.analytics.core.odds_analysis import OddsAnalysis
+
+        odds = OddsAnalysis()
+        prob = odds.american_to_implied_probability(150)
+        assert abs(prob - 0.4) < 0.001
+
+    def test_zero_odds_returns_zero(self) -> None:
+        from app.analytics.core.odds_analysis import OddsAnalysis
+
+        assert OddsAnalysis().american_to_implied_probability(0) == 0.0
+
+    def test_compare_moneyline_edge(self) -> None:
+        from app.analytics.core.odds_analysis import OddsAnalysis
+
+        odds = OddsAnalysis()
+        result = odds.compare_moneyline(0.65, -150)
+        assert result["model_probability"] == 0.65
+        assert result["sportsbook_implied_probability"] == 0.6
+        assert result["edge"] == 0.05
+
+    def test_compare_spread(self) -> None:
+        from app.analytics.core.odds_analysis import OddsAnalysis
+
+        result = OddsAnalysis().compare_spread(0.55, -110)
+        assert "edge" in result
+        assert result["model_probability"] == 0.55
+
+    def test_compare_total(self) -> None:
+        from app.analytics.core.odds_analysis import OddsAnalysis
+
+        result = OddsAnalysis().compare_total(0.58, -110)
+        assert "edge" in result
+
+
+class TestFullAnalysisPipeline:
+    """Verify Aggregation → Metrics → Profiles → Matchups → Simulation → Analysis."""
+
+    def test_end_to_end_with_analysis(self) -> None:
+        from app.analytics.core.aggregation_engine import AggregationEngine
+        from app.analytics.core.matchup_engine import MatchupEngine
+        from app.analytics.core.profile_builder import ProfileBuilder
+        from app.analytics.core.simulation_analysis import SimulationAnalysis
+        from app.analytics.core.simulation_runner import SimulationRunner
+        from app.analytics.sports.mlb.game_simulator import MLBGameSimulator
+
+        # Aggregate
+        agg = AggregationEngine("mlb")
+        batter_agg = agg.aggregate_player_history("b1", [
+            {"zone_swing_pct": 0.75, "outside_swing_pct": 0.30,
+             "zone_contact_pct": 0.88, "outside_contact_pct": 0.60,
+             "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
+             "barrel_pct": 0.11},
+        ])
+
+        # Build profiles + matchup
+        builder = ProfileBuilder("mlb")
+        batter = builder.build_player_profile("b1", batter_agg)
+        pitcher = PlayerProfile(
+            player_id="p1", sport="mlb",
+            metrics={"contact_suppression": 0.10, "strikeout_rate": 0.28,
+                     "walk_rate": 0.07, "power_suppression": 0.05},
+        )
+        matchup = MatchupEngine("mlb").calculate_player_vs_player(batter, pitcher)
+
+        # Simulate
+        context = {
+            "home_probabilities": matchup.probabilities,
+            "away_probabilities": matchup.probabilities,
+        }
+        runner = SimulationRunner()
+        raw_results = []
+        import random
+        rng = random.Random(42)
+        sim = MLBGameSimulator()
+        for _ in range(200):
+            raw_results.append(sim.simulate_game(context, rng=rng))
+
+        # Analyze
+        analysis = SimulationAnalysis("mlb")
+        summary = analysis.summarize_results(raw_results)
+        assert summary["home_win_probability"] > 0
+        assert summary["average_total"] > 0
+
+        totals = analysis.summarize_totals(raw_results, 8.5)
+        assert totals["over_probability"] + totals["under_probability"] + totals["push_probability"] == pytest.approx(1.0, abs=0.001)
+
+        spreads = analysis.summarize_spreads(raw_results, -1.5)
+        assert spreads["home_cover_probability"] + spreads["away_cover_probability"] + spreads["push_probability"] == pytest.approx(1.0, abs=0.001)
+
+
 class TestAnalyticsService:
     """Verify service layer wiring."""
 
