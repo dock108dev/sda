@@ -54,6 +54,7 @@ class MatchupProfile:
     sport: str
     comparison: dict[str, Any] = field(default_factory=dict)
     advantages: dict[str, str] = field(default_factory=dict)
+    probabilities: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
