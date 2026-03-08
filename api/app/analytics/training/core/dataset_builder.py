@@ -32,12 +32,14 @@ class DatasetBuilder:
         sport: str,
         model_type: str,
         config_name: str | None = None,
+        *,
+        feature_config: dict[str, Any] | None = None,
     ) -> None:
         self.sport = sport.lower()
         self.model_type = model_type
         self.config_name = config_name
         self._feature_builder = FeatureBuilder()
-        self._config = self._load_config()
+        self._config = feature_config or self._load_config()
 
     def _load_config(self) -> dict[str, Any] | None:
         """Load feature config if a config name is specified.

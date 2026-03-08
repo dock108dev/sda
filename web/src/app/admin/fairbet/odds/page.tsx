@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./styles.module.css";
 import {
   fetchFairbetOdds,
-  fetchFairbetLiveOdds,
   formatOdds,
   formatSelectionKey,
   formatMarketKey,
@@ -16,7 +15,6 @@ import {
   formatDisabledReason,
   type BetDefinition,
   type FairbetOddsFilters,
-  type FairbetLiveResponse,
   type GameOption,
 } from "@/lib/api/fairbet";
 import { listScrapeRuns } from "@/lib/api/sportsAdmin";
@@ -394,206 +392,19 @@ function PreGameTab() {
   );
 }
 
-// ─── Live Tab ───
-
-function LiveTab() {
-  const [liveData, setLiveData] = useState<FairbetLiveResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [selectedLeague, setSelectedLeague] = useState<string>("");
-  const [selectedGame, setSelectedGame] = useState<string>("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [liveGames, setLiveGames] = useState<GameOption[]>([]);
-  const [loadingGames, setLoadingGames] = useState(true);
-
-  const [openDerivation, setOpenDerivation] = useState<number | null>(null);
-  const derivationRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (openDerivation === null) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (derivationRef.current && !derivationRef.current.contains(e.target as Node)) {
-        setOpenDerivation(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openDerivation]);
-
-  // Load live games from the pre-game endpoint filtered to live status
-  const loadLiveGames = useCallback(async () => {
-    setLoadingGames(true);
-    try {
-      // Fetch games that are currently live from the pre-game odds endpoint
-      // We use it just for the games_available dropdown
-      const filters: FairbetOddsFilters = { limit: 1 };
-      if (selectedLeague) filters.league = selectedLeague;
-      const response = await fetchFairbetOdds(filters);
-      // For now use the same game dropdown — live games also appear here
-      setLiveGames(response.games_available);
-    } catch {
-      // Silently fail — we'll show an empty dropdown
-    } finally {
-      setLoadingGames(false);
-    }
-  }, [selectedLeague]);
-
-  useEffect(() => { loadLiveGames(); }, [loadLiveGames]);
-
-  const loadLiveOdds = useCallback(async () => {
-    if (!selectedGame) {
-      setLiveData(null);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetchFairbetLiveOdds({
-        game_id: parseInt(selectedGame, 10),
-        market_category: selectedCategory || undefined,
-        sort_by: "ev",
-      });
-      setLiveData(response);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedGame, selectedCategory]);
-
-  useEffect(() => { loadLiveOdds(); }, [loadLiveOdds]);
-
-  // Auto-refresh every 15 seconds when a game is selected
-  useEffect(() => {
-    if (!selectedGame) return;
-    const interval = setInterval(loadLiveOdds, 15000);
-    return () => clearInterval(interval);
-  }, [selectedGame, loadLiveOdds]);
-
-  return (
-    <>
-      <div className={styles.filters}>
-        <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>League</label>
-          <select
-            className={styles.filterSelect}
-            value={selectedLeague}
-            onChange={(e) => { setSelectedLeague(e.target.value); setSelectedGame(""); }}
-          >
-            <option value="">All Leagues</option>
-            {LEAGUES.map((league) => <option key={league} value={league}>{league}</option>)}
-          </select>
-        </div>
-
-        <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>Game</label>
-          <select
-            className={styles.filterSelect}
-            style={{ maxWidth: 400 }}
-            value={selectedGame}
-            onChange={(e) => setSelectedGame(e.target.value)}
-          >
-            <option value="">Select a game…</option>
-            {liveGames.map((g) => (
-              <option key={g.game_id} value={g.game_id.toString()}>{g.matchup}</option>
-            ))}
-          </select>
-        </div>
-
-        {liveData && liveData.market_categories_available.length > 0 && (
-          <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Market</label>
-            <select
-              className={styles.filterSelect}
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="">All Markets</option>
-              {liveData.market_categories_available.map((cat) => (
-                <option key={cat} value={cat}>{formatMarketCategory(cat)}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {selectedGame && (
-          <button
-            className={styles.refreshButton}
-            onClick={loadLiveOdds}
-            disabled={loading}
-          >
-            {loading ? "Refreshing…" : "Refresh"}
-          </button>
-        )}
-      </div>
-
-      {liveData && liveData.last_updated_at && (
-        <div className={styles.liveStatus}>
-          <span className={styles.liveDot} />
-          <span>
-            {liveData.home_team} vs {liveData.away_team} · {liveData.league_code} ·
-            Updated {formatLastSync(liveData.last_updated_at)} · {liveData.total} bets
-          </span>
-        </div>
-      )}
-
-      {error && <div className={styles.error}>Error: {error}</div>}
-
-      {!selectedGame ? (
-        <div className={styles.empty}>Select a game to view live +EV odds.</div>
-      ) : loading && !liveData ? (
-        <div className={styles.loading}>Loading live odds...</div>
-      ) : liveData && liveData.bets.length === 0 ? (
-        <div className={styles.empty}>No live odds available for this game. Odds appear when the game is live and bookmakers are posting in-game lines.</div>
-      ) : liveData ? (
-        <div className={styles.betsGrid}>
-          {liveData.bets.map((bet, idx) => (
-            <BetCard
-              key={idx}
-              bet={bet}
-              idx={idx}
-              openDerivation={openDerivation}
-              setOpenDerivation={setOpenDerivation}
-              derivationRef={derivationRef}
-            />
-          ))}
-        </div>
-      ) : null}
-    </>
-  );
-}
-
 // ─── Main Page ───
 
 export default function FairbetOddsPage() {
-  const [mode, setMode] = useState<"pregame" | "live">("pregame");
-
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h1 className={styles.title}>FairBet Odds</h1>
         <p className={styles.subtitle}>
-          Cross-book odds comparison with +EV fair-bet analysis
+          Cross-book odds comparison with +EV fair-bet analysis (Pre-Game)
         </p>
       </header>
 
-      <div className={styles.modeTabs}>
-        <button
-          className={`${styles.modeTab} ${mode === "pregame" ? styles.modeTabActive : ""}`}
-          onClick={() => setMode("pregame")}
-        >
-          Pre-Game
-        </button>
-        <button
-          className={`${styles.modeTab} ${mode === "live" ? styles.modeTabActive : ""}`}
-          onClick={() => setMode("live")}
-        >
-          Live
-        </button>
-      </div>
-
-      {mode === "pregame" ? <PreGameTab /> : <LiveTab />}
+      <PreGameTab />
     </div>
   );
 }

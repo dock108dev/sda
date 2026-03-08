@@ -2,7 +2,25 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-07] - Current
+## [2026-03-08] - Current
+
+### Analytics P0 Fixes
+
+- **Feature config enforcement (P0-A)**: Fixed broken chain where DB-backed feature loadouts were never applied during training. Added `_feature_config_to_dict()` converter in `training_tasks.py` that transforms `AnalyticsFeatureConfig.features` (JSONB `[{name, enabled, weight}]`) into the `{feat_name: {enabled, weight}}` dict expected by `FeatureBuilder._apply_config()`. Threaded `feature_config` through `TrainingPipeline` → `DatasetBuilder` → `FeatureBuilder.build_features(config=...)`.
+- **Analytics docs accuracy (P0-B)**: Fixed MLB feature counts — PA features documented accurately (28 total), game features corrected from "28 total" to "60 total (30 per side)" with full metric key listing. Updated training pipeline steps to describe the feature config enforcement flow.
+
+### Dedicated Live Odds Page
+
+- **New page: `/admin/fairbet/live`**: Full-featured live odds page matching the pregame experience -- discovers all games with live odds, displays them grouped by game with scoreboard header strips
+- **New endpoint: `GET /api/fairbet/live/games`**: Scans Redis for all games with live odds data, returns `LiveGameInfo[]` (game_id, league, teams, date, status) sorted by game time
+- **New Redis function: `discover_live_game_ids()`**: Scans `live:odds:*` keys and extracts unique `(league, game_id)` pairs for game discovery
+- **Multi-game view**: Fetches live odds for all discovered games in parallel, displays in a unified grid with game headers showing league, matchup, live status, last update, and bet count
+- **Full filtering**: League, Category, Sort, Hide Alternates -- matching pregame feature parity
+- **Auto-refresh**: 15-second polling with visual indicator and manual refresh button
+- **Pregame page simplified**: Removed embedded Live tab from `/admin/fairbet/odds` (now pregame-only); live odds have their own dedicated page
+- **Navigation**: Added "Live Odds" link in admin sidebar under Data section
+
+## [2026-03-07]
 
 ### Analytics Workbench
 

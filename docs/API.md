@@ -1150,6 +1150,35 @@ Evaluate a parlay by multiplying true probabilities. Returns combined fair proba
 | `combinedConfidence` | `float` | Geometric mean of leg confidences (1.0 if none provided) |
 | `legCount` | `int` | Number of legs |
 
+### `GET /live/games`
+
+Discover all games that currently have live odds data in Redis. Returns a list of games with basic info (teams, date, status). Use this to populate game selectors or to drive the multi-game live odds page.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `league` | `string` | Filter by league code (`NBA`, `NHL`, `NCAAB`, `MLB`) |
+
+**Response:**
+
+```json
+[
+  {
+    "game_id": 123,
+    "league_code": "NBA",
+    "home_team": "Los Angeles Lakers",
+    "away_team": "Boston Celtics",
+    "game_date": "2026-03-08T19:00:00Z",
+    "status": "LIVE"
+  }
+]
+```
+
+Returns an empty array when no games have live odds in Redis. Games are sorted by `game_date`.
+
+---
+
 ### `GET /live`
 
 Compute +EV fair-bet odds for a live in-game event. Reads aggregated multi-book live odds from Redis, runs the same EV pipeline as pre-game (Shin devig, Pinnacle reference, extrapolation), and returns annotated bet definitions. Nothing is persisted to the DB.

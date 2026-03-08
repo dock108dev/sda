@@ -65,6 +65,7 @@ class TrainingPipeline:
         random_state: int = 42,
         test_size: float = 0.2,
         artifact_dir: str | Path | None = None,
+        feature_config: dict[str, Any] | None = None,
     ) -> None:
         self.sport = sport.lower()
         self.model_type = model_type
@@ -78,6 +79,7 @@ class TrainingPipeline:
             sport=self.sport,
             model_type=self.model_type,
             config_name=self.config_name or None,
+            feature_config=feature_config,
         )
         self._evaluator = ModelEvaluator()
         self._sport_pipeline = self._load_sport_pipeline()

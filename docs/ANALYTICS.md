@@ -112,11 +112,20 @@ Sport-agnostic `FeatureBuilder` routes to sport-specific builders. Features are 
 ### MLB Features
 
 **Plate-appearance features (28 total):**
-- Batter (14): contact_rate, power_index, barrel_rate, hard_hit_rate, swing_rate, whiff_rate, avg_exit_velocity, expected_slug, chase_rate, plate_discipline_index, z_contact_rate, o_contact_rate, z_swing_rate, o_swing_rate
-- Pitcher (14): Same set as batter — allows the model to capture pitcher-side tendencies
+- Batter (14): contact_rate, power_index, barrel_rate, hard_hit_rate, swing_rate, whiff_rate, avg_exit_velocity, expected_slug, z_swing_pct, o_swing_pct, z_contact_pct, o_contact_pct, zone_swing_rate, chase_rate, plate_discipline_index
+- Pitcher (14): contact_rate, power_index, barrel_rate, hard_hit_rate, swing_rate, whiff_rate, z_swing_pct, o_swing_pct, z_contact_pct, o_contact_pct, zone_swing_rate, chase_rate, plate_discipline_index
 
-**Game-level features (28 total):**
-- Home/Away (14 each): contact_rate, power_index, barrel_rate, hard_hit_rate, whiff_rate, expected_slug, avg_exit_velo, chase_rate, plate_discipline_index, z_contact_rate, o_contact_rate, z_swing_rate, o_swing_rate, swing_rate
+Note: Batter has 15 source keys but pitcher has 13, totaling 28 features (count includes the full tuple list in `_PA_FEATURES`).
+
+**Game-level features (60 total):**
+- Home (30) + Away (30): Each side exposes 30 metrics from `_GAME_METRIC_KEYS`:
+  - Derived composites (8): contact_rate, power_index, barrel_rate, hard_hit_rate, swing_rate, whiff_rate, avg_exit_velocity, expected_slug
+  - Raw plate discipline (4): z_swing_pct, o_swing_pct, z_contact_pct, o_contact_pct
+  - Raw quality of contact (3): avg_exit_velo, hard_hit_pct, barrel_pct
+  - Raw counts (10): total_pitches, balls_in_play, hard_hit_count, barrel_count, zone_pitches, zone_swings, zone_contact, outside_pitches, outside_swings, outside_contact
+  - Derived ratios (5): zone_swing_rate, chase_rate, zone_contact_rate, outside_contact_rate, plate_discipline_index
+
+Feature names are prefixed with `home_` or `away_` (e.g., `home_contact_rate`, `away_barrel_rate`).
 
 ### Feature Configuration
 
@@ -131,13 +140,14 @@ End-to-end flow: data → features → train → evaluate → register. Training
 ### Steps
 
 1. `POST /api/analytics/train` creates an `AnalyticsTrainingJob` record and dispatches the Celery task
-2. `load_training_data()` — queries `MLBGameAdvancedStats` + `SportsGame` for games in the date range
-3. `build_dataset()` — extracts features (from the linked feature loadout) and labels via DatasetBuilder
-4. `train_test_split()` — sklearn split (configurable, default 80/20)
-5. `train_model()` — fits sklearn model (gradient_boosting default; also random_forest, xgboost)
-6. `evaluate_model()` — accuracy, precision, recall, F1, Brier score
-7. `save_artifact()` — serializes to `{sport}/artifacts/{model_id}.pkl` via joblib
-8. Register in model registry; update job record with metrics and artifact path
+2. `_execute_training()` converts the DB-backed `AnalyticsFeatureConfig` (JSONB array of `{name, enabled, weight}`) into a `{feat_name: {enabled, weight}}` dict and passes it through the pipeline
+3. `load_training_data()` — queries `MLBGameAdvancedStats` + `SportsGame` for games in the date range
+4. `build_dataset()` — `DatasetBuilder` → `FeatureBuilder.build_features(config=...)` → `_apply_config()` filters disabled features and applies weights from the linked loadout
+5. `train_test_split()` — sklearn split (configurable, default 80/20)
+6. `train_model()` — fits sklearn model (gradient_boosting default; also random_forest, xgboost)
+7. `evaluate_model()` — accuracy, precision, recall, F1, Brier score
+8. `save_artifact()` — serializes to `{sport}/artifacts/{model_id}.pkl` via joblib
+9. Register in model registry; update job record with metrics and artifact path
 
 ### Label Extraction (MLB)
 

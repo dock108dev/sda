@@ -212,6 +212,26 @@ async def _run_training(job_id: int, celery_task_id: str | None = None) -> dict:
     return result
 
 
+def _feature_config_to_dict(
+    feature_config: object | None,
+) -> dict[str, dict] | None:
+    """Convert a DB AnalyticsFeatureConfig to the dict format expected by FeatureBuilder.
+
+    DB format (JSONB array): [{"name": "feat", "enabled": true, "weight": 1.0}, ...]
+    FeatureBuilder format:   {"feat": {"enabled": True, "weight": 1.0}, ...}
+    """
+    if feature_config is None:
+        return None
+    features = getattr(feature_config, "features", None)
+    if not features:
+        return None
+    return {
+        f["name"]: {"enabled": f.get("enabled", True), "weight": f.get("weight", 1.0)}
+        for f in features
+        if "name" in f
+    }
+
+
 async def _execute_training(
     *,
     sf,
@@ -235,6 +255,7 @@ async def _execute_training(
     from app.analytics.training.core.training_pipeline import TrainingPipeline
 
     model_id = f"{sport}_{model_type}_{uuid.uuid4().hex[:8]}"
+    config_dict = _feature_config_to_dict(feature_config)
 
     pipeline = TrainingPipeline(
         sport=sport,
@@ -243,6 +264,7 @@ async def _execute_training(
         model_id=model_id,
         random_state=random_state,
         test_size=test_split,
+        feature_config=config_dict,
     )
 
     # Load training data from DB using the task's session factory

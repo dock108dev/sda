@@ -90,3 +90,30 @@ def read_live_history(
             "game_id": game_id, "market_key": market_key, "error": str(exc)
         })
         return []
+
+
+def discover_live_game_ids(league: str | None = None) -> list[tuple[str, int]]:
+    """Scan Redis for all games that currently have live odds data.
+
+    Returns list of (league_code, game_id) tuples.
+    """
+    try:
+        r = _get_redis()
+        pattern = f"live:odds:{league}:*" if league else "live:odds:*"
+        seen: set[tuple[str, int]] = set()
+        for key in r.scan_iter(pattern, count=200):
+            if ":history:" in key:
+                continue
+            # Key format: live:odds:{league}:{game_id}:{market_key}
+            parts = key.split(":")
+            if len(parts) >= 5:
+                league_code = parts[2]
+                try:
+                    game_id = int(parts[3])
+                    seen.add((league_code, game_id))
+                except (ValueError, IndexError):
+                    continue
+        return sorted(seen)
+    except Exception as exc:
+        logger.warning("live_odds_redis_discover_error", extra={"error": str(exc)})
+        return []

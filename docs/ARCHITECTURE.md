@@ -81,7 +81,7 @@ See [ANALYTICS.md](ANALYTICS.md) for details.
   - Game browser with structured status indicators (present/missing/stale/not applicable)
   - Control Panel for on-demand Celery task dispatch (ingestion, odds, social, flows, timelines, utility)
   - Job run monitoring via RunsDrawer (IDE-style bottom panel, available on all admin pages)
-  - Cross-book odds comparison (FairBet viewer)
+  - Cross-book odds comparison: pre-game (`/admin/fairbet/odds`) and dedicated live odds page (`/admin/fairbet/live`) with auto-refresh, multi-game view, and game scoreboard strips
   - Container log viewer
   - Game detail with boxscores, player stats, odds, social, PBP, flow, and pipeline runs
 
@@ -229,9 +229,10 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 - `POST /api/analytics/batch-simulate` — Batch Monte Carlo simulation
 
 ### FairBet Endpoints
-- `GET /api/fairbet/odds` — Cross-book odds comparison with EV annotations and display fields
+- `GET /api/fairbet/odds` — Cross-book odds comparison with EV annotations and display fields (pre-game)
 - `POST /api/fairbet/parlay/evaluate` — Parlay evaluation (combined fair probability + odds)
-- `GET /api/fairbet/live` — Live in-game +EV odds computed from multi-book Redis snapshots (same EV pipeline as pre-game, nothing persisted)
+- `GET /api/fairbet/live/games` — Discover all games with live odds in Redis (returns `LiveGameInfo[]` with teams, date, status)
+- `GET /api/fairbet/live` — Live in-game +EV odds for a single game from multi-book Redis snapshots (same EV pipeline as pre-game, nothing persisted)
 
 ### Realtime Endpoints
 - `WS /v1/realtime/ws` — WebSocket feed for live game updates (scores, PBP, odds)

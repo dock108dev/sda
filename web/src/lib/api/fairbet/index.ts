@@ -139,6 +139,33 @@ export async function fetchFairbetOdds(
   return res.json();
 }
 
+export interface LiveGameInfo {
+  game_id: number;
+  league_code: string;
+  home_team: string;
+  away_team: string;
+  game_date: string | null;
+  status: string | null;
+}
+
+export async function fetchLiveGames(
+  league?: string
+): Promise<LiveGameInfo[]> {
+  const params = new URLSearchParams();
+  if (league) params.set("league", league);
+
+  const url = `${getApiBase()}/api/fairbet/live/games?${params.toString()}`;
+  const res = await fetch(url, {
+    headers: buildHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch live games: ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
 export async function fetchFairbetLiveOdds(
   filters: FairbetLiveFilters
 ): Promise<FairbetLiveResponse> {

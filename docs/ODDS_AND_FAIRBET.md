@@ -540,6 +540,10 @@ Aggregated Redis Snapshots
   TTL: 6h snapshots, 12h history ring buffer (300 entries)
       │
       ▼
+GET /api/fairbet/live/games?league=...
+  └─ discover_live_game_ids() → scan Redis keys → [(league, game_id), ...]
+        │
+        ▼
 GET /api/fairbet/live?game_id=...
   ├─ read_all_live_snapshots_for_game() → all markets for a game
   ├─ Build bets_map from multi-book snapshots
@@ -557,7 +561,7 @@ GET /api/fairbet/live?game_id=...
 | Selection keys | Canonical DB team names | Built from Odds API names via `_build_selection_key()` |
 | Persistence | FairBet work table continuously upserted | Nothing persisted |
 | Refresh | On each odds sync (~60s) | 15–45s polling via live orchestrator |
-| Scope | All upcoming non-completed games | Single game at a time |
+| Scope | All upcoming non-completed games | Per-game (`/live?game_id=`) or all live games (`/live/games` discovery) |
 
 ### Redis Snapshot Format
 
@@ -579,9 +583,36 @@ Each snapshot key holds all bookmakers for one (game, market):
 
 The scraper aggregates all bookmakers before writing a single snapshot per (game, market) — this is critical for cross-book EV computation.
 
+### API: `GET /api/fairbet/live/games`
+
+Discover all games that currently have live odds data in Redis.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `league` | string | — | Filter by league code |
+
+**Response:** `LiveGameInfo[]`
+
+```json
+[
+  {
+    "game_id": 123,
+    "league_code": "NBA",
+    "home_team": "Los Angeles Lakers",
+    "away_team": "Boston Celtics",
+    "game_date": "2026-03-08T19:00:00Z",
+    "status": "LIVE"
+  }
+]
+```
+
+Implementation: Scans Redis for `live:odds:*` keys via `discover_live_game_ids()`, extracts unique `(league, game_id)` pairs, and enriches with game info from the DB.
+
 ### API: `GET /api/fairbet/live`
 
-See [API Consumption Guide](#api-consumption-guide) for the pre-game endpoint. The live endpoint returns the same `BetDefinition` shape with identical EV fields, display enrichment, and explanation steps.
+Returns EV-annotated live odds for a single game. Same `BetDefinition` shape as pre-game with identical EV fields, display enrichment, and explanation steps.
 
 **Parameters:**
 
@@ -595,18 +626,22 @@ See [API Consumption Guide](#api-consumption-guide) for the pre-game endpoint. T
 
 ### Frontend
 
-The FairBet odds page has **Pre-Game** and **Live** tabs sharing the same `BetCard` component. The Live tab:
-- Requires selecting a game from the game selector dropdown
-- Auto-refreshes every 15 seconds
-- Shows a pulsing live indicator with last-update timestamp
-- Uses the same EV display (cards, explanation steps, confidence tiers)
+Live odds have a **dedicated page** at `/admin/fairbet/live` (route: `FAIRBET_LIVE`). The page:
+- Discovers all games with live odds via `GET /api/fairbet/live/games`
+- Fetches live odds for each game in parallel via `GET /api/fairbet/live?game_id=...`
+- Displays all live games grouped by game with a scoreboard header strip (league, matchup, status, last update, bet count)
+- Full filtering: League, Category, Sort, Hide Alternates
+- Auto-refreshes every 15 seconds with a visual indicator
+- Uses the same `BetCard` UI as pregame (cross-book pricing, fair odds, EV badges, derivation popovers, sharp book indicators)
+
+The pregame FairBet odds page (`/admin/fairbet/odds`) is pregame-only.
 
 Code:
 - Scraper tasks: `scraper/sports_scraper/jobs/live_odds_tasks.py`
 - Redis store: `scraper/sports_scraper/live_odds/redis_store.py`
 - API endpoint: `api/app/routers/fairbet/live.py`
 - API Redis reader: `api/app/services/live_odds_redis.py`
-- Frontend: `web/src/app/admin/fairbet/odds/page.tsx`
+- Frontend page: `web/src/app/admin/fairbet/live/page.tsx`
 - Frontend API client: `web/src/lib/api/fairbet/index.ts`
 
 ---
@@ -654,8 +689,11 @@ Code:
 | Live odds Redis store | `scraper/sports_scraper/live_odds/redis_store.py` |
 | Live odds polling tasks | `scraper/sports_scraper/jobs/live_odds_tasks.py` |
 | Live orchestrator | `scraper/sports_scraper/jobs/live_orchestrator.py` |
-| FairBet Live endpoint | `api/app/routers/fairbet/live.py` |
-| API Redis reader | `api/app/services/live_odds_redis.py` |
+| FairBet Live endpoint (per-game + discovery) | `api/app/routers/fairbet/live.py` |
+| API Redis reader (incl. `discover_live_game_ids`) | `api/app/services/live_odds_redis.py` |
+| Live odds frontend page | `web/src/app/admin/fairbet/live/page.tsx` |
+| Pre-game odds frontend page | `web/src/app/admin/fairbet/odds/page.tsx` |
+| Frontend API client (FairBet) | `web/src/lib/api/fairbet/index.ts` |
 | Provider rate limiter | `scraper/sports_scraper/utils/provider_request.py` |
 
 ## See Also

@@ -12,6 +12,7 @@ export const ROUTES = {
 
   CONTROL_PANEL: "/admin/control-panel",
   FAIRBET_ODDS: "/admin/fairbet/odds",
+  FAIRBET_LIVE: "/admin/fairbet/live",
   SPORTS_GAME: (id: number | string) => `/admin/sports/games/${id}`,
 
   /** Analytics */
