@@ -315,6 +315,7 @@ export interface TrainingJob {
   train_count: number | null;
   test_count: number | null;
   feature_names: string[] | null;
+  feature_importance: { name: string; importance: number }[] | null;
   error_message: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -413,6 +414,7 @@ export interface ModelDetails {
   feature_config?: string;
   training_row_count?: number;
   random_state?: number;
+  feature_importance?: { name: string; importance: number }[];
 }
 
 export async function getModelDetails(modelId: string): Promise<ModelDetails> {
@@ -443,6 +445,141 @@ export async function compareModels(
     model_ids: modelIds.join(","),
   });
   return fetchJson<ModelComparison>(`${base()}/api/analytics/models/compare?${params}`);
+}
+
+// ---------------------------------------------------------------------------
+// Backtesting
+// ---------------------------------------------------------------------------
+
+export interface BacktestRequest {
+  model_id: string;
+  artifact_path: string;
+  sport: string;
+  model_type: string;
+  date_start?: string | null;
+  date_end?: string | null;
+  rolling_window?: number;
+}
+
+export interface BacktestPrediction {
+  predicted: number;
+  actual: number;
+  correct: boolean;
+  home_score?: number;
+  away_score?: number;
+  probabilities?: Record<string, number>;
+}
+
+export interface BacktestJob {
+  id: number;
+  model_id: string;
+  artifact_path: string;
+  sport: string;
+  model_type: string;
+  date_start: string | null;
+  date_end: string | null;
+  rolling_window: number;
+  status: "pending" | "queued" | "running" | "completed" | "failed";
+  celery_task_id: string | null;
+  game_count: number | null;
+  correct_count: number | null;
+  metrics: Record<string, number> | null;
+  predictions: BacktestPrediction[] | null;
+  error_message: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export async function startBacktest(
+  req: BacktestRequest,
+): Promise<{ status: string; job: BacktestJob }> {
+  return fetchJson(`${base()}/api/analytics/backtest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export async function listBacktestJobs(
+  modelId?: string,
+  sport?: string,
+): Promise<{ jobs: BacktestJob[]; count: number }> {
+  const params = new URLSearchParams();
+  if (modelId) params.set("model_id", modelId);
+  if (sport) params.set("sport", sport);
+  const qs = params.toString();
+  return fetchJson(`${base()}/api/analytics/backtest-jobs${qs ? `?${qs}` : ""}`);
+}
+
+export async function getBacktestJob(id: number): Promise<BacktestJob> {
+  return fetchJson<BacktestJob>(`${base()}/api/analytics/backtest-job/${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Batch Simulation
+// ---------------------------------------------------------------------------
+
+export interface BatchSimRequest {
+  sport: string;
+  probability_mode?: string;
+  iterations?: number;
+  rolling_window?: number;
+  date_start?: string;
+  date_end?: string;
+}
+
+export interface BatchSimGameResult {
+  game_id: string;
+  game_date: string;
+  home_team: string;
+  away_team: string;
+  home_win_probability: number;
+  away_win_probability: number;
+  average_home_score: number;
+  average_away_score: number;
+  probability_source: string;
+  has_profiles: boolean;
+}
+
+export interface BatchSimJob {
+  id: number;
+  sport: string;
+  probability_mode: string;
+  iterations: number;
+  rolling_window: number;
+  date_start: string | null;
+  date_end: string | null;
+  status: string;
+  celery_task_id: string | null;
+  game_count: number | null;
+  results: BatchSimGameResult[] | null;
+  error_message: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export async function startBatchSimulation(
+  req: BatchSimRequest,
+): Promise<{ job: BatchSimJob }> {
+  return fetchJson<{ job: BatchSimJob }>(`${base()}/api/analytics/batch-simulate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+}
+
+export async function listBatchSimJobs(
+  sport?: string,
+): Promise<{ jobs: BatchSimJob[]; count: number }> {
+  const params = new URLSearchParams();
+  if (sport) params.set("sport", sport);
+  return fetchJson<{ jobs: BatchSimJob[]; count: number }>(
+    `${base()}/api/analytics/batch-simulate-jobs?${params}`,
+  );
+}
+
+export async function getBatchSimJob(id: number): Promise<BatchSimJob> {
+  return fetchJson<BatchSimJob>(`${base()}/api/analytics/batch-simulate-job/${id}`);
 }
 
 // ---------------------------------------------------------------------------

@@ -5741,3 +5741,169 @@ class TestRollingWindowColumn:
 
         col = AnalyticsTrainingJob.__table__.columns["rolling_window"]
         assert col.default.arg == 30
+
+
+# ---------------------------------------------------------------------------
+# Backtest Tests
+# ---------------------------------------------------------------------------
+
+
+class TestFeatureImportance:
+    """Test feature importance extraction from trained models."""
+
+    def test_extract_from_model_with_importances(self):
+        from app.analytics.training.core.training_pipeline import (
+            _extract_feature_importance,
+        )
+
+        class MockModel:
+            feature_importances_ = [0.4, 0.3, 0.2, 0.1]
+
+        result = _extract_feature_importance(
+            MockModel(), ["feat_a", "feat_b", "feat_c", "feat_d"]
+        )
+        assert result is not None
+        assert len(result) == 4
+        # Should be sorted highest first
+        assert result[0]["name"] == "feat_a"
+        assert result[0]["importance"] == 0.4
+        assert result[-1]["name"] == "feat_d"
+        assert result[-1]["importance"] == 0.1
+
+    def test_returns_none_for_model_without_importances(self):
+        from app.analytics.training.core.training_pipeline import (
+            _extract_feature_importance,
+        )
+
+        class MockModel:
+            pass
+
+        result = _extract_feature_importance(MockModel(), ["feat_a", "feat_b"])
+        assert result is None
+
+    def test_training_job_has_feature_importance_column(self):
+        from app.db.analytics import AnalyticsTrainingJob
+
+        assert hasattr(AnalyticsTrainingJob, "feature_importance")
+        col = AnalyticsTrainingJob.__table__.columns["feature_importance"]
+        assert col.nullable is True
+
+
+class TestBacktestJobModel:
+    """Verify AnalyticsBacktestJob DB model."""
+
+    def test_backtest_job_table_exists(self):
+        from app.db.analytics import AnalyticsBacktestJob
+
+        assert AnalyticsBacktestJob.__tablename__ == "analytics_backtest_jobs"
+
+    def test_backtest_job_columns(self):
+        from app.db.analytics import AnalyticsBacktestJob
+
+        cols = {c.name for c in AnalyticsBacktestJob.__table__.columns}
+        required = {
+            "id", "model_id", "artifact_path", "sport", "model_type",
+            "date_start", "date_end", "rolling_window", "status",
+            "celery_task_id", "game_count", "correct_count", "metrics",
+            "predictions", "error_message", "created_at", "completed_at",
+        }
+        assert required <= cols
+
+    def test_rolling_window_default(self):
+        from app.db.analytics import AnalyticsBacktestJob
+
+        col = AnalyticsBacktestJob.__table__.columns["rolling_window"]
+        assert col.default.arg == 30
+
+
+class TestBacktestTaskImportable:
+    """Verify backtest task is importable."""
+
+    def test_backtest_task_exists(self):
+        from app.tasks.training_tasks import backtest_analytics_model
+
+        assert backtest_analytics_model.name == "backtest_analytics_model"
+
+    def test_execute_backtest_callable(self):
+        from app.tasks.training_tasks import _execute_backtest
+
+        assert callable(_execute_backtest)
+
+
+class TestBacktestRoutes:
+    """Verify backtest API routes are defined."""
+
+    def test_backtest_route_exists(self):
+        import inspect
+        from app.analytics.api import analytics_routes
+
+        source = inspect.getsource(analytics_routes)
+        assert "start_backtest" in source
+        assert "list_backtest_jobs" in source
+        assert "get_backtest_job" in source
+        assert "BacktestRequest" in source
+
+
+# ---------------------------------------------------------------------------
+# Batch Simulation
+# ---------------------------------------------------------------------------
+
+
+class TestBatchSimJobModel:
+    """Verify AnalyticsBatchSimJob DB model."""
+
+    def test_table_exists(self):
+        from app.db.analytics import AnalyticsBatchSimJob
+
+        assert AnalyticsBatchSimJob.__tablename__ == "analytics_batch_sim_jobs"
+
+    def test_columns_present(self):
+        from app.db.analytics import AnalyticsBatchSimJob
+
+        cols = {c.name for c in AnalyticsBatchSimJob.__table__.columns}
+        expected = {
+            "id", "sport", "probability_mode", "iterations", "rolling_window",
+            "date_start", "date_end", "status", "celery_task_id",
+            "game_count", "results", "error_message", "created_at", "completed_at",
+        }
+        assert expected.issubset(cols)
+
+    def test_status_column_default(self):
+        from app.db.analytics import AnalyticsBatchSimJob
+
+        col = AnalyticsBatchSimJob.__table__.columns["status"]
+        assert col.default is not None
+        assert col.default.arg == "pending"
+
+
+class TestBatchSimTaskImportable:
+    """Verify batch_simulate_games Celery task exists."""
+
+    def test_task_exists(self):
+        from app.tasks.training_tasks import batch_simulate_games
+
+        assert batch_simulate_games is not None
+
+    def test_task_callable(self):
+        from app.tasks.training_tasks import batch_simulate_games
+
+        assert callable(batch_simulate_games)
+
+
+class TestBatchSimRoutes:
+    """Verify batch simulation API routes are defined."""
+
+    def test_batch_sim_routes_exist(self):
+        import inspect
+        from app.analytics.api import analytics_routes
+
+        source = inspect.getsource(analytics_routes)
+        assert "post_batch_simulate" in source
+        assert "list_batch_simulate_jobs" in source
+        assert "get_batch_simulate_job" in source
+        assert "BatchSimulateRequest" in source
+
+    def test_serialize_function_exists(self):
+        from app.analytics.api.analytics_routes import _serialize_batch_sim_job
+
+        assert callable(_serialize_batch_sim_job)

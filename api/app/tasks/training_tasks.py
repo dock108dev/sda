@@ -1,8 +1,8 @@
-"""Celery tasks for analytics model training.
+"""Celery tasks for analytics model training and backtesting.
 
-Dispatched from the workbench UI when a user kicks off model training.
-Runs the TrainingPipeline asynchronously and updates the
-AnalyticsTrainingJob row with results.
+Dispatched from the workbench UI when a user kicks off model training
+or backtesting. Runs pipelines asynchronously and updates DB job rows
+with results.
 """
 
 from __future__ import annotations
@@ -93,6 +93,7 @@ async def _run_training(job_id: int, celery_task_id: str | None = None) -> dict:
                 job.train_count = result.get("train_count")
                 job.test_count = result.get("test_count")
                 job.feature_names = result.get("feature_names")
+                job.feature_importance = result.get("feature_importance")
             job.completed_at = datetime.now(timezone.utc)
             await db.commit()
 
@@ -149,6 +150,464 @@ async def _execute_training(
     # Run pipeline
     result = pipeline.run(records=records, sklearn_model=sklearn_model)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Backtest task
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(name="backtest_analytics_model", bind=True, max_retries=0)
+def backtest_analytics_model(self, job_id: int) -> dict:
+    """Backtest a trained model against held-out games.
+
+    Loads the model artifact, runs predictions on games in the
+    configured date range, and compares to actual outcomes.
+    """
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(_run_backtest(job_id, self.request.id))
+    finally:
+        loop.close()
+
+
+async def _run_backtest(job_id: int, celery_task_id: str | None = None) -> dict:
+    """Async implementation of the backtest pipeline."""
+    from app.db import get_async_session
+    from app.db.analytics import AnalyticsBacktestJob
+
+    async with get_async_session() as db:
+        job = await db.get(AnalyticsBacktestJob, job_id)
+        if job is None:
+            return {"error": "job_not_found", "job_id": job_id}
+
+        job.status = "running"
+        if celery_task_id:
+            job.celery_task_id = celery_task_id
+        await db.commit()
+
+    try:
+        result = await _execute_backtest(
+            model_id=job.model_id,
+            artifact_path=job.artifact_path,
+            sport=job.sport,
+            model_type=job.model_type,
+            date_start=job.date_start,
+            date_end=job.date_end,
+            rolling_window=getattr(job, "rolling_window", 30),
+        )
+    except Exception as exc:
+        logger.exception("backtest_failed", extra={"job_id": job_id})
+        async with get_async_session() as db:
+            job = await db.get(AnalyticsBacktestJob, job_id)
+            if job:
+                job.status = "failed"
+                job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+        return {"error": str(exc), "job_id": job_id}
+
+    async with get_async_session() as db:
+        job = await db.get(AnalyticsBacktestJob, job_id)
+        if job:
+            if "error" in result:
+                job.status = "failed"
+                job.error_message = result.get("error", "unknown")
+            else:
+                job.status = "completed"
+                job.game_count = result.get("game_count")
+                job.correct_count = result.get("correct_count")
+                job.metrics = result.get("metrics")
+                job.predictions = result.get("predictions")
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+    return result
+
+
+async def _execute_backtest(
+    *,
+    model_id: str,
+    artifact_path: str,
+    sport: str,
+    model_type: str,
+    date_start: str | None,
+    date_end: str | None,
+    rolling_window: int = 30,
+) -> dict:
+    """Run model predictions against held-out games and compare to actuals."""
+    import joblib
+    import numpy as np
+
+    from app.analytics.features.core.feature_builder import FeatureBuilder
+    from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
+
+    # 1. Load model artifact
+    try:
+        sklearn_model = joblib.load(artifact_path)
+    except Exception as exc:
+        return {"error": f"Failed to load model artifact: {exc}"}
+
+    # 2. Load games with rolling profiles (same as training data loader)
+    records = await _load_training_data_from_db(
+        sport=sport,
+        model_type=model_type,
+        date_start=date_start,
+        date_end=date_end,
+        rolling_window=rolling_window,
+    )
+
+    if not records:
+        return {"error": "no_backtest_data", "model_id": model_id}
+
+    # 3. Build features and run predictions
+    feature_builder = FeatureBuilder()
+    mlb_pipeline = MLBTrainingPipeline()
+    label_fn = mlb_pipeline.game_label_fn if model_type == "game" else None
+
+    predictions = []
+    correct = 0
+    brier_scores = []
+
+    for record in records:
+        # Build feature vector
+        vec = feature_builder.build_features(sport, record, model_type)
+        features = vec.to_array()
+
+        if not features:
+            continue
+
+        # Get actual label
+        actual_label = label_fn(record) if label_fn else record.get("home_win")
+        if actual_label is None:
+            continue
+
+        # Run prediction
+        try:
+            features_2d = np.array([features])
+            y_pred = sklearn_model.predict(features_2d)[0]
+
+            # Get probability if available
+            pred_proba = None
+            if hasattr(sklearn_model, "predict_proba"):
+                proba = sklearn_model.predict_proba(features_2d)[0]
+                classes = list(sklearn_model.classes_)
+                pred_proba = {str(c): round(float(p), 4) for c, p in zip(classes, proba)}
+
+            is_correct = y_pred == actual_label
+            if is_correct:
+                correct += 1
+
+            # Brier score for binary classification
+            if pred_proba and model_type == "game":
+                # For game model, actual_label is 1 (home_win) or 0
+                home_win_prob = pred_proba.get("1", pred_proba.get(1, 0.5))
+                brier = (home_win_prob - float(actual_label)) ** 2
+                brier_scores.append(brier)
+
+            pred_entry = {
+                "predicted": int(y_pred) if hasattr(y_pred, "__int__") else y_pred,
+                "actual": int(actual_label) if hasattr(actual_label, "__int__") else actual_label,
+                "correct": bool(is_correct),
+                "home_score": record.get("home_score"),
+                "away_score": record.get("away_score"),
+            }
+            if pred_proba:
+                pred_entry["probabilities"] = pred_proba
+
+            predictions.append(pred_entry)
+        except Exception as exc:
+            logger.warning("backtest_prediction_error", extra={"error": str(exc)})
+            continue
+
+    if not predictions:
+        return {"error": "no_valid_predictions", "model_id": model_id}
+
+    game_count = len(predictions)
+    accuracy = correct / game_count if game_count > 0 else 0.0
+    avg_brier = sum(brier_scores) / len(brier_scores) if brier_scores else None
+
+    metrics = {
+        "accuracy": round(accuracy, 4),
+        "correct": correct,
+        "total": game_count,
+    }
+    if avg_brier is not None:
+        metrics["brier_score"] = round(avg_brier, 6)
+
+    logger.info(
+        "backtest_complete",
+        extra={
+            "model_id": model_id,
+            "game_count": game_count,
+            "accuracy": accuracy,
+        },
+    )
+
+    return {
+        "model_id": model_id,
+        "game_count": game_count,
+        "correct_count": correct,
+        "metrics": metrics,
+        "predictions": predictions,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Batch simulation task
+# ---------------------------------------------------------------------------
+
+
+@celery_app.task(name="batch_simulate_games", bind=True, max_retries=0)
+def batch_simulate_games(self, job_id: int) -> dict:
+    """Run Monte Carlo simulations on upcoming games.
+
+    Loads scheduled/pregame games, builds rolling team profiles,
+    and runs the SimulationEngine for each game.
+    """
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(_run_batch_sim(job_id, self.request.id))
+    finally:
+        loop.close()
+
+
+async def _run_batch_sim(job_id: int, celery_task_id: str | None = None) -> dict:
+    """Async implementation of batch simulation."""
+    from app.db import get_async_session
+    from app.db.analytics import AnalyticsBatchSimJob
+
+    async with get_async_session() as db:
+        job = await db.get(AnalyticsBatchSimJob, job_id)
+        if job is None:
+            return {"error": "job_not_found", "job_id": job_id}
+
+        job.status = "running"
+        if celery_task_id:
+            job.celery_task_id = celery_task_id
+        await db.commit()
+
+    try:
+        result = await _execute_batch_sim(
+            sport=job.sport,
+            probability_mode=job.probability_mode,
+            iterations=job.iterations,
+            rolling_window=getattr(job, "rolling_window", 30),
+            date_start=job.date_start,
+            date_end=job.date_end,
+        )
+    except Exception as exc:
+        logger.exception("batch_sim_failed", extra={"job_id": job_id})
+        async with get_async_session() as db:
+            job = await db.get(AnalyticsBatchSimJob, job_id)
+            if job:
+                job.status = "failed"
+                job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+        return {"error": str(exc), "job_id": job_id}
+
+    async with get_async_session() as db:
+        job = await db.get(AnalyticsBatchSimJob, job_id)
+        if job:
+            if "error" in result:
+                job.status = "failed"
+                job.error_message = result.get("error", "unknown")
+            else:
+                job.status = "completed"
+                job.game_count = result.get("game_count")
+                job.results = result.get("results")
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+    return result
+
+
+async def _execute_batch_sim(
+    *,
+    sport: str,
+    probability_mode: str,
+    iterations: int,
+    rolling_window: int,
+    date_start: str | None,
+    date_end: str | None,
+) -> dict:
+    """Run simulations on upcoming games using rolling team profiles."""
+    from collections import defaultdict
+    from datetime import date
+
+    from sqlalchemy import select
+
+    from app.analytics.core.simulation_engine import SimulationEngine
+    from app.db import get_async_session
+    from app.db.mlb_advanced import MLBGameAdvancedStats
+    from app.db.sports import SportsGame, SportsTeam
+
+    if sport.lower() != "mlb":
+        return {"error": "only_mlb_supported"}
+
+    async with get_async_session() as db:
+        # 1. Find upcoming games (scheduled or pregame)
+        game_stmt = (
+            select(SportsGame)
+            .where(SportsGame.status.in_(["scheduled", "pregame"]))
+            .order_by(SportsGame.game_date.asc())
+        )
+
+        # Apply date filters — default to today onward
+        if date_start:
+            game_stmt = game_stmt.where(SportsGame.game_date >= date_start)
+        else:
+            game_stmt = game_stmt.where(
+                SportsGame.game_date >= date.today().isoformat()
+            )
+        if date_end:
+            game_stmt = game_stmt.where(SportsGame.game_date <= date_end)
+
+        # Filter to MLB games via league join
+        from app.db.sports import SportsLeague
+        mlb_league = await db.execute(
+            select(SportsLeague.id).where(SportsLeague.abbreviation == "MLB")
+        )
+        mlb_league_id = mlb_league.scalar_one_or_none()
+        if mlb_league_id:
+            game_stmt = game_stmt.where(SportsGame.league_id == mlb_league_id)
+
+        game_result = await db.execute(game_stmt)
+        upcoming_games = game_result.scalars().all()
+
+        if not upcoming_games:
+            return {"error": "no_upcoming_games", "game_count": 0, "results": []}
+
+        # 2. Load team names for display
+        team_ids = set()
+        for g in upcoming_games:
+            team_ids.add(g.home_team_id)
+            team_ids.add(g.away_team_id)
+
+        team_stmt = select(SportsTeam).where(SportsTeam.id.in_(list(team_ids)))
+        team_result = await db.execute(team_stmt)
+        teams = {t.id: t for t in team_result.scalars().all()}
+
+        # 3. Load all historical advanced stats for rolling profiles
+        all_stats_stmt = (
+            select(MLBGameAdvancedStats)
+            .join(SportsGame, SportsGame.id == MLBGameAdvancedStats.game_id)
+            .where(SportsGame.status == "final")
+            .order_by(SportsGame.game_date.asc())
+        )
+        stats_result = await db.execute(all_stats_stmt)
+        all_stats = stats_result.scalars().all()
+
+        # Index by game_id
+        stats_by_game: dict[int, list] = defaultdict(list)
+        for s in all_stats:
+            stats_by_game[s.game_id].append(s)
+
+        # Get dates for all games with stats
+        all_game_ids = list(stats_by_game.keys())
+        game_dates: dict[int, str] = {}
+        if all_game_ids:
+            dates_stmt = select(SportsGame.id, SportsGame.game_date).where(
+                SportsGame.id.in_(all_game_ids)
+            )
+            dates_result = await db.execute(dates_stmt)
+            for gid, gdate in dates_result:
+                game_dates[gid] = str(gdate)
+
+        # Build per-team chronological history
+        team_history: dict[int, list[tuple[str, object]]] = defaultdict(list)
+        for game_id, stats_list in stats_by_game.items():
+            gdate = game_dates.get(game_id, "")
+            for s in stats_list:
+                team_history[s.team_id].append((gdate, s))
+
+        for tid in team_history:
+            team_history[tid].sort(key=lambda x: x[0])
+
+    # 4. Run simulations for each upcoming game
+    engine = SimulationEngine(sport)
+    sim_results = []
+
+    for game in upcoming_games:
+        home_team = teams.get(game.home_team_id)
+        away_team = teams.get(game.away_team_id)
+        home_name = home_team.name if home_team else f"Team {game.home_team_id}"
+        away_name = away_team.name if away_team else f"Team {game.away_team_id}"
+
+        # Build rolling profiles
+        game_date_str = str(game.game_date)[:10]  # YYYY-MM-DD
+        # Use tomorrow as cutoff so today's completed games are included
+        profile_cutoff = game_date_str + "Z"  # Compare as string, anything today or before
+
+        home_profile = _build_rolling_profile(
+            team_history.get(game.home_team_id, []),
+            before_date=profile_cutoff,
+            window=rolling_window,
+            min_games=3,
+        )
+        away_profile = _build_rolling_profile(
+            team_history.get(game.away_team_id, []),
+            before_date=profile_cutoff,
+            window=rolling_window,
+            min_games=3,
+        )
+
+        # Build game context for SimulationEngine
+        game_context: dict = {
+            "home_team": home_name,
+            "away_team": away_name,
+            "probability_mode": probability_mode,
+        }
+
+        # If we have profiles, attach them as probability inputs
+        if home_profile and away_profile:
+            game_context["profiles"] = {
+                "home_profile": {"metrics": home_profile},
+                "away_profile": {"metrics": away_profile},
+            }
+
+        try:
+            sim = engine.run_simulation(
+                game_context=game_context,
+                iterations=iterations,
+            )
+        except Exception as exc:
+            logger.warning(
+                "batch_sim_game_error",
+                extra={"game_id": game.id, "error": str(exc)},
+            )
+            sim_results.append({
+                "game_id": game.id,
+                "game_date": game_date_str,
+                "home_team": home_name,
+                "away_team": away_name,
+                "error": str(exc),
+            })
+            continue
+
+        sim_results.append({
+            "game_id": game.id,
+            "game_date": game_date_str,
+            "home_team": home_name,
+            "away_team": away_name,
+            "home_win_probability": sim.get("home_win_probability"),
+            "away_win_probability": sim.get("away_win_probability"),
+            "average_home_score": sim.get("average_home_score"),
+            "average_away_score": sim.get("average_away_score"),
+            "probability_source": sim.get("probability_source", probability_mode),
+            "has_profiles": bool(home_profile and away_profile),
+        })
+
+    logger.info(
+        "batch_sim_complete",
+        extra={"game_count": len(sim_results), "sport": sport},
+    )
+
+    return {
+        "game_count": len(sim_results),
+        "results": sim_results,
+    }
 
 
 async def _load_training_data_from_db(

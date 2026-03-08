@@ -1,7 +1,7 @@
-"""Analytics configuration and training job models.
+"""Analytics configuration, training job, and backtest models.
 
-Stores feature loadout configurations and training job tracking
-in the database for the analytics workbench.
+Stores feature loadout configurations, training job tracking,
+and backtest job tracking in the database for the analytics workbench.
 """
 
 from __future__ import annotations
@@ -97,6 +97,7 @@ class AnalyticsTrainingJob(Base):
     train_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     test_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     feature_names: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    feature_importance: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -114,4 +115,85 @@ class AnalyticsTrainingJob(Base):
 
     feature_config: Mapped[AnalyticsFeatureConfig | None] = relationship(
         back_populates="training_jobs",
+    )
+
+
+class AnalyticsBacktestJob(Base):
+    """Tracks an async backtest job.
+
+    Created when a user runs a backtest from the model detail page.
+    The Celery task loads the model artifact, runs predictions against
+    games in the date range, and stores per-game results.
+    """
+
+    __tablename__ = "analytics_backtest_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    model_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    artifact_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    sport: Mapped[str] = mapped_column(String(50), nullable=False)
+    model_type: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Backtest parameters
+    date_start: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    date_end: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    rolling_window: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+
+    # Job status
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
+    )  # pending, running, completed, failed
+    celery_task_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    # Results (populated on completion)
+    game_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    correct_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    metrics: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    predictions: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class AnalyticsBatchSimJob(Base):
+    """Tracks a batch simulation job across upcoming games.
+
+    Created when a user triggers "Simulate Upcoming Games" from the
+    simulator page. The Celery task runs Monte Carlo sims on each
+    game and stores per-game results.
+    """
+
+    __tablename__ = "analytics_batch_sim_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sport: Mapped[str] = mapped_column(String(50), nullable=False)
+    probability_mode: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="ml"
+    )
+    iterations: Mapped[int] = mapped_column(Integer, nullable=False, default=5000)
+    rolling_window: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    date_start: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    date_end: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    # Job status
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
+    )
+    celery_task_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    # Results
+    game_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    results: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )

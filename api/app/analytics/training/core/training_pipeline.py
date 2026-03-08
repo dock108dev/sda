@@ -291,12 +291,16 @@ class TrainingPipeline:
 
         self._register_model(artifact_path, metadata_path, metrics)
 
+        # Extract feature importance if available (tree-based models)
+        feature_importance = _extract_feature_importance(model, feature_names)
+
         return {
             "model_id": self.model_id,
             "artifact_path": artifact_path,
             "metadata_path": metadata_path,
             "metrics": metrics,
             "feature_names": feature_names,
+            "feature_importance": feature_importance,
             "train_count": len(X_train),
             "test_count": len(X_test),
         }
@@ -353,3 +357,24 @@ class TrainingPipeline:
             max_depth=4,
             random_state=self.random_state,
         )
+
+
+def _extract_feature_importance(
+    model: Any,
+    feature_names: list[str],
+) -> list[dict[str, Any]] | None:
+    """Extract feature importance from a trained sklearn model.
+
+    Returns a sorted list of {name, importance} dicts (highest first),
+    or None if the model doesn't support feature_importances_.
+    """
+    importances = getattr(model, "feature_importances_", None)
+    if importances is None:
+        return None
+
+    items = []
+    for name, imp in zip(feature_names, importances):
+        items.append({"name": name, "importance": round(float(imp), 6)})
+
+    items.sort(key=lambda x: x["importance"], reverse=True)
+    return items
