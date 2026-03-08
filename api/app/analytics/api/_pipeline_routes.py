@@ -72,21 +72,27 @@ async def start_training(
     """
     from app.db.analytics import AnalyticsTrainingJob
 
-    job = AnalyticsTrainingJob(
-        feature_config_id=req.feature_config_id,
-        sport=req.sport.lower(),
-        model_type=req.model_type,
-        algorithm=req.algorithm,
-        date_start=req.date_start,
-        date_end=req.date_end,
-        test_split=req.test_split,
-        random_state=req.random_state,
-        rolling_window=req.rolling_window,
-        status="pending",
-    )
-    db.add(job)
-    await db.flush()
-    await db.refresh(job)
+    try:
+        job = AnalyticsTrainingJob(
+            feature_config_id=req.feature_config_id,
+            sport=req.sport.lower(),
+            model_type=req.model_type,
+            algorithm=req.algorithm,
+            date_start=req.date_start,
+            date_end=req.date_end,
+            test_split=req.test_split,
+            random_state=req.random_state,
+            rolling_window=req.rolling_window,
+            status="pending",
+        )
+        db.add(job)
+        await db.flush()
+        await db.refresh(job)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create training job: {exc}",
+        )
 
     try:
         from app.tasks.training_tasks import train_analytics_model
