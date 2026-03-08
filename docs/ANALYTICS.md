@@ -11,7 +11,7 @@ Predictive modeling, simulation, and matchup analysis for sports data.
 | Package | Description |
 |---------|-------------|
 | `api/` | REST endpoints — profiles, simulations, models, ensemble config |
-| `core/` | Orchestration — SimulationEngine, SimulationRunner, MatchupEngine, ProfileBuilder |
+| `core/` | Orchestration — SimulationEngine, SimulationRunner, SimulationAnalysis, MatchupEngine, ProfileBuilder |
 | `ensemble/` | Weighted probability combination from multiple providers |
 | `features/` | Feature extraction pipeline with configurable feature sets |
 | `inference/` | Model inference engine with in-memory artifact caching |
@@ -232,18 +232,25 @@ All endpoints prefixed with `/api/analytics`.
 |--------|------|-------------|
 | POST | `/simulate` | Synchronous Monte Carlo simulation |
 | POST | `/live-simulate` | Live game simulation from current state |
-| POST | `/simulate-job` | Async simulation (returns job_id) |
-| POST | `/live-simulate-job` | Async live simulation (returns job_id) |
-| GET | `/simulation-result` | Poll async job result |
-| GET | `/simulation-history` | List past simulation records |
+| POST | `/batch-simulate` | Async batch simulation over upcoming games (Celery task) |
+| GET | `/batch-simulate-jobs` | List batch simulation jobs |
+| GET | `/batch-simulate-job/{id}` | Get batch simulation job details |
 
-### Prediction Calibration
+### Prediction Outcomes & Calibration
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/record-outcome` | Record actual outcome for calibration |
-| GET | `/model-performance` | Aggregate calibration metrics (Brier, log loss) |
-| GET | `/predictions` | List stored predictions |
+| POST | `/record-outcomes` | Trigger auto-recording of outcomes for finalized games |
+| GET | `/prediction-outcomes` | List prediction outcomes (filter by sport/status) |
+| GET | `/calibration-report` | Aggregate calibration metrics (Brier, accuracy, bias) |
+
+### Degradation Alerts
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/degradation-check` | Trigger model degradation analysis |
+| GET | `/degradation-alerts` | List degradation alerts |
+| POST | `/degradation-alerts/{id}/acknowledge` | Acknowledge an alert |
 
 ### Model Registry
 
@@ -291,10 +298,10 @@ All endpoints prefixed with `/api/analytics`.
 | GET | `/ensemble-configs` | List all ensemble configs |
 | POST | `/ensemble-config` | Update ensemble weights |
 
-### MLB Advanced Models
+### Backtesting
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/mlb/pitch-model` | Pitch outcome probabilities |
-| GET | `/mlb/pitch-sim` | Simulate a full plate appearance pitch-by-pitch |
-| GET | `/mlb/run-expectancy` | Expected runs for base/out state |
+| POST | `/backtest` | Start async backtest job (Celery task) |
+| GET | `/backtest-jobs` | List backtest jobs |
+| GET | `/backtest-job/{id}` | Get backtest job details |

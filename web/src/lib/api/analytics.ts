@@ -511,10 +511,6 @@ export async function listBacktestJobs(
   return fetchJson(`${base()}/api/analytics/backtest-jobs${qs ? `?${qs}` : ""}`);
 }
 
-export async function getBacktestJob(id: number): Promise<BacktestJob> {
-  return fetchJson<BacktestJob>(`${base()}/api/analytics/backtest-job/${id}`);
-}
-
 // ---------------------------------------------------------------------------
 // Batch Simulation
 // ---------------------------------------------------------------------------
@@ -576,10 +572,6 @@ export async function listBatchSimJobs(
   return fetchJson<{ jobs: BatchSimJob[]; count: number }>(
     `${base()}/api/analytics/batch-simulate-jobs?${params}`,
   );
-}
-
-export async function getBatchSimJob(id: number): Promise<BatchSimJob> {
-  return fetchJson<BatchSimJob>(`${base()}/api/analytics/batch-simulate-job/${id}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -716,14 +708,6 @@ export interface EnsembleConfigResponse {
   sport: string;
   model_type: string;
   providers: EnsembleProviderWeight[];
-}
-
-export async function getEnsembleConfig(
-  sport: string,
-  modelType: string,
-): Promise<EnsembleConfigResponse> {
-  const params = new URLSearchParams({ sport, model_type: modelType });
-  return fetchJson<EnsembleConfigResponse>(`${base()}/api/analytics/ensemble-config?${params}`);
 }
 
 export async function listEnsembleConfigs(): Promise<{

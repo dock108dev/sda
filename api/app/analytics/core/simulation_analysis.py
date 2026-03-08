@@ -13,17 +13,11 @@ Usage::
 
 from __future__ import annotations
 
-import importlib
 import logging
 from collections import Counter
 from typing import Any
 
 logger = logging.getLogger(__name__)
-
-# Registry for sport-specific analysis modules.
-_SPORT_ANALYSIS: dict[str, tuple[str, str]] = {
-    "mlb": ("app.analytics.sports.mlb.simulation_analysis", "MLBSimulationAnalysis"),
-}
 
 
 class SimulationAnalysis:
@@ -31,22 +25,6 @@ class SimulationAnalysis:
 
     def __init__(self, sport: str) -> None:
         self.sport = sport.lower()
-        self._sport_analysis: Any | None = None
-
-    def _get_sport_analysis(self) -> Any:
-        """Lazily load sport-specific analysis module."""
-        if self._sport_analysis is not None:
-            return self._sport_analysis
-
-        entry = _SPORT_ANALYSIS.get(self.sport)
-        if entry is None:
-            return None
-
-        module_path, class_name = entry
-        mod = importlib.import_module(module_path)
-        cls = getattr(mod, class_name)
-        self._sport_analysis = cls()
-        return self._sport_analysis
 
     def summarize_results(
         self,

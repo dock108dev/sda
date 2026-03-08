@@ -5105,9 +5105,9 @@ class TestBacktestRoutes:
 
     def test_backtest_route_exists(self):
         import inspect
-        from app.analytics.api import analytics_routes
+        from app.analytics.api import _pipeline_routes
 
-        source = inspect.getsource(analytics_routes)
+        source = inspect.getsource(_pipeline_routes)
         assert "start_backtest" in source
         assert "list_backtest_jobs" in source
         assert "get_backtest_job" in source
@@ -5165,9 +5165,9 @@ class TestBatchSimRoutes:
 
     def test_batch_sim_routes_exist(self):
         import inspect
-        from app.analytics.api import analytics_routes
+        from app.analytics.api import _pipeline_routes
 
-        source = inspect.getsource(analytics_routes)
+        source = inspect.getsource(_pipeline_routes)
         assert "post_batch_simulate" in source
         assert "list_batch_simulate_jobs" in source
         assert "get_batch_simulate_job" in source
@@ -5266,23 +5266,23 @@ class TestOutcomeRoutes:
 
     def test_outcome_routes_exist(self):
         import inspect
-        from app.analytics.api import analytics_routes
+        from app.analytics.api import _calibration_routes
 
-        source = inspect.getsource(analytics_routes)
+        source = inspect.getsource(_calibration_routes)
         assert "post_record_outcomes" in source
         assert "list_prediction_outcomes" in source
         assert "get_calibration_report" in source
 
     def test_serialize_function_exists(self):
-        from app.analytics.api.analytics_routes import _serialize_prediction_outcome
+        from app.analytics.api._calibration_routes import _serialize_prediction_outcome
 
         assert callable(_serialize_prediction_outcome)
 
     def test_calibration_report_endpoint_exists(self):
         import inspect
-        from app.analytics.api import analytics_routes
+        from app.analytics.api import _calibration_routes
 
-        source = inspect.getsource(analytics_routes)
+        source = inspect.getsource(_calibration_routes)
         assert "calibration-report" in source
 
 
@@ -5476,14 +5476,14 @@ class TestDegradationRoutes:
 
     def test_routes_exist(self):
         import inspect
-        from app.analytics.api import analytics_routes
+        from app.analytics.api import _calibration_routes
 
-        source = inspect.getsource(analytics_routes)
+        source = inspect.getsource(_calibration_routes)
         assert "post_degradation_check" in source
         assert "list_degradation_alerts" in source
         assert "acknowledge_degradation_alert" in source
 
     def test_serialize_function_exists(self):
-        from app.analytics.api.analytics_routes import _serialize_degradation_alert
+        from app.analytics.api._calibration_routes import _serialize_degradation_alert
 
         assert callable(_serialize_degradation_alert)

@@ -1344,83 +1344,42 @@ Simulate from a live game state (current inning, outs, bases, score).
 }
 ```
 
-#### `POST /simulate-job`
+### Prediction Outcomes & Calibration
 
-Submit a simulation as a background job. Returns a `job_id` immediately.
+#### `POST /record-outcomes`
 
-**Response:**
-```json
-{ "job_id": "sim_abc123", "status": "pending" }
-```
+Trigger auto-recording of outcomes for finalized games. Dispatches a Celery task that matches pending predictions against completed `SportsGame` records.
 
-#### `POST /live-simulate-job`
+#### `GET /prediction-outcomes`
 
-Submit a live simulation as a background job.
-
-#### `GET /simulation-result`
-
-Poll for a background simulation result.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `job_id` | `string` | Yes | Job ID from `/simulate-job` |
-
-**Response:** Job status plus `result` object when complete.
-
-#### `GET /simulation-history`
-
-List stored simulation results.
+List prediction outcome records.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `sport` | `string` | — | Filter by sport |
-| `limit` | `int` | 50 | Max results (1–200) |
-
-### Prediction Calibration
-
-#### `POST /record-outcome`
-
-Record an actual game outcome for calibration tracking.
-
-**Request body:**
-```json
-{
-  "prediction_id": "pred_abc123",
-  "home_score": 5,
-  "away_score": 3
-}
-```
-
-**Response:** Calibration evaluation (Brier score, log loss).
-
-#### `GET /model-performance`
-
-Aggregate model performance metrics.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `sport` | `string` | — | Filter by sport |
-
-**Response:**
-```json
-{
-  "brier_score": 0.21,
-  "accuracy": 0.58,
-  "sample_size": 150,
-  "log_loss": 0.65,
-  "mae_score": 1.2,
-  "calibration_buckets": [ ... ]
-}
-```
-
-#### `GET /predictions`
-
-List stored predictions.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `sport` | `string` | — | Filter by sport |
+| `status` | `string` | — | `pending` or `resolved` |
 | `limit` | `int` | 100 | Max results (1–500) |
+
+#### `GET /calibration-report`
+
+Aggregate calibration metrics from resolved prediction outcomes.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `sport` | `string` | — | Filter by sport |
+
+**Response:**
+```json
+{
+  "total_predictions": 150,
+  "resolved": 150,
+  "accuracy": 0.58,
+  "brier_score": 0.21,
+  "avg_home_score_error": 1.2,
+  "avg_away_score_error": 1.1,
+  "home_bias": 0.02
+}
+```
 
 ### Feature Loadouts (DB-Backed)
 
@@ -1647,56 +1606,6 @@ Update ensemble weights for a sport + model type.
     { "name": "ml", "weight": 0.7 }
   ]
 }
-```
-
-### MLB Advanced Models
-
-#### `GET /mlb/pitch-model`
-
-Get pitch outcome probabilities.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `pitcher_k_rate` | `float` | 0.22 | Pitcher strikeout rate |
-| `batter_contact_rate` | `float` | 0.80 | Batter contact rate |
-| `count_balls` | `int` | 0 | Balls (0–3) |
-| `count_strikes` | `int` | 0 | Strikes (0–2) |
-
-**Response:**
-```json
-{
-  "pitch_probabilities": {
-    "ball": 0.35, "called_strike": 0.17, "swinging_strike": 0.11,
-    "foul": 0.18, "in_play": 0.19
-  }
-}
-```
-
-#### `GET /mlb/pitch-sim`
-
-Simulate a full plate appearance pitch-by-pitch.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `pitcher_k_rate` | `float` | 0.22 | Pitcher strikeout rate |
-| `batter_contact_rate` | `float` | 0.80 | Batter contact rate |
-
-**Response:** PA result (walk/strikeout/hit type), pitch count, final count.
-
-#### `GET /mlb/run-expectancy`
-
-Get expected runs for a base/out state.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `base_state` | `int` | 0 | Base state (0–7 encoded) |
-| `outs` | `int` | 0 | Outs (0–2) |
-| `batter_quality` | `float` | 0.0 | Batter quality adjustment |
-| `pitcher_quality` | `float` | 0.0 | Pitcher quality adjustment |
-
-**Response:**
-```json
-{ "expected_runs": 0.52 }
 ```
 
 ---
