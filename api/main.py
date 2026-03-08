@@ -19,7 +19,7 @@ from app.realtime.poller import db_poller
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
 from app.analytics.api.analytics_routes import router as analytics_router
-from app.routers import fairbet, reading_positions, social, sports
+from app.routers import fairbet, reading_positions, simulator, social, sports
 from app.routers.admin import odds_sync, pbp, pipeline, resolution, task_control, timeline_jobs
 
 configure_logging(
@@ -36,7 +36,22 @@ async def lifespan(app: FastAPI):
     await db_poller.stop()
 
 
-app = FastAPI(title="sports-data-admin", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="sports-data-admin",
+    version="1.0.0",
+    lifespan=lifespan,
+    openapi_tags=[
+        {
+            "name": "simulator",
+            "description": (
+                "**MLB Game Simulator** — Run Monte Carlo simulations for any "
+                "MLB matchup. Uses real Statcast data and trained ML models. "
+                "Start with `GET /api/simulator/mlb/teams` to list available "
+                "teams, then `POST /api/simulator/mlb` to run a simulation."
+            ),
+        },
+    ],
+)
 logger = logging.getLogger(__name__)
 
 app.add_middleware(StructuredLoggingMiddleware)
@@ -92,6 +107,7 @@ app.include_router(
     dependencies=auth_dependency,
 )
 app.include_router(fairbet.router, dependencies=auth_dependency)
+app.include_router(simulator.router, dependencies=auth_dependency)
 app.include_router(analytics_router, dependencies=auth_dependency)
 
 # Realtime endpoints — WS uses its own auth (query param / header),

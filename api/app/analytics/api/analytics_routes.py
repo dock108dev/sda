@@ -350,6 +350,52 @@ async def _predict_with_game_model(
         return None
 
 
+@router.get("/mlb-teams")
+async def get_mlb_teams(
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List MLB teams with count of games that have advanced stats data.
+
+    Used by the simulator UI to populate team dropdowns. Only returns
+    teams that have an abbreviation set.
+    """
+    from sqlalchemy import func as sa_func, select as sa_select
+
+    from app.db.mlb_advanced import MLBGameAdvancedStats
+    from app.db.sports import SportsTeam
+
+    stmt = (
+        sa_select(
+            SportsTeam.id,
+            SportsTeam.name,
+            SportsTeam.short_name,
+            SportsTeam.abbreviation,
+            sa_func.count(MLBGameAdvancedStats.id).label("games_with_stats"),
+        )
+        .outerjoin(
+            MLBGameAdvancedStats,
+            MLBGameAdvancedStats.team_id == SportsTeam.id,
+        )
+        .where(SportsTeam.abbreviation.isnot(None))
+        .group_by(SportsTeam.id)
+        .order_by(SportsTeam.name)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    teams = [
+        {
+            "id": row.id,
+            "name": row.name,
+            "short_name": row.short_name,
+            "abbreviation": row.abbreviation,
+            "games_with_stats": row.games_with_stats,
+        }
+        for row in rows
+    ]
+    return {"teams": teams, "count": len(teams)}
+
+
 @router.post("/live-simulate")
 async def post_live_simulate(req: LiveSimulateRequest) -> dict[str, Any]:
     """Run a simulation from a live game state."""
