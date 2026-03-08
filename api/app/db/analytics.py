@@ -82,6 +82,7 @@ class AnalyticsTrainingJob(Base):
     date_end: Mapped[str | None] = mapped_column(String(20), nullable=True)
     test_split: Mapped[float] = mapped_column(Float, nullable=False, default=0.2)
     random_state: Mapped[int] = mapped_column(Integer, nullable=False, default=42)
+    rolling_window: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
 
     # Job status
     status: Mapped[str] = mapped_column(

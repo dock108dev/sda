@@ -2,7 +2,26 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-06] - Current
+## [2026-03-07] - Current
+
+### Analytics Workbench
+
+- **Feature loadouts (DB-backed)**: Full CRUD for feature configurations via `analytics_feature_configs` table — create, update, delete, clone loadouts with per-feature enabled/weight toggles
+- **Available features endpoint**: `GET /api/analytics/available-features` returns all features with descriptions and DB coverage stats
+- **Training pipeline**: `POST /api/analytics/train` dispatches async Celery training jobs — pick a loadout, model type, algorithm, date range → produces joblib artifact registered in model registry
+- **Training job tracking**: `analytics_training_jobs` table tracks status (pending → running → completed/failed), metrics, artifact path, and Celery task ID
+- **Admin UI workbench**: Two-tab page (Feature Loadouts + Train Model) with loadout builder, feature grid, and training job status polling
+- **Alembic migration**: `20260307_000013` creates `analytics_feature_configs` and `analytics_training_jobs` tables
+
+### Analytics SSOT Cleanup
+
+- **6 legacy pages deleted**: team, player, matchup, feature-config, ensemble, baseball-models — consolidated into Explorer (3 tabs) and Workbench
+- **Navigation consolidated**: Analytics section reduced from 10 items to 6 (Overview, Workbench, Models, Simulator, Performance, Explorer)
+- **YAML configs removed**: `config/features/` directory and legacy training scripts (`scripts/train_models/`) deleted — DB-backed loadouts are the SSOT
+- **Legacy API types removed**: `FeatureConfigResponse`, `FeatureConfigListResponse`, `getFeatureConfig`, `listFeatureConfigs`, `saveFeatureConfig` replaced by DB-backed equivalents
+- **SSOT assertion tests**: 7 tests enforce no legacy symbols in routes, no YAML config files, DB models exist
+
+## [2026-03-06]
 
 ### Analytics Engine
 
@@ -12,19 +31,18 @@ All notable changes to Sports Data Admin.
 - **Team/Player/Matchup profiles**: `GET /api/analytics/team`, `/player`, `/matchup` endpoints for analytical profiles and head-to-head probability distributions
 - **ML model registry**: `GET/POST /api/analytics/models/*` endpoints for listing, activating, comparing, and inspecting registered models (JSON-backed, one active per sport/model_type)
 - **Model inference**: `POST /api/analytics/model-predict` runs predictions through the active ML model with feature extraction from entity profiles
-- **Feature configuration**: YAML-based feature configs (`GET/POST /api/analytics/feature-config`) with runtime registry for A/B testing feature sets
+- **Feature configuration**: DB-backed feature loadouts (`/api/analytics/feature-config*` CRUD) for configurable feature sets per sport/model type
 - **Ensemble system**: Weighted combination of rule-based and ML predictions (`GET/POST /api/analytics/ensemble-config`) with configurable provider weights
 - **Prediction calibration**: `POST /api/analytics/record-outcome` stores actual results; `GET /api/analytics/model-performance` returns Brier score, log loss, MAE, and calibration buckets
 - **MLB advanced models**: Pitch outcome model (`/mlb/pitch-model`), pitch-level PA simulation (`/mlb/pitch-sim`), run expectancy (`/mlb/run-expectancy`)
 - **5 built-in MLB models**: plate appearance, game, pitch outcome, batted ball, run expectancy — each with rule-based fallbacks using league-average baselines
-- **Admin UI pages**: 11 analytics pages (Overview, Simulator, Team, Player, Matchup, Model Registry, Model Performance, Feature Config, Ensemble, Baseball Models, Model Detail)
+- **Admin UI pages**: 6 analytics pages (Overview, Workbench, Models, Simulator, Performance, Explorer)
 
 ### Repository Cleanup
 
 - **Dead code removed**: Unused `_run_single_iteration()` method from `SimulationEngine`, unused `runner` variable in `AnalyticsService`, unused `getActiveModel()`/`getModelMetrics()` functions from web API client
 - **Lint fixes (15 total)**: 8 unused imports, 1 unsorted import block, 6 line-too-long violations across analytics package
-- **Duplicate utilities consolidated**: `formatMetricName()`/`formatMetricValue()` extracted from 3 analytics pages into shared `web/src/lib/utils/formatting.ts`
-- **Missing nav links added**: AdminNav now includes all 10 analytics routes (was missing Team, Player, Matchup, Ensemble, Baseball Models)
+- **Duplicate utilities consolidated**: `formatMetricName()`/`formatMetricValue()` extracted from analytics pages into shared `web/src/lib/utils/formatting.ts`
 - **Trailing whitespace removed**: `AdminTable.tsx`
 
 ### Documentation

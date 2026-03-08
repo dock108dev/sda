@@ -54,7 +54,7 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Analytics Engine](ANALYTICS.md) | **Start here:** Simulation, matchup analysis, ML models, ensemble predictions, and pitch-level modeling |
+| [Analytics Engine](ANALYTICS.md) | **Start here:** Feature loadouts, model training pipeline, simulation, matchup analysis, ML models, ensemble predictions, and pitch-level modeling |
 
 ## Operations
 

@@ -1422,35 +1422,91 @@ List stored predictions.
 | `sport` | `string` | — | Filter by sport |
 | `limit` | `int` | 100 | Max results (1–500) |
 
-### Feature Configuration
-
-#### `GET /feature-config`
-
-Get a feature configuration by model name.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `model` | `string` | Yes | Config name (e.g., `mlb_pa_model`) |
+### Feature Loadouts (DB-Backed)
 
 #### `GET /feature-configs`
 
-List all available and registered feature configurations.
+List all feature loadouts.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sport` | `string` | No | Filter by sport |
+| `model_type` | `string` | No | Filter by model type |
+
+#### `GET /feature-config/{id}`
+
+Get a feature loadout by ID.
 
 #### `POST /feature-config`
 
-Register or update a feature configuration.
+Create a new feature loadout.
 
 **Request body:**
 ```json
 {
-  "model": "mlb_pa_model_v2",
+  "name": "mlb_pa_v2",
   "sport": "mlb",
-  "features": {
-    "contact_rate": { "enabled": true, "weight": 1.0 },
-    "barrel_rate": { "enabled": true, "weight": 1.2 }
-  }
+  "model_type": "plate_appearance",
+  "features": [
+    { "name": "contact_rate", "enabled": true, "weight": 1.0 },
+    { "name": "barrel_rate", "enabled": true, "weight": 1.2 }
+  ],
+  "is_default": false
 }
 ```
+
+#### `PUT /feature-config/{id}`
+
+Update an existing feature loadout. All fields optional (partial update).
+
+#### `DELETE /feature-config/{id}`
+
+Delete a feature loadout by ID.
+
+#### `POST /feature-config/{id}/clone`
+
+Clone a feature loadout. Optional `name` query parameter for the clone's name.
+
+#### `GET /available-features`
+
+List all available features with descriptions and DB coverage.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sport` | `string` | No | Sport (default: `mlb`) |
+
+### Training Pipeline
+
+#### `POST /train`
+
+Start an async model training job via Celery.
+
+**Request body:**
+```json
+{
+  "feature_config_id": 1,
+  "sport": "mlb",
+  "model_type": "game",
+  "algorithm": "gradient_boosting",
+  "date_start": "2025-04-01",
+  "date_end": "2025-10-01",
+  "test_split": 0.2,
+  "random_state": 42
+}
+```
+
+#### `GET /training-jobs`
+
+List training jobs.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `sport` | `string` | No | Filter by sport |
+| `status` | `string` | No | Filter by status (`pending`, `running`, `completed`, `failed`) |
+
+#### `GET /training-job/{id}`
+
+Get training job details by ID.
 
 ### Model Inference
 

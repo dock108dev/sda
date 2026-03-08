@@ -107,7 +107,7 @@ JSON-backed registry at `models/registry/registry.json`. Organized by sport + mo
 
 ## Feature Pipeline
 
-Sport-agnostic `FeatureBuilder` routes to sport-specific builders. Features are configurable via YAML.
+Sport-agnostic `FeatureBuilder` routes to sport-specific builders. Features are configurable via DB-backed feature loadouts.
 
 ### MLB Features
 
@@ -120,23 +120,24 @@ Sport-agnostic `FeatureBuilder` routes to sport-specific builders. Features are 
 
 ### Feature Configuration
 
-YAML-based configs stored at `config/features/`. Each feature has `enabled` (bool) and optional `weight` (float). Runtime registry allows API-driven overrides without code changes.
+Feature loadouts are stored in the `analytics_feature_configs` database table. Each loadout has a name, sport, model type, and a JSONB array of features — each with `name`, `enabled` (bool), and `weight` (float). Loadouts are managed via the Admin UI workbench or the `/api/analytics/feature-config*` CRUD endpoints.
 
 ---
 
 ## Training Pipeline
 
-End-to-end flow: data → features → train → evaluate → register.
+End-to-end flow: data → features → train → evaluate → register. Training runs asynchronously via a Celery task (`train_analytics_model`) and is tracked in the `analytics_training_jobs` table.
 
 ### Steps
 
-1. `load_training_data()` — delegates to sport-specific pipeline
-2. `build_dataset()` — extracts features and labels via DatasetBuilder
-3. `train_test_split()` — sklearn 80/20 default
-4. `train_model()` — fits sklearn model (default: GradientBoostingClassifier)
-5. `evaluate_model()` — accuracy, precision, recall, F1, Brier score
-6. `save_artifact()` — serializes to `{sport}/artifacts/{model_id}.pkl` via joblib
-7. Register in model registry
+1. `POST /api/analytics/train` creates an `AnalyticsTrainingJob` record and dispatches the Celery task
+2. `load_training_data()` — queries `MLBGameAdvancedStats` + `SportsGame` for games in the date range
+3. `build_dataset()` — extracts features (from the linked feature loadout) and labels via DatasetBuilder
+4. `train_test_split()` — sklearn split (configurable, default 80/20)
+5. `train_model()` — fits sklearn model (gradient_boosting default; also random_forest, xgboost)
+6. `evaluate_model()` — accuracy, precision, recall, F1, Brier score
+7. `save_artifact()` — serializes to `{sport}/artifacts/{model_id}.pkl` via joblib
+8. Register in model registry; update job record with metrics and artifact path
 
 ### Label Extraction (MLB)
 
@@ -262,13 +263,25 @@ All endpoints prefixed with `/api/analytics`.
 | POST | `/model-predict` | Run prediction with profiles |
 | GET | `/model-predict` | Sample prediction with empty profiles |
 
-### Feature Configuration
+### Feature Loadouts (DB-Backed)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/feature-config` | Get config for a model |
-| GET | `/feature-configs` | List all configs |
-| POST | `/feature-config` | Update feature config |
+| GET | `/feature-configs` | List all loadouts (filter by sport/model_type) |
+| GET | `/feature-config/{id}` | Get loadout by ID |
+| POST | `/feature-config` | Create new loadout |
+| PUT | `/feature-config/{id}` | Update loadout |
+| DELETE | `/feature-config/{id}` | Delete loadout |
+| POST | `/feature-config/{id}/clone` | Clone loadout |
+| GET | `/available-features` | List available features with descriptions and DB coverage |
+
+### Training Pipeline
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/train` | Start async training job (Celery task) |
+| GET | `/training-jobs` | List training jobs (filter by sport/status) |
+| GET | `/training-job/{id}` | Get training job details |
 
 ### Ensemble Configuration
 

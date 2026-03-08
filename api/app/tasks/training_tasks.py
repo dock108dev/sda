@@ -64,6 +64,7 @@ async def _run_training(job_id: int, celery_task_id: str | None = None) -> dict:
             random_state=job.random_state,
             date_start=job.date_start,
             date_end=job.date_end,
+            rolling_window=getattr(job, "rolling_window", 30),
             feature_config=feature_config,
         )
     except Exception as exc:
@@ -107,6 +108,7 @@ async def _execute_training(
     random_state: int,
     date_start: str | None,
     date_end: str | None,
+    rolling_window: int = 30,
     feature_config: object | None,
 ) -> dict:
     """Execute the actual training pipeline.
@@ -135,6 +137,7 @@ async def _execute_training(
         model_type=model_type,
         date_start=date_start,
         date_end=date_end,
+        rolling_window=rolling_window,
     )
 
     if not records:
@@ -154,17 +157,21 @@ async def _load_training_data_from_db(
     model_type: str,
     date_start: str | None,
     date_end: str | None,
+    rolling_window: int = 30,
 ) -> list[dict]:
     """Load historical training data from the database.
 
     For MLB game models: queries MLBGameAdvancedStats + SportsGame
-    to build home/away profiles with win/loss labels.
+    to build rolling team profiles (aggregated from prior N games)
+    with win/loss labels.
     """
     if sport.lower() != "mlb":
         return []
 
     if model_type == "game":
-        return await _load_mlb_game_training_data(date_start, date_end)
+        return await _load_mlb_game_training_data(
+            date_start, date_end, rolling_window=rolling_window
+        )
 
     # PA model and others: placeholder for future implementation
     return []
@@ -173,57 +180,102 @@ async def _load_training_data_from_db(
 async def _load_mlb_game_training_data(
     date_start: str | None,
     date_end: str | None,
+    *,
+    rolling_window: int = 30,
 ) -> list[dict]:
-    """Load MLB game training data from advanced stats.
+    """Load MLB game training data using rolling team profiles.
 
-    Builds training records from MLBGameAdvancedStats with home/away
-    team profiles and win/loss labels derived from SportsGame scores.
+    For each game, builds home/away profiles by aggregating each team's
+    prior N games of advanced stats. This prevents data leakage — a team's
+    features for game X only use data from games before X.
+
+    Games where a team has fewer than 5 prior games are skipped to
+    ensure profiles are meaningful.
     """
-    from sqlalchemy import and_, select
-    from sqlalchemy.orm import selectinload
+    from collections import defaultdict
+
+    from sqlalchemy import select
 
     from app.db import get_async_session
     from app.db.mlb_advanced import MLBGameAdvancedStats
     from app.db.sports import SportsGame
 
+    min_games = 5  # Minimum prior games required for a valid profile
+
     async with get_async_session() as db:
-        # Get games that have advanced stats for both teams
-        stmt = (
+        # 1. Load training games (the games we want to predict)
+        train_stmt = (
             select(SportsGame)
             .where(SportsGame.status == "final")
             .order_by(SportsGame.game_date.asc())
         )
-
         if date_start:
-            stmt = stmt.where(SportsGame.game_date >= date_start)
+            train_stmt = train_stmt.where(SportsGame.game_date >= date_start)
         if date_end:
-            stmt = stmt.where(SportsGame.game_date <= date_end)
+            train_stmt = train_stmt.where(SportsGame.game_date <= date_end)
 
-        result = await db.execute(stmt)
-        games = result.scalars().all()
+        result = await db.execute(train_stmt)
+        training_games = result.scalars().all()
 
-        if not games:
+        if not training_games:
             return []
 
-        game_ids = [g.id for g in games]
-
-        # Load advanced stats for all these games
-        stats_stmt = select(MLBGameAdvancedStats).where(
-            MLBGameAdvancedStats.game_id.in_(game_ids)
+        # 2. Load ALL advanced stats (including lookback period before date_start)
+        #    so we can build rolling profiles for early games in the training set.
+        all_stats_stmt = (
+            select(MLBGameAdvancedStats)
+            .join(SportsGame, SportsGame.id == MLBGameAdvancedStats.game_id)
+            .where(SportsGame.status == "final")
+            .order_by(SportsGame.game_date.asc())
         )
-        stats_result = await db.execute(stats_stmt)
+        # Only apply end date filter — we need all history before date_start
+        if date_end:
+            all_stats_stmt = all_stats_stmt.where(SportsGame.game_date <= date_end)
+
+        stats_result = await db.execute(all_stats_stmt)
         all_stats = stats_result.scalars().all()
 
-        # Group stats by game_id
-        stats_by_game: dict[int, list] = {}
+        # 3. Index stats by game_id for quick lookup
+        stats_by_game: dict[int, list] = defaultdict(list)
         for s in all_stats:
-            stats_by_game.setdefault(s.game_id, []).append(s)
+            stats_by_game[s.game_id].append(s)
 
+        # 4. Build per-team chronological history: team_id -> [(game_date, stats_row)]
+        #    We need game dates to enforce the "prior games only" constraint.
+        game_dates: dict[int, str] = {}
+        for g in training_games:
+            game_dates[g.id] = str(g.game_date)
+
+        # Load game dates for ALL games that have stats (including lookback)
+        all_game_ids = list(stats_by_game.keys())
+        if all_game_ids:
+            dates_stmt = select(SportsGame.id, SportsGame.game_date).where(
+                SportsGame.id.in_(all_game_ids)
+            )
+            dates_result = await db.execute(dates_stmt)
+            for gid, gdate in dates_result:
+                game_dates[gid] = str(gdate)
+
+        # Build team histories sorted by date
+        team_history: dict[int, list[tuple[str, object]]] = defaultdict(list)
+        for game_id, stats_list in stats_by_game.items():
+            gdate = game_dates.get(game_id, "")
+            for s in stats_list:
+                team_history[s.team_id].append((gdate, s))
+
+        # Sort each team's history by date
+        for tid in team_history:
+            team_history[tid].sort(key=lambda x: x[0])
+
+        # 5. For each training game, build rolling profiles from prior games
+        training_game_ids = {g.id for g in training_games}
         records = []
-        for game in games:
+        skipped_insufficient = 0
+
+        for game in training_games:
             game_stats = stats_by_game.get(game.id, [])
             if len(game_stats) != 2:
-                continue  # Need exactly home + away
+                continue
 
             home_stats = None
             away_stats = None
@@ -236,18 +288,34 @@ async def _load_mlb_game_training_data(
             if not home_stats or not away_stats:
                 continue
 
-            # Extract boxscore for win/loss label
             home_score = _get_game_score(game, is_home=True)
             away_score = _get_game_score(game, is_home=False)
             if home_score is None or away_score is None:
                 continue
 
-            home_metrics = _stats_to_metrics(home_stats)
-            away_metrics = _stats_to_metrics(away_stats)
+            game_date_str = str(game.game_date)
+
+            # Build rolling profile for home team
+            home_profile = _build_rolling_profile(
+                team_history[home_stats.team_id],
+                before_date=game_date_str,
+                window=rolling_window,
+            )
+            # Build rolling profile for away team
+            away_profile = _build_rolling_profile(
+                team_history[away_stats.team_id],
+                before_date=game_date_str,
+                window=rolling_window,
+            )
+
+            # Skip if either team lacks sufficient history
+            if home_profile is None or away_profile is None:
+                skipped_insufficient += 1
+                continue
 
             records.append({
-                "home_profile": {"metrics": home_metrics},
-                "away_profile": {"metrics": away_metrics},
+                "home_profile": {"metrics": home_profile},
+                "away_profile": {"metrics": away_profile},
                 "home_win": 1 if home_score > away_score else 0,
                 "home_score": home_score,
                 "away_score": away_score,
@@ -255,9 +323,54 @@ async def _load_mlb_game_training_data(
 
         logger.info(
             "mlb_training_data_loaded",
-            extra={"records": len(records), "games_queried": len(games)},
+            extra={
+                "records": len(records),
+                "games_queried": len(training_games),
+                "skipped_insufficient_history": skipped_insufficient,
+                "rolling_window": rolling_window,
+            },
         )
         return records
+
+
+def _build_rolling_profile(
+    team_games: list[tuple[str, object]],
+    *,
+    before_date: str,
+    window: int,
+    min_games: int = 5,
+) -> dict | None:
+    """Aggregate a team's prior games into a rolling profile.
+
+    Args:
+        team_games: Chronologically sorted list of (date_str, MLBGameAdvancedStats).
+        before_date: Only include games strictly before this date.
+        window: Maximum number of prior games to include.
+        min_games: Minimum prior games required; returns None if insufficient.
+
+    Returns:
+        Aggregated metrics dict, or None if insufficient history.
+    """
+    # Collect prior games (strictly before the target date)
+    prior = [stats for date_str, stats in team_games if date_str < before_date]
+
+    if len(prior) < min_games:
+        return None
+
+    # Take the most recent N games
+    recent = prior[-window:]
+
+    # Convert each game's stats to metrics, then average
+    all_metrics: list[dict] = [_stats_to_metrics(s) for s in recent]
+
+    # Average each metric key across the window
+    aggregated: dict[str, float] = {}
+    for key in all_metrics[0]:
+        values = [m[key] for m in all_metrics if key in m]
+        if values:
+            aggregated[key] = round(sum(values) / len(values), 4)
+
+    return aggregated
 
 
 def _stats_to_metrics(stats) -> dict:

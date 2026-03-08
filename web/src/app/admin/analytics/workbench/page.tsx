@@ -375,6 +375,7 @@ function TrainingPanel() {
   const [dateStart, setDateStart] = useState("");
   const [dateEnd, setDateEnd] = useState("");
   const [testSplit, setTestSplit] = useState(0.2);
+  const [rollingWindow, setRollingWindow] = useState(30);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -428,6 +429,7 @@ function TrainingPanel() {
         date_start: dateStart || undefined,
         date_end: dateEnd || undefined,
         test_split: testSplit,
+        rolling_window: rollingWindow,
       });
       setMessage(`Training job #${res.job.id} submitted`);
       await refresh();
@@ -508,6 +510,17 @@ function TrainingPanel() {
               step={0.05}
               value={testSplit}
               onChange={(e) => setTestSplit(parseFloat(e.target.value))}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label>Rolling Window: {rollingWindow} games</label>
+            <input
+              type="range"
+              min={5}
+              max={80}
+              step={5}
+              value={rollingWindow}
+              onChange={(e) => setRollingWindow(parseInt(e.target.value))}
             />
           </div>
         </div>

@@ -38,8 +38,6 @@ from app.analytics.core.prediction_repository import PredictionRepository
 from app.analytics.core.simulation_cache import SimulationCache
 from app.analytics.core.simulation_job_manager import SimulationJobManager
 from app.analytics.core.simulation_repository import SimulationRepository
-from app.analytics.features.config.feature_config_loader import FeatureConfigLoader
-from app.analytics.features.config.feature_config_registry import FeatureConfigRegistry
 from app.analytics.inference.model_inference_engine import ModelInferenceEngine
 from app.analytics.models.core.model_registry import ModelRegistry
 from app.analytics.services.analytics_service import AnalyticsService
@@ -56,8 +54,6 @@ _job_manager = SimulationJobManager(cache=_cache, repository=_repository)
 _prediction_repo = PredictionRepository()
 _calibration = ModelCalibration()
 _model_metrics = ModelMetrics()
-_feature_config_loader = FeatureConfigLoader()
-_feature_config_registry = FeatureConfigRegistry(loader=_feature_config_loader)
 _model_registry = ModelRegistry()
 _model_service = ModelService(registry=_model_registry)
 _inference_engine = ModelInferenceEngine(registry=_model_registry)
@@ -443,12 +439,8 @@ async def list_feature_configs(
     rows = result.scalars().all()
     loadouts = [_serialize_loadout(r) for r in rows]
 
-    # Also include YAML-based configs for backwards compatibility
-    yaml_available = _feature_config_registry.list_available()
-
     return {
         "loadouts": loadouts,
-        "yaml_configs": yaml_available,
         "count": len(loadouts),
     }
 
@@ -630,25 +622,6 @@ def _feature_description(feat_name: str, source_key: str) -> str:
     return f"{entity_label} {base_desc}".strip()
 
 
-# Legacy YAML-based endpoint (kept for backwards compatibility)
-@router.get("/feature-config")
-async def get_feature_config_by_name(
-    model: str = Query(..., description="Config name (e.g., mlb_pa_model)"),
-) -> dict[str, Any]:
-    """Get a YAML-based feature configuration by model name."""
-    config = _feature_config_registry.get_config(model)
-    if config is None:
-        return {"status": "not_found", "model": model}
-
-    return {
-        "model": config.model,
-        "sport": config.sport,
-        "enabled_features": config.get_enabled_features(),
-        "weights": config.get_weights(),
-        "features": config.features,
-    }
-
-
 # ---------------------------------------------------------------------------
 # Training Pipeline endpoints
 # ---------------------------------------------------------------------------
@@ -664,6 +637,7 @@ class TrainModelRequest(BaseModel):
     test_split: float = Field(0.2, ge=0.05, le=0.5, description="Test set fraction")
     algorithm: str = Field("gradient_boosting", description="Algorithm: gradient_boosting, random_forest, xgboost")
     random_state: int = Field(42, description="Random seed for reproducibility")
+    rolling_window: int = Field(30, ge=5, le=162, description="Rolling window size (prior games for profile aggregation)")
 
 
 def _serialize_training_job(job) -> dict[str, Any]:
@@ -678,6 +652,7 @@ def _serialize_training_job(job) -> dict[str, Any]:
         "date_end": job.date_end,
         "test_split": job.test_split,
         "random_state": job.random_state,
+        "rolling_window": getattr(job, "rolling_window", 30),
         "status": job.status,
         "celery_task_id": job.celery_task_id,
         "model_id": job.model_id,
@@ -714,6 +689,7 @@ async def start_training(
         date_end=req.date_end,
         test_split=req.test_split,
         random_state=req.random_state,
+        rolling_window=req.rolling_window,
         status="pending",
     )
     db.add(job)

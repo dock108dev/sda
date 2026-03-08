@@ -5534,3 +5534,210 @@ class TestMLBTrainingLabels:
         assert mlb.run_expectancy_label_fn({"runs_scored_after_state": 2.5}) == 2.5
         assert mlb.run_expectancy_label_fn({"runs_scored_after_state": 0}) == 0.0
         assert mlb.run_expectancy_label_fn({}) is None
+
+
+# ---------------------------------------------------------------------------
+# SSOT Enforcement Tests
+# ---------------------------------------------------------------------------
+
+
+class TestSSOTRoutes:
+    """Assert that analytics routes use DB-backed SSOT modules, not legacy YAML."""
+
+    def test_analytics_routes_has_no_yaml_loader_import(self):
+        """Legacy FeatureConfigLoader must not be imported in routes."""
+        import inspect
+
+        from app.analytics.api import analytics_routes
+
+        source = inspect.getsource(analytics_routes)
+        assert "FeatureConfigLoader" not in source, (
+            "analytics_routes still references FeatureConfigLoader — "
+            "DB-backed loadouts are the SSOT"
+        )
+
+    def test_analytics_routes_has_no_yaml_registry_import(self):
+        """Legacy FeatureConfigRegistry must not be imported in routes."""
+        import inspect
+
+        from app.analytics.api import analytics_routes
+
+        source = inspect.getsource(analytics_routes)
+        assert "FeatureConfigRegistry" not in source, (
+            "analytics_routes still references FeatureConfigRegistry — "
+            "DB-backed loadouts are the SSOT"
+        )
+
+    def test_no_yaml_configs_field_in_routes(self):
+        """The yaml_configs backwards-compat field must not appear in routes."""
+        import inspect
+
+        from app.analytics.api import analytics_routes
+
+        source = inspect.getsource(analytics_routes)
+        assert "yaml_configs" not in source
+
+    def test_training_tasks_module_exists(self):
+        """The Celery training task module must be importable."""
+        spec = importlib.util.find_spec("app.tasks.training_tasks")
+        assert spec is not None, "app.tasks.training_tasks module not found"
+
+    def test_db_models_exist(self):
+        """DB analytics models must be importable."""
+        from app.db.analytics import AnalyticsFeatureConfig, AnalyticsTrainingJob
+
+        assert AnalyticsFeatureConfig.__tablename__ == "analytics_feature_configs"
+        assert AnalyticsTrainingJob.__tablename__ == "analytics_training_jobs"
+
+
+class TestSSOTNoLegacyFiles:
+    """Assert deleted legacy files stay deleted."""
+
+    def test_no_yaml_config_files(self):
+        import os
+
+        config_dir = os.path.join(
+            os.path.dirname(__file__), "..", "config", "features"
+        )
+        if os.path.isdir(config_dir):
+            yamls = [f for f in os.listdir(config_dir) if f.endswith((".yaml", ".yml"))]
+            assert yamls == [], f"Legacy YAML configs still exist: {yamls}"
+
+    def test_no_legacy_training_scripts(self):
+        import os
+
+        scripts_dir = os.path.join(
+            os.path.dirname(__file__), "..", "scripts", "train_models"
+        )
+        assert not os.path.isdir(scripts_dir), (
+            "Legacy scripts/train_models/ directory still exists — "
+            "training is handled by Celery tasks"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Rolling Profile Aggregation Tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildRollingProfile:
+    """Test _build_rolling_profile from training_tasks."""
+
+    def _make_stats(self, **overrides):
+        """Create a mock MLBGameAdvancedStats-like object."""
+        defaults = {
+            "z_contact_pct": 0.80,
+            "o_contact_pct": 0.60,
+            "avg_exit_velo": 90.0,
+            "barrel_pct": 0.08,
+            "hard_hit_pct": 0.38,
+            "z_swing_pct": 0.70,
+            "o_swing_pct": 0.30,
+            "zone_swings": 50,
+            "outside_swings": 30,
+            "zone_contact": 40,
+            "outside_contact": 18,
+        }
+        defaults.update(overrides)
+
+        class MockStats:
+            pass
+
+        obj = MockStats()
+        for k, v in defaults.items():
+            setattr(obj, k, v)
+        return obj
+
+    def test_returns_none_when_insufficient_history(self):
+        from app.tasks.training_tasks import _build_rolling_profile
+
+        # Only 3 games before target date, min_games=5
+        games = [("2025-04-01", self._make_stats()) for _ in range(3)]
+        result = _build_rolling_profile(
+            games, before_date="2025-05-01", window=30
+        )
+        assert result is None
+
+    def test_returns_profile_with_sufficient_history(self):
+        from app.tasks.training_tasks import _build_rolling_profile
+
+        games = [(f"2025-04-{i+1:02d}", self._make_stats()) for i in range(10)]
+        result = _build_rolling_profile(
+            games, before_date="2025-05-01", window=30
+        )
+        assert result is not None
+        assert "contact_rate" in result
+        assert "power_index" in result
+        assert "barrel_rate" in result
+        assert "hard_hit_rate" in result
+        assert "swing_rate" in result
+        assert "whiff_rate" in result
+        assert "avg_exit_velocity" in result
+        assert "expected_slug" in result
+
+    def test_excludes_games_on_or_after_target_date(self):
+        from app.tasks.training_tasks import _build_rolling_profile
+
+        # 3 games before target, 7 on or after
+        games = [(f"2025-04-{i+1:02d}", self._make_stats()) for i in range(3)]
+        games += [(f"2025-04-15", self._make_stats()) for _ in range(7)]
+        result = _build_rolling_profile(
+            games, before_date="2025-04-04", window=30
+        )
+        # Only 3 prior games, below min_games=5
+        assert result is None
+
+    def test_window_limits_games_used(self):
+        from app.tasks.training_tasks import _build_rolling_profile
+
+        # 20 games, window=5 — should average only last 5
+        early_stats = self._make_stats(avg_exit_velo=80.0)
+        late_stats = self._make_stats(avg_exit_velo=100.0)
+
+        games = [(f"2025-04-{i+1:02d}", early_stats) for i in range(15)]
+        games += [(f"2025-04-{i+16:02d}", late_stats) for i in range(5)]
+
+        result = _build_rolling_profile(
+            games, before_date="2025-05-01", window=5, min_games=3
+        )
+        assert result is not None
+        # Should be close to 100.0 (the last 5 games)
+        assert result["avg_exit_velocity"] == 100.0
+
+    def test_averages_metrics_correctly(self):
+        from app.tasks.training_tasks import _build_rolling_profile
+
+        stats_a = self._make_stats(barrel_pct=0.10, hard_hit_pct=0.40)
+        stats_b = self._make_stats(barrel_pct=0.20, hard_hit_pct=0.50)
+
+        games = [
+            ("2025-04-01", stats_a),
+            ("2025-04-02", stats_b),
+            ("2025-04-03", stats_a),
+            ("2025-04-04", stats_b),
+            ("2025-04-05", stats_a),
+        ]
+
+        result = _build_rolling_profile(
+            games, before_date="2025-05-01", window=30
+        )
+        assert result is not None
+        # 3 x 0.10 + 2 x 0.20 = 0.70 / 5 = 0.14
+        assert result["barrel_rate"] == 0.14
+        # 3 x 0.40 + 2 x 0.50 = 2.20 / 5 = 0.44
+        assert result["hard_hit_rate"] == 0.44
+
+
+class TestRollingWindowColumn:
+    """Verify rolling_window column on AnalyticsTrainingJob."""
+
+    def test_training_job_has_rolling_window(self):
+        from app.db.analytics import AnalyticsTrainingJob
+
+        assert hasattr(AnalyticsTrainingJob, "rolling_window")
+
+    def test_rolling_window_default(self):
+        from app.db.analytics import AnalyticsTrainingJob
+
+        col = AnalyticsTrainingJob.__table__.columns["rolling_window"]
+        assert col.default.arg == 30

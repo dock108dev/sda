@@ -65,11 +65,11 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 
 - **Simulation:** Monte Carlo game simulation with pluggable probability sources (rule-based, ML, ensemble, pitch-level)
 - **Models:** Sport-specific ML models (plate appearance, game outcome, pitch outcome, batted ball, run expectancy)
-- **Features:** Feature extraction pipeline with configurable feature sets per sport/model type
+- **Features:** Feature extraction pipeline with DB-backed configurable loadouts per sport/model type
 - **Inference:** Model registry, activation controls, inference caching, auto-reload on model changes
 - **Ensemble:** Weighted probability combination from multiple providers
-- **Training:** Dataset building, label extraction, model evaluation metrics
-- **API:** `/api/analytics/*` endpoints for team/player profiles, matchup analysis, simulation, model management, ensemble config, MLB advanced models
+- **Training:** Async Celery-based training pipeline — dataset building, label extraction, model evaluation, joblib artifact generation
+- **API:** `/api/analytics/*` endpoints for team/player profiles, matchup analysis, simulation, model management, feature loadout CRUD, training jobs, ensemble config, MLB advanced models
 
 See [ANALYTICS.md](ANALYTICS.md) for details.
 
@@ -178,6 +178,10 @@ See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
 - `mlb_player_advanced_stats` - Statcast-derived advanced batting stats per batter per game
 - `team_social_posts` - Social media content (mapped to games via `mapping_status`)
 
+### Analytics & ML Tables
+- `analytics_feature_configs` - Feature loadouts (named feature sets with enabled/weight per sport/model_type)
+- `analytics_training_jobs` - ML training job tracking (status, metrics, artifact path)
+
 Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). Reference data (leagues, teams, social handles) is seeded from `seed_data.sql`.
 
 ---
@@ -212,6 +216,10 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 - `POST /api/analytics/simulate` — Full Monte Carlo simulation
 - `POST /api/analytics/live-simulate` — Live game simulation from current state
 - `GET /api/analytics/models/*` — Model registry and activation
+- `GET/POST /api/analytics/feature-config*` — Feature loadout CRUD (DB-backed)
+- `GET /api/analytics/available-features` — Available features with DB coverage
+- `POST /api/analytics/train` — Start async model training (Celery)
+- `GET /api/analytics/training-jobs` — Training job listing and status
 - `GET/POST /api/analytics/ensemble-config` — Ensemble weight configuration
 - `GET /api/analytics/mlb/*` — MLB pitch model, pitch simulation, run expectancy
 

@@ -70,6 +70,13 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `sports_game_conflicts` | Duplicate/ambiguous game identity tracking |
 | `sports_missing_pbp` | Flags games missing required play-by-play data |
 
+### Analytics & ML
+
+| Table | Description |
+|-------|-------------|
+| `analytics_feature_configs` | Feature loadouts — named sets of features with enabled/weight per sport/model_type |
+| `analytics_training_jobs` | ML training job tracking (status, metrics, artifact path, Celery task ID) |
+
 ### Other
 
 | Table | Description |
