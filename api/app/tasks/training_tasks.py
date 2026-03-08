@@ -856,7 +856,7 @@ async def _execute_batch_sim(
 ) -> dict:
     """Run simulations on upcoming games using rolling team profiles."""
     from collections import defaultdict
-    from datetime import date
+
 
     from sqlalchemy import select
 
@@ -876,14 +876,21 @@ async def _execute_batch_sim(
         )
 
         # Apply date filters — default to today onward
+        # Parse strings to datetime for timestamptz column comparison
         if date_start:
-            game_stmt = game_stmt.where(SportsGame.game_date >= date_start)
+            dt_start = datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            game_stmt = game_stmt.where(SportsGame.game_date >= dt_start)
         else:
             game_stmt = game_stmt.where(
-                SportsGame.game_date >= date.today().isoformat()
+                SportsGame.game_date >= datetime.now(timezone.utc).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
             )
         if date_end:
-            game_stmt = game_stmt.where(SportsGame.game_date <= date_end)
+            dt_end = datetime.strptime(date_end, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, tzinfo=timezone.utc
+            )
+            game_stmt = game_stmt.where(SportsGame.game_date <= dt_end)
 
         # Filter to MLB games via league join
         from app.db.sports import SportsLeague

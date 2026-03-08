@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -101,15 +102,27 @@ async def _load_mlb_game_training_data_impl(
 
     min_games = 5
 
+    # Parse date strings to datetime objects for timestamptz comparison
+    dt_start = (
+        datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        if date_start else None
+    )
+    dt_end = (
+        datetime.strptime(date_end, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59, tzinfo=timezone.utc
+        )
+        if date_end else None
+    )
+
     train_stmt = (
         select(SportsGame)
         .where(SportsGame.status == "final")
         .order_by(SportsGame.game_date.asc())
     )
-    if date_start:
-        train_stmt = train_stmt.where(SportsGame.game_date >= date_start)
-    if date_end:
-        train_stmt = train_stmt.where(SportsGame.game_date <= date_end)
+    if dt_start:
+        train_stmt = train_stmt.where(SportsGame.game_date >= dt_start)
+    if dt_end:
+        train_stmt = train_stmt.where(SportsGame.game_date <= dt_end)
 
     result = await db.execute(train_stmt)
     training_games = result.scalars().all()
@@ -123,8 +136,8 @@ async def _load_mlb_game_training_data_impl(
         .where(SportsGame.status == "final")
         .order_by(SportsGame.game_date.asc())
     )
-    if date_end:
-        all_stats_stmt = all_stats_stmt.where(SportsGame.game_date <= date_end)
+    if dt_end:
+        all_stats_stmt = all_stats_stmt.where(SportsGame.game_date <= dt_end)
 
     stats_result = await db.execute(all_stats_stmt)
     all_stats = stats_result.scalars().all()
