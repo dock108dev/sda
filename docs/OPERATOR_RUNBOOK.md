@@ -2,7 +2,7 @@
 
 Production operations guide for sports-data-admin.
 
-## Architecture Overview
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -25,7 +25,6 @@ flowchart LR
   subgraph Data
     Postgres[(Postgres)]
     Redis[(Redis)]
-    Storage[(S3/Storage Box)]
   end
 
   Admin -->|HTTPS| Caddy --> Web
@@ -34,7 +33,6 @@ flowchart LR
   API --> Redis
   Worker --> Postgres
   Worker --> Redis
-  Worker --> Storage
   SocialWorker --> Postgres
   SocialWorker --> Redis
   BulkWorker --> Postgres
@@ -45,13 +43,7 @@ flowchart LR
 
 ## Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the full deployment flow. Key points:
-
-1. **Deploy trigger:** Merge to `main` or manual workflow dispatch
-2. **Change detection:** GitHub Actions detects which services changed
-3. **Tests:** Unit tests run before deployment
-4. **Build:** Images pushed to GHCR with `latest` and commit-sha tags
-5. **Server update:** SSH, pull images, run migrations, restart services
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full deployment flow including GitHub secrets, edge routing, and rollback strategy.
 
 ### Quick Manual Deploy
 
@@ -70,110 +62,48 @@ docker compose --profile prod ps
 
 ## Health Checks
 
-### API Health
-
 ```bash
+# API health (returns 503 if DB is unavailable)
 curl -f http://localhost:8000/healthz
-```
 
-Returns `503` if database connectivity fails. Use for deploy verification.
-
-### Container Health
-
-```bash
+# Container health
 docker compose ps
 docker inspect --format='{{.State.Health.Status}}' sports-api
 ```
 
 ---
 
-## Migrations
-
-Alembic migrations are run explicitly (not on startup). Migrations live in `api/alembic/versions/`.
-
-The schema is defined in a single baseline migration with reference data (leagues, teams, social handles) seeded from `seed_data.sql`. New migrations chain linearly from the baseline.
-
-```bash
-# Run pending migrations (recommended)
-docker compose --profile prod run --rm migrate
-
-# Check current version
-docker exec sports-api alembic current
-
-# Run manually
-docker exec sports-api alembic upgrade head
-```
-
----
-
 ## Backups & Restore
 
-### Automatic Backups (Production)
+See [INFRA.md](INFRA.md#database-backup--restore) for full backup/restore procedures.
 
-When running with `--profile prod`, the backup service runs daily at 14:00 UTC and:
-- Creates a compressed SQL dump
-- Stores backups in `infra/backups/`
-- Keeps only the last 7 days of backups
-- Maintains a `latest.sql.gz` symlink
-
-### Manual Backup
+### Quick Reference
 
 ```bash
+# Manual backup
 docker exec sports-postgres /scripts/backup.sh
-```
 
-### Offsite Backup (Optional)
-
-Copy backups to external storage:
-```bash
-# Copy to S3
-aws s3 sync infra/backups/ s3://your-bucket/sports-backups/
-
-# Copy to remote server
-rsync -avz infra/backups/ user@backup-server:/backups/sports/
-```
-
-### Restore
-
-```bash
-gzip -cd sports_YYYYMMDDTHHMMSSZ.sql.gz | psql "${DATABASE_URL}"
-
-# Container restore (destructive)
+# Restore (destructive)
 CONFIRM_DESTRUCTIVE=true docker exec sports-postgres /scripts/restore.sh /backups/sports_YYYYMMDD.sql.gz
 ```
 
-Note: Restore uses `DROP DATABASE ... WITH (FORCE)` on Postgres 16+ so you don't need to stop app containers first.
-
-### Destructive Operation Guardrails
-
-- `init_db` (SQLAlchemy `create_all`) is blocked in production/staging
-- `/scripts/restore.sh` requires `CONFIRM_DESTRUCTIVE=true`
+Restore uses `DROP DATABASE ... WITH (FORCE)` on Postgres 16+ so you don't need to stop app containers first.
 
 ---
 
 ## Admin Access
 
-### SSH Tunnel Access
+### SSH Tunnel (Private Access)
 
-For private access without exposing the UI:
 ```bash
 ssh -L 9000:localhost:3000 ops@your-host
 ```
+
 Then visit `http://localhost:9000`.
 
 ---
 
-## CI/CD
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for GitHub secrets, deploy flow, and rollback strategy.
-
----
-
-## Environment Variables (Production)
-
-Production secrets live in `infra/.env` on the server (never committed). See [INFRA.md](INFRA.md#environment-variables) for the full variable reference.
-
-### Startup Validation (Fail-Fast)
+## Startup Validation (Fail-Fast)
 
 Containers validate required environment at startup and exit if misconfigured.
 
@@ -193,21 +123,30 @@ Containers validate required environment at startup and exit if misconfigured.
 - `DATABASE_URL` and `REDIS_URL` must not point at `localhost`
 - `DATABASE_URL` must not use default `postgres:postgres` credentials
 
+For the full environment variable reference, see [INFRA.md](INFRA.md#environment-variables).
+
+### Destructive Operation Guardrails
+
+- `init_db` (SQLAlchemy `create_all`) is blocked in production/staging
+- `/scripts/restore.sh` requires `CONFIRM_DESTRUCTIVE=true`
+
 ---
 
 ## Troubleshooting
 
 ### Container keeps restarting
 
-- Check environment validation errors in logs
-- Verify required env vars are set (see [Environment Variables](#environment-variables-production))
+- Check environment validation errors: `docker compose logs <service>`
+- Verify required env vars are set (see [Startup Validation](#startup-validation-fail-fast))
 - Check database connectivity
 
 For deployment troubleshooting (SSH, GHCR, health checks), see [DEPLOYMENT.md](DEPLOYMENT.md#troubleshooting).
+
+For local development troubleshooting (port conflicts, DB connections), see [INFRA.md](INFRA.md#troubleshooting).
 
 ---
 
 ## See Also
 
-- [INFRA.md](INFRA.md) - Docker configuration and local development
-- [DEPLOYMENT.md](DEPLOYMENT.md) - Full deployment flow and edge routing
+- [INFRA.md](INFRA.md) - Docker configuration, environment variables, backups
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Full deployment flow, edge routing, rollbacks

@@ -12,9 +12,43 @@ import logging
 import traceback
 from datetime import datetime, timezone
 
+from contextlib import asynccontextmanager
+
 from app.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def _task_db():
+    """Create a fresh async engine + session factory bound to the current loop.
+
+    Celery tasks run in a new event loop per invocation.  The module-level
+    engine in ``app.db`` binds its connection-pool futures to the loop that
+    created it, so reusing it from a different loop raises
+    "Future attached to a different loop".  Following the pattern in
+    ``bulk_flow_generation.py``, we create a throwaway engine here and
+    dispose of it when the task finishes.
+
+    Yields a session factory — callers open/close individual sessions via
+    ``async with sf() as db: ...`` as needed.
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+    from app.config import settings
+
+    engine = create_async_engine(settings.database_url, echo=False, future=True)
+    factory = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+    try:
+        yield factory
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task(name="train_analytics_model", bind=True, max_retries=0)
@@ -33,75 +67,75 @@ def train_analytics_model(self, job_id: int) -> dict:
 
 async def _run_training(job_id: int, celery_task_id: str | None = None) -> dict:
     """Async implementation of the training pipeline."""
-    from sqlalchemy import select
-
-    from app.db import get_async_session
     from app.db.analytics import AnalyticsFeatureConfig, AnalyticsTrainingJob
 
-    async with get_async_session() as db:
-        job = await db.get(AnalyticsTrainingJob, job_id)
-        if job is None:
-            return {"error": "job_not_found", "job_id": job_id}
+    async with _task_db() as sf:
+        async with sf() as db:
+            job = await db.get(AnalyticsTrainingJob, job_id)
+            if job is None:
+                return {"error": "job_not_found", "job_id": job_id}
 
-        # Mark as running
-        job.status = "running"
-        if celery_task_id:
-            job.celery_task_id = celery_task_id
-        await db.commit()
+            # Mark as running
+            job.status = "running"
+            if celery_task_id:
+                job.celery_task_id = celery_task_id
+            await db.commit()
 
-        # Load feature config if set
-        feature_config = None
-        if job.feature_config_id:
-            feature_config = await db.get(AnalyticsFeatureConfig, job.feature_config_id)
+            # Load feature config if set
+            feature_config = None
+            if job.feature_config_id:
+                feature_config = await db.get(AnalyticsFeatureConfig, job.feature_config_id)
 
-    # Run training outside the DB session (it may take minutes)
-    try:
-        result = await _execute_training(
-            sport=job.sport,
-            model_type=job.model_type,
-            algorithm=job.algorithm,
-            test_split=job.test_split,
-            random_state=job.random_state,
-            date_start=job.date_start,
-            date_end=job.date_end,
-            rolling_window=getattr(job, "rolling_window", 30),
-            feature_config=feature_config,
-        )
-    except Exception as exc:
-        logger.exception("training_failed", extra={"job_id": job_id})
-        async with get_async_session() as db:
+        # Run training outside the DB session (it may take minutes)
+        try:
+            result = await _execute_training(
+                sf=sf,
+                sport=job.sport,
+                model_type=job.model_type,
+                algorithm=job.algorithm,
+                test_split=job.test_split,
+                random_state=job.random_state,
+                date_start=job.date_start,
+                date_end=job.date_end,
+                rolling_window=getattr(job, "rolling_window", 30),
+                feature_config=feature_config,
+            )
+        except Exception as exc:
+            logger.exception("training_failed", extra={"job_id": job_id})
+            async with sf() as db:
+                job = await db.get(AnalyticsTrainingJob, job_id)
+                if job:
+                    job.status = "failed"
+                    job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+            return {"error": str(exc), "job_id": job_id}
+
+        # Write results back
+        async with sf() as db:
             job = await db.get(AnalyticsTrainingJob, job_id)
             if job:
-                job.status = "failed"
-                job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                if "error" in result:
+                    job.status = "failed"
+                    job.error_message = result.get("error", "unknown")
+                else:
+                    job.status = "completed"
+                    job.model_id = result.get("model_id")
+                    job.artifact_path = result.get("artifact_path")
+                    job.metrics = result.get("metrics")
+                    job.train_count = result.get("train_count")
+                    job.test_count = result.get("test_count")
+                    job.feature_names = result.get("feature_names")
+                    job.feature_importance = result.get("feature_importance")
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
-        return {"error": str(exc), "job_id": job_id}
-
-    # Write results back
-    async with get_async_session() as db:
-        job = await db.get(AnalyticsTrainingJob, job_id)
-        if job:
-            if "error" in result:
-                job.status = "failed"
-                job.error_message = result.get("error", "unknown")
-            else:
-                job.status = "completed"
-                job.model_id = result.get("model_id")
-                job.artifact_path = result.get("artifact_path")
-                job.metrics = result.get("metrics")
-                job.train_count = result.get("train_count")
-                job.test_count = result.get("test_count")
-                job.feature_names = result.get("feature_names")
-                job.feature_importance = result.get("feature_importance")
-            job.completed_at = datetime.now(timezone.utc)
-            await db.commit()
 
     return result
 
 
 async def _execute_training(
     *,
+    sf,
     sport: str,
     model_type: str,
     algorithm: str,
@@ -132,14 +166,16 @@ async def _execute_training(
         test_size=test_split,
     )
 
-    # Load training data from DB
-    records = await _load_training_data_from_db(
-        sport=sport,
-        model_type=model_type,
-        date_start=date_start,
-        date_end=date_end,
-        rolling_window=rolling_window,
-    )
+    # Load training data from DB using the task's session factory
+    async with sf() as db:
+        records = await _load_training_data_from_db(
+            sport=sport,
+            model_type=model_type,
+            date_start=date_start,
+            date_end=date_end,
+            rolling_window=rolling_window,
+            db=db,
+        )
 
     if not records:
         return {"error": "no_training_data", "model_id": model_id}
@@ -173,60 +209,62 @@ def backtest_analytics_model(self, job_id: int) -> dict:
 
 async def _run_backtest(job_id: int, celery_task_id: str | None = None) -> dict:
     """Async implementation of the backtest pipeline."""
-    from app.db import get_async_session
     from app.db.analytics import AnalyticsBacktestJob
 
-    async with get_async_session() as db:
-        job = await db.get(AnalyticsBacktestJob, job_id)
-        if job is None:
-            return {"error": "job_not_found", "job_id": job_id}
+    async with _task_db() as sf:
+        async with sf() as db:
+            job = await db.get(AnalyticsBacktestJob, job_id)
+            if job is None:
+                return {"error": "job_not_found", "job_id": job_id}
 
-        job.status = "running"
-        if celery_task_id:
-            job.celery_task_id = celery_task_id
-        await db.commit()
+            job.status = "running"
+            if celery_task_id:
+                job.celery_task_id = celery_task_id
+            await db.commit()
 
-    try:
-        result = await _execute_backtest(
-            model_id=job.model_id,
-            artifact_path=job.artifact_path,
-            sport=job.sport,
-            model_type=job.model_type,
-            date_start=job.date_start,
-            date_end=job.date_end,
-            rolling_window=getattr(job, "rolling_window", 30),
-        )
-    except Exception as exc:
-        logger.exception("backtest_failed", extra={"job_id": job_id})
-        async with get_async_session() as db:
+        try:
+            result = await _execute_backtest(
+                sf=sf,
+                model_id=job.model_id,
+                artifact_path=job.artifact_path,
+                sport=job.sport,
+                model_type=job.model_type,
+                date_start=job.date_start,
+                date_end=job.date_end,
+                rolling_window=getattr(job, "rolling_window", 30),
+            )
+        except Exception as exc:
+            logger.exception("backtest_failed", extra={"job_id": job_id})
+            async with sf() as db:
+                job = await db.get(AnalyticsBacktestJob, job_id)
+                if job:
+                    job.status = "failed"
+                    job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+            return {"error": str(exc), "job_id": job_id}
+
+        async with sf() as db:
             job = await db.get(AnalyticsBacktestJob, job_id)
             if job:
-                job.status = "failed"
-                job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                if "error" in result:
+                    job.status = "failed"
+                    job.error_message = result.get("error", "unknown")
+                else:
+                    job.status = "completed"
+                    job.game_count = result.get("game_count")
+                    job.correct_count = result.get("correct_count")
+                    job.metrics = result.get("metrics")
+                    job.predictions = result.get("predictions")
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
-        return {"error": str(exc), "job_id": job_id}
-
-    async with get_async_session() as db:
-        job = await db.get(AnalyticsBacktestJob, job_id)
-        if job:
-            if "error" in result:
-                job.status = "failed"
-                job.error_message = result.get("error", "unknown")
-            else:
-                job.status = "completed"
-                job.game_count = result.get("game_count")
-                job.correct_count = result.get("correct_count")
-                job.metrics = result.get("metrics")
-                job.predictions = result.get("predictions")
-            job.completed_at = datetime.now(timezone.utc)
-            await db.commit()
 
     return result
 
 
 async def _execute_backtest(
     *,
+    sf,
     model_id: str,
     artifact_path: str,
     sport: str,
@@ -249,13 +287,15 @@ async def _execute_backtest(
         return {"error": f"Failed to load model artifact: {exc}"}
 
     # 2. Load games with rolling profiles (same as training data loader)
-    records = await _load_training_data_from_db(
-        sport=sport,
-        model_type=model_type,
-        date_start=date_start,
-        date_end=date_end,
-        rolling_window=rolling_window,
-    )
+    async with sf() as db:
+        records = await _load_training_data_from_db(
+            sport=sport,
+            model_type=model_type,
+            date_start=date_start,
+            date_end=date_end,
+            rolling_window=rolling_window,
+            db=db,
+        )
 
     if not records:
         return {"error": "no_backtest_data", "model_id": model_id}
@@ -374,55 +414,56 @@ def batch_simulate_games(self, job_id: int) -> dict:
 
 async def _run_batch_sim(job_id: int, celery_task_id: str | None = None) -> dict:
     """Async implementation of batch simulation."""
-    from app.db import get_async_session
     from app.db.analytics import AnalyticsBatchSimJob
 
-    async with get_async_session() as db:
-        job = await db.get(AnalyticsBatchSimJob, job_id)
-        if job is None:
-            return {"error": "job_not_found", "job_id": job_id}
+    async with _task_db() as sf:
+        async with sf() as db:
+            job = await db.get(AnalyticsBatchSimJob, job_id)
+            if job is None:
+                return {"error": "job_not_found", "job_id": job_id}
 
-        job.status = "running"
-        if celery_task_id:
-            job.celery_task_id = celery_task_id
-        await db.commit()
+            job.status = "running"
+            if celery_task_id:
+                job.celery_task_id = celery_task_id
+            await db.commit()
 
-    try:
-        result = await _execute_batch_sim(
-            sport=job.sport,
-            probability_mode=job.probability_mode,
-            iterations=job.iterations,
-            rolling_window=getattr(job, "rolling_window", 30),
-            date_start=job.date_start,
-            date_end=job.date_end,
-        )
-    except Exception as exc:
-        logger.exception("batch_sim_failed", extra={"job_id": job_id})
-        async with get_async_session() as db:
+        try:
+            result = await _execute_batch_sim(
+                sf=sf,
+                sport=job.sport,
+                probability_mode=job.probability_mode,
+                iterations=job.iterations,
+                rolling_window=getattr(job, "rolling_window", 30),
+                date_start=job.date_start,
+                date_end=job.date_end,
+            )
+        except Exception as exc:
+            logger.exception("batch_sim_failed", extra={"job_id": job_id})
+            async with sf() as db:
+                job = await db.get(AnalyticsBatchSimJob, job_id)
+                if job:
+                    job.status = "failed"
+                    job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                    job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+            return {"error": str(exc), "job_id": job_id}
+
+        async with sf() as db:
             job = await db.get(AnalyticsBatchSimJob, job_id)
             if job:
-                job.status = "failed"
-                job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+                if "error" in result:
+                    job.status = "failed"
+                    job.error_message = result.get("error", "unknown")
+                else:
+                    job.status = "completed"
+                    job.game_count = result.get("game_count")
+                    job.results = result.get("results")
+                    # Save individual predictions for outcome tracking
+                    await _save_prediction_outcomes(
+                        db, job_id, job.sport, job.probability_mode, result.get("results") or []
+                    )
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
-        return {"error": str(exc), "job_id": job_id}
-
-    async with get_async_session() as db:
-        job = await db.get(AnalyticsBatchSimJob, job_id)
-        if job:
-            if "error" in result:
-                job.status = "failed"
-                job.error_message = result.get("error", "unknown")
-            else:
-                job.status = "completed"
-                job.game_count = result.get("game_count")
-                job.results = result.get("results")
-                # Save individual predictions for outcome tracking
-                await _save_prediction_outcomes(
-                    db, job_id, job.sport, job.probability_mode, result.get("results") or []
-                )
-            job.completed_at = datetime.now(timezone.utc)
-            await db.commit()
 
     return result
 
@@ -438,6 +479,9 @@ async def _save_prediction_outcomes(
     from app.db.analytics import AnalyticsPredictionOutcome
 
     for game_result in results:
+        # Skip error-only entries from failed per-game simulations
+        if "error" in game_result or "home_win_probability" not in game_result:
+            continue
         outcome = AnalyticsPredictionOutcome(
             game_id=game_result["game_id"],
             sport=sport,
@@ -478,67 +522,67 @@ async def _run_record_outcomes() -> dict:
     """Match pending predictions against finalized games."""
     from sqlalchemy import select
 
-    from app.db import get_async_session
     from app.db.analytics import AnalyticsPredictionOutcome
     from app.db.sports import SportsGame
 
     recorded = 0
     skipped = 0
 
-    async with get_async_session() as db:
-        # Find predictions that have not been resolved yet
-        stmt = (
-            select(AnalyticsPredictionOutcome)
-            .where(AnalyticsPredictionOutcome.outcome_recorded_at.is_(None))
-            .order_by(AnalyticsPredictionOutcome.id)
-            .limit(500)
-        )
-        result = await db.execute(stmt)
-        pending = list(result.scalars().all())
+    async with _task_db() as sf:
+        async with sf() as db:
+            # Find predictions that have not been resolved yet
+            stmt = (
+                select(AnalyticsPredictionOutcome)
+                .where(AnalyticsPredictionOutcome.outcome_recorded_at.is_(None))
+                .order_by(AnalyticsPredictionOutcome.id)
+                .limit(500)
+            )
+            result = await db.execute(stmt)
+            pending = list(result.scalars().all())
 
-        if not pending:
-            return {"recorded": 0, "skipped": 0, "pending": 0}
+            if not pending:
+                return {"recorded": 0, "skipped": 0, "pending": 0}
 
-        # Batch-load the referenced games
-        game_ids = list({p.game_id for p in pending})
-        games_stmt = select(SportsGame).where(SportsGame.id.in_(game_ids))
-        games_result = await db.execute(games_stmt)
-        games_by_id: dict[int, SportsGame] = {
-            g.id: g for g in games_result.scalars().all()
-        }
+            # Batch-load the referenced games
+            game_ids = list({p.game_id for p in pending})
+            games_stmt = select(SportsGame).where(SportsGame.id.in_(game_ids))
+            games_result = await db.execute(games_stmt)
+            games_by_id: dict[int, SportsGame] = {
+                g.id: g for g in games_result.scalars().all()
+            }
 
-        for pred in pending:
-            game = games_by_id.get(pred.game_id)
-            if game is None:
-                skipped += 1
-                continue
+            for pred in pending:
+                game = games_by_id.get(pred.game_id)
+                if game is None:
+                    skipped += 1
+                    continue
 
-            # Only record for games that have reached final (or archived)
-            if game.status not in ("final", "archived"):
-                skipped += 1
-                continue
+                # Only record for games that have reached final (or archived)
+                if game.status not in ("final", "archived"):
+                    skipped += 1
+                    continue
 
-            if game.home_score is None or game.away_score is None:
-                skipped += 1
-                continue
+                if game.home_score is None or game.away_score is None:
+                    skipped += 1
+                    continue
 
-            home_win_actual = game.home_score > game.away_score
-            predicted_home_win = pred.predicted_home_wp > 0.5
-            correct = predicted_home_win == home_win_actual
+                home_win_actual = game.home_score > game.away_score
+                predicted_home_win = pred.predicted_home_wp > 0.5
+                correct = predicted_home_win == home_win_actual
 
-            # Brier score: (predicted_probability - actual_outcome)^2
-            actual_indicator = 1.0 if home_win_actual else 0.0
-            brier = (pred.predicted_home_wp - actual_indicator) ** 2
+                # Brier score: (predicted_probability - actual_outcome)^2
+                actual_indicator = 1.0 if home_win_actual else 0.0
+                brier = (pred.predicted_home_wp - actual_indicator) ** 2
 
-            pred.actual_home_score = game.home_score
-            pred.actual_away_score = game.away_score
-            pred.home_win_actual = home_win_actual
-            pred.correct_winner = correct
-            pred.brier_score = round(brier, 6)
-            pred.outcome_recorded_at = datetime.now(timezone.utc)
-            recorded += 1
+                pred.actual_home_score = game.home_score
+                pred.actual_away_score = game.away_score
+                pred.home_win_actual = home_win_actual
+                pred.correct_winner = correct
+                pred.brier_score = round(brier, 6)
+                pred.outcome_recorded_at = datetime.now(timezone.utc)
+                recorded += 1
 
-        await db.commit()
+            await db.commit()
 
     logger.info(
         "record_completed_outcomes_done",
@@ -576,101 +620,102 @@ async def _run_degradation_check(sport: str) -> dict:
     """Compute rolling windows and detect Brier score degradation."""
     from sqlalchemy import select
 
-    from app.db import get_async_session
     from app.db.analytics import AnalyticsDegradationAlert, AnalyticsPredictionOutcome
 
-    async with get_async_session() as db:
-        stmt = (
-            select(AnalyticsPredictionOutcome)
-            .where(
-                AnalyticsPredictionOutcome.outcome_recorded_at.isnot(None),
-                AnalyticsPredictionOutcome.sport == sport,
-                AnalyticsPredictionOutcome.brier_score.isnot(None),
+    async with _task_db() as sf:
+        async with sf() as db:
+            stmt = (
+                select(AnalyticsPredictionOutcome)
+                .where(
+                    AnalyticsPredictionOutcome.outcome_recorded_at.isnot(None),
+                    AnalyticsPredictionOutcome.sport == sport,
+                    AnalyticsPredictionOutcome.brier_score.isnot(None),
+                )
+                .order_by(AnalyticsPredictionOutcome.outcome_recorded_at.asc())
             )
-            .order_by(AnalyticsPredictionOutcome.outcome_recorded_at.asc())
-        )
-        result = await db.execute(stmt)
-        outcomes = list(result.scalars().all())
+            result = await db.execute(stmt)
+            outcomes = list(result.scalars().all())
 
-        if len(outcomes) < _MIN_WINDOW_SIZE * 2:
-            return {
-                "status": "insufficient_data",
-                "total": len(outcomes),
-                "required": _MIN_WINDOW_SIZE * 2,
-            }
+            if len(outcomes) < _MIN_WINDOW_SIZE * 2:
+                return {
+                    "status": "insufficient_data",
+                    "total": len(outcomes),
+                    "required": _MIN_WINDOW_SIZE * 2,
+                }
 
-        # Split into baseline (first half) and recent (second half)
-        midpoint = len(outcomes) // 2
-        baseline = outcomes[:midpoint]
-        recent = outcomes[midpoint:]
+            # Split into baseline (first half) and recent (second half)
+            midpoint = len(outcomes) // 2
+            baseline = outcomes[:midpoint]
+            recent = outcomes[midpoint:]
 
-        baseline_brier = sum(o.brier_score for o in baseline) / len(baseline)
-        recent_brier = sum(o.brier_score for o in recent) / len(recent)
-        baseline_acc = sum(1 for o in baseline if o.correct_winner) / len(baseline)
-        recent_acc = sum(1 for o in recent if o.correct_winner) / len(recent)
+            baseline_brier = sum(o.brier_score for o in baseline) / len(baseline)
+            recent_brier = sum(o.brier_score for o in recent) / len(recent)
+            baseline_acc = sum(1 for o in baseline if o.correct_winner) / len(baseline)
+            recent_acc = sum(1 for o in recent if o.correct_winner) / len(recent)
 
-        delta_brier = recent_brier - baseline_brier
-        delta_acc = recent_acc - baseline_acc
+            delta_brier = recent_brier - baseline_brier
+            delta_acc = recent_acc - baseline_acc
 
-        alert_created = False
-        severity = None
+            alert_created = False
+            severity = None
 
-        if delta_brier >= _BRIER_CRITICAL_THRESHOLD:
-            severity = "critical"
-        elif delta_brier >= _BRIER_WARNING_THRESHOLD:
-            severity = "warning"
+            if delta_brier >= _BRIER_CRITICAL_THRESHOLD:
+                severity = "critical"
+            elif delta_brier >= _BRIER_WARNING_THRESHOLD:
+                severity = "warning"
 
-        if severity:
-            message = (
-                f"{sport.upper()} model degradation detected: "
-                f"Brier score rose from {baseline_brier:.4f} to {recent_brier:.4f} "
-                f"(+{delta_brier:.4f}). "
-                f"Accuracy dropped from {baseline_acc:.1%} to {recent_acc:.1%}. "
-                f"Based on {len(baseline)} baseline vs {len(recent)} recent predictions."
-            )
-            alert = AnalyticsDegradationAlert(
-                sport=sport,
-                alert_type="brier_degradation",
-                baseline_brier=round(baseline_brier, 6),
-                recent_brier=round(recent_brier, 6),
-                baseline_accuracy=round(baseline_acc, 4),
-                recent_accuracy=round(recent_acc, 4),
-                baseline_count=len(baseline),
-                recent_count=len(recent),
-                delta_brier=round(delta_brier, 6),
-                delta_accuracy=round(delta_acc, 4),
-                severity=severity,
-                message=message,
-            )
-            db.add(alert)
-            await db.commit()
-            alert_created = True
+            if severity:
+                message = (
+                    f"{sport.upper()} model degradation detected: "
+                    f"Brier score rose from {baseline_brier:.4f} to {recent_brier:.4f} "
+                    f"(+{delta_brier:.4f}). "
+                    f"Accuracy dropped from {baseline_acc:.1%} to {recent_acc:.1%}. "
+                    f"Based on {len(baseline)} baseline vs {len(recent)} recent predictions."
+                )
+                alert = AnalyticsDegradationAlert(
+                    sport=sport,
+                    alert_type="brier_degradation",
+                    baseline_brier=round(baseline_brier, 6),
+                    recent_brier=round(recent_brier, 6),
+                    baseline_accuracy=round(baseline_acc, 4),
+                    recent_accuracy=round(recent_acc, 4),
+                    baseline_count=len(baseline),
+                    recent_count=len(recent),
+                    delta_brier=round(delta_brier, 6),
+                    delta_accuracy=round(delta_acc, 4),
+                    severity=severity,
+                    message=message,
+                )
+                db.add(alert)
+                await db.commit()
+                alert_created = True
 
-            logger.warning(
-                "model_degradation_detected",
-                extra={
-                    "sport": sport,
-                    "severity": severity,
-                    "delta_brier": round(delta_brier, 4),
-                },
-            )
+                logger.warning(
+                    "model_degradation_detected",
+                    extra={
+                        "sport": sport,
+                        "severity": severity,
+                        "delta_brier": round(delta_brier, 4),
+                    },
+                )
 
-        return {
-            "status": "alert_created" if alert_created else "healthy",
-            "sport": sport,
-            "baseline_brier": round(baseline_brier, 4),
-            "recent_brier": round(recent_brier, 4),
-            "delta_brier": round(delta_brier, 4),
-            "baseline_accuracy": round(baseline_acc, 4),
-            "recent_accuracy": round(recent_acc, 4),
-            "severity": severity,
-            "baseline_count": len(baseline),
-            "recent_count": len(recent),
-        }
+    return {
+        "status": "alert_created" if alert_created else "healthy",
+        "sport": sport,
+        "baseline_brier": round(baseline_brier, 4),
+        "recent_brier": round(recent_brier, 4),
+        "delta_brier": round(delta_brier, 4),
+        "baseline_accuracy": round(baseline_acc, 4),
+        "recent_accuracy": round(recent_acc, 4),
+        "severity": severity,
+        "baseline_count": len(baseline),
+        "recent_count": len(recent),
+    }
 
 
 async def _execute_batch_sim(
     *,
+    sf,
     sport: str,
     probability_mode: str,
     iterations: int,
@@ -685,14 +730,13 @@ async def _execute_batch_sim(
     from sqlalchemy import select
 
     from app.analytics.core.simulation_engine import SimulationEngine
-    from app.db import get_async_session
     from app.db.mlb_advanced import MLBGameAdvancedStats
     from app.db.sports import SportsGame, SportsTeam
 
     if sport.lower() != "mlb":
         return {"error": "only_mlb_supported"}
 
-    async with get_async_session() as db:
+    async with sf() as db:
         # 1. Find upcoming games (scheduled or pregame)
         game_stmt = (
             select(SportsGame)

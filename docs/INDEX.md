@@ -4,7 +4,7 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Local Development](LOCAL_DEVELOPMENT.md) | **Start here:** Run locally with Docker or manual setup |
+| [Infrastructure & Local Dev](INFRA.md) | **Start here:** Docker setup, manual setup, environment variables |
 | [Architecture](ARCHITECTURE.md) | System components, data flow, database schema, key principles |
 | [API Reference](API.md) | FastAPI endpoints and usage |
 
@@ -54,7 +54,7 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Analytics Engine](ANALYTICS.md) | **Start here:** Feature loadouts, model training pipeline, simulation, matchup analysis, ML models, ensemble predictions, and pitch-level modeling |
+| [Analytics Engine](ANALYTICS.md) | **Start here:** Feature loadouts, model training pipeline, backtesting, batch simulation, calibration, ML models, and ensemble predictions |
 
 ## Operations
 
@@ -62,5 +62,5 @@
 |-------|-------------|
 | [Operator Runbook](OPERATOR_RUNBOOK.md) | Production operations and monitoring |
 | [Deployment](DEPLOYMENT.md) | Server setup, deploy flow, edge routing, rollbacks |
-| [Infrastructure](INFRA.md) | Docker configuration and profiles |
+| [Infrastructure & Local Dev](INFRA.md) | Docker configuration, local setup, environment variables |
 | [Changelog](CHANGELOG.md) | Recent changes and releases |

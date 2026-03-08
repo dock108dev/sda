@@ -76,6 +76,10 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 |-------|-------------|
 | `analytics_feature_configs` | Feature loadouts — named sets of features with enabled/weight per sport/model_type |
 | `analytics_training_jobs` | ML training job tracking (status, metrics, artifact path, Celery task ID) |
+| `analytics_backtest_jobs` | Model backtest execution and results |
+| `analytics_batch_sim_jobs` | Batch Monte Carlo simulation jobs |
+| `analytics_prediction_outcomes` | Prediction vs actual outcome tracking for calibration |
+| `analytics_degradation_alerts` | Model quality degradation alerts |
 
 ### Other
 

@@ -17,7 +17,7 @@ docker compose --profile dev up -d --build
 - API Docs: http://localhost:8000/docs
 - Health: http://localhost:8000/healthz
 
-For manual setup, see [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md).
+For manual setup, see [docs/INFRA.md](docs/INFRA.md#local-services-without-docker).
 
 ## Architecture
 
@@ -74,7 +74,7 @@ sql/          Reference SQL queries
 |-------|-------------|
 | [docs/INDEX.md](docs/INDEX.md) | Full documentation index |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture |
-| [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md) | Development setup |
+| [docs/INFRA.md](docs/INFRA.md) | Infrastructure & local development |
 | [docs/API.md](docs/API.md) | API reference |
 | [docs/ANALYTICS.md](docs/ANALYTICS.md) | Analytics & ML engine |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment guide |

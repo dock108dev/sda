@@ -181,6 +181,10 @@ See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
 ### Analytics & ML Tables
 - `analytics_feature_configs` - Feature loadouts (named feature sets with enabled/weight per sport/model_type)
 - `analytics_training_jobs` - ML training job tracking (status, metrics, artifact path)
+- `analytics_backtest_jobs` - Model backtest execution and results
+- `analytics_batch_sim_jobs` - Batch Monte Carlo simulation jobs
+- `analytics_prediction_outcomes` - Prediction vs actual outcome tracking for calibration
+- `analytics_degradation_alerts` - Model quality degradation alerts
 
 Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). Reference data (leagues, teams, social handles) is seeded from `seed_data.sql`.
 
@@ -221,7 +225,8 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 - `POST /api/analytics/train` — Start async model training (Celery)
 - `GET /api/analytics/training-jobs` — Training job listing and status
 - `GET/POST /api/analytics/ensemble-config` — Ensemble weight configuration
-- `GET /api/analytics/mlb/*` — MLB pitch model, pitch simulation, run expectancy
+- `POST /api/analytics/backtest` — Start model backtest (Celery)
+- `POST /api/analytics/batch-simulate` — Batch Monte Carlo simulation
 
 ### FairBet Endpoints
 - `GET /api/fairbet/odds` — Cross-book odds comparison with EV annotations and display fields

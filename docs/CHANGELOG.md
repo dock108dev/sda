@@ -6,20 +6,37 @@ All notable changes to Sports Data Admin.
 
 ### Analytics Workbench
 
-- **Feature loadouts (DB-backed)**: Full CRUD for feature configurations via `analytics_feature_configs` table — create, update, delete, clone loadouts with per-feature enabled/weight toggles
+- **Feature loadouts (DB-backed)**: Full CRUD for feature configurations via `analytics_feature_configs` table -- create, update, delete, clone loadouts with per-feature enabled/weight toggles
 - **Available features endpoint**: `GET /api/analytics/available-features` returns all features with descriptions and DB coverage stats
-- **Training pipeline**: `POST /api/analytics/train` dispatches async Celery training jobs — pick a loadout, model type, algorithm, date range → produces joblib artifact registered in model registry
-- **Training job tracking**: `analytics_training_jobs` table tracks status (pending → running → completed/failed), metrics, artifact path, and Celery task ID
+- **Training pipeline**: `POST /api/analytics/train` dispatches async Celery training jobs -- pick a loadout, model type, algorithm, date range, produces joblib artifact registered in model registry
+- **Training job tracking**: `analytics_training_jobs` table tracks status (pending, running, completed, failed), metrics, artifact path, and Celery task ID
 - **Admin UI workbench**: Two-tab page (Feature Loadouts + Train Model) with loadout builder, feature grid, and training job status polling
 - **Alembic migration**: `20260307_000013` creates `analytics_feature_configs` and `analytics_training_jobs` tables
 
 ### Analytics SSOT Cleanup
 
-- **6 legacy pages deleted**: team, player, matchup, feature-config, ensemble, baseball-models — consolidated into Explorer (3 tabs) and Workbench
+- **6 legacy pages deleted**: team, player, matchup, feature-config, ensemble, baseball-models -- consolidated into Explorer (3 tabs) and Workbench
 - **Navigation consolidated**: Analytics section reduced from 10 items to 6 (Overview, Workbench, Models, Simulator, Performance, Explorer)
-- **YAML configs removed**: `config/features/` directory and legacy training scripts (`scripts/train_models/`) deleted — DB-backed loadouts are the SSOT
+- **YAML configs removed**: `config/features/` directory and legacy training scripts (`scripts/train_models/`) deleted -- DB-backed loadouts are the SSOT
 - **Legacy API types removed**: `FeatureConfigResponse`, `FeatureConfigListResponse`, `getFeatureConfig`, `listFeatureConfigs`, `saveFeatureConfig` replaced by DB-backed equivalents
 - **SSOT assertion tests**: 7 tests enforce no legacy symbols in routes, no YAML config files, DB models exist
+
+### Analytics Route Split & Legacy Removal
+
+- **Route file split**: `analytics_routes.py` (800+ lines) split into 4 sub-modules: `_calibration_routes.py`, `_feature_routes.py`, `_pipeline_routes.py`, `_model_routes.py`. Main file is now a thin assembler (~194 lines).
+- **Training task split**: Extracted shared helpers from `training_tasks.py` (1173 lines) into `_training_helpers.py` (324 lines) -- data loading, rolling profile aggregation, feature conversion, sklearn model factory
+- **Legacy code deleted**: `FeatureConfigLoader`, `FeatureConfigRegistry` (YAML-based), `PredictionRepository` (in-memory), `SimulationRepository`, `SimulationJobManager`, `MLBSimulationAnalysis` (redundant wrapper)
+- **Legacy endpoints removed**: `simulate-job`, `live-simulate-job`, `simulation-result`, `simulation-history`, `record-outcome` (single), `model-performance`, `predictions`, `mlb/pitch-model`, `mlb/pitch-sim`, `mlb/run-expectancy`
+- **DB-backed replacements**: Prediction outcomes via `analytics_prediction_outcomes`, degradation alerts via `analytics_degradation_alerts`, batch simulation via `analytics_batch_sim_jobs`, backtesting via `analytics_backtest_jobs`
+- **Frontend cleanup**: Removed unused exports (`getPitchModel`, `getPitchSim`, `getRunExpectancy`, `getBacktestJob`, `getBatchSimJob`, `getEnsembleConfig`)
+
+### Documentation Consolidation
+
+- **LOCAL_DEVELOPMENT.md deleted**: Content consolidated into INFRA.md (Docker setup, manual setup, troubleshooting in one place)
+- **OPERATOR_RUNBOOK.md slimmed**: Removed duplicated deployment/migration/env-var sections, now references DEPLOYMENT.md and INFRA.md
+- **ARCHITECTURE.md fixed**: Removed stale `GET /api/analytics/mlb/*` endpoints, added 4 missing analytics DB tables
+- **DATABASE_INTEGRATION.md fixed**: Added 4 missing analytics tables (backtest_jobs, batch_sim_jobs, prediction_outcomes, degradation_alerts)
+- **INDEX.md updated**: Fixed analytics description, updated links for consolidated docs
 
 ## [2026-03-06]
 
@@ -27,14 +44,15 @@ All notable changes to Sports Data Admin.
 
 - **Monte Carlo simulation**: `POST /api/analytics/simulate` runs N-iteration game simulations with pluggable probability sources (`rule_based`, `ml`, `ensemble`, `pitch_level`)
 - **Live simulation**: `POST /api/analytics/live-simulate` simulates from a mid-game state (inning, outs, bases, score)
-- **Async simulation jobs**: `POST /api/analytics/simulate-job` and `/live-simulate-job` for background execution with polling via `/simulation-result`
+- **Batch simulation**: `POST /api/analytics/batch-simulate` for background execution with job tracking via `/batch-simulate-jobs`
 - **Team/Player/Matchup profiles**: `GET /api/analytics/team`, `/player`, `/matchup` endpoints for analytical profiles and head-to-head probability distributions
 - **ML model registry**: `GET/POST /api/analytics/models/*` endpoints for listing, activating, comparing, and inspecting registered models (JSON-backed, one active per sport/model_type)
 - **Model inference**: `POST /api/analytics/model-predict` runs predictions through the active ML model with feature extraction from entity profiles
 - **Feature configuration**: DB-backed feature loadouts (`/api/analytics/feature-config*` CRUD) for configurable feature sets per sport/model type
 - **Ensemble system**: Weighted combination of rule-based and ML predictions (`GET/POST /api/analytics/ensemble-config`) with configurable provider weights
-- **Prediction calibration**: `POST /api/analytics/record-outcome` stores actual results; `GET /api/analytics/model-performance` returns Brier score, log loss, MAE, and calibration buckets
-- **MLB advanced models**: Pitch outcome model (`/mlb/pitch-model`), pitch-level PA simulation (`/mlb/pitch-sim`), run expectancy (`/mlb/run-expectancy`)
+- **Prediction calibration**: `POST /api/analytics/record-outcomes` triggers auto-recording; `GET /api/analytics/calibration-report` returns Brier score, accuracy, and bias metrics
+- **Degradation alerts**: `POST /api/analytics/degradation-check` triggers model quality analysis; `GET /api/analytics/degradation-alerts` lists alerts
+- **Backtesting**: `POST /api/analytics/backtest` starts async backtest job against held-out data
 - **5 built-in MLB models**: plate appearance, game, pitch outcome, batted ball, run expectancy — each with rule-based fallbacks using league-average baselines
 - **Admin UI pages**: 6 analytics pages (Overview, Workbench, Models, Simulator, Performance, Explorer)
 
@@ -52,8 +70,7 @@ All notable changes to Sports Data Admin.
 - **ARCHITECTURE.md**: Added Analytics Engine as first-class component (Section 3) with endpoint listing
 - **INDEX.md**: Added Analytics & ML section
 - **README.md**: Updated directory descriptions, added analytics doc link
-- **INFRA.md**: Replaced duplicated troubleshooting section with cross-reference to LOCAL_DEVELOPMENT.md
-- **LOCAL_DEVELOPMENT.md**: Simplified env vars table, added cross-reference to INFRA.md
+- **INFRA.md**: Consolidated local development content, added troubleshooting section
 - **OPERATOR_RUNBOOK.md**: Replaced duplicated env vars table with cross-reference to INFRA.md
 
 ### Live +EV Fair-Bet Computation

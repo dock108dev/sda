@@ -1,8 +1,8 @@
-# Infrastructure
+# Infrastructure & Local Development
 
-Docker configuration for the sports-data-admin stack.
+Docker configuration and local setup for the sports-data-admin stack.
 
-## Quick Start
+## Quick Start (Docker)
 
 ```bash
 cd infra
@@ -11,16 +11,23 @@ cp .env.example .env  # Edit credentials
 # Development
 docker compose --profile dev up -d --build
 
-# Production (includes daily backup service)
+# Production
 docker compose --profile prod up -d --build
 ```
 
+**URLs:**
+- Admin UI: http://localhost:3000
+- API Docs: http://localhost:8000/docs
+- Health: http://localhost:8000/healthz
+
 ## Profiles
 
-| Profile | Services | Use Case |
-|---------|----------|----------|
-| `dev` | postgres, redis, api, api-worker, scraper, scraper-beat, social-scraper, social-bulk, migrate, web, backup, log-relay | Local development |
-| `prod` | postgres, redis, api, api-worker, scraper, scraper-beat, social-scraper, social-bulk, migrate, web, backup, log-relay | Production |
+| Profile | Use Case |
+|---------|----------|
+| `dev` | Local development |
+| `prod` | Production (same services, pulls pre-built GHCR images) |
+
+Both profiles run the same set of services.
 
 ## Services
 
@@ -29,27 +36,19 @@ docker compose --profile prod up -d --build
 | postgres | 5432 | PostgreSQL database |
 | redis | 6379 | Redis for Celery queue |
 | api | 8000 | FastAPI backend |
-| api-worker | — | Celery worker for API tasks (pipeline, flow generation) |
-| scraper | — | Celery worker for data ingestion |
-| scraper-beat | — | Celery scheduler (see [DATA_SOURCES.md](DATA_SOURCES.md) for full schedule) |
-| social-scraper | — | Social media scraper (X/Twitter) — live tasks only (`social-scraper` queue) |
-| social-bulk | — | Bulk social collection worker (`social-bulk` queue) — isolated from live tasks |
-| migrate | — | One-shot Alembic migration runner |
+| api-worker | -- | Celery worker for API tasks (pipeline, flow generation) |
+| scraper | -- | Celery worker for data ingestion |
+| scraper-beat | -- | Celery scheduler (see [DATA_SOURCES.md](DATA_SOURCES.md) for full schedule) |
+| social-scraper | -- | Social media scraper (X/Twitter) -- live tasks only (`social-scraper` queue) |
+| social-bulk | -- | Bulk social collection worker (`social-bulk` queue) -- isolated from live tasks |
+| migrate | -- | One-shot Alembic migration runner |
 | web | 3000 | Next.js admin UI |
-| backup | — | Daily backup service |
-| log-relay | — | Docker log relay sidecar |
+| backup | -- | Daily backup service |
+| log-relay | -- | Docker log relay sidecar |
 
 ### Log Relay Sidecar
 
 Container log viewing is provided by a dedicated `log-relay` sidecar instead of mounting the Docker socket into the API container. The sidecar is the **only** container with Docker socket access and has no database credentials, API keys, or external network access (internal network only). It exposes a single `GET /logs?container=X&lines=N` endpoint on port 9999 with a hardcoded container allowlist. The API calls this sidecar over HTTP to serve the `GET /logs` endpoint.
-
-## URLs
-
-| Service | URL |
-|---------|-----|
-| Web Admin | http://localhost:3000 |
-| API | http://localhost:8000 |
-| API Docs | http://localhost:8000/docs |
 
 ## Files
 
@@ -67,11 +66,9 @@ Container log viewing is provided by a dedicated `log-relay` sidecar instead of 
 ## Commands
 
 ```bash
-# Start development stack
+# Start/stop
 docker compose --profile dev up -d --build
-
-# Start production stack (includes backup service)
-docker compose --profile prod up -d --build
+docker compose --profile dev down
 
 # View logs
 docker compose logs -f api
@@ -80,12 +77,41 @@ docker compose logs -f scraper
 # Restart a service
 docker compose restart api
 
-# Stop all
-docker compose --profile dev down
+# Rebuild and restart
+docker compose --profile dev up -d --build api
 
 # Stop and delete volumes (WARNING: deletes data)
 docker compose --profile dev down -v
 ```
+
+## Migrations
+
+Alembic migrations are run explicitly (not on every API startup). Use the dedicated
+`migrate` service or run Alembic in the API container.
+
+Migration files live in `api/alembic/versions/`. The schema starts from a single
+baseline migration plus a seed migration that populates reference data (leagues,
+teams, social accounts, compact mode thresholds).
+
+```bash
+# Recommended (explicit) migration job
+docker compose --profile dev run --rm migrate
+
+# Check current version
+docker exec sports-api alembic current
+
+# Run pending migrations manually
+docker exec sports-api alembic upgrade head
+
+# Create a new migration
+docker exec sports-api alembic revision -m "describe change"
+```
+
+### Adding Reference Data
+
+To add new teams, leagues, or social handles:
+1. Add the INSERT to `api/alembic/versions/seed_data.sql` (for fresh installs)
+2. Create a new migration that applies the change to existing databases
 
 ## Database Backup & Restore
 
@@ -100,26 +126,21 @@ When running with `--profile prod`, the backup service automatically:
 ### Manual Backup
 
 ```bash
-# Create a backup now
 docker exec sports-postgres /scripts/backup.sh
-
-# List available backups
 ls -la infra/backups/
 ```
 
 ### Restore from Backup
 
 ```bash
-# Restore from latest backup (destructive)
+# Restore from latest (destructive)
 CONFIRM_DESTRUCTIVE=true docker exec sports-postgres /scripts/restore.sh
 
 # Restore from specific backup
 CONFIRM_DESTRUCTIVE=true docker exec sports-postgres /scripts/restore.sh /backups/sports_20260108_120000.sql.gz
 ```
 
-### Backup to External Storage
-
-For production, consider copying backups offsite:
+### Offsite Backup
 
 ```bash
 # Copy to S3
@@ -151,35 +172,6 @@ cat data_export.sql | docker exec -i sports-postgres psql -U sports -d sports
 # 5. Verify
 docker exec sports-postgres psql -U sports -d sports -c "SELECT COUNT(*) FROM sports_games;"
 ```
-
-## Migrations
-
-Alembic migrations are run explicitly (not on every API startup). Use the dedicated
-`migrate` service or run Alembic in the API container.
-
-Migration files live in `api/alembic/versions/`. The schema starts from a single
-baseline migration plus a seed migration that populates reference data (leagues,
-teams, social accounts, compact mode thresholds).
-
-```bash
-# Recommended (explicit) migration job
-docker compose --profile prod run --rm migrate
-
-# Check current version
-docker exec sports-api alembic current
-
-# Run pending migrations manually
-docker exec sports-api alembic upgrade head
-
-# Create a new migration
-docker exec sports-api alembic revision -m "describe change"
-```
-
-### Adding Reference Data
-
-To add new teams, leagues, or social handles:
-1. Add the INSERT to `api/alembic/versions/seed_data.sql` (for fresh installs)
-2. Create a new migration that applies the change to existing databases
 
 ## Environment Variables
 
@@ -220,6 +212,125 @@ docker inspect --format='{{.State.Health.Status}}' sports-api
 
 The API container health check calls `GET /healthz`, which performs a lightweight database connectivity check and returns `503` when the database is unavailable. Use the same endpoint for deploy verification.
 
+---
+
+## Local Services (Without Docker)
+
+For development without Docker, run each service manually.
+
+### 1. Database Setup
+
+```bash
+cd api && alembic upgrade head
+```
+
+### 2. API
+
+```bash
+cd api
+pip install -r requirements.txt
+
+export DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/sports"
+export REDIS_URL="redis://localhost:6379/2"
+export ENVIRONMENT="development"
+
+uvicorn main:app --reload --port 8000
+```
+
+### 3. Scraper (Celery Worker)
+
+```bash
+cd scraper
+uv sync
+
+export DATABASE_URL="postgresql+psycopg://user:pass@localhost:5432/sports"
+export REDIS_URL="redis://localhost:6379/2"
+
+celery -A sports_scraper.celery_app.app worker --loglevel=info --queues=sports-scraper
+```
+
+### 4. Web Admin
+
+```bash
+cd web
+pnpm install
+
+export NEXT_PUBLIC_SPORTS_API_URL=http://localhost:8000
+pnpm dev
+```
+
+---
+
+## Development Workflow
+
+```bash
+# Make code changes...
+
+# Restart affected service
+docker compose restart api        # For API changes
+docker compose restart web        # For web changes
+docker compose restart scraper    # For scraper changes
+
+# Run tests
+docker compose exec api pytest tests/ -v
+```
+
+---
+
 ## Troubleshooting
 
-See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md#troubleshooting) for common issues (port conflicts, DB connections, scraper problems). For production troubleshooting, see [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md#troubleshooting).
+### Services won't start
+
+```bash
+docker system df            # Check Docker resources
+docker compose down -v      # Clean up and rebuild
+docker compose up -d --build
+```
+
+### Database connection errors
+
+```bash
+docker compose ps postgres
+docker compose logs postgres
+```
+
+### API won't start
+
+```bash
+docker logs sports-api
+# Common issues:
+# - Database not ready: wait for postgres healthcheck
+# - Migration error: check Alembic version mismatch
+# - Import error: rebuild the container
+```
+
+### Port already in use
+
+```bash
+lsof -i :8000  # or :3000, :5432, etc.
+```
+
+### Scraper returns empty results
+
+For social scraping:
+1. Check X cookies are valid (they expire)
+2. Verify `X_AUTH_TOKEN` and `X_CT0` in `.env`
+3. Rebuild scraper: `docker compose up -d --build scraper`
+
+### Restoring a DB backup
+
+The `infra/scripts/restore.sh` script is destructive and requires `CONFIRM_DESTRUCTIVE=true`.
+
+```bash
+CONFIRM_DESTRUCTIVE=true docker exec sports-postgres /scripts/restore.sh /backups/sports_YYYYMMDD.sql.gz
+```
+
+For production troubleshooting, see [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md).
+
+---
+
+## See Also
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and data flow
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Production deployment
+- [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) - Production operations
