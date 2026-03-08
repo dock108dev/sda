@@ -7,9 +7,15 @@ import {
   runLiveSimulation,
   startBatchSimulation,
   listBatchSimJobs,
+  listMLBTeams,
+  listEnsembleConfigs,
+  saveEnsembleConfig,
   type SimulationResult,
   type LiveSimulateResult,
   type BatchSimJob,
+  type MLBTeam,
+  type EnsembleProviderWeight,
+  type EnsembleConfigResponse,
 } from "@/lib/api/analytics";
 import styles from "../analytics.module.css";
 
@@ -58,25 +64,72 @@ export default function SimulatorPage() {
 /* ------------------------------------------------------------------ */
 
 function PregameSimulator() {
-  const [sport, setSport] = useState("mlb");
+  const [sport] = useState("mlb");
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
   const [iterations, setIterations] = useState(5000);
   const [rollingWindow, setRollingWindow] = useState(30);
-  const [probabilityMode, setProbabilityMode] = useState<"rule_based" | "ml">("rule_based");
+  const [probabilityMode, setProbabilityMode] = useState<"ml" | "ensemble">("ml");
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // MLB teams for dropdowns
+  const [teams, setTeams] = useState<MLBTeam[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(true);
+
+  // Ensemble config
+  const [ensembleConfigs, setEnsembleConfigs] = useState<EnsembleConfigResponse[]>([]);
+  const [ruleWeight, setRuleWeight] = useState(0.5);
+  const [mlWeight, setMlWeight] = useState(0.5);
+  const [savingEnsemble, setSavingEnsemble] = useState(false);
+
+  // Load teams on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await listMLBTeams();
+        setTeams(res.teams);
+      } catch {
+        // fallback — teams will be empty
+      } finally {
+        setTeamsLoading(false);
+      }
+    })();
+  }, []);
+
+  // Load ensemble config on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await listEnsembleConfigs();
+        setEnsembleConfigs(res.configs);
+        const gameConfig = res.configs.find(
+          (c) => c.sport === "mlb" && c.model_type === "game",
+        );
+        if (gameConfig) {
+          const rb = gameConfig.providers.find((p) => p.name === "rule_based");
+          const ml = gameConfig.providers.find((p) => p.name === "ml");
+          if (rb) setRuleWeight(rb.weight);
+          if (ml) setMlWeight(ml.weight);
+        }
+      } catch {
+        // use defaults
+      }
+    })();
+  }, []);
+
+  const teamsWithStats = teams.filter((t) => t.games_with_stats > 0);
+
   async function handleSimulate() {
-    if (!homeTeam.trim() || !awayTeam.trim()) return;
+    if (!homeTeam || !awayTeam) return;
     setLoading(true);
     setError(null);
     try {
       const res = await runSimulation({
         sport,
-        home_team: homeTeam.trim().toUpperCase(),
-        away_team: awayTeam.trim().toUpperCase(),
+        home_team: homeTeam,
+        away_team: awayTeam,
         iterations,
         probability_mode: probabilityMode,
         rolling_window: rollingWindow,
@@ -90,27 +143,66 @@ function PregameSimulator() {
     }
   }
 
+  async function handleSaveEnsemble() {
+    setSavingEnsemble(true);
+    try {
+      const providers: EnsembleProviderWeight[] = [
+        { name: "rule_based", weight: ruleWeight },
+        { name: "ml", weight: mlWeight },
+      ];
+      await saveEnsembleConfig("mlb", "game", providers);
+    } catch {
+      // ignore
+    } finally {
+      setSavingEnsemble(false);
+    }
+  }
+
   return (
     <>
       <AdminCard title="Pregame Setup">
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
             <label>Sport</label>
-            <select value={sport} onChange={(e) => setSport(e.target.value)}>
+            <select value={sport} disabled>
               <option value="mlb">MLB</option>
             </select>
           </div>
           <div className={styles.formGroup}>
             <label>Home Team</label>
-            <input type="text" value={homeTeam} onChange={(e) => setHomeTeam(e.target.value)} placeholder="e.g. LAD" />
+            {teamsLoading ? (
+              <select disabled><option>Loading...</option></select>
+            ) : (
+              <select value={homeTeam} onChange={(e) => setHomeTeam(e.target.value)}>
+                <option value="">Select home team</option>
+                {teamsWithStats.map((t) => (
+                  <option key={t.id} value={t.abbreviation} disabled={t.abbreviation === awayTeam}>
+                    {t.abbreviation} — {t.name} ({t.games_with_stats} games)
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className={styles.formGroup}>
             <label>Away Team</label>
-            <input type="text" value={awayTeam} onChange={(e) => setAwayTeam(e.target.value)} placeholder="e.g. TOR" />
+            {teamsLoading ? (
+              <select disabled><option>Loading...</option></select>
+            ) : (
+              <select value={awayTeam} onChange={(e) => setAwayTeam(e.target.value)}>
+                <option value="">Select away team</option>
+                {teamsWithStats.map((t) => (
+                  <option key={t.id} value={t.abbreviation} disabled={t.abbreviation === homeTeam}>
+                    {t.abbreviation} — {t.name} ({t.games_with_stats} games)
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
+        </div>
+        <div className={styles.formRow}>
           <div className={styles.formGroup}>
             <label>Iterations</label>
-            <input type="number" value={iterations} onChange={(e) => setIterations(Math.max(1, parseInt(e.target.value) || 1))} min={1} max={100000} />
+            <input type="number" value={iterations} onChange={(e) => setIterations(Math.max(100, parseInt(e.target.value) || 100))} min={100} max={50000} />
           </div>
           <div className={styles.formGroup}>
             <label>Rolling Window: {rollingWindow}</label>
@@ -118,14 +210,64 @@ function PregameSimulator() {
           </div>
           <div className={styles.formGroup}>
             <label>Probability Mode</label>
-            <select value={probabilityMode} onChange={(e) => setProbabilityMode(e.target.value as "rule_based" | "ml")}>
-              <option value="rule_based">Rule Based (team profiles)</option>
+            <select value={probabilityMode} onChange={(e) => setProbabilityMode(e.target.value as "ml" | "ensemble")}>
               <option value="ml">ML Model</option>
+              <option value="ensemble">Ensemble (ML + Rule Based)</option>
             </select>
           </div>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleSimulate} disabled={loading || !homeTeam.trim() || !awayTeam.trim()}>
+        </div>
+
+        {/* Inline ensemble weight config */}
+        {probabilityMode === "ensemble" && (
+          <div className={styles.formRow} style={{ alignItems: "flex-end", gap: "1rem", marginTop: "0.5rem" }}>
+            <div className={styles.formGroup} style={{ flex: 1 }}>
+              <label>Rule-Based Weight: {(ruleWeight * 100).toFixed(0)}%</label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={ruleWeight * 100}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value) / 100;
+                  setRuleWeight(v);
+                  setMlWeight(Math.round((1 - v) * 100) / 100);
+                }}
+              />
+            </div>
+            <div className={styles.formGroup} style={{ flex: 1 }}>
+              <label>ML Weight: {(mlWeight * 100).toFixed(0)}%</label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={mlWeight * 100}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value) / 100;
+                  setMlWeight(v);
+                  setRuleWeight(Math.round((1 - v) * 100) / 100);
+                }}
+              />
+            </div>
+            <button
+              className={styles.btn}
+              onClick={handleSaveEnsemble}
+              disabled={savingEnsemble}
+              style={{ whiteSpace: "nowrap" }}
+            >
+              {savingEnsemble ? "Saving..." : "Save Weights"}
+            </button>
+          </div>
+        )}
+
+        <div className={styles.formRow} style={{ marginTop: "0.75rem" }}>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleSimulate} disabled={loading || !homeTeam || !awayTeam || homeTeam === awayTeam}>
             {loading ? "Simulating..." : "Run Simulation"}
           </button>
+          {homeTeam && awayTeam && homeTeam === awayTeam && (
+            <span style={{ color: "#ef4444", fontSize: "0.85rem" }}>Home and away must be different teams</span>
+          )}
         </div>
       </AdminCard>
 

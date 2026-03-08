@@ -40,7 +40,7 @@ export interface SimulationRequest {
   home_probabilities?: Record<string, number>;
   away_probabilities?: Record<string, number>;
   sportsbook?: Record<string, unknown>;
-  probability_mode?: "rule_based" | "ml";
+  probability_mode?: "rule_based" | "ml" | "ensemble";
   rolling_window?: number;
 }
 
@@ -710,6 +710,22 @@ export async function listEnsembleConfigs(): Promise<{
   count: number;
 }> {
   return fetchJson(`${base()}/api/analytics/ensemble-configs`);
+}
+
+// ---------------------------------------------------------------------------
+// MLB Teams (for simulator dropdowns)
+// ---------------------------------------------------------------------------
+
+export interface MLBTeam {
+  id: number;
+  name: string;
+  short_name: string;
+  abbreviation: string;
+  games_with_stats: number;
+}
+
+export async function listMLBTeams(): Promise<{ teams: MLBTeam[]; count: number }> {
+  return fetchJson<{ teams: MLBTeam[]; count: number }>(`${base()}/api/analytics/mlb-teams`);
 }
 
 export async function saveEnsembleConfig(

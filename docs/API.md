@@ -27,9 +27,10 @@
 17. [Social](#social)
 18. [FairBet](#fairbet)
 19. [Analytics](#analytics)
-20. [Realtime](#realtime)
-21. [Reading Positions](#reading-positions)
-22. [Response Models](#response-models)
+20. [Simulator](#simulator)
+21. [Realtime](#realtime)
+22. [Reading Positions](#reading-positions)
+23. [Response Models](#response-models)
 
 ---
 
@@ -1280,11 +1281,33 @@ Head-to-head matchup analysis between two entities.
 }
 ```
 
+### MLB Teams
+
+#### `GET /mlb-teams`
+
+List MLB teams with the number of games that have advanced Statcast data. Used by the simulator UI to populate team dropdowns.
+
+**Response:**
+```json
+{
+  "teams": [
+    {
+      "id": 1,
+      "name": "New York Yankees",
+      "short_name": "Yankees",
+      "abbreviation": "NYY",
+      "games_with_stats": 162
+    }
+  ],
+  "count": 30
+}
+```
+
 ### Simulation
 
 #### `POST /simulate`
 
-Run a full Monte Carlo simulation. Stores prediction for calibration tracking.
+Run a full Monte Carlo simulation. Automatically loads rolling team profiles from the database and converts them to plate-appearance probabilities. When a trained game model is available, also returns the model's direct win probability estimate.
 
 **Request body:**
 ```json
@@ -1293,8 +1316,9 @@ Run a full Monte Carlo simulation. Stores prediction for calibration tracking.
   "home_team": "NYY",
   "away_team": "BOS",
   "iterations": 5000,
+  "rolling_window": 30,
   "seed": 42,
-  "probability_mode": "ensemble",
+  "probability_mode": "ml",
   "home_probabilities": null,
   "away_probabilities": null,
   "sportsbook": null
@@ -1304,10 +1328,11 @@ Run a full Monte Carlo simulation. Stores prediction for calibration tracking.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `sport` | `string` | — | **Required.** Sport code |
-| `home_team` | `string` | — | **Required.** Home team ID |
-| `away_team` | `string` | — | **Required.** Away team ID |
-| `iterations` | `int` | 5000 | Simulation count (1–100,000) |
-| `seed` | `int?` | `null` | Deterministic seed |
+| `home_team` | `string` | — | **Required.** Home team abbreviation (e.g. NYY) |
+| `away_team` | `string` | — | **Required.** Away team abbreviation (e.g. BOS) |
+| `iterations` | `int` | 5000 | Simulation count (100–50,000) |
+| `rolling_window` | `int` | 30 | Number of recent games for team profiles (5–162) |
+| `seed` | `int?` | `null` | Deterministic seed for reproducibility |
 | `probability_mode` | `string?` | `null` | `rule_based`, `ml`, `ensemble`, or `pitch_level` |
 | `sportsbook` | `object?` | `null` | Sportsbook lines for comparison |
 
@@ -1321,8 +1346,28 @@ Run a full Monte Carlo simulation. Stores prediction for calibration tracking.
   "away_win_probability": 0.4568,
   "average_home_score": 4.8,
   "average_away_score": 4.2,
-  "score_distribution": { ... },
-  "iterations": 5000
+  "average_total": 9.0,
+  "median_total": 9,
+  "most_common_scores": [{ "score": "4-5", "probability": 0.042 }],
+  "iterations": 5000,
+  "profile_meta": {
+    "has_profiles": true,
+    "rolling_window": 30,
+    "model_win_probability": 0.5821,
+    "model_prediction_source": "game_model",
+    "home_pa_source": "team_profile",
+    "away_pa_source": "team_profile"
+  },
+  "model_home_win_probability": 0.5821,
+  "home_pa_probabilities": {
+    "strikeout_probability": 0.2315,
+    "walk_probability": 0.0912,
+    "single_probability": 0.1423,
+    "double_probability": 0.0534,
+    "triple_probability": 0.008,
+    "home_run_probability": 0.0315
+  },
+  "away_pa_probabilities": { "..." : "..." }
 }
 ```
 
@@ -1466,6 +1511,18 @@ List training jobs.
 #### `GET /training-job/{id}`
 
 Get training job details by ID.
+
+#### `POST /training-job/{id}/cancel`
+
+Cancel a pending, queued, or running training job. Revokes the Celery task if it has been dispatched.
+
+**Response:**
+```json
+{
+  "status": "cancelled",
+  "job_id": 5
+}
+```
 
 ### Model Inference
 
