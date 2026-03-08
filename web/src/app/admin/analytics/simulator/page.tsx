@@ -62,6 +62,7 @@ function PregameSimulator() {
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
   const [iterations, setIterations] = useState(5000);
+  const [rollingWindow, setRollingWindow] = useState(30);
   const [probabilityMode, setProbabilityMode] = useState<"rule_based" | "ml">("rule_based");
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -74,10 +75,11 @@ function PregameSimulator() {
     try {
       const res = await runSimulation({
         sport,
-        home_team: homeTeam.trim(),
-        away_team: awayTeam.trim(),
+        home_team: homeTeam.trim().toUpperCase(),
+        away_team: awayTeam.trim().toUpperCase(),
         iterations,
         probability_mode: probabilityMode,
+        rolling_window: rollingWindow,
       });
       setResult(res);
     } catch (err) {
@@ -111,9 +113,13 @@ function PregameSimulator() {
             <input type="number" value={iterations} onChange={(e) => setIterations(Math.max(1, parseInt(e.target.value) || 1))} min={1} max={100000} />
           </div>
           <div className={styles.formGroup}>
+            <label>Rolling Window: {rollingWindow}</label>
+            <input type="range" min={5} max={80} step={5} value={rollingWindow} onChange={(e) => setRollingWindow(parseInt(e.target.value))} />
+          </div>
+          <div className={styles.formGroup}>
             <label>Probability Mode</label>
             <select value={probabilityMode} onChange={(e) => setProbabilityMode(e.target.value as "rule_based" | "ml")}>
-              <option value="rule_based">Rule Based</option>
+              <option value="rule_based">Rule Based (team profiles)</option>
               <option value="ml">ML Model</option>
             </select>
           </div>
@@ -147,14 +153,43 @@ function PregameSimulator() {
             </div>
           </AdminCard>
 
-          {result.probability_source && (
-            <AdminCard title="Simulation Mode" subtitle={`Probability source: ${result.probability_source}`}>
+          {/* Model Prediction (if game model ran) */}
+          {result.model_home_win_probability != null && (
+            <AdminCard title="Game Model Prediction" subtitle="Trained model win probability">
               <div className={styles.statsRow}>
                 <div className={styles.statBox}>
-                  <div className={styles.statValue} style={{ fontSize: "1rem" }}>{result.probability_source}</div>
-                  <div className={styles.statLabel}>Source</div>
+                  <div className={styles.statValue}>{(result.model_home_win_probability * 100).toFixed(1)}%</div>
+                  <div className={styles.statLabel}>{result.home_team} (Model)</div>
+                </div>
+                <div className={styles.statBox}>
+                  <div className={styles.statValue}>{((1 - result.model_home_win_probability) * 100).toFixed(1)}%</div>
+                  <div className={styles.statLabel}>{result.away_team} (Model)</div>
                 </div>
               </div>
+            </AdminCard>
+          )}
+
+          {/* PA Probabilities used */}
+          {result.home_pa_probabilities && result.away_pa_probabilities && (
+            <AdminCard title="PA Probabilities" subtitle={`From rolling ${result.profile_meta?.rolling_window ?? 30}-game profiles`}>
+              <AdminTable headers={["Event", `${result.home_team} (Home)`, `${result.away_team} (Away)`]}>
+                {Object.keys(result.home_pa_probabilities).map((key) => (
+                  <tr key={key}>
+                    <td style={{ fontWeight: 500 }}>{key.replace("_probability", "")}</td>
+                    <td>{((result.home_pa_probabilities?.[key] ?? 0) * 100).toFixed(1)}%</td>
+                    <td>{((result.away_pa_probabilities?.[key] ?? 0) * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </AdminTable>
+            </AdminCard>
+          )}
+
+          {result.profile_meta && !result.profile_meta.has_profiles && (
+            <AdminCard title="Profile Status">
+              <p style={{ color: "#ef4444", fontSize: "0.9rem" }}>
+                Could not load team profiles. Using league-average defaults.
+                Make sure team abbreviations are correct and games have advanced stats ingested.
+              </p>
             </AdminCard>
           )}
 

@@ -1200,14 +1200,32 @@ class TestAnalyticsService:
 class TestAnalyticsRoutes:
     """Verify API route responses via FastAPI test client."""
 
-    def test_get_team_endpoint(self) -> None:
+    def _make_test_client(self):
+        """Create a TestClient with a mock DB dependency override."""
+        from unittest.mock import AsyncMock, MagicMock
         from fastapi.testclient import TestClient
         from app.analytics.api.analytics_routes import router
+        from app.db import get_db
         from fastapi import FastAPI
 
+        # Mock async session that returns empty results
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalars.return_value.all.return_value = []
+        mock_result.all.return_value = []
+        mock_db.execute.return_value = mock_result
+
+        async def mock_get_db():
+            yield mock_db
+
         app = FastAPI()
+        app.dependency_overrides[get_db] = mock_get_db
         app.include_router(router)
-        client = TestClient(app)
+        return TestClient(app)
+
+    def test_get_team_endpoint(self) -> None:
+        client = self._make_test_client()
 
         resp = client.get("/api/analytics/team?sport=mlb&team_id=NYY")
         assert resp.status_code == 200
@@ -1231,29 +1249,17 @@ class TestAnalyticsRoutes:
         assert data["player_id"] == "p1"
 
     def test_get_matchup_endpoint(self) -> None:
-        from fastapi.testclient import TestClient
-        from app.analytics.api.analytics_routes import router
-        from fastapi import FastAPI
-
-        app = FastAPI()
-        app.include_router(router)
-        client = TestClient(app)
+        client = self._make_test_client()
 
         resp = client.get("/api/analytics/matchup?sport=mlb&entity_a=A&entity_b=B")
         assert resp.status_code == 200
         data = resp.json()
         assert data["entity_a"] == "A"
         assert data["entity_b"] == "B"
-        assert "probabilities" in data
+        assert "comparison" in data
 
     def test_post_simulate_endpoint(self) -> None:
-        from fastapi.testclient import TestClient
-        from app.analytics.api.analytics_routes import router
-        from fastapi import FastAPI
-
-        app = FastAPI()
-        app.include_router(router)
-        client = TestClient(app)
+        client = self._make_test_client()
 
         resp = client.post("/api/analytics/simulate", json={
             "sport": "mlb",

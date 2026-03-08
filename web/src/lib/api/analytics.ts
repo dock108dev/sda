@@ -41,6 +41,7 @@ export interface SimulationRequest {
   away_probabilities?: Record<string, number>;
   sportsbook?: Record<string, unknown>;
   probability_mode?: "rule_based" | "ml";
+  rolling_window?: number;
 }
 
 export interface ScoreEntry {
@@ -63,6 +64,18 @@ export interface SimulationResult {
   sportsbook_comparison?: Record<string, unknown>;
   probability_source?: string;
   probability_meta?: Record<string, unknown>;
+  profile_meta?: {
+    has_profiles?: boolean;
+    rolling_window?: number;
+    model_win_probability?: number;
+    model_prediction_source?: string;
+    home_pa_source?: string;
+    away_pa_source?: string;
+    [key: string]: unknown;
+  };
+  model_home_win_probability?: number;
+  home_pa_probabilities?: Record<string, number>;
+  away_pa_probabilities?: Record<string, number>;
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
