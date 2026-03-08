@@ -4783,34 +4783,6 @@ class TestPitchLevelGameSimulator:
         assert result.get("average_pitches_per_game", 0) > 0
 
 
-class TestMLBTrainingLabels:
-    """Test training label functions for new models."""
-
-    def test_pitch_label_fn(self):
-        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
-
-        mlb = MLBTrainingPipeline()
-        assert mlb.pitch_label_fn({"pitch_result": "ball"}) == "ball"
-        assert mlb.pitch_label_fn({"pitch_result": "in_play"}) == "in_play"
-        assert mlb.pitch_label_fn({"pitch_result": "invalid"}) is None
-        assert mlb.pitch_label_fn({}) is None
-
-    def test_batted_ball_label_fn(self):
-        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
-
-        mlb = MLBTrainingPipeline()
-        assert mlb.batted_ball_label_fn({"batted_ball_result": "single"}) == "single"
-        assert mlb.batted_ball_label_fn({"batted_ball_result": "home_run"}) == "home_run"
-        assert mlb.batted_ball_label_fn({"batted_ball_result": "invalid"}) is None
-
-    def test_run_expectancy_label_fn(self):
-        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
-
-        mlb = MLBTrainingPipeline()
-        assert mlb.run_expectancy_label_fn({"runs_scored_after_state": 2.5}) == 2.5
-        assert mlb.run_expectancy_label_fn({"runs_scored_after_state": 0}) == 0.0
-        assert mlb.run_expectancy_label_fn({}) is None
-
 
 # ---------------------------------------------------------------------------
 # SSOT Enforcement Tests
@@ -4889,6 +4861,66 @@ class TestSSOTNoLegacyFiles:
             "Legacy scripts/train_models/ directory still exists — "
             "training is handled by Celery tasks"
         )
+
+
+class TestSSOTMLBConstants:
+    """Assert MLB constants SSOT is used and legacy duplicates are gone."""
+
+    def test_mlb_training_has_no_pitch_label_fn(self):
+        """Deleted pitch_label_fn must stay deleted."""
+        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
+
+        assert not hasattr(MLBTrainingPipeline, "pitch_label_fn")
+
+    def test_mlb_training_has_no_batted_ball_label_fn(self):
+        """Deleted batted_ball_label_fn must stay deleted."""
+        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
+
+        assert not hasattr(MLBTrainingPipeline, "batted_ball_label_fn")
+
+    def test_mlb_training_has_no_run_expectancy_label_fn(self):
+        """Deleted run_expectancy_label_fn must stay deleted."""
+        from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
+
+        assert not hasattr(MLBTrainingPipeline, "run_expectancy_label_fn")
+
+    def test_mlb_training_imports_pa_outcomes_from_constants(self):
+        """PA_OUTCOMES must come from the SSOT constants module."""
+        import inspect
+
+        from app.analytics.training.sports import mlb_training
+
+        source = inspect.getsource(mlb_training)
+        assert "from app.analytics.sports.mlb.constants import" in source
+        assert "PA_EVENTS" in source
+
+    def test_constants_module_is_ssot(self):
+        """The constants module must export all canonical MLB constants."""
+        from app.analytics.sports.mlb import constants
+
+        assert hasattr(constants, "PA_EVENTS")
+        assert hasattr(constants, "DEFAULT_EVENT_PROBS")
+        assert hasattr(constants, "FEATURE_BASELINES")
+        assert hasattr(constants, "MAX_EXTRA_INNINGS")
+
+    def test_no_local_baselines_in_matchup(self):
+        """matchup.py must not define its own BASELINE_ constants."""
+        import inspect
+
+        from app.analytics.sports.mlb import matchup
+
+        source = inspect.getsource(matchup)
+        # Should import from constants, not define locally
+        assert "from app.analytics.sports.mlb.constants import" in source
+
+    def test_no_local_baselines_in_mlb_features(self):
+        """mlb_features.py must import _BASELINES from constants."""
+        import inspect
+
+        from app.analytics.features.sports import mlb_features
+
+        source = inspect.getsource(mlb_features)
+        assert "from app.analytics.sports.mlb.constants import FEATURE_BASELINES" in source
 
 
 # ---------------------------------------------------------------------------
