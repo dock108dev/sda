@@ -41,14 +41,17 @@ async def load_training_data_from_db(
             "Future attached to a different loop" errors.
     """
     if sport.lower() != "mlb":
-        return []
+        raise ValueError(f"Unsupported sport: {sport}. Only 'mlb' is currently supported.")
 
     if model_type == "game":
         return await _load_mlb_game_training_data(
             date_start, date_end, rolling_window=rolling_window, db=db
         )
 
-    return []
+    raise ValueError(
+        f"Unsupported model_type: {model_type}. "
+        f"Only 'game' is currently supported for MLB training."
+    )
 
 
 async def _load_mlb_game_training_data(

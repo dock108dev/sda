@@ -227,9 +227,51 @@ async def get_model_compare(
 
 
 @router.post("/models/activate")
-async def post_activate_model(req: ModelActivateRequest) -> dict[str, Any]:
-    """Activate a registered model and clear the inference cache."""
-    result = _model_service.activate_model(
+async def post_activate_model(
+    req: ModelActivateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Activate a registered model and clear the inference cache.
+
+    If the model exists in the DB (training jobs) but not in the
+    file registry, it is auto-registered first so activation succeeds.
+    """
+    from app.db.analytics import AnalyticsTrainingJob
+
+    # Ensure model is in the file registry (it may only be in DB if
+    # training ran in a different container)
+    bucket = _model_registry._get_bucket(req.sport.lower(), req.model_type)
+    model_in_registry = False
+    if bucket:
+        model_in_registry = any(
+            m["model_id"] == req.model_id for m in bucket.get("models", [])
+        )
+
+    if not model_in_registry:
+        # Look up the model in DB training jobs
+        stmt = (
+            select(AnalyticsTrainingJob)
+            .where(
+                AnalyticsTrainingJob.model_id == req.model_id,
+                AnalyticsTrainingJob.status == "completed",
+            )
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        job = result.scalar_one_or_none()
+        if job is None:
+            return {"status": "error", "message": "Model not found"}
+
+        # Register in file registry so activate_model can find it
+        _model_registry.register_model(
+            sport=job.sport,
+            model_type=job.model_type,
+            model_id=job.model_id,
+            artifact_path=job.artifact_path or "",
+            metadata=job.metrics or {},
+        )
+
+    result = _model_registry.activate_model(
         sport=req.sport,
         model_type=req.model_type,
         model_id=req.model_id,

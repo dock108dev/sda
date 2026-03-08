@@ -497,7 +497,7 @@ function TrainingPanel() {
             <label>Model Type</label>
             <select value={modelType} onChange={(e) => setModelType(e.target.value)}>
               <option value="game">Game (Win/Loss)</option>
-              <option value="plate_appearance">Plate Appearance</option>
+              <option value="plate_appearance" disabled>Plate Appearance (coming soon)</option>
             </select>
           </div>
           <div className={styles.formGroup}>
