@@ -89,15 +89,73 @@ async def get_models(
     ),
     sort_desc: bool = Query(True, description="Sort descending"),
     active_only: bool = Query(False, description="Only show active models"),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """List registered models with active status, filtering, and sorting."""
-    return _model_service.list_models(
-        sport=sport,
-        model_type=model_type,
-        sort_by=sort_by,
-        sort_desc=sort_desc,
-        active_only=active_only,
+    """List registered models from completed training jobs.
+
+    Combines DB-backed training jobs (authoritative) with the file-based
+    registry for active-model status.
+    """
+    from app.db.analytics import AnalyticsTrainingJob
+
+    # Query completed training jobs that produced a model
+    stmt = (
+        select(AnalyticsTrainingJob)
+        .where(
+            AnalyticsTrainingJob.status == "completed",
+            AnalyticsTrainingJob.model_id.isnot(None),
+        )
+        .order_by(AnalyticsTrainingJob.created_at.desc())
     )
+    if sport:
+        stmt = stmt.where(AnalyticsTrainingJob.sport == sport)
+    if model_type:
+        stmt = stmt.where(AnalyticsTrainingJob.model_type == model_type)
+
+    result = await db.execute(stmt)
+    jobs = result.scalars().all()
+
+    # Get active model IDs from file registry (if available)
+    active_ids: set[str] = set()
+    try:
+        file_models = _model_registry.list_models(sport=sport, model_type=model_type)
+        active_ids = {m["model_id"] for m in file_models if m.get("active")}
+    except Exception:
+        pass
+
+    models: list[dict[str, Any]] = []
+    for job in jobs:
+        is_active = job.model_id in active_ids
+        if active_only and not is_active:
+            continue
+        models.append({
+            "model_id": job.model_id,
+            "artifact_path": job.artifact_path,
+            "version": job.id,  # use job ID as version
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "metrics": job.metrics or {},
+            "sport": job.sport,
+            "model_type": job.model_type,
+            "active": is_active,
+            "feature_config_id": job.feature_config_id,
+            "algorithm": job.algorithm,
+            "train_count": job.train_count,
+            "test_count": job.test_count,
+            "feature_importance": getattr(job, "feature_importance", None),
+        })
+
+    # Sort
+    if sort_by:
+        key_fn: Any
+        if sort_by == "created_at":
+            key_fn = lambda m: m.get("created_at") or ""
+        elif sort_by == "version":
+            key_fn = lambda m: m.get("version") or 0
+        else:
+            key_fn = lambda m: m.get("metrics", {}).get(sort_by, 0) or 0
+        models.sort(key=key_fn, reverse=sort_desc)
+
+    return {"models": models, "count": len(models)}
 
 
 @router.get("/models/details")
@@ -107,12 +165,9 @@ async def get_model_details(
 ) -> dict[str, Any]:
     """Get full details for a single registered model.
 
-    Enriches registry data with feature importance from the training job.
+    Pulls from the training job DB record (authoritative), falling back
+    to the file-based registry.
     """
-    details = _model_service.get_model_details(model_id)
-    if details is None:
-        return {"status": "not_found", "model_id": model_id}
-
     from app.db.analytics import AnalyticsTrainingJob
 
     stmt = (
@@ -122,12 +177,41 @@ async def get_model_details(
         .limit(1)
     )
     result = await db.execute(stmt)
-    training_job = result.scalar_one_or_none()
-    if training_job:
-        fi = getattr(training_job, "feature_importance", None)
-        if fi:
-            details["feature_importance"] = fi
+    job = result.scalar_one_or_none()
 
+    if job:
+        active_ids: set[str] = set()
+        try:
+            file_models = _model_registry.list_models(
+                sport=job.sport, model_type=job.model_type,
+            )
+            active_ids = {m["model_id"] for m in file_models if m.get("active")}
+        except Exception:
+            pass
+
+        return {
+            "model_id": job.model_id,
+            "artifact_path": job.artifact_path,
+            "version": job.id,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "metrics": job.metrics or {},
+            "sport": job.sport,
+            "model_type": job.model_type,
+            "active": job.model_id in active_ids,
+            "algorithm": job.algorithm,
+            "train_count": job.train_count,
+            "test_count": job.test_count,
+            "feature_names": job.feature_names,
+            "feature_importance": getattr(job, "feature_importance", None),
+            "date_start": job.date_start,
+            "date_end": job.date_end,
+            "rolling_window": getattr(job, "rolling_window", None),
+        }
+
+    # Fall back to file registry
+    details = _model_service.get_model_details(model_id)
+    if details is None:
+        return {"status": "not_found", "model_id": model_id}
     return details
 
 
