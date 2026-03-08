@@ -1667,6 +1667,161 @@ Update ensemble weights for a sport + model type.
 
 ---
 
+## Simulator
+
+**Base path:** `/api/simulator`
+
+Public-facing MLB game simulation endpoints for downstream apps. Uses ML models and real Statcast data. Probability mode is always `ml` — downstream consumers don't need to configure probability modes, ensemble weights, or feature loadouts.
+
+> **For internal/admin simulation with full control** (probability modes, ensemble weights, custom probabilities, sportsbook comparison), use the [Analytics](#analytics) `POST /api/analytics/simulate` endpoint instead.
+
+### Quick Start
+
+```bash
+# 1. List available teams
+curl -H "X-API-Key: $API_KEY" \
+  https://sports-data-admin.dock108.ai/api/simulator/mlb/teams
+
+# 2. Run a simulation
+curl -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
+  https://sports-data-admin.dock108.ai/api/simulator/mlb \
+  -d '{"home_team": "NYY", "away_team": "LAD"}'
+```
+
+### `GET /mlb/teams`
+
+List MLB teams available for simulation. Use the `abbreviation` values as `home_team` / `away_team` in the simulation endpoint. Teams with more `games_with_stats` produce more accurate, data-driven simulations.
+
+**Response:**
+```json
+{
+  "teams": [
+    {
+      "abbreviation": "NYY",
+      "name": "New York Yankees",
+      "short_name": "Yankees",
+      "games_with_stats": 162
+    },
+    {
+      "abbreviation": "LAD",
+      "name": "Los Angeles Dodgers",
+      "short_name": "Dodgers",
+      "games_with_stats": 158
+    }
+  ],
+  "count": 30
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `abbreviation` | `string` | Team abbreviation — use this as `home_team` / `away_team` |
+| `name` | `string` | Full team name |
+| `short_name` | `string?` | Short name (e.g. "Yankees") |
+| `games_with_stats` | `int` | Number of games with advanced Statcast data. Teams with 0 use league-average defaults. |
+
+### `POST /mlb`
+
+Run a Monte Carlo game simulation between two MLB teams.
+
+**How it works:**
+
+1. Loads each team's rolling statistical profile from real Statcast game data (barrel rate, whiff rate, contact rate, etc.)
+2. Converts profiles into plate-appearance event probabilities (strikeout, walk, single, double, triple, home run)
+3. Simulates the game plate-appearance by plate-appearance for the requested number of iterations
+4. Aggregates results into win probabilities, expected scores, and most common final scores
+5. If a trained game model is active, also runs a direct model prediction for an additional win probability estimate
+
+**Request body:**
+
+Only `home_team` and `away_team` are required. Everything else has sensible defaults.
+
+```json
+{
+  "home_team": "NYY",
+  "away_team": "LAD",
+  "iterations": 5000,
+  "rolling_window": 30,
+  "seed": 42
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `home_team` | `string` | — | **Required.** Home team abbreviation (2–4 chars, e.g. `NYY`) |
+| `away_team` | `string` | — | **Required.** Away team abbreviation (2–4 chars, e.g. `LAD`) |
+| `iterations` | `int` | `5000` | Number of Monte Carlo iterations (100–50,000). Higher = more precise but slower. Recommended: 5,000 for quick results, 20,000+ for precision. |
+| `rolling_window` | `int` | `30` | Number of recent games for building each team's profile (5–162). Smaller (10–15) reacts to hot/cold streaks; larger (40–80) is more stable. |
+| `seed` | `int?` | `null` | Optional random seed for reproducible results. Same seed + inputs = identical output. |
+
+**Response:**
+
+```json
+{
+  "home_team": "NYY",
+  "away_team": "LAD",
+  "home_win_probability": 0.5432,
+  "away_win_probability": 0.4568,
+  "average_home_score": 4.8,
+  "average_away_score": 4.2,
+  "average_total": 9.0,
+  "median_total": 9,
+  "most_common_scores": [
+    { "score": "4-5", "probability": 0.042 },
+    { "score": "3-4", "probability": 0.038 }
+  ],
+  "iterations": 5000,
+  "rolling_window": 30,
+  "profiles_loaded": true,
+  "home_pa_probabilities": {
+    "strikeout": 0.2315,
+    "walk": 0.0912,
+    "single": 0.1423,
+    "double": 0.0534,
+    "triple": 0.008,
+    "home_run": 0.0315
+  },
+  "away_pa_probabilities": {
+    "strikeout": 0.2187,
+    "walk": 0.0845,
+    "single": 0.1512,
+    "double": 0.0489,
+    "triple": 0.008,
+    "home_run": 0.0270
+  },
+  "model_home_win_probability": 0.5821
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `home_team` | `string` | Home team abbreviation |
+| `away_team` | `string` | Away team abbreviation |
+| `home_win_probability` | `float` | Probability the home team wins (0–1) |
+| `away_win_probability` | `float` | Probability the away team wins (0–1) |
+| `average_home_score` | `float` | Average home runs across all iterations |
+| `average_away_score` | `float` | Average away runs across all iterations |
+| `average_total` | `float` | Average combined total runs |
+| `median_total` | `float` | Median combined total runs |
+| `most_common_scores` | `array` | Top 10 most frequent final scores (score string + probability) |
+| `iterations` | `int` | Number of iterations run |
+| `rolling_window` | `int` | Rolling window used for profiles |
+| `profiles_loaded` | `bool` | `true` if real team profiles were loaded. `false` means league-average defaults were used (team abbreviation not found or insufficient data). |
+| `home_pa_probabilities` | `object?` | PA event probabilities used for the home team. `null` if profiles not loaded. |
+| `away_pa_probabilities` | `object?` | PA event probabilities used for the away team. `null` if profiles not loaded. |
+| `model_home_win_probability` | `float?` | Direct win probability from the trained game model, if one is active. `null` if no model available. This is separate from the Monte Carlo simulation — it's a single model inference. |
+
+**PA probability keys:** `strikeout`, `walk`, `single`, `double`, `triple`, `home_run`
+
+### Error Responses
+
+| Status | Cause |
+|--------|-------|
+| `422` | Missing or invalid `home_team`/`away_team`, `iterations` out of range, etc. |
+| `401` | Missing or invalid API key |
+
+---
+
 ## Realtime
 
 Live game updates via WebSocket or Server-Sent Events. Both transports deliver the same event envelope format.

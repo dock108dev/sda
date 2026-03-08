@@ -111,12 +111,12 @@ Sport-agnostic `FeatureBuilder` routes to sport-specific builders. Features are 
 
 ### MLB Features
 
-**Plate-appearance features (14 total):**
-- Batter (8): contact_rate, power_index, barrel_rate, hard_hit_rate, swing_rate, whiff_rate, avg_exit_velocity, expected_slug
-- Pitcher (6): contact_rate, power_index, barrel_rate, hard_hit_rate, swing_rate, whiff_rate
+**Plate-appearance features (28 total):**
+- Batter (14): contact_rate, power_index, barrel_rate, hard_hit_rate, swing_rate, whiff_rate, avg_exit_velocity, expected_slug, chase_rate, plate_discipline_index, z_contact_rate, o_contact_rate, z_swing_rate, o_swing_rate
+- Pitcher (14): Same set as batter — allows the model to capture pitcher-side tendencies
 
-**Game-level features (10 total):**
-- Home/Away (5 each): contact_rate, power_index, expected_slug, barrel_rate, hard_hit_rate
+**Game-level features (28 total):**
+- Home/Away (14 each): contact_rate, power_index, barrel_rate, hard_hit_rate, whiff_rate, expected_slug, avg_exit_velo, chase_rate, plate_discipline_index, z_contact_rate, o_contact_rate, z_swing_rate, o_swing_rate, swing_rate
 
 ### Feature Configuration
 
@@ -222,19 +222,31 @@ All endpoints prefixed with `/api/analytics`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/team` | Team analytical profile |
+| GET | `/team` | Team analytical profile (rolling window from DB) |
 | GET | `/player` | Player analytical profile |
-| GET | `/matchup` | Head-to-head matchup analysis |
+| GET | `/matchup` | Head-to-head matchup analysis (rolling profiles from DB) |
+| GET | `/mlb-teams` | List MLB teams with games_with_stats count (for dropdowns) |
 
-### Simulation
+### Simulation (Admin)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/simulate` | Synchronous Monte Carlo simulation |
+| POST | `/simulate` | Monte Carlo sim with full control (probability mode, ensemble, custom probabilities) |
 | POST | `/live-simulate` | Live game simulation from current state |
 | POST | `/batch-simulate` | Async batch simulation over upcoming games (Celery task) |
 | GET | `/batch-simulate-jobs` | List batch simulation jobs |
 | GET | `/batch-simulate-job/{id}` | Get batch simulation job details |
+
+### Simulator (Downstream Apps)
+
+Separate router at `/api/simulator` — simplified, downstream-friendly interface. Always uses ML probability mode.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/simulator/mlb/teams` | List MLB teams available for simulation |
+| POST | `/api/simulator/mlb` | Run MLB game simulation (only home_team + away_team required) |
+
+See [API.md — Simulator](API.md#simulator) for full request/response documentation.
 
 ### Prediction Outcomes & Calibration
 
@@ -256,10 +268,10 @@ All endpoints prefixed with `/api/analytics`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/models` | List models (filter by sport/type) |
-| GET | `/models/details` | Full model details by ID |
+| GET | `/models` | List models from DB training jobs (filter by sport/type, sort by metric) |
+| GET | `/models/details` | Full model details by ID (DB-backed, falls back to file registry) |
 | GET | `/models/compare` | Compare metrics across model versions |
-| POST | `/models/activate` | Activate a model (clears inference cache) |
+| POST | `/models/activate` | Activate a model (auto-registers from DB if needed, clears inference cache) |
 | GET | `/models/active` | Get active model for sport/type |
 | GET | `/model-metrics` | Model metrics |
 
@@ -289,6 +301,7 @@ All endpoints prefixed with `/api/analytics`.
 | POST | `/train` | Start async training job (Celery task) |
 | GET | `/training-jobs` | List training jobs (filter by sport/status) |
 | GET | `/training-job/{id}` | Get training job details |
+| POST | `/training-job/{id}/cancel` | Cancel a pending/queued/running training job |
 
 ### Ensemble Configuration
 
