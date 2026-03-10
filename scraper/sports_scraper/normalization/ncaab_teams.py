@@ -693,6 +693,46 @@ def _build_variations() -> None:
         "Jacksonville St.": "Jacksonville St Gamecocks",
         "Tarleton St.": "Tarleton State Texans",
         "Lindenwood": "Lindenwood Lions",
+        # N./Northern — NCAA scoreboard may use either prefix
+        "N. Colorado": "N Colorado Bears",
+        "Northern Colo.": "N Colorado Bears",
+        "Northern Colorado": "N Colorado Bears",
+        # Alternate full names the NCAA API may send
+        "Texas A&M-Corpus Christi": "Texas A&M-CC Islanders",
+        "Texas A&M Corpus Christi": "Texas A&M-CC Islanders",
+        "A&M-Corpus Christi": "Texas A&M-CC Islanders",
+        # Queens (short form without "University")
+        "Queens": "Queens University Royals",
+        "Queens (NC)": "Queens University Royals",
+        # Central Arkansas abbreviated
+        "Central Ark.": "Central Arkansas Bears",
+        "Cent. Arkansas": "Central Arkansas Bears",
+        # San Jose without accent (NCAA API may send either)
+        "San Jose St.": "San Jos\u00e9 St Spartans",
+        "San Jose St": "San Jos\u00e9 St Spartans",
+        "San Jose State": "San Jos\u00e9 St Spartans",
+        "San José St.": "San Jos\u00e9 St Spartans",
+        "San José State": "San Jos\u00e9 St Spartans",
+        # Hawaii without special characters
+        "Hawaii": "Hawai'i Rainbow Warriors",
+        "Hawai'i": "Hawai'i Rainbow Warriors",
+        "Hawaii Rainbow Warriors": "Hawai'i Rainbow Warriors",
+        # UT Arlington without hyphen
+        "UT Arlington": "UT-Arlington Mavericks",
+        "UTA": "UT-Arlington Mavericks",
+        # Eastern Washington abbreviated
+        "Eastern Wash.": "Eastern Washington Eagles",
+        "E. Wash.": "Eastern Washington Eagles",
+        # East Tennessee abbreviated
+        "East Tenn. St.": "East Tennessee St Buccaneers",
+        "E. Tenn. St.": "East Tennessee St Buccaneers",
+        # Cal Baptist abbreviated
+        "Cal Bapt.": "Cal Baptist Lancers",
+        "California Baptist": "Cal Baptist Lancers",
+        # Illinois (prevent fuzzy mismatch to Northern Illinois)
+        "Illinois": "Illinois Fighting Illini",
+        # North Dakota (prevent fuzzy mismatch to North Dakota St)
+        "North Dakota": "North Dakota Fighting Hawks",
     }
 
     for variation, canonical in _WELL_KNOWN.items():

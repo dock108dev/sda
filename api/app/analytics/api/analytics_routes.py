@@ -362,7 +362,14 @@ async def get_mlb_teams(
     from sqlalchemy import func as sa_func, select as sa_select
 
     from app.db.mlb_advanced import MLBGameAdvancedStats
-    from app.db.sports import SportsTeam
+    from app.db.sports import SportsLeague, SportsTeam
+
+    # Subquery to get the MLB league ID
+    mlb_league_sq = (
+        sa_select(SportsLeague.id)
+        .where(SportsLeague.code == "MLB")
+        .scalar_subquery()
+    )
 
     stmt = (
         sa_select(
@@ -377,6 +384,7 @@ async def get_mlb_teams(
             MLBGameAdvancedStats.team_id == SportsTeam.id,
         )
         .where(SportsTeam.abbreviation.isnot(None))
+        .where(SportsTeam.league_id == mlb_league_sq)
         .group_by(SportsTeam.id)
         .order_by(SportsTeam.name)
     )

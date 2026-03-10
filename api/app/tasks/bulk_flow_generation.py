@@ -19,6 +19,7 @@ from sqlalchemy.orm import selectinload
 from ..celery_app import celery_app
 from ..config import settings
 from ..db.flow import SportsGameFlow
+from ..db.mlb_advanced import MLBGameAdvancedStats, MLBPlayerAdvancedStats  # noqa: F401 — register model for relationship resolution
 from ..db.odds import SportsGameOdds  # noqa: F401 — register model for relationship resolution
 from ..db.pipeline import BulkFlowGenerationJob
 from ..db.scraper import SportsScrapeRun  # noqa: F401 — register model for relationship resolution
