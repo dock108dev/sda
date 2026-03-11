@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import secrets
 
-from fastapi import HTTPException, Query, Request, WebSocket, status
+from fastapi import HTTPException, Request, WebSocket, status
 
 from app.config import settings
 

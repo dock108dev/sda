@@ -16,7 +16,7 @@ from starlette.websockets import WebSocketState
 
 from .auth import verify_ws_api_key
 from .manager import WSConnection, realtime_manager
-from .models import MAX_CHANNELS_PER_CONNECTION, is_valid_channel
+from .models import is_valid_channel
 
 logger = logging.getLogger(__name__)
 

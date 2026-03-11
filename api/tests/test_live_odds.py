@@ -6,7 +6,6 @@ import json
 import time
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from app.db.odds import ClosingLine
 

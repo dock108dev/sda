@@ -11,7 +11,6 @@ DELETE /auth/me              — delete own account (authenticated)
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field

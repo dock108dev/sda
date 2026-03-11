@@ -111,6 +111,8 @@ Containers validate required environment at startup and exit if misconfigured.
 - `ENVIRONMENT` (must be `development`, `staging`, or `production`)
 - `DATABASE_URL`
 - `ALLOWED_CORS_ORIGINS` (production only, must not include `localhost`)
+- `API_KEY` (production/staging, min 32 chars — enforced at startup)
+- `JWT_SECRET` (recommended in production — defaults to an insecure dev value if unset)
 
 **Scraper/worker required:**
 - `ENVIRONMENT`

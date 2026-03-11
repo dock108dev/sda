@@ -20,7 +20,6 @@ from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func as sqlfunc, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import _get_session_factory
 from app.db.odds import FairbetGameOddsWork

@@ -150,6 +150,68 @@ Authenticated response:
 
 Generate secrets: `openssl rand -hex 32`
 
+### Self-Service Account Management
+
+Authenticated users can manage their own account. All mutations require password confirmation.
+
+#### Update Email
+
+```http
+PATCH /auth/me/email
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "email": "new@example.com",
+  "password": "current-password"
+}
+```
+
+Returns `MeResponse` with updated email. `409` if email is already taken.
+
+#### Change Password
+
+```http
+PATCH /auth/me/password
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "current_password": "old-password",
+  "new_password": "new-password-min-8-chars"
+}
+```
+
+Returns `{"detail": "Password updated"}`. `403` if current password is wrong.
+
+#### Delete Account
+
+```http
+DELETE /auth/me
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "password": "current-password"
+}
+```
+
+Returns `{"detail": "Account deleted"}`. Permanent — cannot be undone.
+
+### Admin User Management
+
+Admin-only endpoints for managing user accounts. Secured by API key (admin UI).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/users` | List all users |
+| `POST` | `/api/admin/users` | Create user (email, password, role) |
+| `PATCH` | `/api/admin/users/{id}/role` | Change role (`user` or `admin`) |
+| `PATCH` | `/api/admin/users/{id}/active` | Enable/disable account |
+| `PATCH` | `/api/admin/users/{id}/email` | Change email |
+| `PATCH` | `/api/admin/users/{id}/password` | Reset password |
+| `DELETE` | `/api/admin/users/{id}` | Delete user |
+
 ### Health Check Exception
 
 The `/healthz` endpoint does not require authentication to support infrastructure monitoring.

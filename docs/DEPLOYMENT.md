@@ -124,7 +124,8 @@ Production secrets live only on the server in `infra/.env` (never committed). Us
 **Required categories:**
 - **Database/Redis**: `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`
 - **Runtime**: `ENVIRONMENT=production`, `ALLOWED_CORS_ORIGINS`
-- **Authentication**: `API_KEY` (min 32 chars, generate with `openssl rand -hex 32`)
+- **Authentication**: `API_KEY` (min 32 chars, generate with `openssl rand -hex 32`), `JWT_SECRET` (generate with `openssl rand -hex 32`)
+- **Auth Settings** (optional): `AUTH_ENABLED` (default `true`; set `false` to bypass role checks), `JWT_EXPIRE_MINUTES` (default `1440` = 24h)
 - **External APIs**: `ODDS_API_KEY`, `X_AUTH_TOKEN`, `X_CT0`
 - **Frontend**: `NEXT_PUBLIC_SPORTS_API_URL`
 
