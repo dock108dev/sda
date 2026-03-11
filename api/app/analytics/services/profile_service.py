@@ -37,13 +37,22 @@ async def get_team_rolling_profile(
         return None
 
     from app.db.mlb_advanced import MLBGameAdvancedStats
-    from app.db.sports import SportsGame, SportsTeam
+    from app.db.sports import SportsGame, SportsLeague, SportsTeam
 
-    # Resolve team ID from abbreviation
+    # Resolve team ID from abbreviation — filter to MLB league to avoid
+    # collisions with minor-league / All-Star teams sharing abbreviations.
+    mlb_league_sq = (
+        select(SportsLeague.id)
+        .where(SportsLeague.code == "MLB")
+        .scalar_subquery()
+    )
     team_result = await db.execute(
-        select(SportsTeam).where(
-            SportsTeam.abbreviation == abbreviation.upper()
+        select(SportsTeam)
+        .where(
+            SportsTeam.abbreviation == abbreviation.upper(),
+            SportsTeam.league_id == mlb_league_sq,
         )
+        .limit(1)
     )
     team = team_result.scalar_one_or_none()
     if team is None:
@@ -94,12 +103,20 @@ async def get_team_info(
     db: AsyncSession,
 ) -> dict[str, Any] | None:
     """Get basic team info by abbreviation."""
-    from app.db.sports import SportsTeam
+    from app.db.sports import SportsLeague, SportsTeam
 
+    mlb_league_sq = (
+        select(SportsLeague.id)
+        .where(SportsLeague.code == "MLB")
+        .scalar_subquery()
+    )
     result = await db.execute(
-        select(SportsTeam).where(
-            SportsTeam.abbreviation == abbreviation.upper()
+        select(SportsTeam)
+        .where(
+            SportsTeam.abbreviation == abbreviation.upper(),
+            SportsTeam.league_id == mlb_league_sq,
         )
+        .limit(1)
     )
     team = result.scalar_one_or_none()
     if team is None:

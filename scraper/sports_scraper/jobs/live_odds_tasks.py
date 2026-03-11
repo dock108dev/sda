@@ -282,7 +282,9 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
         if not sport_key or not settings.odds_api_key:
             return {"skipped": True, "reason": "no_sport_key_or_api_key"}
 
-        # Get event IDs for our live games
+        # Get event IDs for our live games — extract data inside session
+        # to avoid DetachedInstanceError when accessing attributes later.
+        game_events: list[tuple[int, str]] = []  # (game_id, event_id)
         with get_session() as session:
             games = (
                 session.query(db_models.SportsGame)
@@ -292,15 +294,16 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
                 )
                 .all()
             )
+            for g in games:
+                eid = (g.external_ids or {}).get("odds_api_event_id")
+                if eid:
+                    game_events.append((g.id, eid))
 
         events_processed = 0
         props_written = 0
         prop_markets = PROP_MARKETS.get(league_code.upper(), [])
 
-        for game in games:
-            event_id = (game.external_ids or {}).get("odds_api_event_id")
-            if not event_id:
-                continue
+        for game_id, event_id in game_events:
 
             # Check credit safety
             if client.should_abort_props:
@@ -322,7 +325,7 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
                 provider="the-odds-api",
                 endpoint="live_props",
                 league=league_code,
-                game_id=game.id,
+                game_id=game_id,
                 qps_budget=0.5,
                 qps_burst=2,
                 params=params,
@@ -358,7 +361,7 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
             for mkt_key, books in aggregated.items():
                 write_live_snapshot(
                     league=league_code,
-                    game_id=game.id,
+                    game_id=game_id,
                     market_key=mkt_key,
                     books=dict(books),
                 )
