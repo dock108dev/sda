@@ -320,6 +320,29 @@ async def post_simulate(
     return response
 
 
+def _pitching_metrics_from_profile(
+    team_profile: dict[str, float] | None,
+) -> dict[str, float] | None:
+    """Derive pitcher-shaped metrics from a team's rolling profile.
+
+    Maps team batting metrics to the opposing pitcher's perspective so
+    that bullpen weights reflect the actual team pitching tendencies
+    rather than a generic league-average fallback.
+    """
+    if not team_profile:
+        return None
+    whiff = team_profile.get("whiff_rate")
+    contact = team_profile.get("contact_rate")
+    if whiff is None and contact is None:
+        return None
+    return {
+        "strikeout_rate": whiff if whiff is not None else 0.22,
+        "walk_rate": 1.0 - team_profile.get("plate_discipline_index", 0.52) if "plate_discipline_index" in team_profile else 0.08,
+        "contact_suppression": round(1.0 - (contact or 0.77) - 0.23, 4),
+        "power_suppression": round(1.0 - (team_profile.get("barrel_rate", 0.07) / 0.07), 4) if team_profile.get("barrel_rate") else 0.0,
+    }
+
+
 async def _build_lineup_context(
     req: SimulateRequest,
     game_context: dict[str, Any],
@@ -373,8 +396,10 @@ async def _build_lineup_context(
     away_sp = away_starter_profile or fallback_pitcher
     home_sp = home_starter_profile or fallback_pitcher
 
-    # Bullpen = team-level profile (already available or use fallback)
-    bullpen_metrics = fallback_pitcher  # same shape for both teams
+    # Bullpen = opposing team's pitching profile, falling back to league average.
+    # Home batters face the away bullpen; away batters face the home bullpen.
+    away_bullpen_metrics = _pitching_metrics_from_profile(away_profile) or fallback_pitcher
+    home_bullpen_metrics = _pitching_metrics_from_profile(home_profile) or fallback_pitcher
 
     try:
         # --- Build per-batter weights ---
@@ -400,8 +425,8 @@ async def _build_lineup_context(
             )
             probs_vs_starter = matchup.batter_vs_pitcher(batter_pp, pitcher_pp)
             home_starter_weights.append(_build_weights(probs_vs_starter))
-            # vs bullpen
-            bp_pp = PlayerProfile(player_id="bullpen", sport="mlb", metrics=bullpen_metrics)
+            # vs away bullpen
+            bp_pp = PlayerProfile(player_id="away_bullpen", sport="mlb", metrics=away_bullpen_metrics)
             probs_vs_bp = matchup.batter_vs_pitcher(batter_pp, bp_pp)
             home_bullpen_weights.append(_build_weights(probs_vs_bp))
 
@@ -422,8 +447,8 @@ async def _build_lineup_context(
             )
             probs_vs_starter = matchup.batter_vs_pitcher(batter_pp, pitcher_pp)
             away_starter_weights.append(_build_weights(probs_vs_starter))
-            # vs bullpen
-            bp_pp = PlayerProfile(player_id="bullpen", sport="mlb", metrics=bullpen_metrics)
+            # vs home bullpen
+            bp_pp = PlayerProfile(player_id="home_bullpen", sport="mlb", metrics=home_bullpen_metrics)
             probs_vs_bp = matchup.batter_vs_pitcher(batter_pp, bp_pp)
             away_bullpen_weights.append(_build_weights(probs_vs_bp))
 

@@ -9,7 +9,7 @@ const sections = [
   {
     href: ROUTES.ANALYTICS_SIMULATOR,
     title: "Simulator",
-    desc: "Run Monte Carlo simulations on single or batch games",
+    desc: "Run lineup-aware Monte Carlo pregame and live simulations",
   },
   {
     href: ROUTES.ANALYTICS_MODELS,

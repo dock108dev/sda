@@ -22,14 +22,16 @@ export default function BatchSimsPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   const [jobs, setJobs] = useState<BatchSimJob[]>([]);
+  const [jobsError, setJobsError] = useState<string | null>(null);
   const [expandedJob, setExpandedJob] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const res = await listBatchSimJobs(sport);
       setJobs(res.jobs);
+      setJobsError(null);
     } catch {
-      setError("Failed to load batch sim jobs");
+      setJobsError("Failed to load batch sim jobs");
     }
   }, [sport]);
 
@@ -143,7 +145,8 @@ export default function BatchSimsPage() {
 
       {/* Job History */}
       <AdminCard title="Job History" subtitle={`${jobs.length} batch simulation job(s)`}>
-        {jobs.length === 0 ? (
+        {jobsError && <div className={styles.error} style={{ marginBottom: "0.5rem" }}>{jobsError}</div>}
+        {jobs.length === 0 && !jobsError ? (
           <p style={{ color: "var(--text-muted)" }}>No batch simulation jobs yet.</p>
         ) : (
           <AdminTable headers={["ID", "Mode", "Iterations", "Window", "Date Range", "Status", "Games", "Created", ""]}>

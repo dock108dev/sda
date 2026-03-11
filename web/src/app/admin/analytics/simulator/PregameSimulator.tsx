@@ -119,9 +119,10 @@ export function PregameSimulator() {
 
   const teamsWithStats = teams.filter((t) => t.games_with_stats > 0);
 
-  const lineupValid =
-    !useLineup ||
-    (homeLineup.length === 9 && awayLineup.length === 9);
+  const lineupFilled = (lineup: LineupSlot[]) =>
+    lineup.length === 9 && lineup.every((s) => s?.external_ref);
+
+  const lineupValid = !useLineup || (lineupFilled(homeLineup) && lineupFilled(awayLineup));
 
   async function handleSimulate() {
     if (!homeTeam || !awayTeam) return;
@@ -136,7 +137,7 @@ export function PregameSimulator() {
         probability_mode: probabilityMode,
         rolling_window: rollingWindow,
       };
-      if (useLineup && homeLineup.length === 9 && awayLineup.length === 9) {
+      if (useLineup && lineupFilled(homeLineup) && lineupFilled(awayLineup)) {
         req.home_lineup = homeLineup;
         req.away_lineup = awayLineup;
         if (homeStarter) req.home_starter = homeStarter;
@@ -163,18 +164,17 @@ export function PregameSimulator() {
     if (!batter) return;
     const slot: LineupSlot = { external_ref: batter.external_ref, name: batter.name };
 
+    const update = (prev: LineupSlot[]) => {
+      // Ensure dense 9-slot array — never sparse
+      const next = Array.from({ length: 9 }, (_, i) => prev[i] ?? { external_ref: "", name: "" });
+      next[index] = slot;
+      return next;
+    };
+
     if (side === "home") {
-      setHomeLineup((prev) => {
-        const next = [...prev];
-        next[index] = slot;
-        return next;
-      });
+      setHomeLineup(update);
     } else {
-      setAwayLineup((prev) => {
-        const next = [...prev];
-        next[index] = slot;
-        return next;
-      });
+      setAwayLineup(update);
     }
   }
 

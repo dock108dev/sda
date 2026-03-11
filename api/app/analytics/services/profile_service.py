@@ -296,7 +296,6 @@ async def get_pitcher_rolling_profile(
     per_game_metrics: list[dict[str, float]] = []
     for row in rows:
         stats = row.stats or {}
-        innings_pitched = float(stats.get("innings_pitched", 0))
         strike_outs = float(stats.get("strike_outs", 0))
         base_on_balls = float(stats.get("base_on_balls", 0))
         home_runs = float(stats.get("home_runs", 0))
@@ -349,7 +348,7 @@ async def get_team_roster(
     """
     from datetime import datetime, timedelta, timezone
 
-    from sqlalchemy import cast, func, type_coerce
+    from sqlalchemy import cast, func
     from sqlalchemy.types import Float
 
     from app.db.mlb_advanced import MLBPlayerAdvancedStats
