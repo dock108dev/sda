@@ -20,7 +20,7 @@ from app.realtime.poller import db_poller
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
 from app.analytics.api.analytics_routes import router as analytics_router
-from app.routers import auth, fairbet, reading_positions, simulator, social, sports
+from app.routers import auth, fairbet, preferences, reading_positions, simulator, social, sports
 from app.routers.admin import odds_sync, pbp, pipeline, resolution, task_control, timeline_jobs, users
 
 configure_logging(
@@ -88,6 +88,7 @@ admin_dependency = [Depends(verify_api_key), Depends(require_admin)]
 # Auth — public (no API key needed for signup/login/me)
 # ---------------------------------------------------------------------------
 app.include_router(auth.router)
+app.include_router(preferences.router)
 
 # ---------------------------------------------------------------------------
 # Public / Guest-accessible endpoints (API key required, no role gate)

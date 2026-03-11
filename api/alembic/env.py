@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.db.base import Base
 from app.db.users import User  # noqa: F401 — register model for autogenerate
+from app.db.user_preferences import UserPreferences  # noqa: F401
 
 config = context.config
 
