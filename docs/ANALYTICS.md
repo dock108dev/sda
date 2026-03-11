@@ -50,9 +50,52 @@ Each game simulation runs 9+ innings. Each half-inning simulates plate appearanc
 - `core/simulation_runner.py` — N iterations + aggregation
 - `sports/mlb/game_simulator.py` — PA-level MLB simulator
 
+### Lineup-Aware Simulation
+
+When lineup data is provided, the simulator uses per-batter probability distributions instead of team-level aggregates. Each batter in the lineup gets a unique probability set derived from the `MLBMatchup.batter_vs_pitcher()` matchup engine.
+
+**How it works:**
+
+1. API receives lineup (9 batters + starting pitcher per team)
+2. Player rolling profiles are fetched for each batter via `get_player_rolling_profile()`
+3. Pitcher rolling profile fetched via `get_pitcher_rolling_profile()`
+4. `MLBMatchup.batter_vs_pitcher()` pre-computes 36 probability sets (9 batters × 2 pitcher states × 2 teams) — done once before the simulation loop
+5. `simulate_game_with_lineups()` runs the full game with per-batter weights and lineup index tracking
+6. Pitcher transition: starter pitches through a configurable inning (default 6), then switches to bullpen weights (team-level aggregate)
+
+**Performance:** Pre-computation happens once; the hot loop indexes into pre-computed arrays with `rng.choices()` — same speed as team-level simulation.
+
+**Key files:**
+- `sports/mlb/game_simulator.py` — `simulate_game_with_lineups()`, `_simulate_half_inning_lineup()`
+- `services/profile_service.py` — `get_player_rolling_profile()`, `get_pitcher_rolling_profile()`, `get_team_roster()`
+- `sports/mlb/matchup.py` — `batter_vs_pitcher()` probability computation
+
+**Fallback:** When `use_lineup=True` is passed to a simulator that does not implement `simulate_game_with_lineups()`, the runner raises `RuntimeError` rather than silently falling back.
+
+### Player & Pitcher Profile Service
+
+Rolling statistical profiles for individual batters and pitchers, used by lineup-aware simulation.
+
+**`get_player_rolling_profile(player_external_ref, team_id, *, rolling_window, db)`**
+- Queries `MLBPlayerAdvancedStats` for the player's last N games
+- Runs each row through `stats_to_metrics()` and averages across games
+- Returns the same metrics dict shape as `get_team_rolling_profile()`
+- Sparse data blending: if player has < 5 games, blends with team average (weight = games/5)
+
+**`get_pitcher_rolling_profile(player_external_ref, team_id, *, rolling_window, db)`**
+- Queries `SportsPlayerBoxscore` for the pitcher's recent games
+- Derives metrics from JSONB `stats` column (`innings_pitched`, `strike_outs`, `base_on_balls`, `home_runs`, `hits`)
+- Returns: `strikeout_rate`, `walk_rate`, `contact_suppression`, `power_suppression`
+- Requires ≥ 3 valid games (games with 0 approx batters faced are skipped)
+
+**`get_team_roster(team_abbreviation, *, db)`**
+- Recent batters: distinct players from `MLBPlayerAdvancedStats` in last 30 days with game count
+- Recent pitchers: distinct from `SportsPlayerBoxscore` with games started and avg IP
+- Returns `{batters: [...], pitchers: [...]}`
+
 ### Pitch-Level Simulation
 
-Alternative path using `PitchLevelGameSimulator`. Simulates individual pitches within each plate appearance for more granular analytics. Slower than PA-level but provides pitch-sequence data.
+Alternative path using `PitchLevelGameSimulator`. Simulates individual pitches within each plate appearance for more granular analytics. Slower than PA-level but provides pitch-sequence data. Does not support lineup-aware mode.
 
 **Key files:**
 - `simulation/mlb/pitch_simulator.py` — pitch-level PA simulation
@@ -127,7 +170,7 @@ Feature names are prefixed with `home_` or `away_` (e.g., `home_contact_rate`, `
 
 ### Feature Configuration
 
-Feature loadouts are stored in the `analytics_feature_configs` database table. Each loadout has a name, sport, model type, and a JSONB array of features — each with `name`, `enabled` (bool), and `weight` (float). Loadouts are managed via the Admin UI workbench or the `/api/analytics/feature-config*` CRUD endpoints.
+Feature loadouts are stored in the `analytics_feature_configs` database table. Each loadout has a name, sport, model type, and a JSONB array of features — each with `name`, `enabled` (bool), and `weight` (float). Loadouts are managed via the Admin UI models page or the `/api/analytics/feature-config*` CRUD endpoints.
 
 ---
 
@@ -244,12 +287,13 @@ All endpoints prefixed with `/api/analytics`.
 | GET | `/player` | Player analytical profile |
 | GET | `/matchup` | Head-to-head matchup analysis (rolling profiles from DB) |
 | GET | `/mlb-teams` | List MLB teams with games_with_stats count (for dropdowns) |
+| GET | `/mlb-roster` | Team roster (recent batters + pitchers) for lineup selection |
 
 ### Simulation (Admin)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/simulate` | Monte Carlo sim with full control (probability mode, ensemble, custom probabilities) |
+| POST | `/simulate` | Monte Carlo sim with full control (probability mode, ensemble, custom probabilities, optional lineup) |
 | POST | `/live-simulate` | Live game simulation from current state |
 | POST | `/batch-simulate` | Async batch simulation over upcoming games (Celery task) |
 | GET | `/batch-simulate-jobs` | List batch simulation jobs |

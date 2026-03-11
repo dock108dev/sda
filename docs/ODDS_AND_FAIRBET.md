@@ -608,7 +608,7 @@ Discover all games that currently have live odds data in Redis.
 ]
 ```
 
-Implementation: Scans Redis for `live:odds:*` keys via `discover_live_game_ids()`, extracts unique `(league, game_id)` pairs, and enriches with game info from the DB.
+Implementation: Scans Redis for `live:odds:*` keys via `discover_live_game_ids()`, extracts unique `(league, game_id)` pairs, enriches with game info from the DB, and **filters to only return games with live status** (`in_progress`, `live`, `halftime`). Games with `pregame`, `final`, or other non-live statuses are excluded even if they still have stale odds data in Redis.
 
 ### API: `GET /api/fairbet/live`
 
