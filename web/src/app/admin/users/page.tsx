@@ -269,16 +269,17 @@ export default function UsersPage() {
                       </button>
                     </span>
                   ) : (
-                    <span
+                    <button
+                      type="button"
                       className={styles.editableEmail}
                       onClick={() => {
                         setEditingEmailId(user.id);
                         setEditEmailValue(user.email);
                       }}
-                      title="Click to edit"
+                      title="Click to edit email"
                     >
                       {user.email}
-                    </span>
+                    </button>
                   )}
                 </td>
                 <td>

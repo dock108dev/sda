@@ -1,8 +1,8 @@
 """Admin users management endpoints.
 
 These endpoints are for the admin UI to manage user accounts.
-No additional authentication is required because the admin utility
-runs on a secured internal server.
+Secured by the ``verify_api_key`` dependency applied at the router
+level in ``main.py``.
 """
 
 from __future__ import annotations

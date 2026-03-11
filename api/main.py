@@ -105,9 +105,11 @@ app.include_router(simulator.router, dependencies=auth_dependency)
 app.include_router(fairbet.router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
-# Analytics — admin only for internal analytics endpoints
+# Analytics — admin UI endpoints, secured by API key (same as other admin
+# routers). The proxy forwards X-API-Key but not Authorization, so
+# role-based deps (require_admin) would 403 in production.
 # ---------------------------------------------------------------------------
-app.include_router(analytics_router, dependencies=admin_dependency)
+app.include_router(analytics_router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
 # Admin UI routers — secured by API key (admin utility on secured server)

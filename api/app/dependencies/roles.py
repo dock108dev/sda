@@ -8,7 +8,6 @@ Provides:
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -17,8 +16,6 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import settings
-
-logger = logging.getLogger(__name__)
 
 # Optional bearer token — does not auto-error so guests pass through.
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -50,6 +47,37 @@ def decode_access_token(token: str) -> dict[str, Any]:
         settings.jwt_secret,
         algorithms=[settings.jwt_algorithm],
     )
+
+
+_RESET_TOKEN_EXPIRE_MINUTES = 30
+
+
+def create_reset_token(user_id: int) -> str:
+    """Issue a short-lived JWT for password reset."""
+    now = datetime.now(UTC)
+    payload: dict[str, Any] = {
+        "sub": str(user_id),
+        "purpose": "password_reset",
+        "iat": now,
+        "exp": now + timedelta(minutes=_RESET_TOKEN_EXPIRE_MINUTES),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def decode_reset_token(token: str) -> int:
+    """Decode a password-reset JWT and return the user ID.
+
+    Raises ``jwt.PyJWTError`` on expiry/signature failure and
+    ``ValueError`` if the token is not a reset token.
+    """
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=[settings.jwt_algorithm],
+    )
+    if payload.get("purpose") != "password_reset":
+        raise ValueError("Token is not a password reset token")
+    return int(payload["sub"])
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +118,13 @@ async def resolve_role(
         role = "user"
 
     # Stash user info on the request state for downstream use (e.g. /me)
-    request.state.user_id = int(payload["sub"])
+    try:
+        request.state.user_id = int(payload["sub"])
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
     request.state.user_role = role
     return role
 

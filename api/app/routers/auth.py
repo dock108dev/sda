@@ -2,6 +2,8 @@
 
 POST /auth/signup            — create a new user account, returns JWT
 POST /auth/login             — authenticate with email/password, returns JWT
+POST /auth/forgot-password   — request a password reset token
+POST /auth/reset-password    — reset password using a valid token
 GET  /auth/me                — return current caller identity & role
 PATCH /auth/me/email         — update own email (authenticated)
 PATCH /auth/me/password      — change own password (authenticated)
@@ -20,7 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.db.users import User
-from app.dependencies.roles import create_access_token, require_user, resolve_role
+from app.dependencies.roles import (
+    create_access_token,
+    create_reset_token,
+    decode_reset_token,
+    require_user,
+    resolve_role,
+)
 from app.security import pwd_context as _pwd_ctx
 
 logger = logging.getLogger(__name__)
@@ -66,6 +74,15 @@ class ChangePasswordRequest(BaseModel):
 
 class DeleteAccountRequest(BaseModel):
     password: str = Field(..., description="Current password for verification")
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(..., description="Account email address")
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., description="Password reset token")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +161,72 @@ async def login(
     logger.info("user_login", extra={"user_id": user.id, "email": user.email})
 
     return TokenResponse(access_token=token, role=user.role)
+
+
+@router.post(
+    "/forgot-password",
+    summary="Request a password reset token",
+    description=(
+        "Accepts an email address. If a matching active account exists, "
+        "generates a short-lived reset token. The response always returns "
+        "200 to avoid leaking whether the email is registered."
+    ),
+)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    result = await db.execute(
+        select(User).where(User.email == body.email.lower())
+    )
+    user = result.scalar_one_or_none()
+
+    if user is not None and user.is_active:
+        token = create_reset_token(user.id)
+        # TODO: wire up email delivery — for now the token is logged
+        logger.info(
+            "password_reset_requested",
+            extra={"user_id": user.id, "reset_token": token},
+        )
+    else:
+        # Log but don't reveal whether the account exists
+        logger.info(
+            "password_reset_no_match",
+            extra={"email": body.email.lower()},
+        )
+
+    return {"detail": "If that email is registered, a reset link has been sent."}
+
+
+@router.post(
+    "/reset-password",
+    summary="Reset password using a valid token",
+)
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    try:
+        user_id = decode_reset_token(body.token)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        ) from exc
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    user.password_hash = _pwd_ctx.hash(body.new_password)
+    await db.flush()
+
+    logger.info("password_reset_completed", extra={"user_id": user.id})
+    return {"detail": "Password has been reset."}
 
 
 @router.get(

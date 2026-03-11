@@ -245,7 +245,13 @@
 
 .editableEmail {
   cursor: pointer;
+  background: none;
+  border: none;
   border-bottom: 1px dashed var(--admin-border, #e2e8f0);
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
 }
 
 .editableEmail:hover {

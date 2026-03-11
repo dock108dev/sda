@@ -1,7 +1,7 @@
 """Add users table for downstream app authentication.
 
-Revision ID: 000020
-Revises: 000019
+Revision ID: 20260311_add_users
+Revises: 20260307_degradation_alerts
 Create Date: 2026-03-11
 """
 
