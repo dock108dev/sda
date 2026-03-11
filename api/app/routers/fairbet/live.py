@@ -34,6 +34,7 @@ from app.services.fairbet_display import (
     market_display_name,
     selection_display,
 )
+from app.services.game_status import LIVE_STATUSES
 from app.services.live_odds_redis import discover_live_game_ids, read_all_live_snapshots_for_game
 
 from .ev_annotation import (
@@ -173,6 +174,9 @@ async def fairbet_live_games(
         rows = await session.execute(stmt)
 
         for gid, tip_time, game_date, status, home_name, away_name in rows:
+            # Only include games that are actually live (in_progress, live, halftime)
+            if not status or status.lower().strip() not in LIVE_STATUSES:
+                continue
             results.append(LiveGameInfo(
                 game_id=gid,
                 league_code=league_map.get(gid, ""),

@@ -23,7 +23,7 @@ async def post_record_outcomes(
     Dispatches the Celery task that scans pending predictions and
     matches them against completed SportsGame records.
     """
-    from app.tasks.training_tasks import record_completed_outcomes
+    from app.tasks.outcome_tasks import record_completed_outcomes
 
     task = record_completed_outcomes.delay()
     return {"status": "dispatched", "task_id": task.id}
@@ -145,7 +145,7 @@ async def post_degradation_check(
     sport: str = Query("mlb", description="Sport to check"),
 ) -> dict[str, Any]:
     """Trigger a degradation check for the given sport."""
-    from app.tasks.training_tasks import check_model_degradation
+    from app.tasks.outcome_tasks import check_model_degradation
 
     task = check_model_degradation.delay(sport=sport)
     return {"status": "dispatched", "task_id": task.id}

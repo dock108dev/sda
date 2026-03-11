@@ -4,6 +4,29 @@ All notable changes to Sports Data Admin.
 
 ## [2026-03-11] - Current
 
+### Lineup-Aware MLB Simulation
+
+- **Player profile service**: `get_player_rolling_profile()` and `get_pitcher_rolling_profile()` in `profile_service.py` — queries per-batter Statcast data and per-pitcher boxscore JSONB to build rolling statistical profiles. Sparse data blending (< 5 games → weighted blend with team average)
+- **Team roster endpoint**: `GET /api/analytics/mlb-roster?team=NYY` — returns recent batters and pitchers for lineup selection UI
+- **Lineup-aware simulator**: `MLBGameSimulator.simulate_game_with_lineups()` — per-batter probability distributions via `MLBMatchup.batter_vs_pitcher()`, lineup index tracking across innings, starter-to-bullpen transition at configurable inning
+- **Pre-computed weights**: 36 `batter_vs_pitcher()` calls (9 batters × 2 pitcher states × 2 teams) computed once before the 10k-iteration loop — same performance as team-level simulation
+- **API orchestration**: `SimulateRequest` extended with optional `home_lineup`, `away_lineup`, `home_starter`, `away_starter`, `starter_innings` fields. When lineup fields are provided, routes through lineup-aware path automatically
+- **Hard failure on unsupported lineup mode**: `SimulationRunner` raises `RuntimeError` if `use_lineup=True` is passed to a simulator without `simulate_game_with_lineups()` — no silent fallback
+- **13 tests**: `test_lineup_simulator.py` (7 tests: lineup cycling, pitcher transition, backward compat, determinism) and `test_player_profile.py` (6 tests: rolling profiles, sparse blending, pitcher rate derivation)
+
+### Analytics UI Overhaul
+
+- **Navigation consolidated**: Analytics section reduced from 6 items to 4 (Simulator, Models, Batch Sims, Team Explorer)
+- **Simulator page**: Lineup mode toggle with roster auto-fill, 9-slot batter selectors, starting pitcher picker, bullpen transition slider. Removed inline ensemble config (lives in Models only)
+- **Models page consolidated**: 4-tab page absorbing former Workbench (Loadouts, Training, Ensemble) and Performance (Calibration, Degradation) pages
+- **Batch Sims extracted**: Standalone page at `/admin/analytics/batch` (previously a tab inside Simulator)
+- **Dead pages removed**: `workbench/page.tsx`, `model-performance/page.tsx`, `simulator/BatchSimulator.tsx` — orphaned after route removal
+- **Stale docstrings updated**: Backend references to "workbench" updated to "models page"
+
+### Live Odds Status Filtering
+
+- **Fix**: `GET /api/fairbet/live/games` now filters to only return games with live status (`in_progress`, `live`, `halftime`). Previously returned all games with Redis odds data regardless of status, causing pregame and final games to appear on the live odds page.
+
 ### User Authentication & Account Management
 
 - **User accounts**: `users` table (email, password_hash, role, is_active, created_at) with Alembic migration

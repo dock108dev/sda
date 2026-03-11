@@ -21,8 +21,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analytics.core.simulation_cache import SimulationCache
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.services.profile_service import (
+    get_pitcher_rolling_profile,
+    get_player_rolling_profile,
     get_team_info,
     get_team_rolling_profile,
+    get_team_roster,
     profile_to_pa_probabilities,
 )
 from app.db import get_db
@@ -79,6 +82,18 @@ class LiveSimulateRequest(BaseModel):
     probability_mode: str | None = Field(None, description="Probability mode: rule_based, ml, ensemble")
 
 
+class LineupSlot(BaseModel):
+    """A single batter in a lineup."""
+    external_ref: str = Field(..., description="Player external reference ID")
+    name: str = Field("", description="Player name (display only)")
+
+
+class PitcherSlot(BaseModel):
+    """A starting pitcher."""
+    external_ref: str = Field(..., description="Player external reference ID")
+    name: str = Field("", description="Player name (display only)")
+
+
 class SimulateRequest(BaseModel):
     """Request body for POST /api/analytics/simulate."""
     sport: str = Field(..., description="Sport code (e.g., mlb)")
@@ -91,6 +106,12 @@ class SimulateRequest(BaseModel):
     sportsbook: dict[str, Any] | None = Field(None, description="Sportsbook lines for comparison")
     probability_mode: str | None = Field(None, description="Probability mode: rule_based, ml, ensemble, pitch_level")
     rolling_window: int = Field(30, ge=5, le=162, description="Rolling window for profile building")
+    # Lineup-level simulation fields (optional — None = team-level flow)
+    home_lineup: list[LineupSlot] | None = Field(None, description="Home lineup (9 batters)")
+    away_lineup: list[LineupSlot] | None = Field(None, description="Away lineup (9 batters)")
+    home_starter: PitcherSlot | None = Field(None, description="Home starting pitcher")
+    away_starter: PitcherSlot | None = Field(None, description="Away starting pitcher")
+    starter_innings: float = Field(6.0, ge=4.0, le=9.0, description="Innings before bullpen takes over")
 
 
 @router.get("/team")
@@ -261,12 +282,20 @@ async def post_simulate(
     if req.probability_mode:
         game_context["probability_mode"] = req.probability_mode
 
+    # --- Lineup-level orchestration ---
+    lineup_mode = False
+    if req.home_lineup and req.away_lineup and len(req.home_lineup) == 9 and len(req.away_lineup) == 9:
+        lineup_mode = await _build_lineup_context(
+            req, game_context, profile_meta, home_profile, away_profile, db,
+        )
+
     result = _service.run_full_simulation(
         sport=req.sport,
         game_context=game_context,
         iterations=req.iterations,
         seed=req.seed,
         sportsbook=req.sportsbook,
+        use_lineup=lineup_mode,
     )
 
     response = {
@@ -289,6 +318,167 @@ async def post_simulate(
         response["away_pa_probabilities"] = game_context.get("away_probabilities")
 
     return response
+
+
+def _pitching_metrics_from_profile(
+    team_profile: dict[str, float] | None,
+) -> dict[str, float] | None:
+    """Derive pitcher-shaped metrics from a team's rolling profile.
+
+    Maps team batting metrics to the opposing pitcher's perspective so
+    that bullpen weights reflect the actual team pitching tendencies
+    rather than a generic league-average fallback.
+    """
+    if not team_profile:
+        return None
+    whiff = team_profile.get("whiff_rate")
+    contact = team_profile.get("contact_rate")
+    if whiff is None and contact is None:
+        return None
+    return {
+        "strikeout_rate": whiff if whiff is not None else 0.22,
+        "walk_rate": 1.0 - team_profile.get("plate_discipline_index", 0.52) if "plate_discipline_index" in team_profile else 0.08,
+        "contact_suppression": round(1.0 - (contact or 0.77) - 0.23, 4),
+        "power_suppression": round(1.0 - (team_profile.get("barrel_rate", 0.07) / 0.07), 4) if team_profile.get("barrel_rate") else 0.0,
+    }
+
+
+async def _build_lineup_context(
+    req: SimulateRequest,
+    game_context: dict[str, Any],
+    profile_meta: dict[str, Any],
+    home_profile: dict[str, float] | None,
+    away_profile: dict[str, float] | None,
+    db: AsyncSession,
+) -> bool:
+    """Pre-compute per-batter probability weights for lineup simulation.
+
+    Fetches rolling profiles for each batter and pitcher, runs them through
+    ``MLBMatchup.batter_vs_pitcher()``, and packs the resulting weight arrays
+    into ``game_context``.
+
+    Returns True if lineup weights were successfully built, False otherwise.
+    """
+    from app.analytics.core.types import PlayerProfile
+    from app.analytics.sports.mlb.game_simulator import _build_weights
+    from app.analytics.sports.mlb.matchup import MLBMatchup
+
+    matchup = MLBMatchup()
+
+    # Resolve team IDs from abbreviations
+    home_info = await get_team_info(req.home_team, db=db)
+    away_info = await get_team_info(req.away_team, db=db)
+    if not home_info or not away_info:
+        return False
+
+    home_team_id = home_info["id"]
+    away_team_id = away_info["id"]
+
+    # --- Fetch pitcher profiles ---
+    # Away starter faces home lineup; home starter faces away lineup
+    away_starter_profile = None
+    home_starter_profile = None
+
+    if req.away_starter:
+        away_starter_profile = await get_pitcher_rolling_profile(
+            req.away_starter.external_ref, away_team_id,
+            rolling_window=req.rolling_window, db=db,
+        )
+    if req.home_starter:
+        home_starter_profile = await get_pitcher_rolling_profile(
+            req.home_starter.external_ref, home_team_id,
+            rolling_window=req.rolling_window, db=db,
+        )
+
+    # Fallback pitcher profiles from team-level data
+    fallback_pitcher = {"strikeout_rate": 0.22, "walk_rate": 0.08,
+                        "contact_suppression": 0.0, "power_suppression": 0.0}
+    away_sp = away_starter_profile or fallback_pitcher
+    home_sp = home_starter_profile or fallback_pitcher
+
+    # Bullpen = opposing team's pitching profile, falling back to league average.
+    # Home batters face the away bullpen; away batters face the home bullpen.
+    away_bullpen_metrics = _pitching_metrics_from_profile(away_profile) or fallback_pitcher
+    home_bullpen_metrics = _pitching_metrics_from_profile(home_profile) or fallback_pitcher
+
+    try:
+        # --- Build per-batter weights ---
+        home_starter_weights: list[list[float]] = []
+        home_bullpen_weights: list[list[float]] = []
+        away_starter_weights: list[list[float]] = []
+        away_bullpen_weights: list[list[float]] = []
+
+        for slot in req.home_lineup:
+            batter_profile = await get_player_rolling_profile(
+                slot.external_ref, home_team_id,
+                rolling_window=req.rolling_window, db=db,
+            )
+            batter_metrics = batter_profile or (home_profile or {})
+            batter_pp = PlayerProfile(
+                player_id=slot.external_ref, sport="mlb",
+                name=slot.name, metrics=batter_metrics,
+            )
+            # vs away starter
+            pitcher_pp = PlayerProfile(
+                player_id=req.away_starter.external_ref if req.away_starter else "team",
+                sport="mlb", metrics=away_sp,
+            )
+            probs_vs_starter = matchup.batter_vs_pitcher(batter_pp, pitcher_pp)
+            home_starter_weights.append(_build_weights(probs_vs_starter))
+            # vs away bullpen
+            bp_pp = PlayerProfile(player_id="away_bullpen", sport="mlb", metrics=away_bullpen_metrics)
+            probs_vs_bp = matchup.batter_vs_pitcher(batter_pp, bp_pp)
+            home_bullpen_weights.append(_build_weights(probs_vs_bp))
+
+        for slot in req.away_lineup:
+            batter_profile = await get_player_rolling_profile(
+                slot.external_ref, away_team_id,
+                rolling_window=req.rolling_window, db=db,
+            )
+            batter_metrics = batter_profile or (away_profile or {})
+            batter_pp = PlayerProfile(
+                player_id=slot.external_ref, sport="mlb",
+                name=slot.name, metrics=batter_metrics,
+            )
+            # vs home starter
+            pitcher_pp = PlayerProfile(
+                player_id=req.home_starter.external_ref if req.home_starter else "team",
+                sport="mlb", metrics=home_sp,
+            )
+            probs_vs_starter = matchup.batter_vs_pitcher(batter_pp, pitcher_pp)
+            away_starter_weights.append(_build_weights(probs_vs_starter))
+            # vs home bullpen
+            bp_pp = PlayerProfile(player_id="home_bullpen", sport="mlb", metrics=home_bullpen_metrics)
+            probs_vs_bp = matchup.batter_vs_pitcher(batter_pp, bp_pp)
+            away_bullpen_weights.append(_build_weights(probs_vs_bp))
+
+        game_context["home_lineup_weights"] = home_starter_weights
+        game_context["away_lineup_weights"] = away_starter_weights
+        game_context["home_bullpen_weights"] = home_bullpen_weights
+        game_context["away_bullpen_weights"] = away_bullpen_weights
+        game_context["starter_innings"] = req.starter_innings
+
+        profile_meta["lineup_mode"] = True
+        profile_meta["home_pa_source"] = "lineup_batter_vs_pitcher"
+        profile_meta["away_pa_source"] = "lineup_batter_vs_pitcher"
+
+        logger.info(
+            "lineup_weights_built",
+            extra={
+                "home_team": req.home_team,
+                "away_team": req.away_team,
+                "home_batters": len(home_starter_weights),
+                "away_batters": len(away_starter_weights),
+                "starter_innings": req.starter_innings,
+            },
+        )
+        return True
+    except Exception as exc:
+        logger.warning(
+            "lineup_weight_build_failed",
+            extra={"error": str(exc)},
+        )
+        return False
 
 
 async def _predict_with_game_model(
@@ -402,6 +592,21 @@ async def get_mlb_teams(
         for row in rows
     ]
     return {"teams": teams, "count": len(teams)}
+
+
+@router.get("/mlb-roster")
+async def get_mlb_roster(
+    team: str = Query(..., description="Team abbreviation (e.g., NYY)"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Get recent roster for an MLB team (batters + pitchers).
+
+    Used by the simulator UI to populate lineup and pitcher selectors.
+    """
+    roster = await get_team_roster(team, db=db)
+    if roster is None:
+        return {"error": f"Team not found: {team}", "batters": [], "pitchers": []}
+    return roster
 
 
 @router.post("/live-simulate")

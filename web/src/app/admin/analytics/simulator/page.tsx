@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { PregameSimulator } from "./PregameSimulator";
 import { LiveSimulator } from "./LiveSimulator";
-import { BatchSimulator } from "./BatchSimulator";
 import styles from "../analytics.module.css";
 
-type Mode = "pregame" | "live" | "batch";
+type Mode = "pregame" | "live";
 
 export default function SimulatorPage() {
   const [mode, setMode] = useState<Mode>("pregame");
@@ -16,7 +15,7 @@ export default function SimulatorPage() {
       <header className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Game Simulator</h1>
         <p className={styles.pageSubtitle}>
-          Run Monte Carlo simulations for pregame or live game states
+          Run Monte Carlo simulations — team-level or lineup-aware
         </p>
       </header>
 
@@ -33,15 +32,9 @@ export default function SimulatorPage() {
         >
           Live Game
         </button>
-        <button
-          className={`${styles.btn} ${mode === "batch" ? styles.btnPrimary : ""}`}
-          onClick={() => setMode("batch")}
-        >
-          Batch Upcoming
-        </button>
       </div>
 
-      {mode === "pregame" ? <PregameSimulator /> : mode === "live" ? <LiveSimulator /> : <BatchSimulator />}
+      {mode === "pregame" ? <PregameSimulator /> : <LiveSimulator />}
     </div>
   );
 }

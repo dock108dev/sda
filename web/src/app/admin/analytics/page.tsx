@@ -7,9 +7,9 @@ import styles from "./analytics.module.css";
 
 const sections = [
   {
-    href: ROUTES.ANALYTICS_WORKBENCH,
-    title: "Workbench",
-    desc: "Build feature loadouts, train models, and view results",
+    href: ROUTES.ANALYTICS_SIMULATOR,
+    title: "Simulator",
+    desc: "Run lineup-aware Monte Carlo pregame and live simulations",
   },
   {
     href: ROUTES.ANALYTICS_MODELS,
@@ -17,19 +17,14 @@ const sections = [
     desc: "Registry of trained models — compare, activate, and deploy",
   },
   {
-    href: ROUTES.ANALYTICS_SIMULATOR,
-    title: "Simulator",
-    desc: "Run Monte Carlo simulations on single or batch games",
-  },
-  {
-    href: ROUTES.ANALYTICS_MODEL_PERFORMANCE,
-    title: "Performance",
-    desc: "Track prediction accuracy, calibration, and model drift",
+    href: ROUTES.ANALYTICS_BATCH,
+    title: "Batch Sims",
+    desc: "Queue and monitor batch simulation runs",
   },
   {
     href: ROUTES.ANALYTICS_EXPLORER,
-    title: "Explorer",
-    desc: "Browse team, player, and matchup data with advanced stats",
+    title: "Team Explorer",
+    desc: "Browse team and matchup data with advanced stats",
   },
 ];
 

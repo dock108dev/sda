@@ -96,6 +96,7 @@ class AnalyticsService:
         iterations: int = 10_000,
         seed: int | None = None,
         sportsbook: dict[str, Any] | None = None,
+        use_lineup: bool = False,
     ) -> dict[str, Any]:
         """Run a Monte Carlo simulation with full analysis.
 
@@ -105,6 +106,7 @@ class AnalyticsService:
             iterations: Number of games to simulate.
             seed: Optional seed for deterministic results.
             sportsbook: Optional sportsbook lines for comparison.
+            use_lineup: If True, use lineup-aware simulation.
 
         Returns:
             Dict with win probabilities, score distributions, and
@@ -113,7 +115,7 @@ class AnalyticsService:
         sim = SimulationEngine(sport)
         result = sim.run_simulation(
             game_context, iterations=iterations, seed=seed,
-            keep_results=True,
+            keep_results=True, use_lineup=use_lineup,
         )
 
         raw_results = result.pop("raw_results", None)

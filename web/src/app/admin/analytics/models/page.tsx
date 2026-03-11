@@ -7,14 +7,79 @@ import {
   listRegisteredModels,
   activateModel,
   compareModels,
+  getCalibrationReport,
   type RegisteredModel,
   type ModelComparison,
+  type CalibrationReport,
 } from "@/lib/api/analytics";
+import { LoadoutsPanel } from "../workbench/LoadoutsPanel";
+import { TrainingPanel } from "../workbench/TrainingPanel";
+import { EnsemblePanel } from "../workbench/EnsemblePanel";
+import { CalibrationPanel } from "./CalibrationPanel";
+import { DegradationAlertsPanel } from "./DegradationAlertsPanel";
 import styles from "../analytics.module.css";
+
+type Tab = "registry" | "loadouts" | "training" | "performance";
+
+export default function ModelsPage() {
+  const [tab, setTab] = useState<Tab>("registry");
+
+  return (
+    <div className={styles.container}>
+      <header className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Models</h1>
+        <p className={styles.pageSubtitle}>
+          Full model lifecycle — loadouts, training, registry, and performance
+        </p>
+      </header>
+
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
+        {([
+          { key: "registry", label: "Registry" },
+          { key: "loadouts", label: "Loadouts" },
+          { key: "training", label: "Training" },
+          { key: "performance", label: "Performance" },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            className={`${styles.btn} ${tab === t.key ? styles.btnPrimary : ""}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "registry" && <RegistryPanel />}
+      {tab === "loadouts" && <LoadoutsPanel />}
+      {tab === "training" && <TrainingSection />}
+      {tab === "performance" && <PerformanceSection />}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Training Section — TrainingPanel + EnsemblePanel                  */
+/* ------------------------------------------------------------------ */
+
+function TrainingSection() {
+  return (
+    <>
+      <TrainingPanel />
+      <div style={{ marginTop: "1.5rem" }}>
+        <EnsemblePanel />
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Registry Panel                                                    */
+/* ------------------------------------------------------------------ */
 
 type SortKey = "version" | "accuracy" | "log_loss" | "brier_score" | "created_at";
 
-export default function ModelsPage() {
+function RegistryPanel() {
   const [models, setModels] = useState<RegisteredModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +147,6 @@ export default function ModelsPage() {
   async function handleCompare() {
     const ids = Array.from(selected);
     if (ids.length < 2) return;
-    // All selected models should share sport/model_type
     const first = models.find((m) => m.model_id === ids[0]);
     if (!first) return;
     try {
@@ -118,7 +182,6 @@ export default function ModelsPage() {
     return acc;
   }, {});
 
-  // Unique sports and types for filter dropdowns
   const sports = [...new Set(models.map((m) => m.sport))];
   const types = [...new Set(models.map((m) => m.model_type))];
 
@@ -138,14 +201,7 @@ export default function ModelsPage() {
   }
 
   return (
-    <div className={styles.container}>
-      <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Model Registry</h1>
-        <p className={styles.pageSubtitle}>
-          View trained models, compare metrics, and manage deployments
-        </p>
-      </header>
-
+    <>
       {/* Filters */}
       <div className={styles.formRow} style={{ marginBottom: "1rem" }}>
         <div className={styles.formGroup}>
@@ -288,6 +344,101 @@ export default function ModelsPage() {
           )}
         </AdminCard>
       )}
-    </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Performance Section — calibration + degradation alerts            */
+/* ------------------------------------------------------------------ */
+
+function PerformanceSection() {
+  const [sport, setSport] = useState<string>("");
+  const [data, setData] = useState<CalibrationReport | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLoad = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    getCalibrationReport(sport || undefined)
+      .then(setData)
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoading(false));
+  }, [sport]);
+
+  return (
+    <>
+      <div className={styles.formRow} style={{ marginBottom: "1rem" }}>
+        <div className={styles.formGroup}>
+          <label>Sport</label>
+          <select value={sport} onChange={(e) => setSport(e.target.value)}>
+            <option value="">All Sports</option>
+            <option value="mlb">MLB</option>
+          </select>
+        </div>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary}`}
+          onClick={handleLoad}
+          disabled={loading}
+        >
+          {loading ? "Loading..." : "Load Metrics"}
+        </button>
+      </div>
+
+      {loading && <div className={styles.loading}>Loading metrics...</div>}
+      {error && <div className={styles.error}>{error}</div>}
+
+      {data && !loading && (
+        <div className={styles.resultsSection}>
+          <AdminCard
+            title="Overview"
+            subtitle={`Based on ${data.total_predictions} resolved predictions`}
+          >
+            {data.total_predictions === 0 ? (
+              <p style={{ color: "var(--text-muted)" }}>
+                No resolved predictions yet. Run a batch simulation, then record outcomes after games finish.
+              </p>
+            ) : (
+              <>
+                <div className={styles.statsRow}>
+                  <div className={styles.statBox}>
+                    <div className={styles.statValue}>{data.total_predictions}</div>
+                    <div className={styles.statLabel}>Resolved</div>
+                  </div>
+                  <div className={styles.statBox}>
+                    <div className={styles.statValue}>{(data.accuracy * 100).toFixed(1)}%</div>
+                    <div className={styles.statLabel}>Winner Accuracy</div>
+                  </div>
+                  <div className={styles.statBox}>
+                    <div className={styles.statValue}>{data.brier_score.toFixed(4)}</div>
+                    <div className={styles.statLabel}>Brier Score</div>
+                  </div>
+                </div>
+                <div className={styles.statsRow}>
+                  <div className={styles.statBox}>
+                    <div className={styles.statValue}>{data.avg_home_score_error.toFixed(1)}</div>
+                    <div className={styles.statLabel}>Avg Home Score Error</div>
+                  </div>
+                  <div className={styles.statBox}>
+                    <div className={styles.statValue}>{data.avg_away_score_error.toFixed(1)}</div>
+                    <div className={styles.statLabel}>Avg Away Score Error</div>
+                  </div>
+                  <div className={styles.statBox}>
+                    <div className={styles.statValue}>
+                      {data.home_bias > 0 ? "+" : ""}{(data.home_bias * 100).toFixed(1)}%
+                    </div>
+                    <div className={styles.statLabel}>Home Win Bias</div>
+                  </div>
+                </div>
+              </>
+            )}
+          </AdminCard>
+        </div>
+      )}
+
+      <DegradationAlertsPanel sport={sport || undefined} />
+      <CalibrationPanel sport={sport || undefined} />
+    </>
   );
 }

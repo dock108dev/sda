@@ -66,6 +66,7 @@ class SimulationEngine:
         seed: int | None = None,
         *,
         keep_results: bool = False,
+        use_lineup: bool = False,
     ) -> dict[str, Any]:
         """Run a full Monte Carlo simulation with aggregated results.
 
@@ -121,6 +122,7 @@ class SimulationEngine:
             simulator, context,
             iterations=iterations, seed=seed,
             keep_results=keep_results,
+            use_lineup=use_lineup,
         )
 
         if prob_meta:

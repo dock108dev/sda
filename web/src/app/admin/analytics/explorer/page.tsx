@@ -21,9 +21,9 @@ export default function ExplorerPage() {
   return (
     <div className={styles.container}>
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Explorer</h1>
+        <h1 className={styles.pageTitle}>Team Explorer</h1>
         <p className={styles.pageSubtitle}>
-          Browse team, player, and matchup analytics
+          Browse team profiles, player Statcast data, and matchup analysis
         </p>
       </header>
 

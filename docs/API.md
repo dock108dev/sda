@@ -1481,38 +1481,105 @@ List MLB teams with the number of games that have advanced Statcast data. Used b
 }
 ```
 
+### MLB Roster
+
+#### `GET /mlb-roster`
+
+Get recent roster for an MLB team. Returns batters and pitchers who have appeared in games within the last 30 days, ordered by frequency. Used to populate lineup and pitcher selectors before running a lineup-aware simulation.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `team` | `string` | Yes | Team abbreviation (e.g., `NYY`) |
+
+**Response:**
+```json
+{
+  "batters": [
+    { "external_ref": "660271", "name": "Aaron Judge", "games_played": 28 },
+    { "external_ref": "592450", "name": "Juan Soto", "games_played": 27 }
+  ],
+  "pitchers": [
+    { "external_ref": "543037", "name": "Gerrit Cole", "games": 6, "avg_ip": 6.2 },
+    { "external_ref": "656302", "name": "Carlos Rodon", "games": 5, "avg_ip": 5.8 }
+  ]
+}
+```
+
+- **Batters:** From `MLBPlayerAdvancedStats`, ordered by game count descending
+- **Pitchers:** From `SportsPlayerBoxscore` (where `innings_pitched > 0`), ordered by appearance count descending
+
 ### Simulation
 
 #### `POST /simulate`
 
-Run a full Monte Carlo simulation. Automatically loads rolling team profiles from the database and converts them to plate-appearance probabilities. When a trained game model is available, also returns the model's direct win probability estimate.
+Run a full Monte Carlo simulation. Supports two modes:
 
-**Request body:**
+1. **Team-level** (default): Uses aggregated team profiles. Omit lineup fields.
+2. **Lineup-aware**: Pre-computes per-batter vs pitcher matchup probabilities for each spot in the batting order. Each batter gets individualized plate appearance distributions based on their rolling Statcast profile vs the opposing pitcher's tendencies. Provide all four lineup fields to activate.
+
+**Lineup-aware request:**
 ```json
 {
   "sport": "mlb",
   "home_team": "NYY",
   "away_team": "BOS",
-  "iterations": 5000,
+  "iterations": 10000,
   "rolling_window": 30,
-  "seed": 42,
   "probability_mode": "ml",
-  "home_probabilities": null,
-  "away_probabilities": null,
-  "sportsbook": null
+  "home_lineup": [
+    { "external_ref": "660271", "name": "Aaron Judge" },
+    { "external_ref": "592450", "name": "Juan Soto" },
+    { "external_ref": "596019", "name": "Anthony Rizzo" },
+    { "external_ref": "650402", "name": "Giancarlo Stanton" },
+    { "external_ref": "543685", "name": "DJ LeMahieu" },
+    { "external_ref": "664056", "name": "Gleyber Torres" },
+    { "external_ref": "666176", "name": "Anthony Volpe" },
+    { "external_ref": "682928", "name": "Austin Wells" },
+    { "external_ref": "665862", "name": "Trent Grisham" }
+  ],
+  "away_lineup": [
+    { "external_ref": "646240", "name": "Rafael Devers" },
+    { "external_ref": "665489", "name": "Jarren Duran" },
+    { "external_ref": "680776", "name": "Masataka Yoshida" },
+    { "external_ref": "596105", "name": "Trevor Story" },
+    { "external_ref": "656555", "name": "Alex Verdugo" },
+    { "external_ref": "680557", "name": "Triston Casas" },
+    { "external_ref": "543807", "name": "Justin Turner" },
+    { "external_ref": "663993", "name": "Connor Wong" },
+    { "external_ref": "672284", "name": "Ceddanne Rafaela" }
+  ],
+  "home_starter": { "external_ref": "543037", "name": "Gerrit Cole" },
+  "away_starter": { "external_ref": "678394", "name": "Brayan Bello" },
+  "starter_innings": 6.0
 }
 ```
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `sport` | `string` | — | **Required.** Sport code |
-| `home_team` | `string` | — | **Required.** Home team abbreviation (e.g. NYY) |
-| `away_team` | `string` | — | **Required.** Away team abbreviation (e.g. BOS) |
+| `sport` | `string` | — | **Required.** Sport code (only `mlb` supported) |
+| `home_team` | `string` | — | **Required.** Home team abbreviation |
+| `away_team` | `string` | — | **Required.** Away team abbreviation |
 | `iterations` | `int` | 5000 | Simulation count (100–50,000) |
-| `rolling_window` | `int` | 30 | Number of recent games for team profiles (5–162) |
+| `rolling_window` | `int` | 30 | Recent games for profile building (5–162) |
 | `seed` | `int?` | `null` | Deterministic seed for reproducibility |
 | `probability_mode` | `string?` | `null` | `rule_based`, `ml`, `ensemble`, or `pitch_level` |
-| `sportsbook` | `object?` | `null` | Sportsbook lines for comparison |
+| `sportsbook` | `object?` | `null` | Sportsbook lines for EV comparison |
+| `home_lineup` | `LineupSlot[9]?` | `null` | Home batting order (exactly 9 batters) |
+| `away_lineup` | `LineupSlot[9]?` | `null` | Away batting order (exactly 9 batters) |
+| `home_starter` | `PitcherSlot?` | `null` | Home starting pitcher |
+| `away_starter` | `PitcherSlot?` | `null` | Away starting pitcher |
+| `starter_innings` | `float` | 6.0 | Inning when bullpen takes over (4.0–9.0) |
+
+**`LineupSlot` / `PitcherSlot` shape:**
+```json
+{ "external_ref": "660271", "name": "Aaron Judge" }
+```
+- `external_ref` — Player ID from the roster endpoint (required)
+- `name` — Display name (optional, for logging only)
+
+**Lineup mode activation:** Both `home_lineup` and `away_lineup` must be provided with exactly 9 entries each. If either is missing or has a different count, the simulation falls back to team-level mode silently.
+
+**Pitcher transition model:** The starter's matchup weights are used through the inning specified by `starter_innings` (default 6). After that, bullpen weights (derived from the opposing team's aggregate pitching profile) take over. Pre-computation happens before the simulation loop: 9 batters × 2 pitcher states × 2 teams = 36 `batter_vs_pitcher()` calls, done once. The hot loop indexes into pre-computed arrays.
 
 **Response:**
 ```json
@@ -1527,14 +1594,22 @@ Run a full Monte Carlo simulation. Automatically loads rolling team profiles fro
   "average_total": 9.0,
   "median_total": 9,
   "most_common_scores": [{ "score": "4-5", "probability": 0.042 }],
-  "iterations": 5000,
+  "iterations": 10000,
   "profile_meta": {
     "has_profiles": true,
     "rolling_window": 30,
     "model_win_probability": 0.5821,
     "model_prediction_source": "game_model",
     "home_pa_source": "team_profile",
-    "away_pa_source": "team_profile"
+    "away_pa_source": "team_profile",
+    "lineup_mode": {
+      "enabled": true,
+      "home_batters_resolved": 9,
+      "away_batters_resolved": 9,
+      "home_starter_resolved": true,
+      "away_starter_resolved": true,
+      "starter_innings": 6.0
+    }
   },
   "model_home_win_probability": 0.5821,
   "home_pa_probabilities": {

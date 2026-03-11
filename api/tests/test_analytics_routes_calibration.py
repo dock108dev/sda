@@ -37,7 +37,7 @@ def _make_client(mock_db=None):
 class TestRecordOutcomes:
     """POST /api/analytics/record-outcomes"""
 
-    @patch("app.tasks.training_tasks.record_completed_outcomes")
+    @patch("app.tasks.outcome_tasks.record_completed_outcomes")
     def test_dispatches_celery_task(self, mock_task) -> None:
         mock_task.delay.return_value = MagicMock(id="task-123")
         client = _make_client()
@@ -122,7 +122,7 @@ class TestCalibrationReport:
 class TestDegradationCheck:
     """POST /api/analytics/degradation-check"""
 
-    @patch("app.tasks.training_tasks.check_model_degradation")
+    @patch("app.tasks.outcome_tasks.check_model_degradation")
     def test_dispatches_celery_task(self, mock_task) -> None:
         mock_task.delay.return_value = MagicMock(id="deg-task-1")
         client = _make_client()
@@ -132,7 +132,7 @@ class TestDegradationCheck:
         assert data["status"] == "dispatched"
         assert data["task_id"] == "deg-task-1"
 
-    @patch("app.tasks.training_tasks.check_model_degradation")
+    @patch("app.tasks.outcome_tasks.check_model_degradation")
     def test_default_sport_mlb(self, mock_task) -> None:
         mock_task.delay.return_value = MagicMock(id="t1")
         client = _make_client()

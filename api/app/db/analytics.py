@@ -2,7 +2,7 @@
 
 Stores feature loadout configurations, training job tracking,
 backtest job tracking, and prediction outcomes for calibration
-in the database for the analytics workbench.
+in the database for the analytics models page.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class AnalyticsFeatureConfig(Base):
 class AnalyticsTrainingJob(Base):
     """Tracks an async model training job.
 
-    Created when a user kicks off training from the workbench.
+    Created when a user kicks off training from the models page.
     Updated by the Celery task as it progresses.
     """
 

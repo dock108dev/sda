@@ -6,7 +6,6 @@ games that need boxscore data fetched.
 
 from __future__ import annotations
 
-import re
 from datetime import UTC, date, datetime
 
 from ..utils.datetime_utils import end_of_et_day_utc
@@ -16,80 +15,8 @@ from sqlalchemy.orm import Session
 
 from ..db import db_models
 from ..logging import logger
+from ..persistence.teams import _normalize_ncaab_name_for_matching  # noqa: F401
 from ..utils.date_utils import season_ending_year
-
-
-def _normalize_ncaab_name_for_matching(name: str) -> str:
-    """Normalize team name for fuzzy matching.
-
-    Handles common variations between database and CBB API names:
-    - Punctuation (apostrophes, periods, hyphens)
-    - Common abbreviations (St. -> Saint, Int'l -> International)
-    - Parenthetical location indicators (Loyola (MD) -> Loyola Maryland)
-    """
-    if not name:
-        return ""
-
-    # Convert to lowercase
-    normalized = name.lower()
-
-    # Replace parenthetical locations with space-separated
-    normalized = re.sub(r"\s*\(([^)]+)\)\s*", r" \1 ", normalized)
-
-    # Expand parenthetical city/state abbreviations used in NCAAB canonical
-    # names so they match the full-name forms returned by external APIs.
-    # e.g. "loyola chi" ↔ "loyola chicago"
-    _parens_expansions = [
-        (r"\bchi\b", "chicago"),
-        (r"\bmd\b", "maryland"),
-        (r"\boh\b", "ohio"),
-        (r"\bpa\b", "pennsylvania"),
-        (r"\bmn\b", "minnesota"),
-        (r"\bnc\b", "north carolina"),
-        (r"\bca\b", "california"),
-        (r"\bfl\b", "florida"),
-        (r"\btx\b", "texas"),
-        (r"\bny\b", "new york"),
-    ]
-    for pattern, replacement in _parens_expansions:
-        normalized = re.sub(pattern, replacement, normalized)
-
-    # Common abbreviations
-    replacements = [
-        (r"\bst\.\s*", "saint "),
-        (r"\bmt\.\s*", "mount "),
-        (r"\bint'l\b", "international"),
-        (r"\bgw\b", "george washington"),
-        (r"\buconn\b", "connecticut"),
-        (r"\bsmu\b", "southern methodist"),
-        (r"\btcu\b", "texas christian"),
-        (r"\bucla\b", "ucla"),
-        (r"\busc\b", "southern california"),
-        (r"\blsu\b", "louisiana state"),
-        (r"\bole miss\b", "mississippi"),
-        (r"\bumkc\b", "missouri kansas city"),
-        (r"\butsa\b", "texas san antonio"),
-        (r"\butep\b", "texas el paso"),
-        (r"\buab\b", "alabama birmingham"),
-        (r"\biupui\b", "indiana purdue indianapolis"),
-        (r"\bliu\b", "long island"),
-        (r"\bunc\b", "north carolina"),
-        (r"\bvcu\b", "virginia commonwealth"),
-        (r"\bucf\b", "central florida"),
-        (r"\bfiu\b", "florida international"),
-        (r"\bcsu\b", "colorado state"),
-        (r"\bfau\b", "florida atlantic"),
-    ]
-
-    for pattern, replacement in replacements:
-        normalized = re.sub(pattern, replacement, normalized)
-
-    # Remove remaining punctuation and extra whitespace
-    normalized = re.sub(r"['\.\-]", " ", normalized)
-    normalized = re.sub(r"\s+", " ", normalized)
-    normalized = normalized.strip()
-
-    return normalized
 
 
 def populate_ncaab_game_ids(

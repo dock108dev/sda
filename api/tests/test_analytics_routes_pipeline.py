@@ -299,7 +299,7 @@ class TestStartBatchSimulation:
     """POST /api/analytics/batch-simulate"""
 
     @patch("app.db.analytics.AnalyticsBatchSimJob")
-    @patch("app.tasks.training_tasks.batch_simulate_games")
+    @patch("app.tasks.batch_sim_tasks.batch_simulate_games")
     def test_submits_batch_sim_job(self, mock_task, mock_job_cls) -> None:
         mock_task.delay.return_value = MagicMock(id="cel-bs-1")
         job = _mock_batch_sim_job(status="queued", celery_task_id="cel-bs-1")

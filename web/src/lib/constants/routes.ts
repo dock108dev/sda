@@ -17,10 +17,9 @@ export const ROUTES = {
 
   /** Analytics */
   ANALYTICS: "/admin/analytics",
-  ANALYTICS_WORKBENCH: "/admin/analytics/workbench",
-  ANALYTICS_MODELS: "/admin/analytics/models",
   ANALYTICS_SIMULATOR: "/admin/analytics/simulator",
-  ANALYTICS_MODEL_PERFORMANCE: "/admin/analytics/model-performance",
+  ANALYTICS_MODELS: "/admin/analytics/models",
+  ANALYTICS_BATCH: "/admin/analytics/batch",
   ANALYTICS_EXPLORER: "/admin/analytics/explorer",
   /** System */
   USERS: "/admin/users",

@@ -188,3 +188,270 @@ def profile_to_pa_probabilities(profile: dict[str, float]) -> dict[str, float]:
 
 def _clamp(val: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, val))
+
+
+async def get_player_rolling_profile(
+    player_external_ref: str,
+    team_id: int,
+    *,
+    rolling_window: int = 30,
+    db: AsyncSession,
+) -> dict[str, float] | None:
+    """Build a rolling batting profile for a player from recent game stats.
+
+    If the player has fewer than 5 games, the profile is blended with the
+    team's rolling profile so that low-sample players regress toward team
+    averages rather than producing noisy standalone estimates.
+
+    Returns ``None`` when no games are found at all.
+    """
+    from app.db.mlb_advanced import MLBPlayerAdvancedStats
+    from app.db.sports import SportsGame, SportsTeam
+
+    stmt = (
+        select(MLBPlayerAdvancedStats)
+        .join(SportsGame, SportsGame.id == MLBPlayerAdvancedStats.game_id)
+        .where(
+            MLBPlayerAdvancedStats.player_external_ref == player_external_ref,
+            SportsGame.status == "final",
+        )
+        .order_by(SportsGame.game_date.desc())
+        .limit(rolling_window)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+
+    if len(rows) == 0:
+        return None
+
+    from app.tasks._training_helpers import stats_to_metrics
+
+    all_metrics: list[dict[str, float]] = []
+    for stats_row in rows:
+        all_metrics.append(stats_to_metrics(stats_row))
+
+    player_profile: dict[str, float] = {}
+    for key in all_metrics[0]:
+        values = [m[key] for m in all_metrics if key in m]
+        if values:
+            player_profile[key] = round(sum(values) / len(values), 4)
+
+    games_found = len(rows)
+    if games_found < 5:
+        # Blend with team average — look up abbreviation from team_id
+        team_result = await db.execute(
+            select(SportsTeam).where(SportsTeam.id == team_id).limit(1)
+        )
+        team = team_result.scalar_one_or_none()
+        if team is not None:
+            team_profile = await get_team_rolling_profile(
+                team.abbreviation, "mlb", db=db
+            )
+            if team_profile is not None:
+                player_weight = games_found / 5
+                team_weight = 1.0 - player_weight
+                blended: dict[str, float] = {}
+                all_keys = set(player_profile) | set(team_profile)
+                for key in all_keys:
+                    p_val = player_profile.get(key, 0.0)
+                    t_val = team_profile.get(key, 0.0)
+                    blended[key] = round(
+                        p_val * player_weight + t_val * team_weight, 4
+                    )
+                return blended
+
+    return player_profile
+
+
+async def get_pitcher_rolling_profile(
+    player_external_ref: str,
+    team_id: int,
+    *,
+    rolling_window: int = 30,
+    db: AsyncSession,
+) -> dict[str, float] | None:
+    """Build a rolling pitching profile from recent boxscore data.
+
+    Derives rate stats (K%, BB%, contact suppression, power suppression)
+    from the ``stats`` JSONB column on ``SportsPlayerBoxscore`` rows.
+
+    Returns ``None`` when fewer than 3 games are available.
+    """
+    from app.db.sports import SportsGame, SportsPlayerBoxscore
+
+    stmt = (
+        select(SportsPlayerBoxscore)
+        .join(SportsGame, SportsGame.id == SportsPlayerBoxscore.game_id)
+        .where(
+            SportsPlayerBoxscore.player_external_ref == player_external_ref,
+            SportsPlayerBoxscore.team_id == team_id,
+            SportsGame.status == "final",
+        )
+        .order_by(SportsGame.game_date.desc())
+        .limit(rolling_window)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+
+    per_game_metrics: list[dict[str, float]] = []
+    for row in rows:
+        stats = row.stats or {}
+        strike_outs = float(stats.get("strike_outs", 0))
+        base_on_balls = float(stats.get("base_on_balls", 0))
+        home_runs = float(stats.get("home_runs", 0))
+        hits = float(stats.get("hits", 0))
+
+        approx_bf = hits + base_on_balls + strike_outs + home_runs
+        if approx_bf == 0:
+            continue
+
+        per_game_metrics.append(
+            {
+                "strikeout_rate": strike_outs / approx_bf,
+                "walk_rate": base_on_balls / approx_bf,
+                "contact_suppression": _clamp(
+                    1.0 - (hits / approx_bf) - 0.30, -0.3, 0.5
+                ),
+                "power_suppression": _clamp(
+                    1.0 - ((home_runs / approx_bf) / 0.03), -1.0, 0.8
+                ),
+            }
+        )
+
+    if len(per_game_metrics) < 3:
+        logger.info(
+            "insufficient_games_for_pitcher_profile",
+            extra={
+                "player_external_ref": player_external_ref,
+                "games": len(per_game_metrics),
+            },
+        )
+        return None
+
+    aggregated: dict[str, float] = {}
+    for key in per_game_metrics[0]:
+        values = [m[key] for m in per_game_metrics]
+        aggregated[key] = round(sum(values) / len(values), 4)
+
+    return aggregated
+
+
+async def get_team_roster(
+    team_abbreviation: str,
+    *,
+    db: AsyncSession,
+) -> dict[str, Any] | None:
+    """Fetch active batters and pitchers for a team over the last 30 days.
+
+    Returns a dict with ``batters`` and ``pitchers`` lists built from
+    recent final games. Returns ``None`` if the team cannot be found.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import cast, func
+    from sqlalchemy.types import Float
+
+    from app.db.mlb_advanced import MLBPlayerAdvancedStats
+    from app.db.sports import (
+        SportsGame,
+        SportsLeague,
+        SportsPlayerBoxscore,
+        SportsTeam,
+    )
+
+    # Resolve team via MLB league (same pattern as get_team_rolling_profile)
+    mlb_league_sq = (
+        select(SportsLeague.id)
+        .where(SportsLeague.code == "MLB")
+        .scalar_subquery()
+    )
+    team_result = await db.execute(
+        select(SportsTeam)
+        .where(
+            SportsTeam.abbreviation == team_abbreviation.upper(),
+            SportsTeam.league_id == mlb_league_sq,
+        )
+        .limit(1)
+    )
+    team = team_result.scalar_one_or_none()
+    if team is None:
+        logger.warning(
+            "team_not_found_for_roster",
+            extra={"abbreviation": team_abbreviation},
+        )
+        return None
+
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=30)
+
+    # Recent final games subquery
+    recent_games_sq = (
+        select(SportsGame.id)
+        .where(
+            SportsGame.status == "final",
+            SportsGame.game_date >= cutoff,
+        )
+        .scalar_subquery()
+    )
+
+    # --- Batters from MLBPlayerAdvancedStats ---
+    batter_stmt = (
+        select(
+            MLBPlayerAdvancedStats.player_external_ref,
+            MLBPlayerAdvancedStats.player_name,
+            func.count().label("games_played"),
+        )
+        .where(
+            MLBPlayerAdvancedStats.team_id == team.id,
+            MLBPlayerAdvancedStats.game_id.in_(recent_games_sq),
+        )
+        .group_by(
+            MLBPlayerAdvancedStats.player_external_ref,
+            MLBPlayerAdvancedStats.player_name,
+        )
+        .order_by(func.count().desc())
+    )
+    batter_result = await db.execute(batter_stmt)
+    batters = [
+        {
+            "external_ref": row.player_external_ref,
+            "name": row.player_name,
+            "games_played": row.games_played,
+        }
+        for row in batter_result.all()
+    ]
+
+    # --- Pitchers from SportsPlayerBoxscore ---
+    pitcher_stmt = (
+        select(
+            SportsPlayerBoxscore.player_external_ref,
+            SportsPlayerBoxscore.player_name,
+            func.count().label("games"),
+            func.avg(
+                cast(
+                    SportsPlayerBoxscore.stats["innings_pitched"].as_float(),
+                    Float,
+                )
+            ).label("avg_ip"),
+        )
+        .where(
+            SportsPlayerBoxscore.team_id == team.id,
+            SportsPlayerBoxscore.game_id.in_(recent_games_sq),
+            SportsPlayerBoxscore.stats["innings_pitched"].as_float() > 0,
+        )
+        .group_by(
+            SportsPlayerBoxscore.player_external_ref,
+            SportsPlayerBoxscore.player_name,
+        )
+    )
+    pitcher_result = await db.execute(pitcher_stmt)
+    pitchers = [
+        {
+            "external_ref": row.player_external_ref,
+            "name": row.player_name,
+            "games": row.games,
+            "avg_ip": round(float(row.avg_ip), 2) if row.avg_ip else 0.0,
+        }
+        for row in pitcher_result.all()
+    ]
+
+    return {"batters": batters, "pitchers": pitchers}

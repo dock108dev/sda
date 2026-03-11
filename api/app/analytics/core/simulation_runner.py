@@ -39,6 +39,7 @@ class SimulationRunner:
         seed: int | None = None,
         *,
         keep_results: bool = False,
+        use_lineup: bool = False,
     ) -> dict[str, Any]:
         """Run multiple game simulations and aggregate results.
 
@@ -49,6 +50,7 @@ class SimulationRunner:
             seed: Optional seed for deterministic results.
             keep_results: If True, include per-game results under
                 ``"raw_results"`` for downstream analysis.
+            use_lineup: If True, use lineup-aware simulation method.
 
         Returns:
             Dict with win probabilities, average scores, and
@@ -58,8 +60,17 @@ class SimulationRunner:
         rng = random.Random(seed)
         results: list[dict[str, Any]] = []
 
+        if use_lineup:
+            if not hasattr(simulator, "simulate_game_with_lineups"):
+                raise RuntimeError(
+                    f"{type(simulator).__name__} does not support lineup-aware simulation"
+                )
+            sim_fn = simulator.simulate_game_with_lineups
+        else:
+            sim_fn = simulator.simulate_game
+
         for _ in range(iterations):
-            result = simulator.simulate_game(game_context, rng=rng)
+            result = sim_fn(game_context, rng=rng)
             results.append(result)
 
         summary = self.aggregate_results(results)

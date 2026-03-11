@@ -42,6 +42,12 @@ export interface SimulationRequest {
   sportsbook?: Record<string, unknown>;
   probability_mode?: "rule_based" | "ml" | "ensemble";
   rolling_window?: number;
+  // Lineup-level simulation (optional)
+  home_lineup?: { external_ref: string; name: string }[];
+  away_lineup?: { external_ref: string; name: string }[];
+  home_starter?: { external_ref: string; name: string };
+  away_starter?: { external_ref: string; name: string };
+  starter_innings?: number;
 }
 
 export interface ScoreEntry {
@@ -726,6 +732,36 @@ export interface MLBTeam {
 
 export async function listMLBTeams(): Promise<{ teams: MLBTeam[]; count: number }> {
   return fetchJson<{ teams: MLBTeam[]; count: number }>(`${base()}/api/analytics/mlb-teams`);
+}
+
+// ---------------------------------------------------------------------------
+// MLB Roster (for lineup simulator)
+// ---------------------------------------------------------------------------
+
+export interface RosterBatter {
+  external_ref: string;
+  name: string;
+  games_played: number;
+}
+
+export interface RosterPitcher {
+  external_ref: string;
+  name: string;
+  games: number;
+  avg_ip: number;
+}
+
+export interface MLBRosterResponse {
+  batters: RosterBatter[];
+  pitchers: RosterPitcher[];
+  error?: string;
+}
+
+export async function getMLBRoster(
+  team: string,
+): Promise<MLBRosterResponse> {
+  const params = new URLSearchParams({ team });
+  return fetchJson<MLBRosterResponse>(`${base()}/api/analytics/mlb-roster?${params}`);
 }
 
 export async function saveEnsembleConfig(

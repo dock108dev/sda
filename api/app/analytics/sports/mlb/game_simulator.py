@@ -110,6 +110,173 @@ class MLBGameSimulator:
 
         return runs
 
+    # ------------------------------------------------------------------
+    # Lineup-aware simulation
+    # ------------------------------------------------------------------
+
+    def simulate_game_with_lineups(
+        self,
+        game_context: dict[str, Any],
+        rng: random.Random | None = None,
+    ) -> dict[str, Any]:
+        """Simulate one complete MLB game with per-batter lineup weights.
+
+        Args:
+            game_context: Dict containing per-batter weight arrays.
+                Expected keys:
+                    ``home_lineup_weights`` / ``away_lineup_weights`` —
+                        list of 9 weight arrays (vs starter).
+                    ``home_bullpen_weights`` / ``away_bullpen_weights`` —
+                        list of 9 weight arrays (vs bullpen).
+                    ``starter_innings`` — float, inning after which the
+                        bullpen takes over (default 6.0).
+                Falls back to ``home_probabilities`` / ``away_probabilities``
+                if lineup-level weights are not provided.
+            rng: Optional ``random.Random`` instance for determinism.
+
+        Returns:
+            Dict with ``home_score``, ``away_score``, ``winner``,
+            and ``innings_played``.
+        """
+        if rng is None:
+            rng = random.Random()
+
+        # -- resolve starter weights ------------------------------------
+        if "home_lineup_weights" in game_context:
+            home_starter_weights = game_context["home_lineup_weights"]
+        else:
+            w = _build_weights(game_context.get("home_probabilities", {}))
+            home_starter_weights = [w] * 9
+
+        if "away_lineup_weights" in game_context:
+            away_starter_weights = game_context["away_lineup_weights"]
+        else:
+            w = _build_weights(game_context.get("away_probabilities", {}))
+            away_starter_weights = [w] * 9
+
+        # -- resolve bullpen weights ------------------------------------
+        if "home_bullpen_weights" in game_context:
+            home_bullpen_weights = game_context["home_bullpen_weights"]
+        else:
+            home_bullpen_weights = home_starter_weights
+
+        if "away_bullpen_weights" in game_context:
+            away_bullpen_weights = game_context["away_bullpen_weights"]
+        else:
+            away_bullpen_weights = away_starter_weights
+
+        transition_inning = int(game_context.get("starter_innings", 6.0))
+
+        home_score = 0
+        away_score = 0
+        home_lineup_idx = 0
+        away_lineup_idx = 0
+        innings_played = 0
+
+        # Regulation: 9 innings
+        for inning in range(1, 10):
+            innings_played = inning
+
+            # Determine weights based on starter / bullpen transition
+            if inning <= transition_inning:
+                away_weights = away_starter_weights
+                home_weights = home_starter_weights
+            else:
+                away_weights = away_bullpen_weights
+                home_weights = home_bullpen_weights
+
+            # Top half — away bats
+            runs, away_lineup_idx = self._simulate_half_inning_lineup(
+                away_weights, away_lineup_idx, rng,
+            )
+            away_score += runs
+
+            # Bottom of 9th: skip if home already ahead
+            if inning == 9 and home_score > away_score:
+                break
+
+            # Bottom half — home bats
+            runs, home_lineup_idx = self._simulate_half_inning_lineup(
+                home_weights, home_lineup_idx, rng,
+            )
+            home_score += runs
+
+            # Walk-off in bottom of 9th
+            if inning == 9 and home_score > away_score:
+                break
+
+        # Extra innings (always use bullpen weights)
+        extra = 0
+        while home_score == away_score and extra < _MAX_EXTRA_INNINGS:
+            runs, away_lineup_idx = self._simulate_half_inning_lineup(
+                away_bullpen_weights, away_lineup_idx, rng,
+            )
+            away_score += runs
+
+            runs, home_lineup_idx = self._simulate_half_inning_lineup(
+                home_bullpen_weights, home_lineup_idx, rng,
+            )
+            home_score += runs
+
+            extra += 1
+            innings_played += 1
+
+        winner = "home" if home_score >= away_score else "away"
+
+        return {
+            "home_score": home_score,
+            "away_score": away_score,
+            "winner": winner,
+            "innings_played": innings_played,
+        }
+
+    def _simulate_half_inning_lineup(
+        self,
+        weights_list: list[list[float]],
+        lineup_idx: int,
+        rng: random.Random,
+    ) -> tuple[int, int]:
+        """Simulate one half-inning with per-batter weights.
+
+        Args:
+            weights_list: List of 9 pre-computed weight arrays, one per
+                lineup slot.
+            lineup_idx: Current position in the batting order (0-8).
+            rng: Random instance.
+
+        Returns:
+            Tuple of ``(runs_scored, new_lineup_idx)``.
+        """
+        outs = 0
+        bases = [False, False, False]  # 1st, 2nd, 3rd
+        runs = 0
+
+        while outs < 3:
+            weights = weights_list[lineup_idx % 9]
+            event = rng.choices(EVENTS, weights=weights, k=1)[0]
+
+            if event == "strikeout" or event == "out":
+                outs += 1
+
+            elif event == "walk":
+                runs += _advance_walk(bases)
+
+            elif event == "single":
+                runs += _advance_single(bases)
+
+            elif event == "double":
+                runs += _advance_double(bases)
+
+            elif event == "triple":
+                runs += _advance_triple(bases)
+
+            elif event == "home_run":
+                runs += _advance_home_run(bases)
+
+            lineup_idx = (lineup_idx + 1) % 9
+
+        return runs, lineup_idx
+
 
 # ---------------------------------------------------------------------------
 # Base-runner advancement helpers (simplified model)

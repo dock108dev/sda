@@ -65,7 +65,7 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 ### 3. Analytics Engine (`api/app/analytics/`)
 **Purpose:** Predictive modeling, simulation, and matchup analysis
 
-- **Simulation:** Monte Carlo game simulation with pluggable probability sources (rule-based, ML, ensemble, pitch-level)
+- **Simulation:** Monte Carlo game simulation with pluggable probability sources (rule-based, ML, ensemble, pitch-level); supports both team-level and lineup-aware modes with per-batter probability distributions
 - **Models:** Sport-specific ML models (plate appearance, game outcome, pitch outcome, batted ball, run expectancy)
 - **Features:** Feature extraction pipeline with DB-backed configurable loadouts per sport/model type
 - **Inference:** Model registry, activation controls, inference caching, auto-reload on model changes
@@ -84,6 +84,7 @@ See [ANALYTICS.md](ANALYTICS.md) for details.
   - Control Panel for on-demand Celery task dispatch (ingestion, odds, social, flows, timelines, utility)
   - Job run monitoring via RunsDrawer (IDE-style bottom panel, available on all admin pages)
   - Cross-book odds comparison: pre-game (`/admin/fairbet/odds`) and dedicated live odds page (`/admin/fairbet/live`) with auto-refresh, multi-game view, and game scoreboard strips
+  - Analytics section (4 pages): Simulator (team-level or lineup-aware), Models (registry, loadouts, training, performance), Batch Sims, Team Explorer
   - Container log viewer
   - Game detail with boxscores, player stats, odds, social, PBP, flow, and pipeline runs
 
@@ -237,7 +238,8 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 - `GET /api/analytics/team` — Team analytical profile
 - `GET /api/analytics/player` — Player analytical profile
 - `GET /api/analytics/matchup` — Head-to-head matchup analysis
-- `POST /api/analytics/simulate` — Full Monte Carlo simulation
+- `POST /api/analytics/simulate` — Full Monte Carlo simulation (team-level or lineup-aware)
+- `GET /api/analytics/mlb-roster` — Team roster for lineup selection
 - `POST /api/analytics/live-simulate` — Live game simulation from current state
 - `GET /api/analytics/models/*` — Model registry and activation
 - `GET/POST /api/analytics/feature-config*` — Feature loadout CRUD (DB-backed)
