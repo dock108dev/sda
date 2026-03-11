@@ -36,21 +36,27 @@
 
 ## Authentication
 
-The API supports two authentication mechanisms:
+Authentication is layered: the API key is the base requirement for all
+endpoints (except `/auth/*` and `/healthz`), and JWT bearer tokens add
+role-based access on top.
 
-### 1. API Key (Admin/Internal)
+### 1. API Key (Required for all non-auth endpoints)
 
-Admin UI endpoints require API key authentication via the `X-API-Key` header:
+Every request (except `/auth/*` signup/login/reset and `/healthz`) must
+include the `X-API-Key` header. This applies to both admin UI routes
+**and** downstream consumer routes:
 
 ```http
-GET /api/admin/sports/games HTTP/1.1
+GET /api/sports/games HTTP/1.1
 Host: sports-data-admin.dock108.ai
 X-API-Key: your-api-key-here
 ```
 
-### 2. JWT Bearer Token (Downstream Apps)
+### 2. JWT Bearer Token (Role-based access)
 
-Downstream consuming applications authenticate using JWT tokens obtained from the `/auth` endpoints.
+Some endpoints additionally require a JWT to determine the caller's role.
+Downstream consuming applications obtain tokens from the `/auth` endpoints
+and include them **alongside** the API key.
 
 #### Sign Up
 
