@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminCard, AdminTable } from "@/components/admin";
 import {
@@ -33,7 +33,7 @@ export default function ModelsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [comparison, setComparison] = useState<ModelComparison | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -47,11 +47,11 @@ export default function ModelsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [sportFilter, typeFilter]);
 
   useEffect(() => {
     load();
-  }, [sportFilter, typeFilter]);
+  }, [load]);
 
   async function handleActivate(m: RegisteredModel) {
     setActivating(m.model_id);
