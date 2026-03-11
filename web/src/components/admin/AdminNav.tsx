@@ -43,6 +43,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       { href: ROUTES.CONTROL_PANEL, label: "Control Panel" },
       { href: ROUTES.LOGS, label: "Logs" },
+      { href: ROUTES.USERS, label: "Users" },
     ],
   },
 ];

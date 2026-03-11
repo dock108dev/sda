@@ -47,6 +47,16 @@ class Settings(BaseSettings):
     # Required in production - all endpoints except /healthz require this key
     api_key: str | None = Field(default=None, alias="API_KEY")
 
+    # JWT / User Authentication
+    # AUTH_ENABLED=false returns admin role for all requests (feature flag fallback)
+    auth_enabled: bool = Field(default=True, alias="AUTH_ENABLED")
+    jwt_secret: str = Field(
+        default="dev-jwt-secret-change-in-production",
+        alias="JWT_SECRET",
+    )
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_expire_minutes: int = Field(default=1440, alias="JWT_EXPIRE_MINUTES")  # 24h
+
     # OpenAI Configuration (SSOT for model defaults — docker-compose defers to these)
     # AI is used for interpretation/narration only, never for ordering/filtering
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")

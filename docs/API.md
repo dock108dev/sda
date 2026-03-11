@@ -36,39 +36,188 @@
 
 ## Authentication
 
-All API endpoints (except `/healthz`) require API key authentication.
+Authentication is layered: the API key is the base requirement for all
+endpoints (except `/auth/*` and `/healthz`), and JWT bearer tokens add
+role-based access on top.
 
-### Request Header
+### 1. API Key (Required for all non-auth endpoints)
 
-Include your API key in the `X-API-Key` header:
+Every request (except `/auth/*` signup/login/reset and `/healthz`) must
+include the `X-API-Key` header. This applies to both admin UI routes
+**and** downstream consumer routes:
 
 ```http
-GET /api/admin/sports/games HTTP/1.1
+GET /api/sports/games HTTP/1.1
 Host: sports-data-admin.dock108.ai
 X-API-Key: your-api-key-here
+```
+
+### 2. JWT Bearer Token (Role-based access)
+
+Some endpoints additionally require a JWT to determine the caller's role.
+Downstream consuming applications obtain tokens from the `/auth` endpoints
+and include them **alongside** the API key.
+
+#### Sign Up
+
+```http
+POST /auth/signup
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+Response:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "role": "user"
+}
+```
+
+#### Log In
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+Response: same as signup.
+
+#### Using the Token
+
+Include the JWT in the `Authorization` header **alongside** the API key.
+Without a JWT, role-gated endpoints treat the caller as `guest`:
+
+```http
+GET /api/fairbet/odds HTTP/1.1
+X-API-Key: your-api-key-here
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+#### Get Current Identity
+
+```http
+GET /auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+Guest response (no token):
+```json
+{ "id": null, "email": null, "role": "guest" }
+```
+
+Authenticated response:
+```json
+{ "id": 42, "email": "user@example.com", "role": "user" }
+```
+
+### Roles
+
+| Role | Description | Access |
+|------|-------------|--------|
+| `guest` | No token provided | Games, settings, pregame FairBet |
+| `user` | Authenticated beta user | Everything guest + full FairBet |
+| `admin` | Developer access | Everything user + analytics, history |
+
+### JWT Payload
+
+```json
+{
+  "sub": "42",
+  "role": "user",
+  "exp": 1710000000
+}
 ```
 
 ### Error Responses
 
 | Status | Description |
 |--------|-------------|
-| `401 Unauthorized` | Missing or invalid API key |
-
-**Example error response:**
-```json
-{
-  "detail": "Missing API key"
-}
-```
+| `401 Unauthorized` | Missing/invalid API key or expired/invalid JWT |
+| `403 Forbidden` | Valid token but insufficient role for the endpoint |
 
 ### Configuration
 
-The API key is configured via the `API_KEY` environment variable on the server.
+| Variable | Description |
+|----------|-------------|
+| `API_KEY` | API key for admin endpoints (min 32 chars in production) |
+| `JWT_SECRET` | Secret key for signing JWTs (change in production) |
+| `JWT_EXPIRE_MINUTES` | Token lifetime in minutes (default: 1440 = 24h) |
+| `AUTH_ENABLED` | Set to `false` to bypass role checks (all requests get admin). Default: `true` |
 
-**Requirements:**
-- Must be set in production/staging environments
-- Minimum 32 characters
-- Generate with: `openssl rand -hex 32`
+Generate secrets: `openssl rand -hex 32`
+
+### Self-Service Account Management
+
+Authenticated users can manage their own account. All mutations require password confirmation.
+
+#### Update Email
+
+```http
+PATCH /auth/me/email
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "email": "new@example.com",
+  "password": "current-password"
+}
+```
+
+Returns `MeResponse` with updated email. `409` if email is already taken.
+
+#### Change Password
+
+```http
+PATCH /auth/me/password
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "current_password": "old-password",
+  "new_password": "new-password-min-8-chars"
+}
+```
+
+Returns `{"detail": "Password updated"}`. `403` if current password is wrong.
+
+#### Delete Account
+
+```http
+DELETE /auth/me
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "password": "current-password"
+}
+```
+
+Returns `{"detail": "Account deleted"}`. Permanent — cannot be undone.
+
+### Admin User Management
+
+Admin-only endpoints for managing user accounts. Secured by API key (admin UI).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/users` | List all users |
+| `POST` | `/api/admin/users` | Create user (email, password, role) |
+| `PATCH` | `/api/admin/users/{id}/role` | Change role (`user` or `admin`) |
+| `PATCH` | `/api/admin/users/{id}/active` | Enable/disable account |
+| `PATCH` | `/api/admin/users/{id}/email` | Change email |
+| `PATCH` | `/api/admin/users/{id}/password` | Reset password |
+| `DELETE` | `/api/admin/users/{id}` | Delete user |
 
 ### Health Check Exception
 

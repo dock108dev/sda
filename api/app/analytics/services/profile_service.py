@@ -8,7 +8,6 @@ so that inference-time profiles match training-time profiles exactly.
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from typing import Any
 
 from sqlalchemy import select

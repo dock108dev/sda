@@ -81,6 +81,12 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `analytics_prediction_outcomes` | Prediction vs actual outcome tracking for calibration |
 | `analytics_degradation_alerts` | Model quality degradation alerts |
 
+### Authentication
+
+| Table | Description |
+|-------|-------------|
+| `users` | User accounts — email (unique, indexed), password_hash, role (user/admin), is_active, created_at |
+
 ### Other
 
 | Table | Description |

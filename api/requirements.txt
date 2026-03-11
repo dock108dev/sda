@@ -13,3 +13,6 @@ openai>=1.59.0
 scikit-learn>=1.6.0
 joblib>=1.4.0
 xgboost>=2.1.0
+PyJWT==2.9.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.0

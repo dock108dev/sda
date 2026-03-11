@@ -75,11 +75,6 @@ async def _load_mlb_game_training_data(
     Games where a team has fewer than 5 prior games are skipped to
     ensure profiles are meaningful.
     """
-    from sqlalchemy import select
-
-    from app.db.mlb_advanced import MLBGameAdvancedStats
-    from app.db.sports import SportsGame
-
     if db is None:
         from app.db import get_async_session
 

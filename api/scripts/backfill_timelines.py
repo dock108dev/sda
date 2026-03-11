@@ -13,7 +13,7 @@ import time
 
 from sqlalchemy import text
 
-from app.db import AsyncSessionLocal
+from app.db import get_async_session
 from app.services.timeline_generator import (
     TimelineGenerationError,
     generate_timeline_artifact,
@@ -44,7 +44,7 @@ async def get_eligible_games(limit: int | None = None) -> list[int]:
         LIMIT :limit
     """)
 
-    async with AsyncSessionLocal() as session:
+    async with get_async_session() as session:
         result = await session.execute(query, {"limit": limit or 10000})
         return [row[0] for row in result.fetchall()]
 
@@ -63,7 +63,7 @@ async def backfill_game(game_id: int) -> dict:
     }
 
     try:
-        async with AsyncSessionLocal() as session:
+        async with get_async_session() as session:
             artifact = await generate_timeline_artifact(
                 session,
                 game_id,

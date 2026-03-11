@@ -6,7 +6,6 @@ import pytest
 
 from app.services.pipeline.models import StageInput
 from app.services.pipeline.stages.block_analysis import (
-    BLOWOUT_MARGIN_THRESHOLD,
     count_lead_changes,
     detect_blowout,
     find_garbage_time_start,
@@ -14,6 +13,7 @@ from app.services.pipeline.stages.block_analysis import (
     find_period_boundaries,
     find_scoring_runs,
 )
+from app.services.pipeline.stages.league_config import get_config
 from app.services.pipeline.stages.block_types import (
     MAX_BLOCKS,
     MIN_BLOCKS,
@@ -516,7 +516,7 @@ class TestBlowoutDetection:
         is_blowout, decisive_idx, max_margin = detect_blowout(moments)
         assert is_blowout is True
         assert decisive_idx is not None
-        assert max_margin >= BLOWOUT_MARGIN_THRESHOLD
+        assert max_margin >= get_config("NBA")["blowout_margin"]
 
     def test_no_blowout_in_close_game(self) -> None:
         """No blowout detected in close game."""

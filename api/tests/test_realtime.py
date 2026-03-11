@@ -5,14 +5,12 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-from zoneinfo import ZoneInfo
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.realtime.manager import RealtimeManager, SSEConnection, WSConnection
 from app.realtime.models import (
-    EASTERN,
     MAX_CHANNELS_PER_CONNECTION,
     RealtimeEvent,
     is_valid_channel,

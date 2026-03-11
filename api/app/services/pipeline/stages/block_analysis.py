@@ -14,11 +14,8 @@ from typing import Any
 
 from .league_config import get_config
 
-# Legacy constants kept for backward-compatible imports in tests
-BLOWOUT_MARGIN_THRESHOLD = 15
+# Sustained-period requirement for blowout detection (not league-variable).
 BLOWOUT_SUSTAINED_PERIODS = 1
-GARBAGE_TIME_MARGIN = 15
-GARBAGE_TIME_PERIOD_MIN = 3
 
 
 def count_lead_changes(moments: list[dict[str, Any]]) -> int:
@@ -158,7 +155,7 @@ def detect_blowout(
 
     A blowout is detected when:
     - Margin reaches the league's blowout_margin threshold
-    - Margin is sustained for BLOWOUT_SUSTAINED_PERIODS (1+ periods)
+    - Margin is sustained for 1+ periods
 
     Returns:
         Tuple of (is_blowout, decisive_moment_idx, max_margin)

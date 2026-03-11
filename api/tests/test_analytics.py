@@ -1565,7 +1565,6 @@ class TestSimulationCache:
 
     def test_live_mode_expires(self) -> None:
         import time as _time
-        from unittest.mock import patch
         from app.analytics.core.simulation_cache import SimulationCache
 
         cache = SimulationCache()
@@ -2067,7 +2066,6 @@ class TestFullMLPipeline:
         from app.analytics.core.aggregation_engine import AggregationEngine
         from app.analytics.core.profile_builder import ProfileBuilder
         from app.analytics.models.core.model_registry import ModelRegistry
-        from app.analytics.models.sports.mlb.pa_model import MLBPlateAppearanceModel
 
         # Step 1: Aggregate
         agg = AggregationEngine("mlb")
@@ -3256,8 +3254,6 @@ from app.analytics.probabilities.probability_provider import (
 )
 from app.analytics.probabilities.probability_resolver import (
     ProbabilityResolver,
-    MODE_ML,
-    MODE_RULE_BASED,
 )
 
 

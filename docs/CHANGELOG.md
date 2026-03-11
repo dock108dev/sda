@@ -2,7 +2,29 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-08] - Current
+## [2026-03-11] - Current
+
+### User Authentication & Account Management
+
+- **User accounts**: `users` table (email, password_hash, role, is_active, created_at) with Alembic migration
+- **JWT authentication**: Signup, login, and identity endpoints at `/auth/*` — returns JWT with role claim
+- **Role-based access**: Three-tier system (guest/user/admin) with FastAPI dependencies (`resolve_role`, `require_user`, `require_admin`)
+- **Self-service account management**: Authenticated users can update email, change password, and delete their own account (all require password confirmation)
+- **Admin user management**: Full CRUD at `/api/admin/users/*` — list, create, update role, enable/disable, change email, reset password, delete
+- **Admin UI**: Users management page at `/admin/users` with inline editing, role dropdown, enable/disable toggle, and delete confirmation
+- **Feature flag**: `AUTH_ENABLED=false` bypasses all role checks (returns admin for all requests) for gradual rollout
+- **Shared password hashing**: Single `CryptContext` in `app/security.py` used by all modules
+- **Configuration**: `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRE_MINUTES`, `AUTH_ENABLED` in `app/config.py`
+- **19 tests**: Full coverage of JWT creation/decoding, role resolution, and access control in `test_roles.py`
+
+### Legacy Code Cleanup (SSOT Enforcement)
+
+- **Removed**: 3 backward-compat constants (`BLOWOUT_MARGIN_THRESHOLD`, `GARBAGE_TIME_MARGIN`, `GARBAGE_TIME_PERIOD_MIN`) from `block_analysis.py` — superseded by `league_config.get_config()`
+- **Fixed**: Broken `AsyncSessionLocal` import in `backfill_timelines.py` — replaced with `get_async_session()`
+- **Secured**: Removed hardcoded admin credentials from `seed_admin_user.py` — now reads from environment variables
+- **Consolidated**: Triplicated `CryptContext` instantiation collapsed to single `app/security.py` SSOT
+
+## [2026-03-08]
 
 ### MLB Constants SSOT (P2-B)
 

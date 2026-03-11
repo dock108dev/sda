@@ -44,6 +44,15 @@ PROHIBITED_PATTERNS = [
     r"\bstunning\b",
     r"\bspectacular\b",
     r"\bsensational\b",
+    # Retrospective foreshadowing / spoiler patterns
+    r"\bwould\s+be\s+a\b",
+    r"\bwould\s+prove\b",
+    r"\bwould\s+become\b",
+    r"\bwould\s+later\b",
+    r"\bwould\s+eventually\b",
+    r"\bwould\s+go\s+on\b",
+    r"\bwould\s+not\s+recover\b",
+    r"\bforeshadow\b",
 ]
 
 # Patterns to clean up raw PBP artifacts from narratives

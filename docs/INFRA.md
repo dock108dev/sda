@@ -185,6 +185,9 @@ docker exec sports-postgres psql -U sports -d sports -c "SELECT COUNT(*) FROM sp
 | `ENVIRONMENT` | No | `development` or `production` |
 | `RUN_MIGRATIONS` | No | Run Alembic on startup (dev-only; default false) |
 | `API_KEY` | Prod/Staging | API authentication key (min 32 chars) |
+| `JWT_SECRET` | Prod | Secret key for signing JWTs (`openssl rand -hex 32`) |
+| `JWT_EXPIRE_MINUTES` | No | Token lifetime in minutes (default: 1440 = 24h) |
+| `AUTH_ENABLED` | No | Set `false` to bypass role checks (default: `true`) |
 | `OPENAI_API_KEY` | No | OpenAI key for AI enrichment (game flow narratives) |
 | `OPENAI_MODEL_CLASSIFICATION` | No | OpenAI model for play classification (default: `gpt-4o-mini`) |
 | `OPENAI_MODEL_SUMMARY` | No | OpenAI model for narrative rendering (default: `gpt-4o`) |

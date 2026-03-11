@@ -33,6 +33,10 @@ Rules:
 - Each block should be 1-5 sentences in one paragraph
 - Improve flow, reduce repetition, and acknowledge the passage of time across blocks
 - No hype, no speculation, no raw play-by-play
+- SETUP blocks must NOT foreshadow the outcome. Write as if the game is still unfolding.
+- RESPONSE blocks must reflect an actual scoring change. If the score didn't move, describe the state, not a "response."
+- Give each half/period proportional narrative weight. Don't compress late-game action into a throwaway line.
+- If a trailing team never got within single digits, don't call it a "comeback" — call it a rally that fell short.
 - Ensure player names appear in full only on first mention across the entire flow. Use last name thereafter.
 - Use full team name only once early. Rotate between short name and pronoun.
 - CRITICAL: If the game goes to overtime/OT/shootout, the narrative MUST mention this transition
@@ -233,8 +237,12 @@ def build_block_prompt(
         "",
         "ROLE-SPECIFIC GUIDANCE:",
         "- SETUP: Establish tone and early shape. May contain zero specific plays. Abstraction encouraged.",
+        "  * NEVER foreshadow or spoil the outcome. No 'would be', 'would prove', 'would not recover'.",
+        "  * Write as if the game is unfolding — the reader doesn't know who wins yet.",
         "- MOMENTUM_SHIFT: Name the trigger, summarize the effect. Describe the run, not each play.",
         "- RESPONSE: Bridge narrative rhythm. Team-level summary preferred. Often abstract.",
+        "  * A RESPONSE block MUST describe an actual scoring response or tactical adjustment.",
+        "  * If the score did not change in this block, do NOT frame it as a 'response' — describe the state of play instead.",
         "- DECISION_POINT: Highest specificity. Name exact plays and players. This block earns detail.",
         "- RESOLUTION: Land the outcome. No re-narration. Final impression + score. May be the shortest block.",
         "",
@@ -260,6 +268,11 @@ def build_block_prompt(
         "- NO subjective adjectives (incredible, amazing, unbelievable, insane)",
         "- Describe ACTIONS, not statistics",
         "- Keep individual sentences concise (under 30 words each)",
+        "",
+        "PROPORTIONAL COVERAGE:",
+        "- Give each half/period proportional narrative weight. Do NOT compress the entire second half into one brief block.",
+        "- If the game was close-ish throughout, each phase deserves real coverage — not just the early action.",
+        "- Late-game blocks should never feel like afterthoughts, even if the first half was more dramatic.",
         "",
         "NARRATIVE COMPRESSION:",
         "- Collapse consecutive scoring into runs (e.g., 'went on a 3-run rally')" if league_code == "MLB" else "- Collapse consecutive scoring into runs (e.g., 'went on a 12-0 run')",
@@ -307,13 +320,19 @@ def build_block_prompt(
 
     # Add big lead / comeback guidance
     if is_comeback:
+        comeback_gap = game_peak_margin - final_margin
         prompt_parts.extend([
             f"BIG LEAD / COMEBACK (peak margin: {game_peak_margin}, final: {final_margin}):",
             f"- A team led by {game_peak_margin} at one point. Do NOT describe this as a 'modest' or 'slim' lead.",
             "- If the lead eroded, narrate the comeback arc — name the swing.",
             "- Use [Peak:] data in blocks to anchor the high-water mark.",
-            "",
         ])
+        if comeback_gap < game_peak_margin // 2:
+            prompt_parts.append(
+                f"- The trailing team never got closer than {final_margin}. Do NOT oversell this as a 'comeback' — "
+                f"it was a rally that fell short. Frame it as tightening, not a real threat."
+            )
+        prompt_parts.append("")
 
     # Add overtime-specific guidance if game went to OT
     if has_any_overtime:

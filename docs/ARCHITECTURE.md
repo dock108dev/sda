@@ -57,7 +57,9 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 - **Database:** PostgreSQL (async SQLAlchemy)
 - **Endpoints:** Games, plays, box scores, odds, social, teams, FairBet (odds + parlay + live)
 - **Realtime:** WebSocket and SSE feeds for live game updates (scores, PBP, odds changes)
-- **Admin Endpoints:** Scraper management, data browser
+- **Authentication:** JWT-based auth for downstream apps (`app/dependencies/roles.py`), password hashing (`app/security.py`), signup/login/me endpoints (`app/routers/auth.py`)
+- **Roles:** Three-tier access — guest (no token), user (authenticated), admin (developer). Controlled by `AUTH_ENABLED` flag.
+- **Admin Endpoints:** Scraper management, data browser, user management (`app/routers/admin/users.py`)
 - **Server-Side Services:** Status flags (`game_status.py`), date sections (`date_section.py`), FairBet display helpers (`fairbet_display.py`), odds table builder (`odds_table.py`), stat normalization (`stat_normalization.py`), stat annotations (`stat_annotations.py`), play timeline enrichment (`play_tiers.py`), period labels (`period_labels.py`), derived metrics (`derived_metrics.py`)
 
 ### 3. Analytics Engine (`api/app/analytics/`)
@@ -177,6 +179,7 @@ See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
 - `mlb_game_advanced_stats` - Statcast-derived advanced batting stats per team per game
 - `mlb_player_advanced_stats` - Statcast-derived advanced batting stats per batter per game
 - `team_social_posts` - Social media content (mapped to games via `mapping_status`)
+- `users` - User accounts for downstream app authentication (email, password_hash, role, is_active)
 
 ### Analytics & ML Tables
 - `analytics_feature_configs` - Feature loadouts (named feature sets with enabled/weight per sport/model_type)
@@ -191,6 +194,23 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 ---
 
 ## API Endpoints
+
+### Authentication Endpoints
+- `POST /auth/signup` - Create user account, returns JWT
+- `POST /auth/login` - Authenticate, returns JWT
+- `GET /auth/me` - Current user identity and role
+- `PATCH /auth/me/email` - Update own email (requires password)
+- `PATCH /auth/me/password` - Change own password
+- `DELETE /auth/me` - Delete own account (requires password)
+
+### Admin User Management
+- `GET /api/admin/users` - List all users
+- `POST /api/admin/users` - Create user account
+- `PATCH /api/admin/users/{id}/role` - Change user role
+- `PATCH /api/admin/users/{id}/active` - Enable/disable user
+- `PATCH /api/admin/users/{id}/email` - Change user email
+- `PATCH /api/admin/users/{id}/password` - Reset user password
+- `DELETE /api/admin/users/{id}` - Delete user
 
 ### Game Data Endpoints
 - `GET /api/admin/sports/games` - List games with filtering

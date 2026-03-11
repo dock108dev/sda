@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from starlette.testclient import TestClient
 
-from app.realtime.manager import RealtimeManager, SSEConnection
-from app.realtime.sse import router, sse_endpoint
+from app.realtime.manager import SSEConnection
+from app.realtime.sse import sse_endpoint
 
 
 class TestSSEEndpoint:
