@@ -590,6 +590,8 @@ def _build_variations() -> None:
         "Nevada": "Nevada Wolf Pack",
         "UCLA": "UCLA Bruins",
         "USC": "USC Trojans",
+        "Southern California": "USC Trojans",
+        "Southern California Trojans": "USC Trojans",
         # HBCU / mid-major names that collide after normalization
         "Alabama A&M": "Alabama A&M Bulldogs",
         "Alabama A&M Bulldogs": "Alabama A&M Bulldogs",

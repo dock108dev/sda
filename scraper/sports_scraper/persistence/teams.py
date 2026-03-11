@@ -138,6 +138,12 @@ _NCAAB_ABBREV_EXPANSIONS = {
     "uab": "alabama birmingham",
     "uconn": "connecticut",
     "lsu": "louisiana state",
+    "usc": "southern california",
+    "smu": "southern methodist",
+    "tcu": "texas christian",
+    "ucf": "central florida",
+    "fiu": "florida international",
+    "vcu": "virginia commonwealth",
     "utrgv": "texas rio grande valley",
     "sfa": "stephen f austin",
     "fdu": "fairleigh dickinson",
@@ -147,6 +153,11 @@ _NCAAB_ABBREV_EXPANSIONS = {
     "uncg": "north carolina greensboro",
     "uncw": "north carolina wilmington",
     "unc": "north carolina",
+    "umkc": "missouri kansas city",
+    "liu": "long island",
+    "gw": "george washington",
+    "fau": "florida atlantic",
+    "csu": "colorado state",
 }
 
 

@@ -329,7 +329,7 @@ async def post_batch_simulate(
 ) -> dict[str, Any]:
     """Kick off a batch simulation of upcoming games."""
     from app.db.analytics import AnalyticsBatchSimJob
-    from app.tasks.training_tasks import batch_simulate_games
+    from app.tasks.batch_sim_tasks import batch_simulate_games
 
     job = AnalyticsBatchSimJob(
         sport=req.sport,

@@ -4959,7 +4959,7 @@ class TestBuildRollingProfile:
         return obj
 
     def test_returns_none_when_insufficient_history(self):
-        from app.tasks.training_tasks import _build_rolling_profile
+        from app.tasks.batch_sim_tasks import _build_rolling_profile
 
         # Only 3 games before target date, min_games=5
         games = [("2025-04-01", self._make_stats()) for _ in range(3)]
@@ -4969,7 +4969,7 @@ class TestBuildRollingProfile:
         assert result is None
 
     def test_returns_profile_with_sufficient_history(self):
-        from app.tasks.training_tasks import _build_rolling_profile
+        from app.tasks.batch_sim_tasks import _build_rolling_profile
 
         games = [(f"2025-04-{i+1:02d}", self._make_stats()) for i in range(10)]
         result = _build_rolling_profile(
@@ -4986,7 +4986,7 @@ class TestBuildRollingProfile:
         assert "expected_slug" in result
 
     def test_excludes_games_on_or_after_target_date(self):
-        from app.tasks.training_tasks import _build_rolling_profile
+        from app.tasks.batch_sim_tasks import _build_rolling_profile
 
         # 3 games before target, 7 on or after
         games = [(f"2025-04-{i+1:02d}", self._make_stats()) for i in range(3)]
@@ -4998,7 +4998,7 @@ class TestBuildRollingProfile:
         assert result is None
 
     def test_window_limits_games_used(self):
-        from app.tasks.training_tasks import _build_rolling_profile
+        from app.tasks.batch_sim_tasks import _build_rolling_profile
 
         # 20 games, window=5 — should average only last 5
         early_stats = self._make_stats(avg_exit_velo=80.0)
@@ -5015,7 +5015,7 @@ class TestBuildRollingProfile:
         assert result["avg_exit_velocity"] == 100.0
 
     def test_averages_metrics_correctly(self):
-        from app.tasks.training_tasks import _build_rolling_profile
+        from app.tasks.batch_sim_tasks import _build_rolling_profile
 
         stats_a = self._make_stats(barrel_pct=0.10, hard_hit_pct=0.40)
         stats_b = self._make_stats(barrel_pct=0.20, hard_hit_pct=0.50)
@@ -5190,12 +5190,12 @@ class TestBatchSimTaskImportable:
     """Verify batch_simulate_games Celery task exists."""
 
     def test_task_exists(self):
-        from app.tasks.training_tasks import batch_simulate_games
+        from app.tasks.batch_sim_tasks import batch_simulate_games
 
         assert batch_simulate_games is not None
 
     def test_task_callable(self):
-        from app.tasks.training_tasks import batch_simulate_games
+        from app.tasks.batch_sim_tasks import batch_simulate_games
 
         assert callable(batch_simulate_games)
 
@@ -5267,12 +5267,12 @@ class TestRecordOutcomesTask:
     """Verify record_completed_outcomes Celery task exists."""
 
     def test_task_exists(self):
-        from app.tasks.training_tasks import record_completed_outcomes
+        from app.tasks.outcome_tasks import record_completed_outcomes
 
         assert record_completed_outcomes is not None
 
     def test_task_callable(self):
-        from app.tasks.training_tasks import record_completed_outcomes
+        from app.tasks.outcome_tasks import record_completed_outcomes
 
         assert callable(record_completed_outcomes)
 
@@ -5281,7 +5281,7 @@ class TestSavePredictionOutcomes:
     """Verify _save_prediction_outcomes helper."""
 
     def test_function_exists(self):
-        from app.tasks.training_tasks import _save_prediction_outcomes
+        from app.tasks.batch_sim_tasks import _save_prediction_outcomes
 
         assert callable(_save_prediction_outcomes)
 
@@ -5290,13 +5290,13 @@ class TestRunRecordOutcomes:
     """Verify _run_record_outcomes async implementation."""
 
     def test_function_exists(self):
-        from app.tasks.training_tasks import _run_record_outcomes
+        from app.tasks.outcome_tasks import _run_record_outcomes
 
         assert callable(_run_record_outcomes)
 
     def test_is_coroutine(self):
         import asyncio
-        from app.tasks.training_tasks import _run_record_outcomes
+        from app.tasks.outcome_tasks import _run_record_outcomes
 
         assert asyncio.iscoroutinefunction(_run_record_outcomes)
 
@@ -5415,18 +5415,18 @@ class TestDegradationCheckTask:
     """Verify check_model_degradation Celery task."""
 
     def test_task_exists(self):
-        from app.tasks.training_tasks import check_model_degradation
+        from app.tasks.outcome_tasks import check_model_degradation
 
         assert check_model_degradation is not None
 
     def test_task_callable(self):
-        from app.tasks.training_tasks import check_model_degradation
+        from app.tasks.outcome_tasks import check_model_degradation
 
         assert callable(check_model_degradation)
 
     def test_run_function_is_coroutine(self):
         import asyncio
-        from app.tasks.training_tasks import _run_degradation_check
+        from app.tasks.outcome_tasks import _run_degradation_check
 
         assert asyncio.iscoroutinefunction(_run_degradation_check)
 
@@ -5435,7 +5435,7 @@ class TestDegradationThresholds:
     """Verify degradation threshold constants."""
 
     def test_thresholds_exist(self):
-        from app.tasks.training_tasks import (
+        from app.tasks.outcome_tasks import (
             _BRIER_CRITICAL_THRESHOLD,
             _BRIER_WARNING_THRESHOLD,
             _MIN_WINDOW_SIZE,
@@ -5446,7 +5446,7 @@ class TestDegradationThresholds:
         assert isinstance(_MIN_WINDOW_SIZE, int)
 
     def test_critical_exceeds_warning(self):
-        from app.tasks.training_tasks import (
+        from app.tasks.outcome_tasks import (
             _BRIER_CRITICAL_THRESHOLD,
             _BRIER_WARNING_THRESHOLD,
         )
@@ -5454,7 +5454,7 @@ class TestDegradationThresholds:
         assert _BRIER_CRITICAL_THRESHOLD > _BRIER_WARNING_THRESHOLD
 
     def test_min_window_reasonable(self):
-        from app.tasks.training_tasks import _MIN_WINDOW_SIZE
+        from app.tasks.outcome_tasks import _MIN_WINDOW_SIZE
 
         assert _MIN_WINDOW_SIZE >= 5
         assert _MIN_WINDOW_SIZE <= 50
@@ -5492,7 +5492,7 @@ class TestDegradationDetectionLogic:
         assert delta < 0  # Model improved
 
     def test_severity_assignment(self):
-        from app.tasks.training_tasks import (
+        from app.tasks.outcome_tasks import (
             _BRIER_CRITICAL_THRESHOLD,
             _BRIER_WARNING_THRESHOLD,
         )
