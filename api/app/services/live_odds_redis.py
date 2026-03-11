@@ -20,10 +20,15 @@ _HISTORY_KEY = "live:odds:history:{game_id}:{market_key}"
 
 
 def _get_redis():
-    """Get a sync Redis client. Lazy import to avoid startup validation issues."""
+    """Get a sync Redis client pointing at the scraper's Redis DB.
+
+    The scraper writes live odds to CELERY_BROKER_URL (Redis DB 2),
+    not the API's REDIS_URL (DB 0).  Use celery_broker so reads
+    hit the same database as scraper writes.
+    """
     import redis
     from app.config import settings
-    return redis.from_url(settings.redis_url, decode_responses=True)
+    return redis.from_url(settings.celery_broker, decode_responses=True)
 
 
 def read_live_snapshot(
