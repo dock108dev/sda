@@ -45,10 +45,18 @@ export interface SimulationRequest {
   // Lineup-level simulation (optional)
   home_lineup?: { external_ref: string; name: string }[];
   away_lineup?: { external_ref: string; name: string }[];
-  home_starter?: { external_ref: string; name: string };
-  away_starter?: { external_ref: string; name: string };
+  home_starter?: { external_ref: string; name: string; avg_ip?: number };
+  away_starter?: { external_ref: string; name: string; avg_ip?: number };
   starter_innings?: number;
   exclude_playoffs?: boolean;
+}
+
+export interface PitcherAnalytics {
+  name: string | null;
+  avg_ip: number | null;
+  raw_profile: Record<string, number> | null;
+  adjusted_profile: Record<string, number> | null;
+  is_regressed: boolean;
 }
 
 export interface ScoreEntry {
@@ -78,6 +86,11 @@ export interface SimulationResult {
     model_prediction_source?: string;
     home_pa_source?: string;
     away_pa_source?: string;
+    lineup_mode?: boolean;
+    home_pitcher?: PitcherAnalytics;
+    away_pitcher?: PitcherAnalytics;
+    home_bullpen?: Record<string, number>;
+    away_bullpen?: Record<string, number>;
     [key: string]: unknown;
   };
   model_home_win_probability?: number;

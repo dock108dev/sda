@@ -10,6 +10,7 @@ import {
   type MLBTeam,
   type RosterBatter,
   type RosterPitcher,
+  type PitcherAnalytics,
 } from "@/lib/api/analytics";
 import { ScoreDistributionChart, PAProbabilitiesChart } from "../charts";
 import styles from "../analytics.module.css";
@@ -17,6 +18,12 @@ import styles from "../analytics.module.css";
 interface LineupSlot {
   external_ref: string;
   name: string;
+}
+
+interface StarterSlot {
+  external_ref: string;
+  name: string;
+  avg_ip?: number;
 }
 
 export function PregameSimulator() {
@@ -41,8 +48,8 @@ export function PregameSimulator() {
   const [useLineup, setUseLineup] = useState(false);
   const [homeLineup, setHomeLineup] = useState<LineupSlot[]>([]);
   const [awayLineup, setAwayLineup] = useState<LineupSlot[]>([]);
-  const [homeStarter, setHomeStarter] = useState<LineupSlot | null>(null);
-  const [awayStarter, setAwayStarter] = useState<LineupSlot | null>(null);
+  const [homeStarter, setHomeStarter] = useState<StarterSlot | null>(null);
+  const [awayStarter, setAwayStarter] = useState<StarterSlot | null>(null);
   const [starterInnings, setStarterInnings] = useState(6);
 
   // Roster data for selectors
@@ -87,7 +94,7 @@ export function PregameSimulator() {
         // Auto-fill starter with top pitcher
         if (roster.pitchers && roster.pitchers.length > 0) {
           const top = roster.pitchers[0];
-          setHomeStarter({ external_ref: top.external_ref, name: top.name });
+          setHomeStarter({ external_ref: top.external_ref, name: top.name, avg_ip: top.avg_ip });
         }
       } else {
         setAwayBatters(roster.batters || []);
@@ -102,7 +109,7 @@ export function PregameSimulator() {
         }
         if (roster.pitchers && roster.pitchers.length > 0) {
           const top = roster.pitchers[0];
-          setAwayStarter({ external_ref: top.external_ref, name: top.name });
+          setAwayStarter({ external_ref: top.external_ref, name: top.name, avg_ip: top.avg_ip });
         }
       }
     } catch {
@@ -144,8 +151,8 @@ export function PregameSimulator() {
       if (useLineup && lineupFilled(homeLineup) && lineupFilled(awayLineup)) {
         req.home_lineup = homeLineup;
         req.away_lineup = awayLineup;
-        if (homeStarter) req.home_starter = homeStarter;
-        if (awayStarter) req.away_starter = awayStarter;
+        if (homeStarter) req.home_starter = { external_ref: homeStarter.external_ref, name: homeStarter.name, avg_ip: homeStarter.avg_ip };
+        if (awayStarter) req.away_starter = { external_ref: awayStarter.external_ref, name: awayStarter.name, avg_ip: awayStarter.avg_ip };
         req.starter_innings = starterInnings;
       }
       const res = await runSimulation(req);
@@ -303,7 +310,7 @@ export function PregameSimulator() {
                 value={homeStarter?.external_ref || ""}
                 onChange={(e) => {
                   const p = homePitchers.find((p) => p.external_ref === e.target.value);
-                  setHomeStarter(p ? { external_ref: p.external_ref, name: p.name } : null);
+                  setHomeStarter(p ? { external_ref: p.external_ref, name: p.name, avg_ip: p.avg_ip } : null);
                 }}
                 style={{ width: "100%", marginTop: "0.25rem" }}
               >
@@ -328,7 +335,7 @@ export function PregameSimulator() {
                 value={awayStarter?.external_ref || ""}
                 onChange={(e) => {
                   const p = awayPitchers.find((p) => p.external_ref === e.target.value);
-                  setAwayStarter(p ? { external_ref: p.external_ref, name: p.name } : null);
+                  setAwayStarter(p ? { external_ref: p.external_ref, name: p.name, avg_ip: p.avg_ip } : null);
                 }}
                 style={{ width: "100%", marginTop: "0.25rem" }}
               >
@@ -420,6 +427,36 @@ export function PregameSimulator() {
             </AdminCard>
           )}
 
+          {result.profile_meta?.home_pitcher && result.profile_meta?.away_pitcher && (
+            <AdminCard title="Pitching Analytics" subtitle="Starter profiles used in simulation">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                <PitcherProfileCard
+                  label={`${result.home_team} SP`}
+                  pitcher={result.profile_meta.home_pitcher}
+                />
+                <PitcherProfileCard
+                  label={`${result.away_team} SP`}
+                  pitcher={result.profile_meta.away_pitcher}
+                />
+              </div>
+              {(result.profile_meta.home_bullpen || result.profile_meta.away_bullpen) && (
+                <div style={{ marginTop: "1rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "0.8rem", fontWeight: 500, marginBottom: "0.5rem", color: "var(--text-muted)" }}>
+                    Bullpen Profiles (derived from team pitching)
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                    {result.profile_meta.home_bullpen && (
+                      <MetricsTable metrics={result.profile_meta.home_bullpen} label={`${result.home_team} Bullpen`} />
+                    )}
+                    {result.profile_meta.away_bullpen && (
+                      <MetricsTable metrics={result.profile_meta.away_bullpen} label={`${result.away_team} Bullpen`} />
+                    )}
+                  </div>
+                </div>
+              )}
+            </AdminCard>
+          )}
+
           {result.profile_meta && !result.profile_meta.has_profiles && (
             <AdminCard title="Profile Status">
               <p style={{ color: "#ef4444", fontSize: "0.9rem" }}>
@@ -499,6 +536,88 @@ function LineupEditor({
           No roster data available. Select a team first.
         </p>
       )}
+    </div>
+  );
+}
+
+
+const METRIC_LABELS: Record<string, string> = {
+  strikeout_rate: "K Rate",
+  walk_rate: "BB Rate",
+  contact_suppression: "Contact Supp.",
+  power_suppression: "Power Supp.",
+};
+
+function formatPct(v: number): string {
+  return `${(v * 100).toFixed(1)}%`;
+}
+
+function PitcherProfileCard({ label, pitcher }: { label: string; pitcher: PitcherAnalytics }) {
+  const profile = pitcher.adjusted_profile;
+  const raw = pitcher.raw_profile;
+  const isRegressed = pitcher.avg_ip != null && pitcher.avg_ip < 5.0 && raw != null;
+
+  return (
+    <div>
+      <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.25rem" }}>
+        {pitcher.name || label}
+      </div>
+      {pitcher.avg_ip != null && (
+        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
+          {pitcher.avg_ip.toFixed(1)} avg IP/game
+          {isRegressed && (
+            <span style={{ color: "#f59e0b", marginLeft: "0.5rem" }}>
+              (regressed toward league avg)
+            </span>
+          )}
+        </div>
+      )}
+      {profile ? (
+        <table style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+              <th style={{ textAlign: "left", padding: "0.25rem 0" }}>Metric</th>
+              {isRegressed && raw && <th style={{ textAlign: "right", padding: "0.25rem 0" }}>Raw</th>}
+              <th style={{ textAlign: "right", padding: "0.25rem 0" }}>{isRegressed ? "Adjusted" : "Value"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(profile).map(([key, val]) => (
+              <tr key={key} style={{ borderBottom: "1px solid var(--border)" }}>
+                <td style={{ padding: "0.25rem 0" }}>{METRIC_LABELS[key] || key}</td>
+                {isRegressed && raw && (
+                  <td style={{ textAlign: "right", padding: "0.25rem 0", color: "var(--text-muted)" }}>
+                    {formatPct(raw[key] ?? 0)}
+                  </td>
+                )}
+                <td style={{ textAlign: "right", padding: "0.25rem 0", fontWeight: 500 }}>
+                  {formatPct(val)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Using league-average defaults</p>
+      )}
+    </div>
+  );
+}
+
+function MetricsTable({ metrics, label }: { metrics: Record<string, number>; label: string }) {
+  return (
+    <div>
+      <div style={{ fontWeight: 500, fontSize: "0.85rem", marginBottom: "0.25rem" }}>{label}</div>
+      <table style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
+        <tbody>
+          {Object.entries(metrics).map(([key, val]) => (
+            <tr key={key} style={{ borderBottom: "1px solid var(--border)" }}>
+              <td style={{ padding: "0.25rem 0" }}>{METRIC_LABELS[key] || key}</td>
+              <td style={{ textAlign: "right", padding: "0.25rem 0" }}>{formatPct(val)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -92,6 +92,7 @@ class PitcherSlot(BaseModel):
     """A starting pitcher."""
     external_ref: str = Field(..., description="Player external reference ID")
     name: str = Field("", description="Player name (display only)")
+    avg_ip: float | None = Field(None, description="Average innings pitched per appearance")
 
 
 class SimulateRequest(BaseModel):
@@ -323,6 +324,45 @@ async def post_simulate(
     return response
 
 
+# ---------------------------------------------------------------------------
+# Reliever-as-starter regression
+# ---------------------------------------------------------------------------
+
+# Pitchers with avg IP below this threshold get regressed toward league avg.
+# A full-time starter (5+ IP avg) uses their actual profile; a reliever with
+# 1 avg IP gets ~80% league average because their extreme per-inning rates
+# (high K, low BB) aren't sustainable over a full start.
+_STARTER_IP_THRESHOLD = 5.0
+
+_LEAGUE_AVG_PITCHER: dict[str, float] = {
+    "strikeout_rate": 0.22,
+    "walk_rate": 0.08,
+    "contact_suppression": 0.0,
+    "power_suppression": 0.0,
+}
+
+
+def _regress_pitcher_profile(
+    profile: dict[str, float],
+    avg_ip: float | None,
+) -> dict[str, float]:
+    """Regress a pitcher's profile toward league average based on avg IP.
+
+    Relievers pitch short stints at max effort — their per-inning rates
+    can't be sustained over a full start.  This blends their profile with
+    league average proportionally to how many innings they typically throw.
+    """
+    if avg_ip is None or avg_ip >= _STARTER_IP_THRESHOLD:
+        return profile  # Starter — use actual profile
+
+    blend = max(avg_ip / _STARTER_IP_THRESHOLD, 0.1)  # floor at 10%
+    regressed: dict[str, float] = {}
+    for key in profile:
+        league_val = _LEAGUE_AVG_PITCHER.get(key, 0.0)
+        regressed[key] = round(league_val + blend * (profile[key] - league_val), 4)
+    return regressed
+
+
 def _pitching_metrics_from_profile(
     team_profile: dict[str, float] | None,
 ) -> dict[str, float] | None:
@@ -379,17 +419,17 @@ async def _build_lineup_context(
 
     # --- Fetch pitcher profiles ---
     # Away starter faces home lineup; home starter faces away lineup
-    away_starter_profile = None
-    home_starter_profile = None
+    away_starter_raw = None
+    home_starter_raw = None
 
     if req.away_starter:
-        away_starter_profile = await get_pitcher_rolling_profile(
+        away_starter_raw = await get_pitcher_rolling_profile(
             req.away_starter.external_ref, away_team_id,
             rolling_window=req.rolling_window,
             exclude_playoffs=req.exclude_playoffs, db=db,
         )
     if req.home_starter:
-        home_starter_profile = await get_pitcher_rolling_profile(
+        home_starter_raw = await get_pitcher_rolling_profile(
             req.home_starter.external_ref, home_team_id,
             rolling_window=req.rolling_window,
             exclude_playoffs=req.exclude_playoffs, db=db,
@@ -398,8 +438,16 @@ async def _build_lineup_context(
     # Fallback pitcher profiles from team-level data
     fallback_pitcher = {"strikeout_rate": 0.22, "walk_rate": 0.08,
                         "contact_suppression": 0.0, "power_suppression": 0.0}
-    away_sp = away_starter_profile or fallback_pitcher
-    home_sp = home_starter_profile or fallback_pitcher
+
+    # Apply reliever-as-starter regression based on avg IP
+    away_sp = _regress_pitcher_profile(
+        away_starter_raw or fallback_pitcher,
+        req.away_starter.avg_ip if req.away_starter else None,
+    )
+    home_sp = _regress_pitcher_profile(
+        home_starter_raw or fallback_pitcher,
+        req.home_starter.avg_ip if req.home_starter else None,
+    )
 
     # Bullpen = opposing team's pitching profile, falling back to league average.
     # Home batters face the away bullpen; away batters face the home bullpen.
@@ -469,6 +517,24 @@ async def _build_lineup_context(
         profile_meta["home_pa_source"] = "lineup_batter_vs_pitcher"
         profile_meta["away_pa_source"] = "lineup_batter_vs_pitcher"
 
+        # Attach pitcher analytics for frontend display
+        profile_meta["home_pitcher"] = {
+            "name": req.home_starter.name if req.home_starter else None,
+            "avg_ip": req.home_starter.avg_ip if req.home_starter else None,
+            "raw_profile": home_starter_raw,
+            "adjusted_profile": home_sp,
+            "is_regressed": (req.home_starter.avg_ip or 99) < _STARTER_IP_THRESHOLD if req.home_starter else False,
+        }
+        profile_meta["away_pitcher"] = {
+            "name": req.away_starter.name if req.away_starter else None,
+            "avg_ip": req.away_starter.avg_ip if req.away_starter else None,
+            "raw_profile": away_starter_raw,
+            "adjusted_profile": away_sp,
+            "is_regressed": (req.away_starter.avg_ip or 99) < _STARTER_IP_THRESHOLD if req.away_starter else False,
+        }
+        profile_meta["home_bullpen"] = away_bullpen_metrics
+        profile_meta["away_bullpen"] = home_bullpen_metrics
+
         logger.info(
             "lineup_weights_built",
             extra={
@@ -477,6 +543,8 @@ async def _build_lineup_context(
                 "home_batters": len(home_starter_weights),
                 "away_batters": len(away_starter_weights),
                 "starter_innings": req.starter_innings,
+                "home_sp_avg_ip": req.home_starter.avg_ip if req.home_starter else None,
+                "away_sp_avg_ip": req.away_starter.avg_ip if req.away_starter else None,
             },
         )
         return True
