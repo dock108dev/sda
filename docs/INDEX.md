@@ -55,6 +55,7 @@
 | Guide | Description |
 |-------|-------------|
 | [Analytics Engine](ANALYTICS.md) | **Start here:** Feature loadouts, model training pipeline, backtesting, batch simulation, calibration, ML models, and ensemble predictions |
+| [Analytics Integration (Downstream)](DOWNSTREAM_ANALYTICS.md) | Integration guide for consuming apps — simulation flows, TypeScript types, navigation structure |
 
 ## Operations
 

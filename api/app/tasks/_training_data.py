@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from app.tasks._training_helpers import build_rolling_profile, get_game_score, stats_to_metrics
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,7 @@ async def load_training_data_from_db(
     date_start: str | None,
     date_end: str | None,
     rolling_window: int = 30,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """Load historical training data from the database.
 
@@ -66,7 +69,7 @@ async def _load_mlb_game_training_data(
     date_end: str | None,
     *,
     rolling_window: int = 30,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """Load MLB game training data using rolling team profiles.
 
@@ -93,7 +96,7 @@ async def _load_mlb_game_training_data(
 
 
 async def _load_mlb_game_training_data_impl(
-    db: "AsyncSession",
+    db: AsyncSession,
     date_start: str | None,
     date_end: str | None,
     *,
@@ -105,16 +108,14 @@ async def _load_mlb_game_training_data_impl(
     from app.db.mlb_advanced import MLBGameAdvancedStats
     from app.db.sports import SportsGame
 
-    min_games = 5
-
     # Parse date strings to datetime objects for timestamptz comparison
     dt_start = (
-        datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=UTC)
         if date_start else None
     )
     dt_end = (
         datetime.strptime(date_end, "%Y-%m-%d").replace(
-            hour=23, minute=59, second=59, tzinfo=timezone.utc
+            hour=23, minute=59, second=59, tzinfo=UTC
         )
         if date_end else None
     )
@@ -244,7 +245,7 @@ async def _load_mlb_pa_training_data(
     date_end: str | None,
     *,
     rolling_window: int = 30,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """Load MLB plate-appearance training data using player stats.
 
@@ -268,7 +269,7 @@ async def _load_mlb_pa_training_data(
 
 
 async def _load_mlb_pa_training_data_impl(
-    db: "AsyncSession",
+    db: AsyncSession,
     date_start: str | None,
     date_end: str | None,
     *,
@@ -283,12 +284,12 @@ async def _load_mlb_pa_training_data_impl(
     min_games = 5
 
     dt_start = (
-        datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=UTC)
         if date_start else None
     )
     dt_end = (
         datetime.strptime(date_end, "%Y-%m-%d").replace(
-            hour=23, minute=59, second=59, tzinfo=timezone.utc
+            hour=23, minute=59, second=59, tzinfo=UTC
         )
         if date_end else None
     )

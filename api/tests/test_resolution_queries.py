@@ -17,7 +17,7 @@ def _make_record(entity_type, status, **kwargs):
     r.entity_type = entity_type
     r.resolution_status = status
     r.source_identifier = kwargs.get("source", "TestTeam")
-    r.failure_reason = kwargs.get("reason", None)
+    r.failure_reason = kwargs.get("reason")
     r.candidates = kwargs.get("candidates", [])
     r.resolved_name = kwargs.get("resolved_name", "Resolved")
     r.resolved_id = kwargs.get("resolved_id", 1)

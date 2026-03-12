@@ -6,9 +6,7 @@ import json
 import time
 from unittest.mock import MagicMock, patch
 
-
 from app.db.odds import ClosingLine
-
 
 # ---------------------------------------------------------------------------
 # ClosingLine model

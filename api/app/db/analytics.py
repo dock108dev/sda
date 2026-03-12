@@ -51,7 +51,7 @@ class AnalyticsFeatureConfig(Base):
     )
 
     # Relationship to training jobs that used this config
-    training_jobs: Mapped[list["AnalyticsTrainingJob"]] = relationship(
+    training_jobs: Mapped[list[AnalyticsTrainingJob]] = relationship(
         back_populates="feature_config",
     )
 

@@ -10,15 +10,13 @@ import {
   type MLBTeam,
   type RosterBatter,
   type RosterPitcher,
-  type PitcherAnalytics,
 } from "@/lib/api/analytics";
 import { ScoreDistributionChart, PAProbabilitiesChart } from "../charts";
 import styles from "../analytics.module.css";
-
-interface LineupSlot {
-  external_ref: string;
-  name: string;
-}
+import { SimulationInfoBanner } from "./SimulationInfoBanner";
+import { DataFreshnessDisplay } from "./DataFreshnessDisplay";
+import { PitcherProfileCard, MetricsTable } from "./PitcherProfileCard";
+import { LineupEditor, type LineupSlot } from "./LineupEditor";
 
 interface StarterSlot {
   external_ref: string;
@@ -32,7 +30,7 @@ export function PregameSimulator() {
   const [awayTeam, setAwayTeam] = useState("");
   const [iterations, setIterations] = useState(5000);
   const [rollingWindow, setRollingWindow] = useState(30);
-  const [probabilityMode, setProbabilityMode] = useState<"ml" | "ensemble">("ml");
+  const [probabilityMode, setProbabilityMode] = useState<"rule_based" | "ml" | "ensemble">("ml");
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -241,7 +239,8 @@ export function PregameSimulator() {
           </div>
           <div className={styles.formGroup}>
             <label>Probability Mode</label>
-            <select value={probabilityMode} onChange={(e) => setProbabilityMode(e.target.value as "ml" | "ensemble")}>
+            <select value={probabilityMode} onChange={(e) => setProbabilityMode(e.target.value as "rule_based" | "ml" | "ensemble")}>
+              <option value="rule_based">Rule-Based</option>
               <option value="ml">ML Model</option>
               <option value="ensemble">Ensemble</option>
             </select>
@@ -401,8 +400,13 @@ export function PregameSimulator() {
             )}
           </AdminCard>
 
+          {/* Simulation diagnostics banner */}
+          {result.simulation_info && (
+            <SimulationInfoBanner info={result.simulation_info} />
+          )}
+
           {result.model_home_win_probability != null && (
-            <AdminCard title="Game Model Prediction" subtitle="Trained model win probability">
+            <AdminCard title="Game Model Prediction" subtitle="Trained classifier (separate from Monte Carlo)">
               <div className={styles.statsRow}>
                 <div className={styles.statBox}>
                   <div className={styles.statValue}>{(result.model_home_win_probability * 100).toFixed(1)}%</div>
@@ -424,6 +428,13 @@ export function PregameSimulator() {
                 homeLabel={result.home_team}
                 awayLabel={result.away_team}
               />
+              {result.profile_meta?.data_freshness && (
+                <DataFreshnessDisplay
+                  freshness={result.profile_meta.data_freshness}
+                  homeLabel={result.home_team}
+                  awayLabel={result.away_team}
+                />
+              )}
             </AdminCard>
           )}
 
@@ -494,130 +505,5 @@ export function PregameSimulator() {
         </div>
       )}
     </>
-  );
-}
-
-
-function LineupEditor({
-  lineup,
-  batters,
-  onChange,
-}: {
-  lineup: LineupSlot[];
-  batters: RosterBatter[];
-  onChange: (index: number, externalRef: string) => void;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-      {Array.from({ length: 9 }, (_, i) => {
-        const slot = lineup[i];
-        return (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ width: "24px", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "right" }}>
-              {i + 1}.
-            </span>
-            <select
-              value={slot?.external_ref || ""}
-              onChange={(e) => onChange(i, e.target.value)}
-              style={{ flex: 1, fontSize: "0.85rem" }}
-            >
-              <option value="">Select batter</option>
-              {batters.map((b) => (
-                <option key={b.external_ref} value={b.external_ref}>
-                  {b.name} ({b.games_played}G)
-                </option>
-              ))}
-            </select>
-          </div>
-        );
-      })}
-      {batters.length === 0 && (
-        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-          No roster data available. Select a team first.
-        </p>
-      )}
-    </div>
-  );
-}
-
-
-const METRIC_LABELS: Record<string, string> = {
-  strikeout_rate: "K Rate",
-  walk_rate: "BB Rate",
-  contact_suppression: "Contact Supp.",
-  power_suppression: "Power Supp.",
-};
-
-function formatPct(v: number): string {
-  return `${(v * 100).toFixed(1)}%`;
-}
-
-function PitcherProfileCard({ label, pitcher }: { label: string; pitcher: PitcherAnalytics }) {
-  const profile = pitcher.adjusted_profile;
-  const raw = pitcher.raw_profile;
-  const isRegressed = pitcher.avg_ip != null && pitcher.avg_ip < 5.0 && raw != null;
-
-  return (
-    <div>
-      <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.25rem" }}>
-        {pitcher.name || label}
-      </div>
-      {pitcher.avg_ip != null && (
-        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
-          {pitcher.avg_ip.toFixed(1)} avg IP/game
-          {isRegressed && (
-            <span style={{ color: "#f59e0b", marginLeft: "0.5rem" }}>
-              (regressed toward league avg)
-            </span>
-          )}
-        </div>
-      )}
-      {profile ? (
-        <table style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid var(--border)" }}>
-              <th style={{ textAlign: "left", padding: "0.25rem 0" }}>Metric</th>
-              {isRegressed && raw && <th style={{ textAlign: "right", padding: "0.25rem 0" }}>Raw</th>}
-              <th style={{ textAlign: "right", padding: "0.25rem 0" }}>{isRegressed ? "Adjusted" : "Value"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(profile).map(([key, val]) => (
-              <tr key={key} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td style={{ padding: "0.25rem 0" }}>{METRIC_LABELS[key] || key}</td>
-                {isRegressed && raw && (
-                  <td style={{ textAlign: "right", padding: "0.25rem 0", color: "var(--text-muted)" }}>
-                    {formatPct(raw[key] ?? 0)}
-                  </td>
-                )}
-                <td style={{ textAlign: "right", padding: "0.25rem 0", fontWeight: 500 }}>
-                  {formatPct(val)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Using league-average defaults</p>
-      )}
-    </div>
-  );
-}
-
-function MetricsTable({ metrics, label }: { metrics: Record<string, number>; label: string }) {
-  return (
-    <div>
-      <div style={{ fontWeight: 500, fontSize: "0.85rem", marginBottom: "0.25rem" }}>{label}</div>
-      <table style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
-        <tbody>
-          {Object.entries(metrics).map(([key, val]) => (
-            <tr key={key} style={{ borderBottom: "1px solid var(--border)" }}>
-              <td style={{ padding: "0.25rem 0" }}>{METRIC_LABELS[key] || key}</td>
-              <td style={{ textAlign: "right", padding: "0.25rem 0" }}>{formatPct(val)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }

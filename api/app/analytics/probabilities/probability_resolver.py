@@ -145,18 +145,25 @@ class ProbabilityResolver:
 
         Returns:
             Probability dict with an additional ``_meta`` key containing
-            ``probability_source`` and optionally ``fallback_used``.
+            ``requested_mode``, ``executed_mode``, ``probability_source``,
+            ``model_info`` (when ML provider succeeds), and optionally
+            ``fallback_used``.
         """
         effective_mode = mode or self.mode
 
         try:
             provider = self.resolve_provider(sport, model_type, effective_mode)
             probs = provider.get_event_probabilities(sport, context)
-            meta = {
+            meta: dict[str, Any] = {
                 "probability_source": provider.provider_name,
                 "model_type": model_type,
+                "requested_mode": effective_mode,
+                "executed_mode": provider.provider_name,
                 "fallback_used": False,
             }
+            # Attach model_info when ML provider was used
+            if effective_mode in (MODE_ML, MODE_ENSEMBLE):
+                meta["model_info"] = self._get_model_info(sport, model_type)
             return {**probs, "_meta": meta}
 
         except Exception as exc:
@@ -182,8 +189,12 @@ class ProbabilityResolver:
                     meta = {
                         "probability_source": fallback.provider_name,
                         "model_type": model_type,
+                        "requested_mode": effective_mode,
+                        "executed_mode": fallback.provider_name,
                         "fallback_used": True,
+                        "fallback_reason": str(exc),
                         "primary_error": str(exc),
+                        "model_info": None,
                     }
                     return {**probs, "_meta": meta}
                 except Exception as fallback_exc:
@@ -193,6 +204,26 @@ class ProbabilityResolver:
                     ) from fallback_exc
 
             raise
+
+    @staticmethod
+    def _get_model_info(sport: str, model_type: str) -> dict[str, Any] | None:
+        """Fetch model identity info from the inference engine."""
+        try:
+            from app.analytics.inference.model_inference_engine import (
+                ModelInferenceEngine,
+            )
+            engine = ModelInferenceEngine()
+            status = engine.get_model_status(sport, model_type)
+            if status.get("available"):
+                return {
+                    "model_id": status["model_id"],
+                    "version": status["version"],
+                    "trained_at": status["trained_at"],
+                    "metrics": status["metrics"],
+                }
+        except Exception:
+            pass
+        return None
 
     def _get_or_create(
         self,

@@ -190,10 +190,10 @@ async def get_available_features(
 
 async def _get_mlb_available_features(db: AsyncSession) -> dict[str, Any]:
     """Get available MLB features from the MLBFeatureBuilder and DB stats."""
-    from app.analytics.features.sports.mlb_features import _PA_FEATURES, _GAME_FEATURES
-    from app.db.mlb_advanced import MLBGameAdvancedStats
-
     from sqlalchemy import func as sa_func
+
+    from app.analytics.features.sports.mlb_features import _GAME_FEATURES, _PA_FEATURES
+    from app.db.mlb_advanced import MLBGameAdvancedStats
     count_result = await db.execute(
         select(sa_func.count(MLBGameAdvancedStats.id))
     )

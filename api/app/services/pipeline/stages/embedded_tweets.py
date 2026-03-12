@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-# Re-export data structures and constants for backwards compatibility
+# Public API: re-export from sub-modules to provide a single import surface
 from .tweet_scorer import (
     MAX_EMBEDDED_TWEETS,
     MAX_TWEETS_PER_BLOCK,

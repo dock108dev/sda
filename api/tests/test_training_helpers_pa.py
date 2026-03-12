@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-
 from app.tasks._training_data import _derive_pa_outcome
 
 

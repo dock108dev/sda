@@ -2,7 +2,21 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-11] - Current
+## [2026-03-12] - Current
+
+### Game Simulator Overhaul — Diagnostics, Freshness & Priority Fix
+
+- **SimulationDiagnostics dataclass**: New `core/simulation_diagnostics.py` — SSOT for simulation run metadata. Tracks `requested_mode`, `executed_mode`, `fallback_used`, `fallback_reason`, `model_info`, and `warnings`. Replaces loose `prob_meta` dicts throughout the engine
+- **ProfileResult dataclass**: `profile_service.py` now returns `ProfileResult` with `metrics`, `games_used`, `date_range`, and `season_breakdown` instead of raw `dict | None`. All callers updated to extract `.metrics`
+- **Priority bug fix**: Profile-derived PA probabilities no longer shadow ML/ensemble resolver output. `analytics_routes.py` only pre-sets `game_context["home_probabilities"]` for `rule_based` mode; `simulation_engine.py` always overwrites with resolver output
+- **ModelInferenceEngine.get_model_status()**: Returns structured availability info (`available`, `model_id`, `version`, `trained_at`, `metrics`, `reason`) used by `ProbabilityResolver` to populate diagnostics
+- **API response enrichment**: `/simulate` response now includes `simulation_info` (diagnostics), `predictions` (Monte Carlo + game model entries), and `profile_meta.data_freshness` (per-team game counts and date ranges)
+- **Frontend diagnostics**: `SimulationInfoBanner` shows mode badge (blue=ML, yellow=fallback), fallback warnings, model version/accuracy. `DataFreshnessDisplay` shows game counts and stale-data warnings (>3 days). "Rule-Based" added as explicit dropdown option
+- **SSOT enforcement pass**: Removed duplicate `_predict_with_game_model()` from `simulator.py` (now imported from `analytics_routes.py`). Fixed `simulator.py` to extract `.metrics` from `ProfileResult`. Updated `guardrails.py` to import tweet constants from `tweet_scorer` (canonical source)
+- **Probability validation**: `validate_probabilities()` now called on resolver output; issues added as diagnostics warnings
+- **17 tests**: `test_simulation_diagnostics.py` covering dataclass defaults, serialization, ML fallback, active model, rule-based mode, exception handling, priority bug fix, probability validation, ProfileResult fields, get_model_status
+
+## [2026-03-11]
 
 ### Lineup-Aware MLB Simulation
 

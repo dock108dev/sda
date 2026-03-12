@@ -1,7 +1,8 @@
 """Tests for player and pitcher profile service functions."""
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.analytics.services.profile_service import (
     get_pitcher_rolling_profile,

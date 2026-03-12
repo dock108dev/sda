@@ -11,7 +11,8 @@ import json
 import logging
 import os
 import time
-from typing import Any, Callable, Coroutine, Protocol
+from collections.abc import Callable, Coroutine
+from typing import Any, Protocol
 
 from .models import MAX_CHANNELS_PER_CONNECTION, RealtimeEvent, is_valid_channel
 
@@ -211,7 +212,7 @@ class RealtimeManager:
                 # SSE queue full -> disconnect
                 logger.info("realtime_sse_overflow", extra={"conn": conn.id, "channel": channel})
                 dead.append(conn)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # WS send timed out -> disconnect
                 logger.info("realtime_ws_timeout", extra={"conn": conn.id, "channel": channel})
                 dead.append(conn)

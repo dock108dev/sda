@@ -13,14 +13,22 @@ import contextlib
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 
 from .ev_config import (
     INCLUDED_BOOKS,
-    EligibilityResult,
     EVStrategyConfig,
-    get_strategy,
     market_confidence_tier,
+)
+from .ev_confidence import (  # noqa: F401 — re-exported
+    book_spread_factor,
+    extrapolation_distance_factor,
+    pinnacle_alignment_factor,
+    probability_confidence,
+)
+from .ev_eligibility import (  # noqa: F401 — re-exported
+    _evaluate_consensus_eligibility,
+    _find_sharp_entry,
+    evaluate_ev_eligibility,
 )
 
 logger = logging.getLogger(__name__)
@@ -157,91 +165,6 @@ def remove_vig(implied_probs: list[float]) -> list[float]:
     return result
 
 
-def probability_confidence(true_prob: float) -> float:
-    """Confidence decay for low-probability outcomes.
-
-    Below 25% true probability, confidence decays as sqrt(p / 0.25).
-    This penalizes EV estimates for extreme longshots where small
-    devig errors produce large EV percentage swings.
-
-    Args:
-        true_prob: True (no-vig) probability of the outcome (0-1).
-
-    Returns:
-        Confidence factor between 0.0 and 1.0.
-    """
-    if true_prob >= 0.25:
-        return 1.0
-    if true_prob <= 0:
-        return 0.0
-    return math.sqrt(true_prob / 0.25)
-
-
-def pinnacle_alignment_factor(fair_prob: float, pinnacle_implied: float) -> float:
-    """Confidence factor based on vig gap between fair and Pinnacle implied.
-
-    A small gap means Pinnacle has low vig on this side — the devig is
-    reliable. A large gap (> 4%) indicates unusually high vig, suggesting
-    Pinnacle may be uncertain about this market.
-
-    Args:
-        fair_prob: Devigged true probability (0-1).
-        pinnacle_implied: Pinnacle's raw (vigged) implied probability (0-1).
-
-    Returns:
-        1.0 for gap <= 2%, 0.85 for gap <= 4%, 0.7 for gap > 4%.
-    """
-    gap = abs(fair_prob - pinnacle_implied)
-    if gap <= 0.02:
-        return 1.0
-    if gap <= 0.04:
-        return 0.85
-    return 0.7
-
-
-def book_spread_factor(book_implieds: list[float]) -> float:
-    """Confidence decay when one book is a pricing outlier.
-
-    Compares the most generous book (lowest implied prob = best odds for bettor)
-    against the median of all non-sharp books. Large spread indicates one book
-    is an outlier rather than genuine market-wide value.
-    """
-    if len(book_implieds) < 2:
-        return 0.80  # Thin market — inherently less reliable
-    sorted_probs = sorted(book_implieds)
-    n = len(sorted_probs)
-    mid = n // 2
-    median = sorted_probs[mid] if n % 2 == 1 else (sorted_probs[mid - 1] + sorted_probs[mid]) / 2.0
-    spread = abs(sorted_probs[0] - median)
-    if spread <= 0.03:
-        return 1.0
-    if spread <= 0.06:
-        return 0.85
-    if spread <= 0.10:
-        return 0.70
-    return 0.55
-
-
-def extrapolation_distance_factor(n_half_points: float) -> float:
-    """Numeric confidence factor based on extrapolation distance.
-
-    Reduces confidence as the logit-space extrapolation extends further
-    from the reference line.
-
-    Args:
-        n_half_points: Number of half-points from the reference line.
-
-    Returns:
-        Confidence factor between 0.70 and 0.95.
-    """
-    abs_hp = abs(n_half_points)
-    if abs_hp <= 2:
-        return 0.90
-    if abs_hp <= 4:
-        return 0.80
-    return 0.65
-
-
 def calculate_ev(book_price: float, true_prob: float) -> float:
     """Calculate expected value percentage for a bet.
 
@@ -266,168 +189,6 @@ def calculate_ev(book_price: float, true_prob: float) -> float:
         )
 
     return (decimal_odds * true_prob - 1.0) * 100.0
-
-
-def _find_sharp_entry(
-    books: list[dict],
-    eligible_sharp_books: tuple[str, ...],
-) -> dict | None:
-    """Find the first sharp book entry in a list of book dicts.
-
-    Args:
-        books: List of {"book": str, "price": float, "observed_at": datetime, ...}.
-        eligible_sharp_books: Tuple of eligible sharp book display names.
-
-    Returns:
-        The first matching book dict, or None.
-    """
-    for entry in books:
-        if entry["book"] in eligible_sharp_books:
-            return entry
-    return None
-
-
-def evaluate_ev_eligibility(
-    league_code: str,
-    market_category: str,
-    side_a_books: list[dict],
-    side_b_books: list[dict],
-    now: datetime | None = None,
-) -> EligibilityResult:
-    """Evaluate whether EV can be computed for a two-way market.
-
-    Checks (in order):
-    1. Strategy exists for (league, market_category)
-    2. Sharp book present on both sides
-    3. Sharp book observed_at within max_reference_staleness_seconds of now
-    4. >= min_qualifying_books non-excluded books per side
-
-    Args:
-        league_code: League code (e.g., "NBA").
-        market_category: Market category (e.g., "mainline").
-        side_a_books: Book entries for side A.
-        side_b_books: Book entries for side B.
-        now: Current time (defaults to utcnow, injectable for testing).
-
-    Returns:
-        EligibilityResult with eligible=True or disabled_reason explaining why not.
-    """
-    if now is None:
-        now = datetime.now(UTC)
-
-    # 1. Strategy exists?
-    config = get_strategy(league_code, market_category)
-    if config is None:
-        return EligibilityResult(
-            eligible=False,
-            strategy_config=None,
-            disabled_reason="no_strategy",
-            ev_method=None,
-            confidence_tier=None,
-        )
-
-    # Branch: consensus strategies skip sharp book checks
-    if config.strategy_name == "median_consensus":
-        return _evaluate_consensus_eligibility(
-            config, side_a_books, side_b_books,
-        )
-
-    # 2. Sharp book present on both sides?
-    sharp_a = _find_sharp_entry(side_a_books, config.eligible_sharp_books)
-    sharp_b = _find_sharp_entry(side_b_books, config.eligible_sharp_books)
-
-    if sharp_a is None or sharp_b is None:
-        return EligibilityResult(
-            eligible=False,
-            strategy_config=config,
-            disabled_reason="reference_missing",
-            ev_method=config.strategy_name,
-            confidence_tier=None,
-        )
-
-    # 3. Freshness check
-    sharp_a_observed = sharp_a.get("observed_at")
-    sharp_b_observed = sharp_b.get("observed_at")
-
-    if sharp_a_observed is not None and sharp_b_observed is not None:
-        # Use the older of the two timestamps
-        oldest = min(sharp_a_observed, sharp_b_observed)
-        age_seconds = (now - oldest).total_seconds()
-        if age_seconds > config.max_reference_staleness_seconds:
-            return EligibilityResult(
-                eligible=False,
-                strategy_config=config,
-                disabled_reason="reference_stale",
-                ev_method=config.strategy_name,
-                confidence_tier=None,
-            )
-
-    # 4. Minimum qualifying books per side (must be in INCLUDED_BOOKS)
-    qualifying_a = sum(1 for b in side_a_books if b["book"] in INCLUDED_BOOKS)
-    qualifying_b = sum(1 for b in side_b_books if b["book"] in INCLUDED_BOOKS)
-
-    # Non-sharp book count = total included minus sharp books
-    non_sharp_a = sum(1 for b in side_a_books if b["book"] in INCLUDED_BOOKS and b["book"] not in config.eligible_sharp_books)
-    non_sharp_b = sum(1 for b in side_b_books if b["book"] in INCLUDED_BOOKS and b["book"] not in config.eligible_sharp_books)
-    non_sharp_count = min(non_sharp_a, non_sharp_b)
-
-    if (
-        qualifying_a < config.min_qualifying_books
-        or qualifying_b < config.min_qualifying_books
-    ):
-        return EligibilityResult(
-            eligible=False,
-            strategy_config=config,
-            disabled_reason="insufficient_books",
-            ev_method=config.strategy_name,
-            confidence_tier=market_confidence_tier(non_sharp_count),
-        )
-
-    return EligibilityResult(
-        eligible=True,
-        strategy_config=config,
-        disabled_reason=None,
-        ev_method=config.strategy_name,
-        confidence_tier=market_confidence_tier(non_sharp_count),
-    )
-
-
-def _evaluate_consensus_eligibility(
-    config: EVStrategyConfig,
-    side_a_books: list[dict],
-    side_b_books: list[dict],
-) -> EligibilityResult:
-    """Evaluate eligibility for median consensus strategy.
-
-    Instead of requiring a sharp book, requires min_qualifying_books
-    common books present on both sides simultaneously.
-    """
-    a_book_names = {b["book"] for b in side_a_books if b["book"] in INCLUDED_BOOKS}
-    b_book_names = {b["book"] for b in side_b_books if b["book"] in INCLUDED_BOOKS}
-    common_books = a_book_names & b_book_names
-    common_count = len(common_books)
-
-    # Non-sharp count = all included books (no sharp books in consensus)
-    non_sharp_a = len(a_book_names)
-    non_sharp_b = len(b_book_names)
-    non_sharp_count = min(non_sharp_a, non_sharp_b)
-
-    if common_count < config.min_qualifying_books:
-        return EligibilityResult(
-            eligible=False,
-            strategy_config=config,
-            disabled_reason="insufficient_books",
-            ev_method=config.strategy_name,
-            confidence_tier=market_confidence_tier(non_sharp_count),
-        )
-
-    return EligibilityResult(
-        eligible=True,
-        strategy_config=config,
-        disabled_reason=None,
-        ev_method=config.strategy_name,
-        confidence_tier=market_confidence_tier(non_sharp_count),
-    )
 
 
 def _median(sorted_values: list[float]) -> float:

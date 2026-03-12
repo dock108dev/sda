@@ -110,6 +110,6 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         ping_task.cancel()
         try:
             await asyncio.wait_for(ping_task, timeout=1.0)
-        except (asyncio.TimeoutError, asyncio.CancelledError):
+        except (TimeoutError, asyncio.CancelledError):
             pass
         realtime_manager.disconnect(conn)

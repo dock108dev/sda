@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.celery_app import celery_app
 from app.tasks._task_infra import _complete_job_run, _start_job_run, _task_db
@@ -104,7 +104,7 @@ async def _run_record_outcomes() -> dict:
                 pred.home_win_actual = home_win_actual
                 pred.correct_winner = correct
                 pred.brier_score = round(brier, 6)
-                pred.outcome_recorded_at = datetime.now(timezone.utc)
+                pred.outcome_recorded_at = datetime.now(UTC)
                 recorded += 1
 
             await db.commit()

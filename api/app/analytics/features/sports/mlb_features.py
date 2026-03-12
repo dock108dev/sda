@@ -236,10 +236,16 @@ def _extract_metrics(
     profile_key: str,
     fallback_key: str,
 ) -> dict[str, Any]:
-    """Extract metrics from a profile, handling both profile objects and dicts."""
+    """Extract metrics dict from the profiles container.
+
+    Handles two input shapes:
+    - Dict with ``"metrics"`` key: ``{"metrics": {...}}`` → returns inner dict
+    - Object with ``.metrics`` attribute (e.g., ``PlayerProfile``) → returns ``.metrics``
+    - Flat dict: ``{key: value, ...}`` → returned as-is
+    """
     profile = profiles.get(profile_key) or profiles.get(fallback_key, {})
 
-    if hasattr(profile, "metrics"):
+    if hasattr(profile, "metrics") and not isinstance(profile, dict):
         return profile.metrics
 
     if isinstance(profile, dict):

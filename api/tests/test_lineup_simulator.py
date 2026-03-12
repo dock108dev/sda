@@ -1,7 +1,5 @@
 import random
 
-import pytest
-
 from app.analytics.sports.mlb.game_simulator import MLBGameSimulator, _build_weights
 
 

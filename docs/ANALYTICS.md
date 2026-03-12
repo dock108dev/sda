@@ -34,8 +34,49 @@ The simulation engine runs Monte Carlo simulations with pluggable probability so
 
 1. `SimulationEngine.run_simulation()` receives game context (teams, probability mode, iterations)
 2. `ProbabilityResolver` selects the provider based on mode (`rule_based`, `ml`, `ensemble`, `pitch_level`)
-3. `SimulationRunner` invokes the sport-specific simulator N times (default 5,000–10,000)
-4. Results aggregated: win probabilities, average scores, score distribution
+3. The resolver always overwrites `game_context["home_probabilities"]` — profile-derived PA probs are only pre-set when mode is `rule_based`
+4. `SimulationRunner` invokes the sport-specific simulator N times (default 5,000–10,000)
+5. Results aggregated: win probabilities, average scores, score distribution
+6. `SimulationDiagnostics` attached to result with execution metadata
+
+### Simulation Diagnostics
+
+Every simulation run produces a `SimulationDiagnostics` object (`core/simulation_diagnostics.py`) that tracks exactly what ran and why:
+
+```python
+@dataclass
+class ModelInfo:
+    model_id: str
+    version: int
+    trained_at: str | None = None
+    metrics: dict[str, float]        # accuracy, brier_score, etc.
+
+@dataclass
+class SimulationDiagnostics:
+    requested_mode: str              # what the user asked for
+    executed_mode: str               # what actually ran
+    fallback_used: bool = False
+    fallback_reason: str | None      # e.g., "no_active_ml_model"
+    model_info: ModelInfo | None
+    warnings: list[str]              # validation issues, etc.
+```
+
+The diagnostics are surfaced in the API response as `simulation_info` and in the frontend as the `SimulationInfoBanner` component (mode badge, fallback warnings, model version/accuracy).
+
+### Profile Freshness
+
+`get_team_rolling_profile()` returns a `ProfileResult` dataclass (`services/profile_service.py`) with freshness metadata:
+
+```python
+@dataclass
+class ProfileResult:
+    metrics: dict[str, float]
+    games_used: int
+    date_range: tuple[str, str]      # (oldest_game_date, newest_game_date)
+    season_breakdown: dict[int, int] # year → game count
+```
+
+Surfaced in the API response as `profile_meta.data_freshness` with per-team game counts and date ranges. The frontend shows a stale-data warning when the newest game is older than 3 days.
 
 ### MLB Game Simulation (PA-Level)
 
@@ -113,7 +154,7 @@ Four probability sources, selected via `probability_mode`:
 | **EnsembleProvider** | Weighted average of rule-based and ML predictions (configurable weights). |
 | **Pitch-level** | Implicit — when mode is `pitch_level`, SimulationEngine routes to PitchLevelGameSimulator. |
 
-**Fallback:** If ML model fails to load and `strict_mode=False`, falls back to rule-based automatically.
+**Fallback:** If ML model fails to load and `strict_mode=False`, falls back to rule-based automatically. The `SimulationDiagnostics` object records `fallback_used=True` with a `fallback_reason` so the user is never surprised by a silent fallback.
 
 ---
 
@@ -145,6 +186,23 @@ JSON-backed registry at `models/registry/registry.json`. Organized by sport + mo
 3. `InferenceCache` loads artifact via joblib (or returns cached)
 4. `FeatureBuilder` extracts features from profiles
 5. Model's `predict_proba(features)` returns probability dict
+
+### Model Status
+
+`ModelInferenceEngine.get_model_status(sport, model_type)` returns structured info about model availability:
+
+```python
+{
+    "available": bool,
+    "model_id": str | None,
+    "version": int | None,
+    "trained_at": str | None,
+    "metrics": dict,
+    "reason": str | None     # e.g., "no_active_model" when unavailable
+}
+```
+
+Used by `ProbabilityResolver` to populate `SimulationDiagnostics.model_info`.
 
 ---
 
@@ -293,7 +351,7 @@ All endpoints prefixed with `/api/analytics`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/simulate` | Monte Carlo sim with full control (probability mode, ensemble, custom probabilities, optional lineup) |
+| POST | `/simulate` | Monte Carlo sim with full control (probability mode, ensemble, custom probabilities, optional lineup). Response includes `simulation_info` (diagnostics), `predictions` (Monte Carlo + game model), and `profile_meta.data_freshness` |
 | POST | `/live-simulate` | Live game simulation from current state |
 | POST | `/batch-simulate` | Async batch simulation over upcoming games (Celery task) |
 | GET | `/batch-simulate-jobs` | List batch simulation jobs |

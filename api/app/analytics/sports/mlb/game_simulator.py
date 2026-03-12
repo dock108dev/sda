@@ -18,7 +18,11 @@ from typing import Any
 
 from app.analytics.sports.mlb.constants import (
     DEFAULT_EVENT_PROBS_SUFFIXED as _DEFAULT_PROBS,
+)
+from app.analytics.sports.mlb.constants import (
     MAX_EXTRA_INNINGS as _MAX_EXTRA_INNINGS,
+)
+from app.analytics.sports.mlb.constants import (
     PA_EVENTS as EVENTS,
 )
 

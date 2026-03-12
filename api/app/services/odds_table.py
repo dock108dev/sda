@@ -14,7 +14,6 @@ from typing import Any
 from ..db.odds import SportsGameOdds
 from .derived_metrics import _fmt_american_odds
 
-
 # Market type display order
 _MARKET_ORDER = {"spread": 0, "total": 1, "moneyline": 2}
 

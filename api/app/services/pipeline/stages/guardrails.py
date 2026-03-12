@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .block_types import MAX_BLOCKS, MIN_BLOCKS
-from .embedded_tweets import MAX_EMBEDDED_TWEETS, MAX_TWEETS_PER_BLOCK
+from .tweet_scorer import MAX_EMBEDDED_TWEETS, MAX_TWEETS_PER_BLOCK
 
 logger = logging.getLogger(__name__)
 

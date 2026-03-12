@@ -10,9 +10,13 @@ import asyncio
 import logging
 import traceback
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from app.celery_app import celery_app
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 from app.tasks._task_infra import _complete_job_run, _start_job_run, _task_db
 
 logger = logging.getLogger(__name__)
@@ -75,7 +79,7 @@ async def _run_batch_sim(job_id: int, celery_task_id: str | None = None) -> dict
                 if job:
                     job.status = "failed"
                     job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
-                    job.completed_at = datetime.now(timezone.utc)
+                    job.completed_at = datetime.now(UTC)
                     await db.commit()
             await _complete_job_run(sf, run_id, "error", str(exc)[:500])
             return {"error": str(exc), "job_id": job_id}
@@ -94,7 +98,7 @@ async def _run_batch_sim(job_id: int, celery_task_id: str | None = None) -> dict
                     await _save_prediction_outcomes(
                         db, job_id, job.sport, job.probability_mode, result.get("results") or []
                     )
-                job.completed_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(UTC)
                 await db.commit()
 
         summary = {"analytics_job_id": job_id, "game_count": result.get("game_count")}
@@ -105,7 +109,7 @@ async def _run_batch_sim(job_id: int, celery_task_id: str | None = None) -> dict
 
 
 async def _save_prediction_outcomes(
-    db: "AsyncSession",
+    db: AsyncSession,
     batch_sim_job_id: int,
     sport: str,
     probability_mode: str,
@@ -165,17 +169,17 @@ async def _execute_batch_sim(
         # Apply date filters — default to today onward
         # Parse strings to datetime for timestamptz column comparison
         if date_start:
-            dt_start = datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            dt_start = datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=UTC)
             game_stmt = game_stmt.where(SportsGame.game_date >= dt_start)
         else:
             game_stmt = game_stmt.where(
-                SportsGame.game_date >= datetime.now(timezone.utc).replace(
+                SportsGame.game_date >= datetime.now(UTC).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
             )
         if date_end:
             dt_end = datetime.strptime(date_end, "%Y-%m-%d").replace(
-                hour=23, minute=59, second=59, tzinfo=timezone.utc
+                hour=23, minute=59, second=59, tzinfo=UTC
             )
             game_stmt = game_stmt.where(SportsGame.game_date <= dt_end)
 

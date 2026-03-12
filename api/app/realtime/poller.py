@@ -19,7 +19,8 @@ import time
 from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func as sqlfunc, select
+from sqlalchemy import func as sqlfunc
+from sqlalchemy import select
 
 from app.db import _get_session_factory
 from app.db.odds import FairbetGameOddsWork

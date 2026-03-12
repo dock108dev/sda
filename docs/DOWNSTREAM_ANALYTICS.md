@@ -93,7 +93,7 @@ Content-Type: application/json
 }
 ```
 
-**Lineup mode activation:** Both `home_lineup` and `away_lineup` must have exactly 9 entries. If either is missing or wrong count, the backend silently falls back to team-level mode.
+**Lineup mode activation:** Both `home_lineup` and `away_lineup` must have exactly 9 entries. If either is missing, the backend uses team-level mode. If `use_lineup=True` is passed to a simulator that does not implement `simulate_game_with_lineups()`, the backend raises `RuntimeError` — there is no silent fallback.
 
 #### Step 5: Display Results
 
@@ -113,21 +113,54 @@ interface SimulationResult {
   most_common_scores: { score: string; probability: number }[];
   iterations: number;
   probability_source?: string;
+  probability_meta?: Record<string, unknown>;
   profile_meta?: {
     has_profiles?: boolean;
     rolling_window?: number;
     model_win_probability?: number;
-    lineup_mode?: {
-      enabled: boolean;
-      home_batters_resolved: number;
-      away_batters_resolved: number;
-      home_starter_resolved: boolean;
-      away_starter_resolved: boolean;
-      starter_innings: number;
+    model_prediction_source?: string;
+    home_pa_source?: string;
+    away_pa_source?: string;
+    lineup_mode?: boolean;
+    home_pitcher?: PitcherAnalytics;
+    away_pitcher?: PitcherAnalytics;
+    home_bullpen?: Record<string, number>;
+    away_bullpen?: Record<string, number>;
+    data_freshness?: {
+      home: { games_used: number; newest_game: string; oldest_game: string };
+      away: { games_used: number; newest_game: string; oldest_game: string };
     };
+    [key: string]: unknown;
   };
+  model_home_win_probability?: number;
   home_pa_probabilities?: Record<string, number>;
   away_pa_probabilities?: Record<string, number>;
+  // Diagnostics (added 2026-03-12)
+  simulation_info?: {
+    requested_mode: string;       // what the user asked for
+    executed_mode: string;        // what actually ran
+    fallback_used: boolean;
+    fallback_reason: string | null;
+    model_info: {
+      model_id: string;
+      version: number;
+      trained_at: string | null;
+      metrics: Record<string, number>;
+    } | null;
+    warnings: string[];
+  };
+  predictions?: {
+    monte_carlo: {
+      home_win_probability: number | null;
+      method: string;
+      probability_inputs?: string;
+    };
+    game_model?: {
+      home_win_probability: number | null;
+      method: string;
+      model_id?: string;
+    };
+  };
 }
 ```
 
@@ -135,8 +168,11 @@ Key display elements:
 - **Win probabilities** — show as percentages with a visual bar
 - **Average scores** — expected final score
 - **Most common scores** — show top 5-10 likely final scores
-- **Lineup mode confirmation** — check `profile_meta.lineup_mode.enabled` to confirm lineup data was used
+- **Lineup mode confirmation** — check `profile_meta.lineup_mode` to confirm lineup data was used
 - **PA probabilities** — `home_pa_probabilities` / `away_pa_probabilities` show aggregate plate appearance outcome distributions (strikeout, walk, single, double, triple, home_run probabilities)
+- **Simulation diagnostics** — check `simulation_info` to see what probability mode actually ran and whether a fallback occurred. Display `simulation_info.fallback_reason` as a warning when `fallback_used` is true
+- **Data freshness** — check `profile_meta.data_freshness` for per-team game counts and date ranges. Warn if newest game is older than 3 days
+- **Two prediction systems** — `predictions.monte_carlo` is the PA-level Monte Carlo result; `predictions.game_model` (when present) is a separate trained classifier prediction
 
 ### Live Simulation
 
@@ -243,7 +279,7 @@ interface SimulationRequest {
   away_team: string;
   iterations?: number;
   seed?: number | null;
-  probability_mode?: "rule_based" | "ml" | "ensemble";
+  probability_mode?: "rule_based" | "ml" | "ensemble" | "pitch_level";
   rolling_window?: number;
   sportsbook?: Record<string, unknown>;
   // Lineup fields (all 4 required to activate lineup mode)

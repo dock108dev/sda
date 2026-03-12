@@ -134,6 +134,44 @@ class ModelInferenceEngine:
             return model.to_simulation_probs(probs)
         return probs
 
+    def get_model_status(self, sport: str, model_type: str) -> dict[str, Any]:
+        """Return structured status for the active model.
+
+        Returns a dict with ``available``, ``model_id``, ``version``,
+        ``trained_at``, ``metrics``, and ``reason`` (when unavailable).
+        """
+        sport = sport.lower()
+        info = self._registry.get_active_model_info(sport, model_type)
+        if not info:
+            return {
+                "available": False,
+                "model_id": None,
+                "version": None,
+                "trained_at": None,
+                "metrics": {},
+                "reason": "no_active_model",
+            }
+
+        path = info.get("path")
+        if not path:
+            return {
+                "available": False,
+                "model_id": info.get("model_id"),
+                "version": info.get("version"),
+                "trained_at": info.get("trained_at"),
+                "metrics": info.get("metrics", {}),
+                "reason": "no_artifact_path",
+            }
+
+        return {
+            "available": True,
+            "model_id": info.get("model_id"),
+            "version": info.get("version"),
+            "trained_at": info.get("trained_at"),
+            "metrics": info.get("metrics", {}),
+            "reason": None,
+        }
+
     def _get_model(self, sport: str, model_type: str) -> Any:
         """Get the active model instance, using cache for artifacts.
 

@@ -27,6 +27,7 @@ def _get_redis():
     hit the same database as scraper writes.
     """
     import redis
+
     from app.config import settings
     return redis.from_url(settings.celery_broker, decode_responses=True)
 

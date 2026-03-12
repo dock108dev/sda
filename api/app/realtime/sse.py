@@ -73,7 +73,7 @@ async def sse_endpoint(
                         timeout=SSE_KEEPALIVE_INTERVAL_S,
                     )
                     yield f"data: {data}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Send keepalive comment
                     yield ": keepalive\n\n"
 

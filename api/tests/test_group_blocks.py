@@ -13,7 +13,6 @@ from app.services.pipeline.stages.block_analysis import (
     find_period_boundaries,
     find_scoring_runs,
 )
-from app.services.pipeline.stages.league_config import get_config
 from app.services.pipeline.stages.block_types import (
     MAX_BLOCKS,
     MIN_BLOCKS,
@@ -31,6 +30,7 @@ from app.services.pipeline.stages.group_split_points import (
     find_split_points,
     find_weighted_split_points,
 )
+from app.services.pipeline.stages.league_config import get_config
 
 
 class TestCalculateBlockCount:

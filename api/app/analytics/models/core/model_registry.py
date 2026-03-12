@@ -26,7 +26,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -128,7 +128,7 @@ class ModelRegistry:
                 existing["metadata_path"] = metadata_path or existing.get("metadata_path")
                 existing["metrics"] = metadata or existing.get("metrics", {})
                 existing["version"] = version
-                existing["updated_at"] = datetime.now(timezone.utc).isoformat()
+                existing["updated_at"] = datetime.now(UTC).isoformat()
                 self._save()
                 logger.info("model_updated", extra={"model_id": model_id})
                 return model_id
@@ -138,7 +138,7 @@ class ModelRegistry:
             "artifact_path": artifact_path,
             "metadata_path": metadata_path,
             "version": version,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "metrics": metadata or {},
         }
         models_list.append(record)

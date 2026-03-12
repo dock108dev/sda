@@ -39,7 +39,6 @@ _NHL_WALL_OT_SECONDS = 20 * 60                  # 1200s = 20 min
 # Selection limit (imported here for assign_tweets_to_blocks_by_time)
 from .tweet_scorer import MAX_EMBEDDED_TWEETS  # noqa: E402
 
-
 # =============================================================================
 # PBP NORMALIZATION PERIOD START (dispatch)
 # =============================================================================

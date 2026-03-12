@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from starlette.responses import JSONResponse
 
+from app.analytics.api.analytics_routes import router as analytics_router
 from app.config import settings
 from app.db import _get_engine
 from app.dependencies.auth import verify_api_key
@@ -19,9 +20,16 @@ from app.realtime.manager import realtime_manager
 from app.realtime.poller import db_poller
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
-from app.analytics.api.analytics_routes import router as analytics_router
 from app.routers import auth, fairbet, preferences, reading_positions, simulator, social, sports
-from app.routers.admin import odds_sync, pbp, pipeline, resolution, task_control, timeline_jobs, users
+from app.routers.admin import (
+    odds_sync,
+    pbp,
+    pipeline,
+    resolution,
+    task_control,
+    timeline_jobs,
+    users,
+)
 
 configure_logging(
     service="sports-data-admin-api",

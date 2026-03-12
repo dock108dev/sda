@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analytics.api.analytics_routes import _predict_with_game_model
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.services.profile_service import (
     get_team_rolling_profile,
@@ -243,7 +244,8 @@ class MLBTeamsResponse(BaseModel):
 async def list_simulator_teams(
     db: AsyncSession = Depends(get_db),
 ) -> MLBTeamsResponse:
-    from sqlalchemy import func as sa_func, select as sa_select
+    from sqlalchemy import func as sa_func
+    from sqlalchemy import select as sa_select
 
     from app.db.mlb_advanced import MLBGameAdvancedStats
     from app.db.sports import SportsTeam
@@ -326,19 +328,22 @@ async def simulate_mlb_game(
     model_wp: float | None = None
 
     # Build rolling team profiles from DB
-    home_profile = await get_team_rolling_profile(
+    home_profile_result = await get_team_rolling_profile(
         home_abbr, "mlb", rolling_window=req.rolling_window, db=db,
     )
-    away_profile = await get_team_rolling_profile(
+    away_profile_result = await get_team_rolling_profile(
         away_abbr, "mlb", rolling_window=req.rolling_window, db=db,
     )
+    home_profile = home_profile_result.metrics if home_profile_result else None
+    away_profile = away_profile_result.metrics if away_profile_result else None
 
     if home_profile and away_profile:
         profiles_loaded = True
         home_pa = profile_to_pa_probabilities(home_profile)
         away_pa = profile_to_pa_probabilities(away_profile)
-        game_context["home_probabilities"] = home_pa
-        game_context["away_probabilities"] = away_pa
+        # Do NOT pre-set game_context["home_probabilities"] — the ML
+        # resolver in simulation_engine will populate these.  Pre-setting
+        # would shadow the resolver output (the priority bug).
         game_context["profiles"] = {
             "home_profile": {"metrics": home_profile},
             "away_profile": {"metrics": away_profile},
@@ -409,62 +414,3 @@ def _to_pa_model(pa: dict[str, float]) -> TeamPAProbabilities:
     )
 
 
-async def _predict_with_game_model(
-    sport: str,
-    home_profile: dict[str, float],
-    away_profile: dict[str, float],
-    db: AsyncSession,
-) -> float | None:
-    """Run the active game model on two team profiles.
-
-    Returns home win probability or ``None`` if no model is available.
-    """
-    try:
-        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
-        from app.db.analytics import AnalyticsTrainingJob
-        from sqlalchemy import select as sa_select
-
-        stmt = (
-            sa_select(AnalyticsTrainingJob)
-            .where(
-                AnalyticsTrainingJob.status == "completed",
-                AnalyticsTrainingJob.sport == sport,
-                AnalyticsTrainingJob.model_type == "game",
-                AnalyticsTrainingJob.model_id.isnot(None),
-            )
-            .order_by(AnalyticsTrainingJob.created_at.desc())
-            .limit(1)
-        )
-        result = await db.execute(stmt)
-        job = result.scalar_one_or_none()
-        if job is None or not job.feature_names:
-            return None
-
-        builder = MLBFeatureBuilder()
-        vec = builder.build_game_features(home_profile, away_profile)
-        feature_array = vec.to_array()
-        if not feature_array:
-            return None
-
-        import joblib
-        from pathlib import Path
-
-        artifact_path = job.artifact_path
-        if artifact_path and Path(artifact_path).exists():
-            model = joblib.load(artifact_path)
-            import numpy as np
-
-            X = np.array([feature_array])
-            proba = model.predict_proba(X)
-            classes = list(model.classes_)
-            if 1 in classes:
-                home_win_idx = classes.index(1)
-                return round(float(proba[0][home_win_idx]), 4)
-
-        return None
-    except Exception as exc:
-        logger.warning(
-            "game_model_prediction_failed",
-            extra={"sport": sport, "error": str(exc)},
-        )
-        return None

@@ -11,7 +11,6 @@ from sqlalchemy.orm import selectinload
 from ...db import AsyncSession, get_db
 from ...db.flow import SportsGameFlow
 from ...db.mlb_advanced import MLBGameAdvancedStats, MLBPlayerAdvancedStats
-from ...db.odds import SportsGameOdds
 from ...db.social import TeamSocialPost
 from ...db.sports import (
     SportsGame,

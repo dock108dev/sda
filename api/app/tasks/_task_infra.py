@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,6 @@ async def _start_job_run(
     import app.db.mlb_advanced  # noqa: F401
     import app.db.odds  # noqa: F401
     import app.db.social  # noqa: F401
-
     from app.db.scraper import SportsJobRun
 
     async with sf() as db:
@@ -42,7 +41,7 @@ async def _start_job_run(
             phase=phase,
             leagues=[],  # analytics tasks aren't league-scoped
             status="running",
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             celery_task_id=celery_task_id,
             summary_data=summary_data,
         )
@@ -66,7 +65,7 @@ async def _complete_job_run(
         run = await db.get(SportsJobRun, run_id)
         if not run:
             return
-        finished = datetime.now(timezone.utc)
+        finished = datetime.now(UTC)
         run.status = status
         run.finished_at = finished
         run.duration_seconds = (finished - run.started_at).total_seconds()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
@@ -12,12 +12,11 @@ from app.db import get_db
 from app.dependencies.roles import require_user
 from app.routers.preferences import router
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-_TS = datetime(2026, 3, 11, 12, 0, 0, tzinfo=timezone.utc)
+_TS = datetime(2026, 3, 11, 12, 0, 0, tzinfo=UTC)
 
 
 def _make_app(mock_db=None, user_id: int = 1):

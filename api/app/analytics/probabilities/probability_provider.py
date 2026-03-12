@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 from app.analytics.sports.mlb.constants import (
     DEFAULT_EVENT_PROBS as _MLB_DEFAULTS,
+)
+from app.analytics.sports.mlb.constants import (
     PA_EVENTS as MLB_PA_EVENTS,
 )
 

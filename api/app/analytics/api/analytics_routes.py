@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analytics.core.simulation_cache import SimulationCache
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.services.profile_service import (
+    ProfileResult,
     get_pitcher_rolling_profile,
     get_player_rolling_profile,
     get_team_info,
@@ -40,17 +41,16 @@ _MLB_TEAM_ABBRS = frozenset({
 
 logger = logging.getLogger(__name__)
 
-from ._calibration_routes import router as _calibration_router
-from ._feature_routes import router as _feature_router
-from ._model_routes import router as _model_router
-from ._pipeline_routes import router as _pipeline_router
-
 # Re-export serializers used by tests
 from ._calibration_routes import (  # noqa: F401
     _serialize_degradation_alert,
     _serialize_prediction_outcome,
 )
+from ._calibration_routes import router as _calibration_router
+from ._feature_routes import router as _feature_router
+from ._model_routes import router as _model_router
 from ._pipeline_routes import _serialize_batch_sim_job  # noqa: F401
+from ._pipeline_routes import router as _pipeline_router
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -127,7 +127,7 @@ async def get_team_analytics(
     team_info = await get_team_info(team_id, db=db)
     name = team_info["name"] if team_info else team_id
 
-    profile = await get_team_rolling_profile(
+    profile_result = await get_team_rolling_profile(
         team_id, sport, rolling_window=rolling_window, db=db,
     )
 
@@ -135,9 +135,9 @@ async def get_team_analytics(
         "sport": sport,
         "team_id": team_id.upper(),
         "name": name,
-        "metrics": profile or {},
+        "metrics": profile_result.metrics if profile_result else {},
         "rolling_window": rolling_window,
-        "games_in_profile": rolling_window if profile else 0,
+        "games_in_profile": profile_result.games_used if profile_result else 0,
     }
 
 
@@ -165,12 +165,14 @@ async def get_matchup_analytics(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Get head-to-head matchup analysis from rolling profiles."""
-    profile_a = await get_team_rolling_profile(
+    profile_result_a = await get_team_rolling_profile(
         entity_a, sport, rolling_window=rolling_window, db=db,
     )
-    profile_b = await get_team_rolling_profile(
+    profile_result_b = await get_team_rolling_profile(
         entity_b, sport, rolling_window=rolling_window, db=db,
     )
+    profile_a = profile_result_a.metrics if profile_result_a else None
+    profile_b = profile_result_b.metrics if profile_result_b else None
 
     comparison: dict[str, Any] = {}
     advantages: dict[str, str] = {}
@@ -219,35 +221,50 @@ async def post_simulate(
     profile_meta: dict[str, Any] = {}
 
     # Build team profiles from DB when teams are provided
-    home_profile = None
-    away_profile = None
+    home_profile: dict[str, float] | None = None
+    away_profile: dict[str, float] | None = None
+    home_profile_result: ProfileResult | None = None
+    away_profile_result: ProfileResult | None = None
+
     if req.home_team and req.away_team:
-        home_profile = await get_team_rolling_profile(
+        home_profile_result = await get_team_rolling_profile(
             req.home_team, req.sport,
             rolling_window=req.rolling_window,
             exclude_playoffs=req.exclude_playoffs, db=db,
         )
-        away_profile = await get_team_rolling_profile(
+        away_profile_result = await get_team_rolling_profile(
             req.away_team, req.sport,
             rolling_window=req.rolling_window,
             exclude_playoffs=req.exclude_playoffs, db=db,
         )
+        home_profile = home_profile_result.metrics if home_profile_result else None
+        away_profile = away_profile_result.metrics if away_profile_result else None
 
         if home_profile and away_profile:
             profile_meta["has_profiles"] = True
             profile_meta["rolling_window"] = req.rolling_window
 
-            # Convert profiles to PA probabilities for the simulator
-            if not req.home_probabilities:
-                game_context["home_probabilities"] = profile_to_pa_probabilities(
-                    home_profile
-                )
-                profile_meta["home_pa_source"] = "team_profile"
-            if not req.away_probabilities:
-                game_context["away_probabilities"] = profile_to_pa_probabilities(
-                    away_profile
-                )
-                profile_meta["away_pa_source"] = "team_profile"
+            # Always compute profile-derived PA probs (for display),
+            # but only use them as simulator input for rule_based / unspecified modes.
+            profile_home_pa = profile_to_pa_probabilities(home_profile)
+            profile_away_pa = profile_to_pa_probabilities(away_profile)
+            profile_meta["profile_pa_probabilities"] = {
+                "home": profile_home_pa,
+                "away": profile_away_pa,
+            }
+
+            # Only pre-populate game_context PA probs when the mode is
+            # rule_based or unspecified.  For ml / ensemble the resolver
+            # will overwrite these — this fixes the priority bug where
+            # profile-derived PA probs shadowed resolver output.
+            effective_mode = req.probability_mode or "rule_based"
+            if effective_mode == "rule_based":
+                if not req.home_probabilities:
+                    game_context["home_probabilities"] = profile_home_pa
+                    profile_meta["home_pa_source"] = "team_profile"
+                if not req.away_probabilities:
+                    game_context["away_probabilities"] = profile_away_pa
+                    profile_meta["away_pa_source"] = "team_profile"
 
             # Attach profiles for ML model if using ml/ensemble mode
             game_context["profiles"] = {
@@ -263,6 +280,20 @@ async def post_simulate(
                 profile_meta["model_win_probability"] = model_prediction
                 profile_meta["model_prediction_source"] = "game_model"
 
+            # Thread data freshness into profile_meta
+            profile_meta["data_freshness"] = {
+                "home": {
+                    "games_used": home_profile_result.games_used,
+                    "newest_game": home_profile_result.date_range[1],
+                    "oldest_game": home_profile_result.date_range[0],
+                },
+                "away": {
+                    "games_used": away_profile_result.games_used,
+                    "newest_game": away_profile_result.date_range[1],
+                    "oldest_game": away_profile_result.date_range[0],
+                },
+            }
+
             logger.info(
                 "simulation_profiles_loaded",
                 extra={
@@ -276,8 +307,8 @@ async def post_simulate(
             )
         else:
             profile_meta["has_profiles"] = False
-            profile_meta["home_found"] = home_profile is not None
-            profile_meta["away_found"] = away_profile is not None
+            profile_meta["home_found"] = home_profile_result is not None
+            profile_meta["away_found"] = away_profile_result is not None
 
     if req.home_probabilities:
         game_context["home_probabilities"] = req.home_probabilities
@@ -320,6 +351,31 @@ async def post_simulate(
     if "home_probabilities" in game_context and profile_meta.get("has_profiles"):
         response["home_pa_probabilities"] = game_context["home_probabilities"]
         response["away_pa_probabilities"] = game_context.get("away_probabilities")
+
+    # --- Phase 1C: Surface diagnostics in response ---
+    diagnostics = result.get("_diagnostics")
+    if diagnostics is not None:
+        response["simulation_info"] = diagnostics.to_dict()
+        # Clean up internal key
+        response.pop("_diagnostics", None)
+
+    # --- Phase 3C: Clarify the two prediction systems ---
+    predictions: dict[str, Any] = {
+        "monte_carlo": {
+            "home_win_probability": response.get("home_win_probability"),
+            "method": "plate-appearance Monte Carlo simulation",
+            "probability_inputs": response.get("simulation_info", {}).get("executed_mode", "default")
+                if "simulation_info" in response else
+                result.get("probability_source", "default"),
+        },
+    }
+    model_wp = profile_meta.get("model_win_probability")
+    if model_wp is not None:
+        predictions["game_model"] = {
+            "home_win_probability": model_wp,
+            "method": "trained classifier on team profile features",
+        }
+    response["predictions"] = predictions
 
     return response
 
@@ -580,11 +636,11 @@ async def _predict_with_game_model(
     Returns home win probability or None if no model is available.
     """
     try:
-        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
-        from app.db.analytics import AnalyticsTrainingJob
-
         # Find the most recent completed game model
         from sqlalchemy import select as sa_select
+
+        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
+        from app.db.analytics import AnalyticsTrainingJob
 
         stmt = (
             sa_select(AnalyticsTrainingJob)
@@ -611,8 +667,9 @@ async def _predict_with_game_model(
             return None
 
         # Try to load and predict with the actual sklearn model
-        import joblib
         from pathlib import Path
+
+        import joblib
 
         artifact_path = job.artifact_path
         if artifact_path and Path(artifact_path).exists():
@@ -645,7 +702,8 @@ async def get_mlb_teams(
     Used by the simulator UI to populate team dropdowns. Only returns
     teams that have an abbreviation set.
     """
-    from sqlalchemy import func as sa_func, select as sa_select
+    from sqlalchemy import func as sa_func
+    from sqlalchemy import select as sa_select
 
     from app.db.mlb_advanced import MLBGameAdvancedStats
     from app.db.sports import SportsTeam

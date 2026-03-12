@@ -5,8 +5,9 @@ Revises: 20260307_degradation_alerts
 Create Date: 2026-03-11
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "20260311_add_users"
 down_revision = "20260307_degradation_alerts"

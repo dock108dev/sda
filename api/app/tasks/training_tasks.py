@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.celery_app import celery_app
 from app.tasks._task_infra import _complete_job_run, _start_job_run, _task_db
@@ -81,7 +81,7 @@ async def _run_training(job_id: int, celery_task_id: str | None = None) -> dict:
                 if job:
                     job.status = "failed"
                     job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
-                    job.completed_at = datetime.now(timezone.utc)
+                    job.completed_at = datetime.now(UTC)
                     await db.commit()
             await _complete_job_run(sf, run_id, "error", str(exc)[:500])
             return {"error": str(exc), "job_id": job_id}
@@ -102,7 +102,7 @@ async def _run_training(job_id: int, celery_task_id: str | None = None) -> dict:
                     job.test_count = result.get("test_count")
                     job.feature_names = result.get("feature_names")
                     job.feature_importance = result.get("feature_importance")
-                job.completed_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(UTC)
                 await db.commit()
 
         summary = {
@@ -252,7 +252,7 @@ async def _run_backtest(job_id: int, celery_task_id: str | None = None) -> dict:
                 if job:
                     job.status = "failed"
                     job.error_message = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
-                    job.completed_at = datetime.now(timezone.utc)
+                    job.completed_at = datetime.now(UTC)
                     await db.commit()
             await _complete_job_run(sf, run_id, "error", str(exc)[:500])
             return {"error": str(exc), "job_id": job_id}
@@ -269,7 +269,7 @@ async def _run_backtest(job_id: int, celery_task_id: str | None = None) -> dict:
                     job.correct_count = result.get("correct_count")
                     job.metrics = result.get("metrics")
                     job.predictions = result.get("predictions")
-                job.completed_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(UTC)
                 await db.commit()
 
         summary = {
@@ -295,14 +295,14 @@ async def _execute_backtest(
     rolling_window: int = 30,
 ) -> dict:
     """Run model predictions against held-out games and compare to actuals."""
+    # 1. Validate and load model artifact
+    from pathlib import Path as _Path
+
     import joblib
     import numpy as np
 
     from app.analytics.features.core.feature_builder import FeatureBuilder
     from app.analytics.training.sports.mlb_training import MLBTrainingPipeline
-
-    # 1. Validate and load model artifact
-    from pathlib import Path as _Path
     artifact = _Path(artifact_path) if artifact_path else None
     if not artifact or not artifact.exists():
         return {"error": f"Model artifact not found: {artifact_path}"}
@@ -438,9 +438,9 @@ async def _execute_backtest(
 # on Celery task orchestration.
 # ---------------------------------------------------------------------------
 
-from app.tasks._training_helpers import (  # noqa: E402
-    get_sklearn_model as _get_sklearn_model,
-)
 from app.tasks._training_data import (  # noqa: E402
     load_training_data_from_db as _load_training_data_from_db,
+)
+from app.tasks._training_helpers import (  # noqa: E402
+    get_sklearn_model as _get_sklearn_model,
 )

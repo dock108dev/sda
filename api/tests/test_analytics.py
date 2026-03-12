@@ -856,6 +856,7 @@ class TestMLBGameSimulator:
 
     def test_deterministic_with_seed(self) -> None:
         import random
+
         from app.analytics.sports.mlb.game_simulator import MLBGameSimulator
 
         sim = MLBGameSimulator()
@@ -873,6 +874,7 @@ class TestMLBGameSimulator:
 
     def test_scores_are_non_negative(self) -> None:
         import random
+
         from app.analytics.sports.mlb.game_simulator import MLBGameSimulator
 
         sim = MLBGameSimulator()
@@ -1127,7 +1129,6 @@ class TestFullAnalysisPipeline:
         from app.analytics.core.matchup_engine import MatchupEngine
         from app.analytics.core.profile_builder import ProfileBuilder
         from app.analytics.core.simulation_analysis import SimulationAnalysis
-        from app.analytics.core.simulation_runner import SimulationRunner
         from app.analytics.sports.mlb.game_simulator import MLBGameSimulator
 
         # Aggregate
@@ -1154,7 +1155,6 @@ class TestFullAnalysisPipeline:
             "home_probabilities": matchup.probabilities,
             "away_probabilities": matchup.probabilities,
         }
-        runner = SimulationRunner()
         raw_results = []
         import random
         rng = random.Random(42)
@@ -1217,10 +1217,12 @@ class TestAnalyticsRoutes:
     def _make_test_client(self):
         """Create a TestClient with a mock DB dependency override."""
         from unittest.mock import AsyncMock, MagicMock
+
+        from fastapi import FastAPI
         from fastapi.testclient import TestClient
+
         from app.analytics.api.analytics_routes import router
         from app.db import get_db
-        from fastapi import FastAPI
 
         # Mock async session that returns empty results
         mock_db = AsyncMock()
@@ -1249,9 +1251,10 @@ class TestAnalyticsRoutes:
         assert "metrics" in data
 
     def test_get_player_endpoint(self) -> None:
-        from fastapi.testclient import TestClient
-        from app.analytics.api.analytics_routes import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from app.analytics.api.analytics_routes import router
 
         app = FastAPI()
         app.include_router(router)
@@ -1292,9 +1295,10 @@ class TestAnalyticsRoutes:
         assert data["iterations"] == 100
 
     def test_post_live_simulate_endpoint(self) -> None:
-        from fastapi.testclient import TestClient
-        from app.analytics.api.analytics_routes import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from app.analytics.api.analytics_routes import router
 
         app = FastAPI()
         app.include_router(router)
@@ -1323,6 +1327,7 @@ class TestMLBLiveSimulator:
 
     def test_simulate_from_midgame(self) -> None:
         import random
+
         from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
 
         sim = MLBLiveSimulator()
@@ -1342,6 +1347,7 @@ class TestMLBLiveSimulator:
 
     def test_simulate_bottom_of_inning(self) -> None:
         import random
+
         from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
 
         sim = MLBLiveSimulator()
@@ -1358,6 +1364,7 @@ class TestMLBLiveSimulator:
 
     def test_deterministic_with_seed(self) -> None:
         import random
+
         from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
 
         sim = MLBLiveSimulator()
@@ -1374,6 +1381,7 @@ class TestMLBLiveSimulator:
 
     def test_late_game_home_leading(self) -> None:
         import random
+
         from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
 
         sim = MLBLiveSimulator()
@@ -1394,6 +1402,7 @@ class TestMLBLiveSimulator:
 
     def test_walkoff_scenario(self) -> None:
         import random
+
         from app.analytics.sports.mlb.live_simulator import MLBLiveSimulator
 
         sim = MLBLiveSimulator()
@@ -1579,6 +1588,7 @@ class TestSimulationCache:
 
     def test_live_mode_expires(self) -> None:
         import time as _time
+
         from app.analytics.core.simulation_cache import SimulationCache
 
         cache = SimulationCache()
@@ -1861,6 +1871,7 @@ class TestModelLoader:
 
     def test_load_valid_pickle(self, tmp_path) -> None:
         import pickle
+
         from app.analytics.models.core.model_loader import ModelLoader
 
         # Create a simple pickle file
@@ -2321,10 +2332,8 @@ class TestMLBFeatureBuilder:
         assert all(v >= 0 for v in arr)
 
     def test_profile_object_extraction(self) -> None:
-        from app.analytics.features.sports.mlb_features import MLBFeatureBuilder
         from app.analytics.core.types import PlayerProfile
 
-        builder = MLBFeatureBuilder()
         batter = PlayerProfile(
             player_id="b1", sport="mlb",
             metrics={"contact_rate": 0.85, "power_index": 1.3},
@@ -3260,11 +3269,11 @@ class TestSimulationEngineProbabilityModes:
 # ---------------------------------------------------------------------------
 
 from app.analytics.probabilities.probability_provider import (
+    MLB_PA_EVENTS,
     MLProvider,
     RuleBasedProvider,
     normalize_probabilities,
     validate_probabilities,
-    MLB_PA_EVENTS,
 )
 from app.analytics.probabilities.probability_resolver import (
     ProbabilityResolver,
@@ -3605,6 +3614,7 @@ class TestModelRegistryPersistence:
 
     def test_persists_to_disk(self, tmp_path):
         import json
+
         from app.analytics.models.core.model_registry import ModelRegistry
 
         path = tmp_path / "reg.json"
@@ -3619,6 +3629,7 @@ class TestModelRegistryPersistence:
 
     def test_loads_from_disk(self, tmp_path):
         import json
+
         from app.analytics.models.core.model_registry import ModelRegistry
 
         path = tmp_path / "reg.json"
@@ -3725,8 +3736,8 @@ class TestModelRegistryInferenceIntegration:
         assert registry.get_active_model_info("mlb", "pa") is None
 
     def test_inference_engine_uses_registry(self, tmp_path):
-        from app.analytics.models.core.model_registry import ModelRegistry
         from app.analytics.inference.model_inference_engine import ModelInferenceEngine
+        from app.analytics.models.core.model_registry import ModelRegistry
 
         registry = ModelRegistry(registry_path=tmp_path / "reg.json")
         engine = ModelInferenceEngine(registry=registry)
@@ -3737,8 +3748,8 @@ class TestModelRegistryInferenceIntegration:
         assert len(probs) > 0
 
     def test_inference_engine_with_active_artifact(self, tmp_path):
-        from app.analytics.models.core.model_registry import ModelRegistry
         from app.analytics.inference.model_inference_engine import ModelInferenceEngine
+        from app.analytics.models.core.model_registry import ModelRegistry
 
         registry = ModelRegistry(registry_path=tmp_path / "reg.json")
         # Register with a non-existent path — should fall back to builtin
@@ -3756,6 +3767,7 @@ class TestModelRegistryTrainingIntegration:
 
     def test_training_pipeline_registers(self, tmp_path):
         from unittest.mock import patch
+
         from app.analytics.training.core.training_pipeline import TrainingPipeline
 
         pipeline = TrainingPipeline(
@@ -4088,6 +4100,7 @@ class TestModelServiceGetDetails:
 
     def test_enriches_from_metadata_file(self, tmp_path):
         import json
+
         from app.analytics.models.core.model_registry import ModelRegistry
         from app.analytics.services.model_service import ModelService
 
@@ -4160,6 +4173,7 @@ class TestActivationControls:
 
     def test_activation_updates_registry_json(self, tmp_path):
         import json
+
         from app.analytics.models.core.model_registry import ModelRegistry
 
         reg_path = tmp_path / "reg.json"
@@ -4304,17 +4318,17 @@ class TestActivationInferenceReload:
     """Test that inference engine detects active model changes."""
 
     def test_engine_tracks_loaded_model_id(self):
-        from app.analytics.models.core.model_registry import ModelRegistry
         from app.analytics.inference.model_inference_engine import ModelInferenceEngine
+        from app.analytics.models.core.model_registry import ModelRegistry
 
         registry = ModelRegistry(registry_path=None)
         engine = ModelInferenceEngine(registry=registry)
         assert engine._loaded_model_ids == {}
 
     def test_engine_clears_cache_on_model_switch(self, tmp_path):
-        from app.analytics.models.core.model_registry import ModelRegistry
-        from app.analytics.inference.model_inference_engine import ModelInferenceEngine
         from app.analytics.inference.inference_cache import InferenceCache
+        from app.analytics.inference.model_inference_engine import ModelInferenceEngine
+        from app.analytics.models.core.model_registry import ModelRegistry
 
         registry = ModelRegistry(registry_path=None)
         registry.register_model("mlb", "plate_appearance", "v1", "/fake/v1.pkl")
@@ -4409,11 +4423,11 @@ class TestEnsembleEngine:
         assert "z" in result
 
     def test_combine_from_config(self):
-        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
         from app.analytics.ensemble.ensemble_config import (
             EnsembleConfig,
             ProviderWeight,
         )
+        from app.analytics.ensemble.ensemble_engine import EnsembleEngine
 
         engine = EnsembleEngine()
         config = EnsembleConfig(
@@ -4445,9 +4459,9 @@ class TestEnsembleConfig:
         from app.analytics.ensemble.ensemble_config import (
             EnsembleConfig,
             ProviderWeight,
+            _custom_configs,
             get_ensemble_config,
             set_ensemble_config,
-            _custom_configs,
         )
 
         custom = EnsembleConfig(
@@ -4574,8 +4588,8 @@ class TestMLBPitchOutcomeModel:
 
     def test_all_outcomes_present(self):
         from app.analytics.models.sports.mlb.pitch_model import (
-            MLBPitchOutcomeModel,
             PITCH_OUTCOMES,
+            MLBPitchOutcomeModel,
         )
 
         model = MLBPitchOutcomeModel()
@@ -4614,8 +4628,8 @@ class TestMLBBattedBallModel:
 
     def test_all_outcomes_present(self):
         from app.analytics.models.sports.mlb.batted_ball_model import (
-            MLBBattedBallModel,
             BATTED_BALL_OUTCOMES,
+            MLBBattedBallModel,
         )
 
         model = MLBBattedBallModel()
@@ -4699,8 +4713,9 @@ class TestPitchSimulator:
     def test_walk_rule(self):
         """Walk requires exactly 4 balls."""
         import random as stdlib_random
-        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+
         from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
 
         # Force all pitches to be balls via a mock model
         class AllBalls(MLBPitchOutcomeModel):
@@ -4715,8 +4730,9 @@ class TestPitchSimulator:
     def test_strikeout_rule(self):
         """Strikeout requires 3 strikes."""
         import random as stdlib_random
-        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+
         from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
 
         class AllStrikes(MLBPitchOutcomeModel):
             def predict_proba(self, features):
@@ -4730,8 +4746,9 @@ class TestPitchSimulator:
     def test_foul_with_two_strikes_stays(self):
         """Foul with 2 strikes should not result in strikeout."""
         import random as stdlib_random
-        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
+
         from app.analytics.models.sports.mlb.pitch_model import MLBPitchOutcomeModel
+        from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
 
         call_count = 0
 
@@ -4752,6 +4769,7 @@ class TestPitchSimulator:
 
     def test_deterministic_with_seed(self):
         import random as stdlib_random
+
         from app.analytics.simulation.mlb.pitch_simulator import PitchSimulator
 
         sim = PitchSimulator()
@@ -4765,10 +4783,11 @@ class TestPitchLevelGameSimulator:
     """Test full game simulation at the pitch level."""
 
     def test_simulate_game_returns_scores(self):
+        import random as stdlib_random
+
         from app.analytics.simulation.mlb.pitch_simulator import (
             PitchLevelGameSimulator,
         )
-        import random as stdlib_random
 
         sim = PitchLevelGameSimulator()
         result = sim.simulate_game({}, rng=stdlib_random.Random(42))
@@ -4834,6 +4853,40 @@ class TestSSOTRoutes:
 
         source = inspect.getsource(analytics_routes)
         assert "yaml_configs" not in source
+
+    def test_no_duplicate_predict_with_game_model(self):
+        """_predict_with_game_model must not be duplicated in simulator.py."""
+        import inspect
+
+        from app.routers import simulator
+
+        source = inspect.getsource(simulator)
+        assert "async def _predict_with_game_model" not in source, (
+            "simulator.py must import _predict_with_game_model from "
+            "analytics_routes, not define its own copy"
+        )
+
+    def test_simulator_uses_profile_result_metrics(self):
+        """simulator.py must extract .metrics from ProfileResult, not pass it raw."""
+        import inspect
+
+        from app.routers import simulator
+
+        source = inspect.getsource(simulator)
+        # The function should use home_profile_result.metrics, not pass
+        # the ProfileResult directly to profile_to_pa_probabilities.
+        assert "home_profile_result.metrics" in source, (
+            "simulator.py must extract .metrics from the ProfileResult "
+            "returned by get_team_rolling_profile"
+        )
+
+    def test_simulation_diagnostics_importable(self):
+        """SimulationDiagnostics must be the SSOT for simulation run metadata."""
+        from app.analytics.core.simulation_diagnostics import (
+            SimulationDiagnostics,
+        )
+        diag = SimulationDiagnostics(requested_mode="ml", executed_mode="ml")
+        assert diag.to_dict()["requested_mode"] == "ml"
 
     def test_training_tasks_module_exists(self):
         """The Celery training task module must be importable."""
@@ -5004,7 +5057,7 @@ class TestBuildRollingProfile:
 
         # 3 games before target, 7 on or after
         games = [(f"2025-04-{i+1:02d}", self._make_stats()) for i in range(3)]
-        games += [(f"2025-04-15", self._make_stats()) for _ in range(7)]
+        games += [("2025-04-15", self._make_stats()) for _ in range(7)]
         result = _build_rolling_profile(
             games, before_date="2025-04-04", window=30
         )
@@ -5159,6 +5212,7 @@ class TestBacktestRoutes:
 
     def test_backtest_route_exists(self):
         import inspect
+
         from app.analytics.api import _pipeline_routes
 
         source = inspect.getsource(_pipeline_routes)
@@ -5219,6 +5273,7 @@ class TestBatchSimRoutes:
 
     def test_batch_sim_routes_exist(self):
         import inspect
+
         from app.analytics.api import _pipeline_routes
 
         source = inspect.getsource(_pipeline_routes)
@@ -5310,6 +5365,7 @@ class TestRunRecordOutcomes:
 
     def test_is_coroutine(self):
         import asyncio
+
         from app.tasks.outcome_tasks import _run_record_outcomes
 
         assert asyncio.iscoroutinefunction(_run_record_outcomes)
@@ -5320,6 +5376,7 @@ class TestOutcomeRoutes:
 
     def test_outcome_routes_exist(self):
         import inspect
+
         from app.analytics.api import _calibration_routes
 
         source = inspect.getsource(_calibration_routes)
@@ -5334,6 +5391,7 @@ class TestOutcomeRoutes:
 
     def test_calibration_report_endpoint_exists(self):
         import inspect
+
         from app.analytics.api import _calibration_routes
 
         source = inspect.getsource(_calibration_routes)
@@ -5440,6 +5498,7 @@ class TestDegradationCheckTask:
 
     def test_run_function_is_coroutine(self):
         import asyncio
+
         from app.tasks.outcome_tasks import _run_degradation_check
 
         assert asyncio.iscoroutinefunction(_run_degradation_check)
@@ -5530,6 +5589,7 @@ class TestDegradationRoutes:
 
     def test_routes_exist(self):
         import inspect
+
         from app.analytics.api import _calibration_routes
 
         source = inspect.getsource(_calibration_routes)

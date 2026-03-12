@@ -10,8 +10,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.simulator import router
+from app.analytics.services.profile_service import ProfileResult
 from app.db import get_db
+from app.routers.simulator import router
 
 
 def _make_client(mock_db=None):
@@ -108,12 +109,16 @@ class TestSimulateMLBGame:
     def test_runs_simulation_with_profiles(
         self, mock_service, mock_profile, mock_model_predict,
     ) -> None:
-        profile = {
+        metrics = {
             "contact_rate": 0.8, "power_index": 0.5, "barrel_rate": 0.08,
             "hard_hit_rate": 0.35, "swing_rate": 0.45, "whiff_rate": 0.25,
             "avg_exit_velocity": 88.0, "expected_slug": 0.4,
         }
-        mock_profile.return_value = profile
+        mock_profile.return_value = ProfileResult(
+            metrics=metrics,
+            games_used=30,
+            date_range=("2026-02-10", "2026-03-10"),
+        )
         mock_model_predict.return_value = 0.58
 
         mock_service.run_full_simulation.return_value = {

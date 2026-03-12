@@ -8,13 +8,28 @@ so that inference-time profiles match training-time profiles exactly.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ProfileResult:
+    """Rich return type for team rolling profiles.
+
+    Wraps the raw metrics dict with freshness metadata so the caller
+    can surface data-age information to the user.
+    """
+
+    metrics: dict[str, float]
+    games_used: int
+    date_range: tuple[str, str]  # (oldest_game_date, newest_game_date)
+    season_breakdown: dict[int, int] = field(default_factory=dict)  # year -> game count
 
 _PRIOR_SEASON_DECAY = 0.7
 
@@ -45,7 +60,7 @@ async def get_team_rolling_profile(
     rolling_window: int = 30,
     exclude_playoffs: bool = False,
     db: AsyncSession,
-) -> dict[str, Any] | None:
+) -> ProfileResult | None:
     """Build a rolling profile for a team from recent game stats.
 
     Looks up the team by abbreviation, finds their last N games with
@@ -53,7 +68,8 @@ async def get_team_rolling_profile(
     keys match what ``MLBFeatureBuilder`` and the training pipeline
     expect.
 
-    Returns ``None`` if the team is not found or has insufficient data.
+    Returns a ``ProfileResult`` with metrics and freshness metadata,
+    or ``None`` if the team is not found or has insufficient data.
     """
     if sport.lower() != "mlb":
         return None
@@ -121,7 +137,19 @@ async def get_team_rolling_profile(
         if vw:
             aggregated[key] = round(_weighted_mean(vw), 4)
 
-    return aggregated
+    # Build freshness metadata from game_dates (already desc sorted)
+    newest_date = game_dates[0].strftime("%Y-%m-%d")
+    oldest_date = game_dates[-1].strftime("%Y-%m-%d")
+    season_breakdown: dict[int, int] = {}
+    for gd in game_dates:
+        season_breakdown[gd.year] = season_breakdown.get(gd.year, 0) + 1
+
+    return ProfileResult(
+        metrics=aggregated,
+        games_used=len(rows),
+        date_range=(oldest_date, newest_date),
+        season_breakdown=season_breakdown,
+    )
 
 
 async def get_team_info(
@@ -168,7 +196,6 @@ def profile_to_pa_probabilities(profile: dict[str, float]) -> dict[str, float]:
     whiff = profile.get("whiff_rate", 0.23)
     barrel = profile.get("barrel_rate", 0.07)
     hard_hit = profile.get("hard_hit_rate", 0.35)
-    discipline = profile.get("plate_discipline_index", 0.52)
     contact = profile.get("contact_rate", 0.77)
     chase = profile.get("chase_rate", 0.32)
 
@@ -278,10 +305,11 @@ async def get_player_rolling_profile(
         )
         team = team_result.scalar_one_or_none()
         if team is not None:
-            team_profile = await get_team_rolling_profile(
+            team_profile_result = await get_team_rolling_profile(
                 team.abbreviation, "mlb",
                 exclude_playoffs=exclude_playoffs, db=db,
             )
+            team_profile = team_profile_result.metrics if team_profile_result else None
             if team_profile is not None:
                 player_weight = games_found / 5
                 team_weight = 1.0 - player_weight
@@ -389,7 +417,7 @@ async def get_team_roster(
     Returns a dict with ``batters`` and ``pitchers`` lists built from
     recent final games. Returns ``None`` if the team cannot be found.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from sqlalchemy import cast, func
     from sqlalchemy.types import Float
@@ -428,7 +456,7 @@ async def get_team_roster(
     # During the offseason the 30-day window will be empty, so we widen
     # until we find data.
     for lookback_days in (30, 90, 365):
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=lookback_days)
+        cutoff = datetime.now(tz=UTC) - timedelta(days=lookback_days)
 
         recent_games_sq = (
             select(SportsGame.id)
