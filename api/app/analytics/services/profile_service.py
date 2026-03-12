@@ -423,81 +423,86 @@ async def get_team_roster(
         )
         return None
 
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=30)
+    # Try progressively wider windows: 30 days, 90 days, full season.
+    # During the offseason the 30-day window will be empty, so we widen
+    # until we find data.
+    for lookback_days in (30, 90, 365):
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=lookback_days)
 
-    # Recent final games subquery
-    recent_games_sq = (
-        select(SportsGame.id)
-        .where(
-            SportsGame.status == "final",
-            SportsGame.game_date >= cutoff,
+        recent_games_sq = (
+            select(SportsGame.id)
+            .where(
+                SportsGame.status == "final",
+                SportsGame.game_date >= cutoff,
+            )
+            .scalar_subquery()
         )
-        .scalar_subquery()
-    )
 
-    # --- Batters from MLBPlayerAdvancedStats ---
-    batter_stmt = (
-        select(
-            MLBPlayerAdvancedStats.player_external_ref,
-            MLBPlayerAdvancedStats.player_name,
-            func.count().label("games_played"),
+        # --- Batters from MLBPlayerAdvancedStats ---
+        batter_stmt = (
+            select(
+                MLBPlayerAdvancedStats.player_external_ref,
+                MLBPlayerAdvancedStats.player_name,
+                func.count().label("games_played"),
+            )
+            .where(
+                MLBPlayerAdvancedStats.team_id == team.id,
+                MLBPlayerAdvancedStats.game_id.in_(recent_games_sq),
+            )
+            .group_by(
+                MLBPlayerAdvancedStats.player_external_ref,
+                MLBPlayerAdvancedStats.player_name,
+            )
+            .order_by(func.count().desc())
         )
-        .where(
-            MLBPlayerAdvancedStats.team_id == team.id,
-            MLBPlayerAdvancedStats.game_id.in_(recent_games_sq),
-        )
-        .group_by(
-            MLBPlayerAdvancedStats.player_external_ref,
-            MLBPlayerAdvancedStats.player_name,
-        )
-        .order_by(func.count().desc())
-    )
-    batter_result = await db.execute(batter_stmt)
-    batters = [
-        {
-            "external_ref": row.player_external_ref,
-            "name": row.player_name,
-            "games_played": row.games_played,
-        }
-        for row in batter_result.all()
-    ]
+        batter_result = await db.execute(batter_stmt)
+        batters = [
+            {
+                "external_ref": row.player_external_ref,
+                "name": row.player_name,
+                "games_played": row.games_played,
+            }
+            for row in batter_result.all()
+        ]
 
-    # --- Pitchers from SportsPlayerBoxscore ---
-    pitcher_stmt = (
-        select(
-            SportsPlayerBoxscore.player_external_ref,
-            SportsPlayerBoxscore.player_name,
-            func.count().label("games"),
-            func.avg(
-                cast(
-                    SportsPlayerBoxscore.stats["innings_pitched"].as_float(),
-                    Float,
-                )
-            ).label("avg_ip"),
+        # --- Pitchers from SportsPlayerBoxscore ---
+        pitcher_stmt = (
+            select(
+                SportsPlayerBoxscore.player_external_ref,
+                SportsPlayerBoxscore.player_name,
+                func.count().label("games"),
+                func.avg(
+                    cast(
+                        SportsPlayerBoxscore.stats["innings_pitched"].as_float(),
+                        Float,
+                    )
+                ).label("avg_ip"),
+            )
+            .where(
+                SportsPlayerBoxscore.team_id == team.id,
+                SportsPlayerBoxscore.game_id.in_(recent_games_sq),
+                SportsPlayerBoxscore.stats["innings_pitched"].as_float() > 0,
+            )
+            .group_by(
+                SportsPlayerBoxscore.player_external_ref,
+                SportsPlayerBoxscore.player_name,
+            )
         )
-        .where(
-            SportsPlayerBoxscore.team_id == team.id,
-            SportsPlayerBoxscore.game_id.in_(recent_games_sq),
-            SportsPlayerBoxscore.stats["innings_pitched"].as_float() > 0,
-        )
-        .group_by(
-            SportsPlayerBoxscore.player_external_ref,
-            SportsPlayerBoxscore.player_name,
-        )
-    )
-    pitcher_result = await db.execute(pitcher_stmt)
-    pitchers = [
-        {
-            "external_ref": row.player_external_ref,
-            "name": row.player_name,
-            "games": row.games,
-            "avg_ip": round(float(row.avg_ip), 2) if row.avg_ip else 0.0,
-        }
-        for row in pitcher_result.all()
-    ]
+        pitcher_result = await db.execute(pitcher_stmt)
+        pitchers = [
+            {
+                "external_ref": row.player_external_ref,
+                "name": row.player_name,
+                "games": row.games,
+                "avg_ip": round(float(row.avg_ip), 2) if row.avg_ip else 0.0,
+            }
+            for row in pitcher_result.all()
+        ]
 
-    # If DB has no recent data (e.g., start of season), fall back to
-    # the MLB Stats API active roster.
+        if batters or pitchers:
+            break
+
+    # If DB has no data at all, fall back to the MLB Stats API active roster.
     if not batters and not pitchers and team.external_ref:
         fallback = await _fetch_mlb_api_roster(team.external_ref)
         if fallback:
