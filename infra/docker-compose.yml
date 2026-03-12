@@ -76,6 +76,8 @@ services:
     networks:
       - internal
       - app
+    volumes:
+      - model-artifacts:/app/models
     ports:
       - "8000:8000"
     healthcheck:
@@ -93,6 +95,8 @@ services:
     profiles: ["dev", "prod"]
     logging: *default-logging
     command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    volumes:
+      - model-artifacts:/app/models
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
       REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/0
@@ -379,6 +383,7 @@ services:
 volumes:
   postgres-data:
   scraper-cache:
+  model-artifacts:
 
 networks:
   internal:
