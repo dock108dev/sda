@@ -8,6 +8,7 @@ so that inference-time profiles match training-time profiles exactly.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -15,12 +16,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
+_PRIOR_SEASON_DECAY = 0.7
+
+
+def _season_weights(game_dates: list[datetime]) -> list[float]:
+    """Return per-game weights: 1.0 for current season, 0.7 for prior seasons.
+
+    Current season is defined by the year of the most recent game date.
+    """
+    if not game_dates:
+        return []
+    current_year = game_dates[0].year  # most recent game (desc order)
+    return [1.0 if d.year == current_year else _PRIOR_SEASON_DECAY for d in game_dates]
+
+
+def _weighted_mean(values_weights: list[tuple[float, float]]) -> float:
+    """Compute a weighted mean from (value, weight) pairs."""
+    total_w = sum(w for _, w in values_weights)
+    if total_w == 0:
+        return 0.0
+    return sum(v * w for v, w in values_weights) / total_w
+
 
 async def get_team_rolling_profile(
     abbreviation: str,
     sport: str,
     *,
     rolling_window: int = 30,
+    exclude_playoffs: bool = False,
     db: AsyncSession,
 ) -> dict[str, Any] | None:
     """Build a rolling profile for a team from recent game stats.
@@ -69,6 +92,8 @@ async def get_team_rolling_profile(
         .order_by(SportsGame.game_date.desc())
         .limit(rolling_window)
     )
+    if exclude_playoffs:
+        stmt = stmt.where(SportsGame.season_type == "regular")
     result = await db.execute(stmt)
     rows = result.all()
 
@@ -83,15 +108,18 @@ async def get_team_rolling_profile(
     # stats_to_metrics function as training
     from app.tasks._training_helpers import stats_to_metrics
 
+    game_dates = [gd for _, gd in rows]
+    weights = _season_weights(game_dates)
+
     all_metrics: list[dict[str, float]] = []
     for stats_row, _game_date in rows:
         all_metrics.append(stats_to_metrics(stats_row))
 
     aggregated: dict[str, float] = {}
     for key in all_metrics[0]:
-        values = [m[key] for m in all_metrics if key in m]
-        if values:
-            aggregated[key] = round(sum(values) / len(values), 4)
+        vw = [(m[key], w) for m, w in zip(all_metrics, weights) if key in m]
+        if vw:
+            aggregated[key] = round(_weighted_mean(vw), 4)
 
     return aggregated
 
@@ -195,6 +223,7 @@ async def get_player_rolling_profile(
     team_id: int,
     *,
     rolling_window: int = 30,
+    exclude_playoffs: bool = False,
     db: AsyncSession,
 ) -> dict[str, float] | None:
     """Build a rolling batting profile for a player from recent game stats.
@@ -209,7 +238,7 @@ async def get_player_rolling_profile(
     from app.db.sports import SportsGame, SportsTeam
 
     stmt = (
-        select(MLBPlayerAdvancedStats)
+        select(MLBPlayerAdvancedStats, SportsGame.game_date)
         .join(SportsGame, SportsGame.id == MLBPlayerAdvancedStats.game_id)
         .where(
             MLBPlayerAdvancedStats.player_external_ref == player_external_ref,
@@ -218,23 +247,28 @@ async def get_player_rolling_profile(
         .order_by(SportsGame.game_date.desc())
         .limit(rolling_window)
     )
+    if exclude_playoffs:
+        stmt = stmt.where(SportsGame.season_type == "regular")
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = result.all()
 
     if len(rows) == 0:
         return None
 
     from app.tasks._training_helpers import stats_to_metrics
 
+    game_dates = [gd for _, gd in rows]
+    weights = _season_weights(game_dates)
+
     all_metrics: list[dict[str, float]] = []
-    for stats_row in rows:
+    for stats_row, _game_date in rows:
         all_metrics.append(stats_to_metrics(stats_row))
 
     player_profile: dict[str, float] = {}
     for key in all_metrics[0]:
-        values = [m[key] for m in all_metrics if key in m]
-        if values:
-            player_profile[key] = round(sum(values) / len(values), 4)
+        vw = [(m[key], w) for m, w in zip(all_metrics, weights) if key in m]
+        if vw:
+            player_profile[key] = round(_weighted_mean(vw), 4)
 
     games_found = len(rows)
     if games_found < 5:
@@ -245,7 +279,8 @@ async def get_player_rolling_profile(
         team = team_result.scalar_one_or_none()
         if team is not None:
             team_profile = await get_team_rolling_profile(
-                team.abbreviation, "mlb", db=db
+                team.abbreviation, "mlb",
+                exclude_playoffs=exclude_playoffs, db=db,
             )
             if team_profile is not None:
                 player_weight = games_found / 5
@@ -268,6 +303,7 @@ async def get_pitcher_rolling_profile(
     team_id: int,
     *,
     rolling_window: int = 30,
+    exclude_playoffs: bool = False,
     db: AsyncSession,
 ) -> dict[str, float] | None:
     """Build a rolling pitching profile from recent boxscore data.
@@ -280,7 +316,7 @@ async def get_pitcher_rolling_profile(
     from app.db.sports import SportsGame, SportsPlayerBoxscore
 
     stmt = (
-        select(SportsPlayerBoxscore)
+        select(SportsPlayerBoxscore, SportsGame.game_date)
         .join(SportsGame, SportsGame.id == SportsPlayerBoxscore.game_id)
         .where(
             SportsPlayerBoxscore.player_external_ref == player_external_ref,
@@ -290,11 +326,14 @@ async def get_pitcher_rolling_profile(
         .order_by(SportsGame.game_date.desc())
         .limit(rolling_window)
     )
+    if exclude_playoffs:
+        stmt = stmt.where(SportsGame.season_type == "regular")
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = result.all()
 
     per_game_metrics: list[dict[str, float]] = []
-    for row in rows:
+    game_dates_for_weighting: list[datetime] = []
+    for row, game_date in rows:
         stats = row.stats or {}
         strike_outs = float(stats.get("strike_outs", 0))
         base_on_balls = float(stats.get("base_on_balls", 0))
@@ -317,6 +356,7 @@ async def get_pitcher_rolling_profile(
                 ),
             }
         )
+        game_dates_for_weighting.append(game_date)
 
     if len(per_game_metrics) < 3:
         logger.info(
@@ -328,10 +368,12 @@ async def get_pitcher_rolling_profile(
         )
         return None
 
+    weights = _season_weights(game_dates_for_weighting)
+
     aggregated: dict[str, float] = {}
     for key in per_game_metrics[0]:
-        values = [m[key] for m in per_game_metrics]
-        aggregated[key] = round(sum(values) / len(values), 4)
+        vw = [(m[key], w) for m, w in zip(per_game_metrics, weights)]
+        aggregated[key] = round(_weighted_mean(vw), 4)
 
     return aggregated
 

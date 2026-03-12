@@ -117,6 +117,7 @@ def upsert_game_stub(
     venue: str | None = None,
     external_ids: dict[str, Any] | None = None,
     tip_time: datetime | None = None,
+    season_type: str = "regular",
 ) -> tuple[int, bool]:
     """Upsert a game without boxscores (used for live schedule feeds).
 
@@ -177,6 +178,10 @@ def upsert_game_stub(
         if tip_time and existing.tip_time is None:
             existing.tip_time = tip_time
             updated = True
+        # Backfill season_type if existing value is "regular" and new value differs
+        if season_type != "regular" and existing.season_type == "regular":
+            existing.season_type = season_type
+            updated = True
         # Don't set end_time to now_utc() - it should come from PBP data
         if updated:
             existing.updated_at = now_utc()
@@ -194,7 +199,7 @@ def upsert_game_stub(
     game = db_models.SportsGame(
         league_id=league_id,
         season=season,
-        season_type="regular",
+        season_type=season_type,
         game_date=normalized_game_date,
         tip_time=tip_time,  # Actual start time (from Odds API or Live Feed)
         home_team_id=home_team_id,

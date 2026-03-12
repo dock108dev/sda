@@ -112,6 +112,7 @@ class SimulateRequest(BaseModel):
     home_starter: PitcherSlot | None = Field(None, description="Home starting pitcher")
     away_starter: PitcherSlot | None = Field(None, description="Away starting pitcher")
     starter_innings: float = Field(6.0, ge=4.0, le=9.0, description="Innings before bullpen takes over")
+    exclude_playoffs: bool = Field(False, description="Exclude postseason games from rolling profiles")
 
 
 @router.get("/team")
@@ -222,11 +223,13 @@ async def post_simulate(
     if req.home_team and req.away_team:
         home_profile = await get_team_rolling_profile(
             req.home_team, req.sport,
-            rolling_window=req.rolling_window, db=db,
+            rolling_window=req.rolling_window,
+            exclude_playoffs=req.exclude_playoffs, db=db,
         )
         away_profile = await get_team_rolling_profile(
             req.away_team, req.sport,
-            rolling_window=req.rolling_window, db=db,
+            rolling_window=req.rolling_window,
+            exclude_playoffs=req.exclude_playoffs, db=db,
         )
 
         if home_profile and away_profile:
@@ -382,12 +385,14 @@ async def _build_lineup_context(
     if req.away_starter:
         away_starter_profile = await get_pitcher_rolling_profile(
             req.away_starter.external_ref, away_team_id,
-            rolling_window=req.rolling_window, db=db,
+            rolling_window=req.rolling_window,
+            exclude_playoffs=req.exclude_playoffs, db=db,
         )
     if req.home_starter:
         home_starter_profile = await get_pitcher_rolling_profile(
             req.home_starter.external_ref, home_team_id,
-            rolling_window=req.rolling_window, db=db,
+            rolling_window=req.rolling_window,
+            exclude_playoffs=req.exclude_playoffs, db=db,
         )
 
     # Fallback pitcher profiles from team-level data
@@ -411,7 +416,8 @@ async def _build_lineup_context(
         for slot in req.home_lineup:
             batter_profile = await get_player_rolling_profile(
                 slot.external_ref, home_team_id,
-                rolling_window=req.rolling_window, db=db,
+                rolling_window=req.rolling_window,
+                exclude_playoffs=req.exclude_playoffs, db=db,
             )
             batter_metrics = batter_profile or (home_profile or {})
             batter_pp = PlayerProfile(
@@ -433,7 +439,8 @@ async def _build_lineup_context(
         for slot in req.away_lineup:
             batter_profile = await get_player_rolling_profile(
                 slot.external_ref, away_team_id,
-                rolling_window=req.rolling_window, db=db,
+                rolling_window=req.rolling_window,
+                exclude_playoffs=req.exclude_playoffs, db=db,
             )
             batter_metrics = batter_profile or (away_profile or {})
             batter_pp = PlayerProfile(

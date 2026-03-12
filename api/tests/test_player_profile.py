@@ -1,5 +1,6 @@
 """Tests for player and pitcher profile service functions."""
 import pytest
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.analytics.services.profile_service import (
@@ -44,7 +45,7 @@ class TestPlayerRollingProfile:
         """Returns None when player has no games."""
         db = AsyncMock()
         result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = []
+        result_mock.all.return_value = []
         db.execute.return_value = result_mock
 
         result = await get_player_rolling_profile("player123", 1, db=db)
@@ -55,10 +56,11 @@ class TestPlayerRollingProfile:
         """Averages stats_to_metrics output across multiple games."""
         db = AsyncMock()
 
-        rows = [_make_mock_stats(barrel_pct=0.10) for _ in range(10)]
+        game_date = datetime(2026, 3, 1, tzinfo=UTC)
+        rows = [(_make_mock_stats(barrel_pct=0.10), game_date) for _ in range(10)]
 
         result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = rows
+        result_mock.all.return_value = rows
         db.execute.return_value = result_mock
 
         result = await get_player_rolling_profile("player123", 1, db=db)
@@ -73,10 +75,11 @@ class TestPlayerRollingProfile:
         db = AsyncMock()
 
         # Only 3 games (< 5 threshold for blending)
-        rows = [_make_mock_stats() for _ in range(3)]
+        game_date = datetime(2026, 3, 1, tzinfo=UTC)
+        rows = [(_make_mock_stats(), game_date) for _ in range(3)]
 
         player_result_mock = MagicMock()
-        player_result_mock.scalars.return_value.all.return_value = rows
+        player_result_mock.all.return_value = rows
 
         # Team lookup mock
         team_mock = MagicMock()
@@ -111,9 +114,10 @@ class TestPitcherRollingProfile:
             "home_runs": 1,
             "hits": 4,
         }
+        game_date = datetime(2026, 3, 1, tzinfo=UTC)
         result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = [
-            MagicMock(stats=stats),
+        result_mock.all.return_value = [
+            (MagicMock(stats=stats), game_date),
         ]
         db.execute.return_value = result_mock
 
@@ -136,10 +140,11 @@ class TestPitcherRollingProfile:
             "home_runs": 1,
             "hits": 5,
         }
-        rows = [MagicMock(stats=stats) for _ in range(5)]
+        game_date = datetime(2026, 3, 1, tzinfo=UTC)
+        rows = [(MagicMock(stats=stats), game_date) for _ in range(5)]
 
         result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = rows
+        result_mock.all.return_value = rows
         db.execute.return_value = result_mock
 
         result = await get_pitcher_rolling_profile("pitcher456", 1, db=db)
@@ -169,15 +174,16 @@ class TestPitcherRollingProfile:
             "hits": 0,
         }
 
+        game_date = datetime(2026, 3, 1, tzinfo=UTC)
         rows = [
-            MagicMock(stats=good_stats),
-            MagicMock(stats=zero_stats),
-            MagicMock(stats=good_stats),
-            MagicMock(stats=good_stats),
+            (MagicMock(stats=good_stats), game_date),
+            (MagicMock(stats=zero_stats), game_date),
+            (MagicMock(stats=good_stats), game_date),
+            (MagicMock(stats=good_stats), game_date),
         ]
 
         result_mock = MagicMock()
-        result_mock.scalars.return_value.all.return_value = rows
+        result_mock.all.return_value = rows
         db.execute.return_value = result_mock
 
         # Only 3 valid games, which meets the threshold of 3

@@ -14,6 +14,7 @@ from ..models import IngestionConfig, NormalizedPlay
 from ..persistence.games import update_game_from_live_feed, upsert_game_stub
 from ..persistence.plays import upsert_plays
 from .mlb import MLBLiveFeedClient
+from .mlb_constants import MLB_GAME_TYPE_MAP
 from .nba import NBALiveFeedClient
 from .nhl import NHLLiveFeedClient
 
@@ -218,6 +219,7 @@ class LiveFeedManager:
         pbp_events = 0
 
         for live_game in self._mlb_client.fetch_schedule(config.start_date, config.end_date):
+            season_type = MLB_GAME_TYPE_MAP.get(live_game.game_type, "regular") if live_game.game_type else "regular"
             game_id, created = upsert_game_stub(
                 session,
                 league_code="MLB",
@@ -229,6 +231,7 @@ class LiveFeedManager:
                 away_score=live_game.away_score,
                 external_ids={"mlb_game_pk": live_game.game_pk},
                 tip_time=live_game.game_date,
+                season_type=season_type,
             )
             games_touched += 1
             logger.info(

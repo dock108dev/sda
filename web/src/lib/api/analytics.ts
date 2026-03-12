@@ -48,6 +48,7 @@ export interface SimulationRequest {
   home_starter?: { external_ref: string; name: string };
   away_starter?: { external_ref: string; name: string };
   starter_innings?: number;
+  exclude_playoffs?: boolean;
 }
 
 export interface ScoreEntry {

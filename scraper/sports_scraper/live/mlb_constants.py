@@ -36,6 +36,19 @@ CONTACT_CODES = {"F", "X", "T", "D", "L", "E"}
 
 # Explicit mapping of MLB event types from result.eventType
 # All recognized event types - unknown types are logged but still stored
+# Mapping from MLB API gameType codes to our season_type values
+MLB_GAME_TYPE_MAP: dict[str, str] = {
+    "R": "regular",
+    "P": "postseason",
+    "F": "postseason",
+    "D": "postseason",
+    "L": "postseason",
+    "W": "postseason",
+    "S": "spring_training",
+    "A": "allstar",
+    "E": "exhibition",
+}
+
 MLB_EVENT_TYPE_MAP: dict[str, str] = {
     # Hit events
     "single": "SINGLE",
