@@ -454,4 +454,64 @@ async def get_team_roster(
         for row in pitcher_result.all()
     ]
 
+    # If DB has no recent data (e.g., start of season), fall back to
+    # the MLB Stats API active roster.
+    if not batters and not pitchers and team.external_ref:
+        fallback = await _fetch_mlb_api_roster(team.external_ref)
+        if fallback:
+            return fallback
+
+    return {"batters": batters, "pitchers": pitchers}
+
+
+async def _fetch_mlb_api_roster(mlb_team_id: str) -> dict[str, Any] | None:
+    """Fetch the active roster from the MLB Stats API.
+
+    Uses ``/api/v1/teams/{id}/roster?rosterType=active`` which is
+    public and requires no authentication.  Returns batters and pitchers
+    in the same shape as the DB-backed ``get_team_roster``.
+    """
+    import httpx
+
+    url = f"https://statsapi.mlb.com/api/v1/teams/{mlb_team_id}/roster?rosterType=active&hydrate=person"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception:
+        logger.exception("mlb_api_roster_fetch_failed", extra={"team_id": mlb_team_id})
+        return None
+
+    roster = data.get("roster", [])
+    if not roster:
+        return None
+
+    batters: list[dict[str, Any]] = []
+    pitchers: list[dict[str, Any]] = []
+
+    for entry in roster:
+        person = entry.get("person", {})
+        player_id = str(person.get("id", ""))
+        name = person.get("fullName", "")
+        position_type = entry.get("position", {}).get("type", "")
+
+        if not player_id or not name:
+            continue
+
+        if position_type == "Pitcher":
+            pitchers.append({
+                "external_ref": player_id,
+                "name": name,
+                "games": 0,
+                "avg_ip": 0.0,
+            })
+        else:
+            batters.append({
+                "external_ref": player_id,
+                "name": name,
+                "games_played": 0,
+            })
+
     return {"batters": batters, "pitchers": pitchers}
