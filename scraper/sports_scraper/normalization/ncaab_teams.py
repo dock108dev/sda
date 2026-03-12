@@ -755,6 +755,10 @@ def _build_variations() -> None:
         "Illinois": "Illinois Fighting Illini",
         # North Dakota (prevent fuzzy mismatch to North Dakota St)
         "North Dakota": "North Dakota Fighting Hawks",
+        # Sam Houston — NCAA scoreboard returns "Sam Houston" without "St"
+        # which fuzzy-matches to "Houston Cougars" instead of Sam Houston St
+        "Sam Houston": "Sam Houston St Bearkats",
+        "Sam Houston State": "Sam Houston St Bearkats",
     }
 
     for variation, canonical in _WELL_KNOWN.items():
