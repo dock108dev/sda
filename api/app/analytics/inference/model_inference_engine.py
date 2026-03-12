@@ -163,13 +163,17 @@ class ModelInferenceEngine:
                 "reason": "no_artifact_path",
             }
 
+        # Check whether the artifact file actually exists on disk
+        from pathlib import Path
+        artifact_exists = Path(path).is_file()
+
         return {
-            "available": True,
+            "available": artifact_exists,
             "model_id": info.get("model_id"),
             "version": info.get("version"),
             "trained_at": info.get("trained_at"),
             "metrics": info.get("metrics", {}),
-            "reason": None,
+            "reason": None if artifact_exists else "artifact_not_found",
         }
 
     def _get_model(self, sport: str, model_type: str) -> Any:
@@ -211,8 +215,12 @@ class ModelInferenceEngine:
                     "artifact_load_failed",
                     extra={"path": path, "error": str(exc)},
                 )
+                # Artifact exists in registry but can't be loaded — return
+                # None so callers (MLProvider) raise and the resolver can
+                # trigger a proper fallback with diagnostics.
+                return None
 
-        # Fall back to built-in model (rule-based or with its own artifact)
+        # No registered model with a path — fall back to built-in model
         return self._registry.get_active_model_instance(sport, model_type)
 
     def _build_features(

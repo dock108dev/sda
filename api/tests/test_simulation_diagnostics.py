@@ -337,7 +337,33 @@ class TestGetModelStatus:
         assert status["available"] is False
         assert status["reason"] == "no_artifact_path"
 
-    def test_active_model_with_path(self):
+    def test_active_model_with_path(self, tmp_path):
+        from app.analytics.inference.model_inference_engine import (
+            ModelInferenceEngine,
+        )
+
+        # Create a real file so is_file() returns True
+        artifact = tmp_path / "pa-v3.pkl"
+        artifact.write_bytes(b"fake")
+
+        registry = MagicMock()
+        registry.get_active_model_info.return_value = {
+            "model_id": "pa-v3",
+            "version": 3,
+            "trained_at": "2026-03-09",
+            "metrics": {"accuracy": 0.61},
+            "path": str(artifact),
+        }
+        engine = ModelInferenceEngine(registry=registry)
+
+        status = engine.get_model_status("mlb", "plate_appearance")
+        assert status["available"] is True
+        assert status["model_id"] == "pa-v3"
+        assert status["version"] == 3
+        assert status["metrics"]["accuracy"] == 0.61
+
+    def test_active_model_artifact_missing(self):
+        """get_model_status reports unavailable when artifact file is missing."""
         from app.analytics.inference.model_inference_engine import (
             ModelInferenceEngine,
         )
@@ -348,12 +374,11 @@ class TestGetModelStatus:
             "version": 3,
             "trained_at": "2026-03-09",
             "metrics": {"accuracy": 0.61},
-            "path": "/models/pa-v3.pkl",
+            "path": "/nonexistent/pa-v3.pkl",
         }
         engine = ModelInferenceEngine(registry=registry)
 
         status = engine.get_model_status("mlb", "plate_appearance")
-        assert status["available"] is True
+        assert status["available"] is False
+        assert status["reason"] == "artifact_not_found"
         assert status["model_id"] == "pa-v3"
-        assert status["version"] == 3
-        assert status["metrics"]["accuracy"] == 0.61
