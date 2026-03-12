@@ -143,6 +143,9 @@ class MLBLiveFeedClient:
 
                 weather = game_data.get("weather")
 
+                # Extract game type code (R=regular, P/F/D/L/W=postseason, etc.)
+                game_type = game_data.get("gameType")
+
                 games.append(
                     MLBLiveGame(
                         game_pk=game_pk,
@@ -154,6 +157,7 @@ class MLBLiveFeedClient:
                         away_score=away_score,
                         venue=venue_name,
                         weather=weather,
+                        game_type=game_type,
                     )
                 )
 

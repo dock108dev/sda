@@ -24,6 +24,7 @@ class MLBLiveGame:
     away_score: int | None
     venue: str | None = None
     weather: dict | None = None
+    game_type: str | None = None  # MLB API gameType code (R, P, F, D, etc.)
 
 
 @dataclass

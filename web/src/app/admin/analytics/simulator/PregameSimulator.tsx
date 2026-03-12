@@ -34,6 +34,9 @@ export function PregameSimulator() {
   const [teams, setTeams] = useState<MLBTeam[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
 
+  // Playoff exclusion
+  const [excludePlayoffs, setExcludePlayoffs] = useState(false);
+
   // Lineup mode
   const [useLineup, setUseLineup] = useState(false);
   const [homeLineup, setHomeLineup] = useState<LineupSlot[]>([]);
@@ -136,6 +139,7 @@ export function PregameSimulator() {
         iterations,
         probability_mode: probabilityMode,
         rolling_window: rollingWindow,
+        exclude_playoffs: excludePlayoffs || undefined,
       };
       if (useLineup && lineupFilled(homeLineup) && lineupFilled(awayLineup)) {
         req.home_lineup = homeLineup;
@@ -248,6 +252,21 @@ export function PregameSimulator() {
             <span style={{ fontWeight: 500 }}>Lineup Mode</span>
             <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
               — per-batter probabilities using Statcast profiles
+            </span>
+          </label>
+        </div>
+
+        {/* Exclude Playoffs Toggle */}
+        <div className={styles.formRow} style={{ marginTop: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={excludePlayoffs}
+              onChange={(e) => setExcludePlayoffs(e.target.checked)}
+            />
+            <span style={{ fontWeight: 500 }}>Exclude playoff games</span>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+              — only use regular season data for profiles
             </span>
           </label>
         </div>

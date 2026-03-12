@@ -41,6 +41,7 @@ def populate_mlb_games_from_schedule(
         Number of new games created.
     """
     from ..live.mlb import MLBLiveFeedClient
+    from ..live.mlb_constants import MLB_GAME_TYPE_MAP
     from ..persistence.games import upsert_game_stub
 
     client = MLBLiveFeedClient()
@@ -69,6 +70,7 @@ def populate_mlb_games_from_schedule(
         game_date_utc = datetime.combine(game_day_et, datetime.min.time(), tzinfo=UTC)
 
         external_ids = {"mlb_game_pk": str(mg.game_pk)}
+        season_type = MLB_GAME_TYPE_MAP.get(mg.game_type, "regular") if mg.game_type else "regular"
 
         try:
             _game_id, was_created = upsert_game_stub(
@@ -83,6 +85,7 @@ def populate_mlb_games_from_schedule(
                 venue=mg.venue,
                 external_ids=external_ids,
                 tip_time=mg.game_date,
+                season_type=season_type,
             )
             if was_created:
                 created += 1
