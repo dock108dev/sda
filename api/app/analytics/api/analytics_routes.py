@@ -513,7 +513,20 @@ async def _build_lineup_context(
         game_context["away_bullpen_weights"] = away_bullpen_weights
         game_context["starter_innings"] = req.starter_innings
 
-        profile_meta["lineup_mode"] = True
+        home_batters_resolved = sum(
+            1 for s in req.home_lineup if s.external_ref
+        )
+        away_batters_resolved = sum(
+            1 for s in req.away_lineup if s.external_ref
+        )
+        profile_meta["lineup_mode"] = {
+            "enabled": True,
+            "home_batters_resolved": home_batters_resolved,
+            "away_batters_resolved": away_batters_resolved,
+            "home_starter_resolved": home_starter_raw is not None,
+            "away_starter_resolved": away_starter_raw is not None,
+            "starter_innings": req.starter_innings,
+        }
         profile_meta["home_pa_source"] = "lineup_batter_vs_pitcher"
         profile_meta["away_pa_source"] = "lineup_batter_vs_pitcher"
 
