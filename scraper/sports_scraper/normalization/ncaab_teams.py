@@ -759,6 +759,10 @@ def _build_variations() -> None:
         # which fuzzy-matches to "Houston Cougars" instead of Sam Houston St
         "Sam Houston": "Sam Houston St Bearkats",
         "Sam Houston State": "Sam Houston St Bearkats",
+        # George Washington — NCAA scoreboard returns "George Washington"
+        # which fuzzy-matches to "Washington Huskies" instead of GW
+        "George Washington": "GW Revolutionaries",
+        "George Washington Colonials": "GW Revolutionaries",
     }
 
     for variation, canonical in _WELL_KNOWN.items():
