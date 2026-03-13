@@ -129,6 +129,124 @@ class TestMLBLiveFeedClientSchedule:
         result = client._parse_schedule_response(payload, date(2025, 6, 1))
         assert result == []
 
+    @patch("sports_scraper.live.mlb.MLBStatcastFetcher")
+    @patch("sports_scraper.live.mlb.MLBPbpFetcher")
+    @patch("sports_scraper.live.mlb.MLBBoxscoreFetcher")
+    @patch("sports_scraper.live.mlb.APICache")
+    @patch("sports_scraper.live.mlb.httpx.Client")
+    @patch("sports_scraper.live.mlb.settings")
+    def test_fetch_schedule_success_parses_games(
+        self, mock_settings, MockHttpClient, MockCache, MockBox, MockPbp, MockStatcast
+    ):
+        """Successful fetch parses the response into MLBLiveGame objects."""
+        mock_settings.scraper_config.request_timeout_seconds = 30
+        mock_settings.scraper_config.html_cache_dir = "/tmp/test_cache"
+
+        from sports_scraper.live.mlb import MLBLiveFeedClient
+
+        client = MLBLiveFeedClient()
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "dates": [
+                {
+                    "games": [
+                        {
+                            "gamePk": 12345,
+                            "gameDate": "2025-06-01T18:05:00Z",
+                            "gameType": "R",
+                            "status": {
+                                "abstractGameState": "Final",
+                                "statusCode": "F",
+                            },
+                            "teams": {
+                                "home": {
+                                    "score": 5,
+                                    "team": {
+                                        "id": 147,
+                                        "name": "New York Yankees",
+                                        "abbreviation": "NYY",
+                                    },
+                                },
+                                "away": {
+                                    "score": 3,
+                                    "team": {
+                                        "id": 111,
+                                        "name": "Boston Red Sox",
+                                        "abbreviation": "BOS",
+                                    },
+                                },
+                            },
+                            "venue": {"name": "Yankee Stadium"},
+                            "weather": {"temp": "75"},
+                        },
+                    ]
+                }
+            ]
+        }
+        client.client = MagicMock()
+        client.client.get.return_value = mock_resp
+
+        result = client.fetch_schedule(date(2025, 6, 1), date(2025, 6, 1))
+        assert len(result) == 1
+        game = result[0]
+        assert game.game_pk == 12345
+        assert game.home_score == 5
+        assert game.away_score == 3
+        assert game.venue == "Yankee Stadium"
+        assert game.game_type == "R"
+
+    @patch("sports_scraper.live.mlb.MLBStatcastFetcher")
+    @patch("sports_scraper.live.mlb.MLBPbpFetcher")
+    @patch("sports_scraper.live.mlb.MLBBoxscoreFetcher")
+    @patch("sports_scraper.live.mlb.APICache")
+    @patch("sports_scraper.live.mlb.httpx.Client")
+    @patch("sports_scraper.live.mlb.settings")
+    def test_parse_schedule_no_game_date_falls_back_to_target_date(
+        self, mock_settings, MockHttpClient, MockCache, MockBox, MockPbp, MockStatcast
+    ):
+        """When gameDate is missing, fall back to the target date."""
+        mock_settings.scraper_config.request_timeout_seconds = 30
+        mock_settings.scraper_config.html_cache_dir = "/tmp/test_cache"
+
+        from sports_scraper.live.mlb import MLBLiveFeedClient
+
+        client = MLBLiveFeedClient()
+
+        payload = {
+            "dates": [
+                {
+                    "games": [
+                        {
+                            "gamePk": 99999,
+                            # No gameDate — should fall back
+                            "status": {"abstractGameState": "Preview"},
+                            "teams": {
+                                "home": {
+                                    "team": {
+                                        "id": 1,
+                                        "name": "Team A",
+                                        "abbreviation": "TA",
+                                    }
+                                },
+                                "away": {
+                                    "team": {
+                                        "id": 2,
+                                        "name": "Team B",
+                                        "abbreviation": "TB",
+                                    }
+                                },
+                            },
+                        },
+                    ]
+                }
+            ]
+        }
+        result = client._parse_schedule_response(payload, date(2025, 6, 1))
+        assert len(result) == 1
+        assert result[0].game_pk == 99999
+
 
 class TestMLBLiveFeedClientDelegation:
     """Tests for delegation methods on MLBLiveFeedClient."""
