@@ -104,11 +104,47 @@ jobs:
         working-directory: web
         run: pnpm lint
 
-  build:
+  compile:
+    name: Compile
     runs-on: ubuntu-latest
     needs: [test-scraper, test-api, lint-web]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install Python dependencies
+        run: |
+          uv venv --python 3.12
+          uv pip install -r api/requirements.txt
+          uv pip install -e ./scraper
+      - name: Compile Python modules
+        run: |
+          source .venv/bin/activate
+          python -m compileall api/app scraper/sports_scraper
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Install web dependencies
+        run: pnpm install
+      - name: Compile web
+        working-directory: web
+        run: pnpm build
+
+  build:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: compile
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.full_deploy == 'true')
     permissions:
       contents: read
@@ -125,7 +161,29 @@ jobs:
             dockerfile: infra/scraper.Dockerfile
     steps:
       - uses: actions/checkout@v6
+      - name: Compute image tags
+        id: image-tags
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          REPO="ghcr.io/${{ github.repository }}-${SERVICE}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            {
+              echo "tags<<EOF"
+              echo "${REPO}:${{ github.sha }}"
+              echo "${REPO}:pr-${{ github.event.number }}-${{ github.sha }}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "tags<<EOF"
+              echo "${REPO}:latest"
+              echo "${REPO}:${{ github.sha }}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
       - name: Log in to GHCR
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -136,16 +194,14 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}-${{ matrix.service }}:latest
-            ghcr.io/${{ github.repository }}-${{ matrix.service }}:${{ github.sha }}
+          push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          tags: ${{ steps.image-tags.outputs.tags }}
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.full_deploy == 'true')
     steps:
       - name: Deploy over SSH
@@ -155,7 +211,7 @@ jobs:
           GH_ACTOR: ${{ github.actor }}
           GH_REPO: ${{ github.repository }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          GH_REF: ${{ github.ref_name }}
+          GH_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
           GH_EVENT_NAME: ${{ github.event_name }}
           GH_BEFORE: ${{ github.event.before }}
           GH_SHA: ${{ github.sha }}

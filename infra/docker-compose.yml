@@ -47,7 +47,7 @@ services:
       retries: 5
 
   api:
-    image: ghcr.io/dock108dev/sports-data-admin-util-api:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-api:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/api.Dockerfile
@@ -98,7 +98,7 @@ services:
       retries: 5
 
   api-worker:
-    image: ghcr.io/dock108dev/sports-data-admin-util-api:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-api:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/api.Dockerfile
@@ -135,7 +135,7 @@ services:
       retries: 5
 
   scraper:
-    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/scraper.Dockerfile
@@ -173,7 +173,7 @@ services:
       retries: 5
 
   scraper-beat:
-    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/scraper.Dockerfile
@@ -205,7 +205,7 @@ services:
       - app
 
   social-scraper:
-    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/scraper.Dockerfile
@@ -238,7 +238,7 @@ services:
     # No healthcheck needed - social scraping is best-effort
 
   social-bulk:
-    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-scraper:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/scraper.Dockerfile
@@ -270,7 +270,7 @@ services:
     # No healthcheck needed - social scraping is best-effort
 
   migrate:
-    image: ghcr.io/dock108dev/sports-data-admin-util-api:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-api:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/api.Dockerfile
@@ -292,7 +292,7 @@ services:
       - app  # Needed for external API calls during data migrations
 
   web:
-    image: ghcr.io/dock108dev/sports-data-admin-util-web:latest
+    image: ghcr.io/dock108dev/sports-data-admin-util-web:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: infra/web.Dockerfile

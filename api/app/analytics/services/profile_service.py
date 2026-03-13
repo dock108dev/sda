@@ -334,13 +334,120 @@ async def get_pitcher_rolling_profile(
     exclude_playoffs: bool = False,
     db: AsyncSession,
 ) -> dict[str, float] | None:
-    """Build a rolling pitching profile from recent boxscore data.
+    """Build a rolling pitching profile from recent game data.
 
-    Derives rate stats (K%, BB%, contact suppression, power suppression)
-    from the ``stats`` JSONB column on ``SportsPlayerBoxscore`` rows.
+    Prefers ``MLBPitcherGameStats`` (Statcast-enriched pitcher data) when
+    available, falling back to ``SportsPlayerBoxscore`` for basic rate stats.
 
     Returns ``None`` when fewer than 3 games are available.
     """
+    # Try enriched pitcher stats first
+    profile = await _pitcher_profile_from_statcast(
+        player_external_ref, team_id,
+        rolling_window=rolling_window,
+        exclude_playoffs=exclude_playoffs,
+        db=db,
+    )
+    if profile is not None:
+        return profile
+
+    # Fallback: derive from boxscore JSONB
+    return await _pitcher_profile_from_boxscore(
+        player_external_ref, team_id,
+        rolling_window=rolling_window,
+        exclude_playoffs=exclude_playoffs,
+        db=db,
+    )
+
+
+async def _pitcher_profile_from_statcast(
+    player_external_ref: str,
+    team_id: int,
+    *,
+    rolling_window: int = 30,
+    exclude_playoffs: bool = False,
+    db: AsyncSession,
+) -> dict[str, float] | None:
+    """Build pitcher profile from MLBPitcherGameStats (Statcast-enriched)."""
+    try:
+        from app.db.mlb_advanced import MLBPitcherGameStats
+        from app.db.sports import SportsGame
+
+        stmt = (
+            select(MLBPitcherGameStats, SportsGame.game_date)
+            .join(SportsGame, SportsGame.id == MLBPitcherGameStats.game_id)
+            .where(
+                MLBPitcherGameStats.player_external_ref == player_external_ref,
+                MLBPitcherGameStats.team_id == team_id,
+                SportsGame.status == "final",
+            )
+            .order_by(SportsGame.game_date.desc())
+            .limit(rolling_window)
+        )
+        if exclude_playoffs:
+            stmt = stmt.where(SportsGame.season_type == "regular")
+        result = await db.execute(stmt)
+        rows = result.all()
+
+        if len(rows) < 3:
+            return None
+
+        # Verify the first row is actually an MLBPitcherGameStats instance
+        first_row = rows[0][0]
+        if not isinstance(getattr(first_row, "batters_faced", None), (int, float, type(None))):
+            return None
+    except Exception:
+        # Table may not exist yet or query failed — fall back
+        return None
+
+    game_dates = [gd for _, gd in rows]
+    weights = _season_weights(game_dates)
+
+    per_game: list[dict[str, float]] = []
+    for ps, _ in rows:
+        bf = ps.batters_faced or 1
+        m: dict[str, float] = {
+            "k_rate": ps.k_rate if ps.k_rate is not None else (ps.strikeouts / bf if bf else 0),
+            "bb_rate": ps.bb_rate if ps.bb_rate is not None else (ps.walks / bf if bf else 0),
+            "hr_rate": ps.hr_rate if ps.hr_rate is not None else (ps.home_runs_allowed / bf if bf else 0),
+            "whiff_rate": ps.whiff_rate or 0.0,
+            "z_contact_pct": ps.z_contact_pct or 0.0,
+            "chase_rate": ps.chase_rate or 0.0,
+            "avg_exit_velo_against": ps.avg_exit_velo_against or 0.0,
+            "hard_hit_pct_against": ps.hard_hit_pct_against or 0.0,
+            "barrel_pct_against": ps.barrel_pct_against or 0.0,
+        }
+        # Derive suppression metrics for matchup compatibility
+        m["contact_suppression"] = _clamp(
+            1.0 - ((1.0 - (m["k_rate"] + m["bb_rate"])) * (1.0 - (m.get("whiff_rate", 0.0) * 0.5))),
+            -0.15, 0.30,
+        )
+        m["power_suppression"] = _clamp(
+            1.0 - (m["hr_rate"] / 0.03) if m["hr_rate"] < 0.03 else 0.0,
+            -0.30, 0.50,
+        )
+        # Also compute strikeout_rate / walk_rate aliases for matchup.py
+        m["strikeout_rate"] = m["k_rate"]
+        m["walk_rate"] = m["bb_rate"]
+        per_game.append(m)
+
+    aggregated: dict[str, float] = {}
+    for key in per_game[0]:
+        vw = [(gm[key], w) for gm, w in zip(per_game, weights)]
+        aggregated[key] = round(_weighted_mean(vw), 4)
+
+    return aggregated
+
+
+async def _pitcher_profile_from_boxscore(
+    player_external_ref: str,
+    team_id: int,
+    *,
+    rolling_window: int = 30,
+    exclude_playoffs: bool = False,
+    db: AsyncSession,
+) -> dict[str, float] | None:
+    """Fallback pitcher profile from SportsPlayerBoxscore JSONB stats."""
     from app.db.sports import SportsGame, SportsPlayerBoxscore
 
     stmt = (
@@ -363,7 +470,6 @@ async def get_pitcher_rolling_profile(
     game_dates_for_weighting: list[datetime] = []
     for row, game_date in rows:
         stats = row.stats or {}
-        # Support both camelCase (MLB API) and snake_case key conventions
         strike_outs = float(stats.get("strikeOuts", stats.get("strike_outs", 0)))
         base_on_balls = float(stats.get("baseOnBalls", stats.get("base_on_balls", 0)))
         home_runs = float(stats.get("homeRuns", stats.get("home_runs", 0)))

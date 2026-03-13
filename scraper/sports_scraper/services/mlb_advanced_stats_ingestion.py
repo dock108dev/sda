@@ -153,6 +153,58 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         session.execute(stmt)
         player_upserted += 1
 
+    # Pitcher-level Statcast aggregates (from pitcher's perspective)
+    pitcher_aggregates = client.fetch_pitcher_statcast_aggregates(int(game_pk), game_status="final")
+    pitcher_upserted = 0
+    for pa in pitcher_aggregates:
+        team_id = game.home_team_id if pa.side == "home" else game.away_team_id
+        is_home = pa.side == "home"
+        agg = pa.stats
+        row = {
+            "game_id": game_id,
+            "team_id": team_id,
+            "player_external_ref": str(pa.pitcher_id),
+            "player_name": pa.pitcher_name,
+            "is_starter": False,
+            "batters_faced": pa.total_batters_faced,
+            # Statcast aggregates (from pitcher perspective)
+            "zone_pitches": agg.zone_pitches,
+            "zone_swings": agg.zone_swings,
+            "zone_contact": agg.zone_contact,
+            "outside_pitches": agg.outside_pitches,
+            "outside_swings": agg.outside_swings,
+            "outside_contact": agg.outside_contact,
+            "balls_in_play": agg.balls_in_play,
+            "total_exit_velo_against": agg.total_exit_velo,
+            "hard_hit_against": agg.hard_hit_count,
+            "barrel_against": agg.barrel_count,
+            # Derived rates
+            "whiff_rate": _safe_div(
+                (agg.zone_swings + agg.outside_swings) - (agg.zone_contact + agg.outside_contact),
+                agg.zone_swings + agg.outside_swings,
+            ),
+            "z_contact_pct": _safe_div(agg.zone_contact, agg.zone_swings),
+            "chase_rate": _safe_div(agg.outside_swings, agg.outside_pitches),
+            "avg_exit_velo_against": _safe_div(agg.total_exit_velo, agg.balls_in_play),
+            "hard_hit_pct_against": _safe_div(agg.hard_hit_count, agg.balls_in_play),
+            "barrel_pct_against": _safe_div(agg.barrel_count, agg.balls_in_play),
+            "pitches_thrown": agg.total_pitches,
+            "updated_at": datetime.now(UTC),
+        }
+
+        stmt = pg_insert(db_models.MLBPitcherGameStats).values(**row)
+        update_cols = {
+            col: stmt.excluded[col]
+            for col in row
+            if col not in ("game_id", "team_id", "player_external_ref")
+        }
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_mlb_pitcher_game_stats_identity",
+            set_=update_cols,
+        )
+        session.execute(stmt)
+        pitcher_upserted += 1
+
     game.last_advanced_stats_at = datetime.now(UTC)
     session.flush()
 
@@ -162,6 +214,7 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         game_pk=game_pk,
         team_rows_upserted=upserted,
         player_rows_upserted=player_upserted,
+        pitcher_rows_upserted=pitcher_upserted,
     )
 
     return {
@@ -169,4 +222,5 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         "status": "success",
         "rows_upserted": upserted,
         "player_rows_upserted": player_upserted,
+        "pitcher_rows_upserted": pitcher_upserted,
     }

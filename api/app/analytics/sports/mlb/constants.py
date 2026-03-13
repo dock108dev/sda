@@ -23,6 +23,18 @@ PA_EVENTS: list[str] = [
     "home_run",
 ]
 
+# V2 labels from true PBP events (used by MLBPADatasetBuilder).
+# Backward-compatible: models trained on v1 labels still work.
+PA_EVENTS_V2: list[str] = [
+    "strikeout",
+    "walk_or_hbp",
+    "single",
+    "double",
+    "triple",
+    "home_run",
+    "ball_in_play_out",
+]
+
 # ---------------------------------------------------------------------------
 # Default event probabilities (league-average)
 # ---------------------------------------------------------------------------
@@ -120,6 +132,24 @@ FEATURE_BASELINES: dict[str, float] = {
     "zone_contact_rate": 0.84,
     "outside_contact_rate": 0.60,
     "plate_discipline_index": 0.52,
+    # Pitcher-specific baselines (from pitcher perspective)
+    "k_rate": 0.22,
+    "bb_rate": 0.08,
+    "hr_rate": 0.03,
+    "avg_exit_velo_against": 88.0,
+    "hard_hit_pct_against": 0.35,
+    "barrel_pct_against": 0.07,
+    "contact_suppression": 0.0,
+    "power_suppression": 0.0,
+    "strikeout_rate": 0.22,
+    "walk_rate": 0.08,
+    # Matchup baselines
+    "batter_hand_code": 0.5,
+    "pitcher_hand_code": 0.5,
+    # Fielding baselines
+    "team_oaa": 0.0,
+    "team_drs": 0.0,
+    "team_defensive_value": 0.0,
 }
 
 # ---------------------------------------------------------------------------

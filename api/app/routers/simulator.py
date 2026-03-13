@@ -26,6 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analytics.api.analytics_routes import _predict_with_game_model
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.services.profile_service import (
+    get_pitcher_rolling_profile,
+    get_player_rolling_profile,
+    get_team_info,
     get_team_rolling_profile,
     profile_to_pa_probabilities,
 )
@@ -121,6 +124,39 @@ class MLBSimulationRequest(BaseModel):
             "Optional random seed for reproducible results. "
             "Pass the same seed + inputs to get identical output."
         ),
+    )
+    home_lineup: list[str] | None = Field(
+        None,
+        min_length=1,
+        max_length=9,
+        description=(
+            "Optional home batting lineup: list of player external_ref IDs "
+            "in batting order. When provided, per-batter PA probabilities "
+            "are computed from individual player profiles."
+        ),
+    )
+    away_lineup: list[str] | None = Field(
+        None,
+        min_length=1,
+        max_length=9,
+        description=(
+            "Optional away batting lineup: list of player external_ref IDs "
+            "in batting order."
+        ),
+    )
+    home_starter: str | None = Field(
+        None,
+        description="Home starting pitcher external_ref ID for matchup computation.",
+    )
+    away_starter: str | None = Field(
+        None,
+        description="Away starting pitcher external_ref ID for matchup computation.",
+    )
+    starter_innings: float = Field(
+        6.0,
+        ge=1.0,
+        le=9.0,
+        description="Innings the starter pitches before bullpen takes over.",
     )
 
 
@@ -327,6 +363,12 @@ async def simulate_mlb_game(
     away_pa: dict[str, float] | None = None
     model_wp: float | None = None
 
+    # Resolve team IDs for lineup support
+    home_team_info = await get_team_info(home_abbr, db=db)
+    away_team_info = await get_team_info(away_abbr, db=db)
+    home_team_id = home_team_info["id"] if home_team_info else None
+    away_team_id = away_team_info["id"] if away_team_info else None
+
     # Build rolling team profiles from DB
     home_profile_result = await get_team_rolling_profile(
         home_abbr, "mlb", rolling_window=req.rolling_window, db=db,
@@ -363,12 +405,31 @@ async def simulate_mlb_game(
             },
         )
 
+    # Build per-batter lineup weights when lineups are provided
+    use_lineup = False
+    if req.home_lineup and req.away_lineup:
+        lineup_ctx = await _build_lineup_context(
+            home_lineup=req.home_lineup,
+            away_lineup=req.away_lineup,
+            home_starter=req.home_starter,
+            away_starter=req.away_starter,
+            home_team_id=home_team_id,
+            away_team_id=away_team_id,
+            rolling_window=req.rolling_window,
+            starter_innings=req.starter_innings,
+            db=db,
+        )
+        if lineup_ctx:
+            game_context.update(lineup_ctx)
+            use_lineup = True
+
     # Run Monte Carlo simulation
     result = _service.run_full_simulation(
         sport="mlb",
         game_context=game_context,
         iterations=req.iterations,
         seed=req.seed,
+        use_lineup=use_lineup,
     )
 
     # Build typed PA probabilities for response
@@ -400,6 +461,95 @@ async def simulate_mlb_game(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+async def _build_lineup_context(
+    *,
+    home_lineup: list[str],
+    away_lineup: list[str],
+    home_starter: str | None,
+    away_starter: str | None,
+    home_team_id: int | None,
+    away_team_id: int | None,
+    rolling_window: int,
+    starter_innings: float,
+    db: AsyncSession,
+) -> dict[str, Any] | None:
+    """Build per-batter weight arrays from individual player profiles.
+
+    For each batter in the lineup, loads their rolling profile and the
+    opposing starter's profile, then computes batter-vs-pitcher matchup
+    probabilities. Falls back to team-level probabilities for batters
+    or pitchers without sufficient data.
+
+    Returns a dict with ``home_lineup_weights``, ``away_lineup_weights``,
+    and ``starter_innings`` ready for ``simulate_game_with_lineups()``,
+    or ``None`` if team IDs are unavailable.
+    """
+    from app.analytics.sports.mlb.constants import (
+        DEFAULT_EVENT_PROBS_SUFFIXED as _DEFAULTS,
+    )
+    from app.analytics.sports.mlb.game_simulator import _build_weights
+    from app.analytics.sports.mlb.matchup import MLBMatchup
+
+    if home_team_id is None or away_team_id is None:
+        # Resolve team IDs from abbreviations if not available
+        return None
+
+    matchup = MLBMatchup()
+
+    # Load pitcher profiles
+    home_pitcher_profile = None
+    away_pitcher_profile = None
+    if home_starter:
+        home_pitcher_profile = await get_pitcher_rolling_profile(
+            home_starter, home_team_id,
+            rolling_window=rolling_window, db=db,
+        )
+    if away_starter:
+        away_pitcher_profile = await get_pitcher_rolling_profile(
+            away_starter, away_team_id,
+            rolling_window=rolling_window, db=db,
+        )
+
+    async def _batter_weights(
+        lineup: list[str], team_id: int, pitcher_profile: dict | None,
+    ) -> list[list[float]]:
+        """Build weight arrays for each batter in a lineup."""
+        from app.analytics.core.types import PlayerProfile
+
+        weights_list = []
+        for batter_ref in lineup:
+            batter_profile = await get_player_rolling_profile(
+                batter_ref, team_id,
+                rolling_window=rolling_window, db=db,
+            )
+            if batter_profile and pitcher_profile:
+                # Full batter-vs-pitcher matchup
+                bp = PlayerProfile(player_id=batter_ref, sport="mlb", metrics=batter_profile)
+                pp = PlayerProfile(player_id="pitcher", sport="mlb", metrics=pitcher_profile)
+                probs = matchup.batter_vs_pitcher(bp, pp)
+                weights_list.append(_build_weights(probs))
+            elif batter_profile:
+                # Batter profile only — convert to PA probs
+                probs = profile_to_pa_probabilities(batter_profile)
+                weights_list.append(_build_weights(probs))
+            else:
+                # No data — use league defaults
+                weights_list.append(_build_weights(_DEFAULTS))
+        # Pad to 9 if fewer batters provided
+        while len(weights_list) < 9:
+            weights_list.append(weights_list[-1] if weights_list else _build_weights(_DEFAULTS))
+        return weights_list[:9]
+
+    home_weights = await _batter_weights(home_lineup, home_team_id, away_pitcher_profile)
+    away_weights = await _batter_weights(away_lineup, away_team_id, home_pitcher_profile)
+
+    return {
+        "home_lineup_weights": home_weights,
+        "away_lineup_weights": away_weights,
+        "starter_innings": starter_innings,
+    }
 
 
 def _to_pa_model(pa: dict[str, float]) -> TeamPAProbabilities:

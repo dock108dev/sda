@@ -15,6 +15,7 @@ import logging
 from typing import Any
 
 from app.analytics.sports.mlb.constants import PA_EVENTS as PA_OUTCOMES
+from app.analytics.sports.mlb.constants import PA_EVENTS_V2 as PA_OUTCOMES_V2
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +33,17 @@ class MLBTrainingPipeline:
 
     @staticmethod
     def pa_label_fn(record: dict[str, Any]) -> str | None:
-        """Extract plate-appearance outcome label from a record."""
+        """Extract plate-appearance outcome label from a record.
+
+        Supports both v1 (heuristic) and v2 (PBP-derived) label sets.
+        """
         outcome = record.get("outcome") or record.get("label")
         if outcome is None:
             return None
         outcome = str(outcome).lower().strip()
         if outcome in PA_OUTCOMES:
+            return outcome
+        if outcome in PA_OUTCOMES_V2:
             return outcome
         return None
 

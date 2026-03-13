@@ -29,12 +29,18 @@ from .mlb_helpers import (
 )
 from .mlb_models import MLBBoxscore, MLBLiveGame
 from .mlb_pbp import MLBPbpFetcher
-from .mlb_statcast import MLBStatcastFetcher, PlayerStatcastAggregates, TeamStatcastAggregates
+from .mlb_statcast import (
+    MLBStatcastFetcher,
+    PitcherStatcastAggregates,
+    PlayerStatcastAggregates,
+    TeamStatcastAggregates,
+)
 
 __all__ = [
     "MLBLiveGame",
     "MLBBoxscore",
     "MLBLiveFeedClient",
+    "PitcherStatcastAggregates",
     "PlayerStatcastAggregates",
     "TeamStatcastAggregates",
 ]
@@ -182,6 +188,14 @@ class MLBLiveFeedClient:
     ) -> list[PlayerStatcastAggregates]:
         """Fetch and aggregate per-batter Statcast data for a game."""
         return self._statcast_fetcher.fetch_player_statcast_aggregates(
+            game_pk, game_status=game_status
+        )
+
+    def fetch_pitcher_statcast_aggregates(
+        self, game_pk: int, game_status: str | None = None
+    ) -> list[PitcherStatcastAggregates]:
+        """Fetch and aggregate per-pitcher Statcast data for a game."""
+        return self._statcast_fetcher.fetch_pitcher_statcast_aggregates(
             game_pk, game_status=game_status
         )
 

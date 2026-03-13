@@ -25,7 +25,7 @@ from .base import Base
 
 if TYPE_CHECKING:
     from .flow import SportsGameTimelineArtifact
-    from .mlb_advanced import MLBGameAdvancedStats, MLBPlayerAdvancedStats
+    from .mlb_advanced import MLBGameAdvancedStats, MLBPitcherGameStats, MLBPlayerAdvancedStats
     from .odds import SportsGameOdds
     from .scraper import SportsScrapeRun
     from .social import TeamSocialAccount, TeamSocialPost
@@ -285,6 +285,11 @@ class SportsGame(Base):
     )
     player_advanced_stats: Mapped[list[MLBPlayerAdvancedStats]] = relationship(
         "MLBPlayerAdvancedStats",
+        back_populates="game",
+        cascade="all, delete-orphan",
+    )
+    pitcher_game_stats: Mapped[list[MLBPitcherGameStats]] = relationship(
+        "MLBPitcherGameStats",
         back_populates="game",
         cascade="all, delete-orphan",
     )

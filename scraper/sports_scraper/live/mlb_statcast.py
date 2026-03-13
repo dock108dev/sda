@@ -52,6 +52,25 @@ class PlayerStatcastAggregates:
     stats: TeamStatcastAggregates
 
 
+@dataclass
+class PitcherStatcastAggregates:
+    """Per-pitcher Statcast counts for a game (from the pitcher's perspective).
+
+    Tracks pitch-level data attributed to each pitcher: zone/outside splits,
+    contact allowed, hard-hit and barrel rates against.
+    """
+
+    pitcher_id: int
+    pitcher_name: str
+    side: str  # "home" or "away" — the pitcher's team
+    total_batters_faced: int = 0
+    stats: TeamStatcastAggregates = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self.stats is None:
+            self.stats = TeamStatcastAggregates()
+
+
 # ---------------------------------------------------------------------------
 # Pitch classification helpers
 # ---------------------------------------------------------------------------
@@ -251,6 +270,52 @@ def aggregate_players_from_payload(
     ]
 
 
+def aggregate_pitchers_from_payload(
+    payload: dict[str, Any],
+) -> list[PitcherStatcastAggregates]:
+    """Aggregate pitch-level Statcast data per pitcher from a playByPlay payload.
+
+    Attributes each pitch to the pitcher who threw it. The pitcher's team is
+    the *opposite* of the batting side: top of inning (away batting) means
+    the home team's pitcher is on the mound.
+
+    Returns:
+        List of PitcherStatcastAggregates, one per (side, pitcher) combination.
+    """
+    # Key: (pitcher_team_side, pitcher_id) -> PitcherStatcastAggregates
+    pitchers: dict[tuple[str, int], PitcherStatcastAggregates] = {}
+
+    for at_bat in payload.get("allPlays", []):
+        about = at_bat.get("about", {})
+        is_top_inning = about.get("isTopInning", True)
+        # Top = away batting → home pitcher; Bottom = home batting → away pitcher
+        pitcher_side = "home" if is_top_inning else "away"
+
+        matchup = at_bat.get("matchup", {})
+        pitcher = matchup.get("pitcher", {})
+        pitcher_id = pitcher.get("id")
+        if not pitcher_id:
+            continue
+        pitcher_name = pitcher.get("fullName", "Unknown")
+
+        key = (pitcher_side, pitcher_id)
+        if key not in pitchers:
+            pitchers[key] = PitcherStatcastAggregates(
+                pitcher_id=pitcher_id,
+                pitcher_name=pitcher_name,
+                side=pitcher_side,
+            )
+        pagg = pitchers[key]
+        pagg.total_batters_faced += 1
+
+        for event in at_bat.get("playEvents", []):
+            if not event.get("isPitch", False):
+                continue
+            _process_pitch_event(pagg.stats, event)
+
+    return list(pitchers.values())
+
+
 class MLBStatcastFetcher:
     """Fetches playByPlay data and aggregates Statcast stats per team."""
 
@@ -298,3 +363,13 @@ class MLBStatcastFetcher:
         """
         payload = self._get_payload(game_pk, game_status)
         return aggregate_players_from_payload(payload)
+
+    def fetch_pitcher_statcast_aggregates(
+        self, game_pk: int, game_status: str | None = None
+    ) -> list[PitcherStatcastAggregates]:
+        """Fetch PBP payload and return per-pitcher Statcast aggregates.
+
+        Reuses the same cached payload as fetch_statcast_aggregates.
+        """
+        payload = self._get_payload(game_pk, game_status)
+        return aggregate_pitchers_from_payload(payload)

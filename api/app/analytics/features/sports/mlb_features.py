@@ -55,6 +55,50 @@ _PA_FEATURES: list[tuple[str, str, str]] = [
     ("pitcher_plate_discipline_index", "pitcher", "plate_discipline_index"),
 ]
 
+# Player-level PA features — extends _PA_FEATURES with true pitcher metrics
+# and optional fielding/matchup context.
+_PLAYER_PA_FEATURES: list[tuple[str, str, str]] = [
+    # Batter profile (same as _PA_FEATURES batter block)
+    ("batter_contact_rate", "batter", "contact_rate"),
+    ("batter_power_index", "batter", "power_index"),
+    ("batter_barrel_rate", "batter", "barrel_rate"),
+    ("batter_hard_hit_rate", "batter", "hard_hit_rate"),
+    ("batter_swing_rate", "batter", "swing_rate"),
+    ("batter_whiff_rate", "batter", "whiff_rate"),
+    ("batter_avg_exit_velocity", "batter", "avg_exit_velocity"),
+    ("batter_expected_slug", "batter", "expected_slug"),
+    ("batter_z_swing_pct", "batter", "z_swing_pct"),
+    ("batter_o_swing_pct", "batter", "o_swing_pct"),
+    ("batter_z_contact_pct", "batter", "z_contact_pct"),
+    ("batter_o_contact_pct", "batter", "o_contact_pct"),
+    ("batter_chase_rate", "batter", "chase_rate"),
+    ("batter_plate_discipline_index", "batter", "plate_discipline_index"),
+    # True pitcher profile (from MLBPitcherGameStats rolling)
+    ("pitcher_k_rate", "pitcher", "k_rate"),
+    ("pitcher_bb_rate", "pitcher", "bb_rate"),
+    ("pitcher_hr_rate", "pitcher", "hr_rate"),
+    ("pitcher_whiff_rate", "pitcher", "whiff_rate"),
+    ("pitcher_z_contact_pct", "pitcher", "z_contact_pct"),
+    ("pitcher_chase_rate", "pitcher", "chase_rate"),
+    ("pitcher_avg_exit_velo_against", "pitcher", "avg_exit_velo_against"),
+    ("pitcher_hard_hit_pct_against", "pitcher", "hard_hit_pct_against"),
+    ("pitcher_barrel_pct_against", "pitcher", "barrel_pct_against"),
+    ("pitcher_contact_suppression", "pitcher", "contact_suppression"),
+    ("pitcher_power_suppression", "pitcher", "power_suppression"),
+    ("pitcher_strikeout_rate", "pitcher", "strikeout_rate"),
+    ("pitcher_walk_rate", "pitcher", "walk_rate"),
+    # Matchup context
+    ("matchup_batter_hand", "matchup", "batter_hand_code"),
+    ("matchup_pitcher_hand", "matchup", "pitcher_hand_code"),
+]
+
+# Fielding features — appended when fielding data is available
+_FIELDING_FEATURES: list[tuple[str, str, str]] = [
+    ("fielding_team_oaa", "fielding", "team_oaa"),
+    ("fielding_team_drs", "fielding", "team_drs"),
+    ("fielding_team_defensive_value", "fielding", "team_defensive_value"),
+]
+
 # All metrics exposed as both home_ and away_ for game-level models.
 _GAME_METRIC_KEYS: list[str] = [
     # Derived composites
@@ -125,6 +169,15 @@ class MLBFeatureBuilder:
             pitcher = _extract_metrics(entity_profiles, "pitcher_profile", "pitcher")
             return self.build_plate_appearance_features(batter, pitcher)
 
+        if model_type == "player_plate_appearance":
+            batter = _extract_metrics(entity_profiles, "batter_profile", "batter")
+            pitcher = _extract_metrics(entity_profiles, "pitcher_profile", "pitcher")
+            matchup = entity_profiles.get("matchup", {})
+            fielding = entity_profiles.get("team_fielding", {})
+            return self.build_player_pa_features(
+                batter, pitcher, matchup=matchup, fielding=fielding,
+            )
+
         if model_type == "game":
             home = _extract_metrics(entity_profiles, "home_profile", "home")
             away = _extract_metrics(entity_profiles, "away_profile", "away")
@@ -148,6 +201,43 @@ class MLBFeatureBuilder:
         """
         sources = {"batter": batter_metrics, "pitcher": pitcher_metrics}
         features, order = _build_from_spec(_PA_FEATURES, sources)
+        return FeatureVector(features, feature_order=order)
+
+    def build_player_pa_features(
+        self,
+        batter_metrics: dict[str, Any],
+        pitcher_metrics: dict[str, Any],
+        *,
+        matchup: dict[str, Any] | None = None,
+        fielding: dict[str, Any] | None = None,
+    ) -> FeatureVector:
+        """Build feature vector for player-level PA modeling.
+
+        Uses true pitcher metrics (from MLBPitcherGameStats) instead of
+        team-level proxy. Optionally includes matchup handedness and
+        team fielding context.
+        """
+        matchup = matchup or {}
+        fielding = fielding or {}
+
+        # Encode handedness as numeric (R=1, L=0, S=0.5, unknown=0.5)
+        matchup_metrics = {
+            "batter_hand_code": _encode_hand(matchup.get("batter_hand", "")),
+            "pitcher_hand_code": _encode_hand(matchup.get("pitcher_hand", "")),
+        }
+
+        sources = {
+            "batter": batter_metrics,
+            "pitcher": pitcher_metrics,
+            "matchup": matchup_metrics,
+        }
+
+        spec = list(_PLAYER_PA_FEATURES)
+        if fielding:
+            sources["fielding"] = fielding
+            spec.extend(_FIELDING_FEATURES)
+
+        features, order = _build_from_spec(spec, sources)
         return FeatureVector(features, feature_order=order)
 
     def build_game_features(
@@ -229,6 +319,18 @@ def _normalize_default(baseline: float | None) -> float:
     if 0 < baseline <= 1.0:
         return baseline
     return 1.0  # ratio to baseline = baseline/baseline
+
+
+def _encode_hand(hand: str) -> float:
+    """Encode batting/pitching handedness as a numeric feature."""
+    h = hand.upper().strip()
+    if h == "R":
+        return 1.0
+    if h == "L":
+        return 0.0
+    if h == "S":  # Switch hitter
+        return 0.5
+    return 0.5  # Unknown
 
 
 def _extract_metrics(

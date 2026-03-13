@@ -58,9 +58,14 @@ async def load_training_data_from_db(
             date_start, date_end, rolling_window=rolling_window, db=db
         )
 
+    if model_type == "player_plate_appearance":
+        return await _load_mlb_player_pa_training_data(
+            date_start, date_end, rolling_window=rolling_window, db=db
+        )
+
     raise ValueError(
         f"Unsupported model_type: {model_type}. "
-        f"Only 'game' and 'plate_appearance' are currently supported for MLB training."
+        f"Supported types: 'game', 'plate_appearance', 'player_plate_appearance'."
     )
 
 
@@ -436,6 +441,81 @@ async def _load_mlb_pa_training_data_impl(
             "records": len(records),
             "player_game_rows": len(all_player_stats),
             "skipped_insufficient_history": skipped,
+            "rolling_window": rolling_window,
+        },
+    )
+    return records
+
+
+async def _load_mlb_player_pa_training_data(
+    date_start: str | None,
+    date_end: str | None,
+    *,
+    rolling_window: int = 30,
+    db: AsyncSession | None = None,
+) -> list[dict]:
+    """Load true player-level PA training data from PBP events.
+
+    Uses the MLBPADatasetBuilder to extract real PA outcomes from
+    play-by-play data with point-in-time batter and pitcher profiles.
+    """
+    if db is None:
+        from app.db import get_async_session
+
+        async with get_async_session() as db:
+            return await _load_mlb_player_pa_impl(
+                db, date_start, date_end, rolling_window=rolling_window
+            )
+
+    return await _load_mlb_player_pa_impl(
+        db, date_start, date_end, rolling_window=rolling_window
+    )
+
+
+async def _load_mlb_player_pa_impl(
+    db: AsyncSession,
+    date_start: str | None,
+    date_end: str | None,
+    *,
+    rolling_window: int = 30,
+) -> list[dict]:
+    """Inner implementation using the PA dataset builder."""
+    from app.analytics.datasets.mlb_pa_dataset import MLBPADatasetBuilder
+
+    builder = MLBPADatasetBuilder(db)
+    rows = await builder.build(
+        date_start=date_start,
+        date_end=date_end,
+        rolling_window=rolling_window,
+        include_profiles=True,
+        include_fielding=True,
+        min_batter_games=5,
+        min_pitcher_games=3,
+    )
+
+    # Convert dataset rows to training record format
+    records = []
+    for row in rows:
+        record: dict = {
+            "batter_profile": row.get("batter_profile", {}),
+            "pitcher_profile": row.get("pitcher_profile", {}),
+            "outcome": row["outcome"],
+        }
+        # Add matchup context for the feature builder
+        if row.get("batter_hand") or row.get("pitcher_hand"):
+            record["matchup"] = {
+                "batter_hand": row.get("batter_hand", ""),
+                "pitcher_hand": row.get("pitcher_hand", ""),
+            }
+        # Add fielding context if available
+        if row.get("team_fielding"):
+            record["team_fielding"] = row["team_fielding"]
+        records.append(record)
+
+    logger.info(
+        "mlb_player_pa_training_data_loaded",
+        extra={
+            "records": len(records),
             "rolling_window": rolling_window,
         },
     )

@@ -19,6 +19,7 @@ import pytest
 
 from sports_scraper.live.mlb_statcast import (
     aggregate_from_payload,
+    aggregate_pitchers_from_payload,
     is_barrel,
     is_contact,
     is_hard_hit,
@@ -344,3 +345,152 @@ class TestAggregation:
         assert home.outside_pitches == 1  # zone 14
         assert home.outside_swings == 1  # W is a swing
         assert home.outside_contact == 0  # W is not contact
+
+
+# ---------------------------------------------------------------------------
+# Pitcher aggregation
+# ---------------------------------------------------------------------------
+
+
+class TestPitcherAggregation:
+    """Tests for aggregate_pitchers_from_payload."""
+
+    @staticmethod
+    def _build_pitch_event(zone=5, code="S", is_pitch=True, hit_data=None):
+        event = {
+            "isPitch": is_pitch,
+            "details": {"code": code},
+            "pitchData": {"zone": zone},
+        }
+        if hit_data is not None:
+            event["hitData"] = hit_data
+        return event
+
+    @staticmethod
+    def _build_at_bat(is_top_inning, events, batter_id=100, pitcher_id=200):
+        return {
+            "about": {"isTopInning": is_top_inning},
+            "matchup": {
+                "batter": {"id": batter_id, "fullName": f"Batter {batter_id}"},
+                "pitcher": {"id": pitcher_id, "fullName": f"Pitcher {pitcher_id}"},
+            },
+            "playEvents": events,
+        }
+
+    def test_empty_payload(self):
+        result = aggregate_pitchers_from_payload({})
+        assert result == []
+
+    def test_top_inning_attributes_to_home_pitcher(self):
+        """Top inning = away batting = home team pitching."""
+        payload = {
+            "allPlays": [
+                self._build_at_bat(
+                    is_top_inning=True,
+                    events=[self._build_pitch_event(zone=5, code="S")],
+                    pitcher_id=42,
+                ),
+            ]
+        }
+        result = aggregate_pitchers_from_payload(payload)
+        assert len(result) == 1
+        assert result[0].pitcher_id == 42
+        assert result[0].side == "home"
+        assert result[0].total_batters_faced == 1
+        assert result[0].stats.total_pitches == 1
+        assert result[0].stats.zone_swings == 1
+
+    def test_bottom_inning_attributes_to_away_pitcher(self):
+        """Bottom inning = home batting = away team pitching."""
+        payload = {
+            "allPlays": [
+                self._build_at_bat(
+                    is_top_inning=False,
+                    events=[self._build_pitch_event(zone=5, code="F")],
+                    pitcher_id=99,
+                ),
+            ]
+        }
+        result = aggregate_pitchers_from_payload(payload)
+        assert len(result) == 1
+        assert result[0].pitcher_id == 99
+        assert result[0].side == "away"
+        assert result[0].stats.zone_contact == 1
+
+    def test_multiple_pitchers_same_side(self):
+        """Starter and reliever on same team are tracked separately."""
+        payload = {
+            "allPlays": [
+                self._build_at_bat(
+                    is_top_inning=True,
+                    events=[self._build_pitch_event(zone=5, code="S")],
+                    pitcher_id=10,
+                ),
+                self._build_at_bat(
+                    is_top_inning=True,
+                    events=[self._build_pitch_event(zone=12, code="B")],
+                    pitcher_id=20,
+                ),
+            ]
+        }
+        result = aggregate_pitchers_from_payload(payload)
+        assert len(result) == 2
+        ids = {p.pitcher_id for p in result}
+        assert ids == {10, 20}
+        for p in result:
+            assert p.side == "home"
+            assert p.total_batters_faced == 1
+            assert p.stats.total_pitches == 1
+
+    def test_pitcher_hit_data_tracking(self):
+        """Pitcher Statcast aggregates track hard-hit and barrel allowed."""
+        payload = {
+            "allPlays": [
+                self._build_at_bat(
+                    is_top_inning=True,
+                    events=[
+                        self._build_pitch_event(
+                            zone=5, code="X",
+                            hit_data={"launchSpeed": 105.0, "launchAngle": 28.0},
+                        ),
+                    ],
+                    pitcher_id=42,
+                ),
+            ]
+        }
+        result = aggregate_pitchers_from_payload(payload)
+        assert len(result) == 1
+        stats = result[0].stats
+        assert stats.balls_in_play == 1
+        assert stats.total_exit_velo == 105.0
+        assert stats.hard_hit_count == 1
+        assert stats.barrel_count == 1
+
+    def test_batters_faced_counts_at_bats(self):
+        """Each at-bat increments batters_faced, not each pitch."""
+        payload = {
+            "allPlays": [
+                self._build_at_bat(
+                    is_top_inning=True,
+                    events=[
+                        self._build_pitch_event(zone=5, code="C"),
+                        self._build_pitch_event(zone=5, code="S"),
+                        self._build_pitch_event(zone=5, code="S"),
+                    ],
+                    pitcher_id=42,
+                    batter_id=100,
+                ),
+                self._build_at_bat(
+                    is_top_inning=True,
+                    events=[
+                        self._build_pitch_event(zone=12, code="B"),
+                    ],
+                    pitcher_id=42,
+                    batter_id=101,
+                ),
+            ]
+        }
+        result = aggregate_pitchers_from_payload(payload)
+        assert len(result) == 1
+        assert result[0].total_batters_faced == 2
+        assert result[0].stats.total_pitches == 4
