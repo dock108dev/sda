@@ -57,7 +57,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_expire_minutes: int = Field(default=1440, alias="JWT_EXPIRE_MINUTES")  # 24h
 
-    # Email / SMTP
+    # Email — Resend (preferred) or SMTP (fallback)
+    resend_api_key: str | None = Field(default=None, alias="RESEND_API_KEY")
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
     smtp_user: str | None = Field(default=None, alias="SMTP_USER")

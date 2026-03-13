@@ -1,22 +1,49 @@
-"""Async email delivery via SMTP.
+"""Async email delivery via Resend (preferred) or SMTP (fallback).
 
-When SMTP_HOST is not configured the service logs the email body instead of
-sending, which keeps local development frictionless.
+Priority:
+1. RESEND_API_KEY set → use Resend HTTP API
+2. SMTP_HOST set → use SMTP
+3. Neither → log the email body (local dev)
 """
 
 from __future__ import annotations
 
 import logging
-from email.message import EmailMessage
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-async def _send_smtp(msg: EmailMessage) -> None:
-    """Deliver *msg* over SMTP using the configured credentials."""
+async def _send_resend(*, to: str, subject: str, html: str) -> None:
+    """Deliver via Resend HTTP API."""
+    import httpx
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            json={
+                "from": settings.mail_from,
+                "to": [to],
+                "subject": subject,
+                "html": html,
+            },
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+
+
+async def _send_smtp(*, to: str, subject: str, html: str) -> None:
+    """Deliver via SMTP."""
     import aiosmtplib
+    from email.message import EmailMessage
+
+    msg = EmailMessage()
+    msg["From"] = settings.mail_from
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.set_content(html, subtype="html")
 
     await aiosmtplib.send(
         msg,
@@ -31,28 +58,31 @@ async def _send_smtp(msg: EmailMessage) -> None:
 async def send_email(*, to: str, subject: str, html: str) -> None:
     """Send an HTML email to *to*.
 
-    Falls back to logging when SMTP is not configured.
+    Uses Resend if configured, falls back to SMTP, then to logging.
     """
-    if not settings.smtp_host:
-        logger.warning(
-            "email_not_sent (SMTP not configured)",
-            extra={"to": to, "subject": subject},
-        )
-        logger.debug("email_body", extra={"html": html})
-        return
+    if settings.resend_api_key:
+        try:
+            await _send_resend(to=to, subject=subject, html=html)
+            logger.info("email_sent", extra={"to": to, "subject": subject, "provider": "resend"})
+            return
+        except Exception:
+            logger.exception("email_send_failed", extra={"to": to, "subject": subject, "provider": "resend"})
+            raise
 
-    msg = EmailMessage()
-    msg["From"] = settings.mail_from
-    msg["To"] = to
-    msg["Subject"] = subject
-    msg.set_content(html, subtype="html")
+    if settings.smtp_host:
+        try:
+            await _send_smtp(to=to, subject=subject, html=html)
+            logger.info("email_sent", extra={"to": to, "subject": subject, "provider": "smtp"})
+            return
+        except Exception:
+            logger.exception("email_send_failed", extra={"to": to, "subject": subject, "provider": "smtp"})
+            raise
 
-    try:
-        await _send_smtp(msg)
-        logger.info("email_sent", extra={"to": to, "subject": subject})
-    except Exception:
-        logger.exception("email_send_failed", extra={"to": to, "subject": subject})
-        raise
+    logger.warning(
+        "email_not_sent (no email provider configured)",
+        extra={"to": to, "subject": subject},
+    )
+    logger.debug("email_body", extra={"html": html})
 
 
 # ---------------------------------------------------------------------------

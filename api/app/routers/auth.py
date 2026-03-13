@@ -233,7 +233,10 @@ async def forgot_password(
             "password_reset_requested",
             extra={"user_id": user.id},
         )
-        await send_password_reset_email(to=user.email, token=token, base_url=base_url)
+        try:
+            await send_password_reset_email(to=user.email, token=token, base_url=base_url)
+        except Exception:
+            pass  # already logged by send_email
     else:
         # Log but don't reveal whether the account exists
         logger.info(
@@ -300,7 +303,10 @@ async def request_magic_link(
             "magic_link_requested",
             extra={"user_id": user.id},
         )
-        await send_magic_link_email(to=user.email, token=token, base_url=base_url)
+        try:
+            await send_magic_link_email(to=user.email, token=token, base_url=base_url)
+        except Exception:
+            pass  # already logged by send_email
     else:
         logger.info(
             "magic_link_no_match",

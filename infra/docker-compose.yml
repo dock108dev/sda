@@ -70,7 +70,8 @@ services:
       OPENAI_MODEL_SUMMARY: ${OPENAI_MODEL_SUMMARY:-}
       # JWT / User Authentication
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
-      # Email / SMTP (optional — emails logged when SMTP_HOST is unset)
+      # Email — Resend (preferred) or SMTP (fallback); emails logged when neither is set
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
