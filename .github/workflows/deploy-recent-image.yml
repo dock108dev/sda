@@ -1,0 +1,87 @@
+name: Deploy Recent Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (for example: <commit-sha> or pr-<number>-<commit-sha>)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-recent-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy selected image tag over SSH
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_REPO: ${{ github.repository }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GH_REF: ${{ github.ref_name }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: GHCR_TOKEN,GH_ACTOR,GH_REPO,DEPLOY_PATH,GH_REF,IMAGE_TAG
+          script: |
+            set -euo pipefail
+
+            BASE_DIR="$DEPLOY_PATH"
+            REPO_URL="https://x-access-token:${GHCR_TOKEN}@github.com/${GH_REPO}.git"
+            BRANCH="${GH_REF}"
+
+            echo "Ensuring base directory exists..."
+            mkdir -p "$BASE_DIR"
+            cd "$BASE_DIR"
+
+            if [ ! -d ".git" ]; then
+              echo "No git repo found. Initializing..."
+              git init
+              git remote add origin "$REPO_URL"
+            else
+              echo "Updating remote URL with token..."
+              git remote set-url origin "$REPO_URL"
+            fi
+
+            echo "Fetching latest code..."
+            git fetch origin
+
+            echo "Resetting to origin/$BRANCH..."
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            git reset --hard "origin/$BRANCH"
+
+            if [ ! -f "infra/.env" ]; then
+              echo "ERROR: infra/.env file missing in $BASE_DIR"
+              exit 1
+            fi
+
+            echo "Changing to infra directory (loads .env + correct relative volume mounts)..."
+            cd infra
+
+            echo "Using IMAGE_TAG=$IMAGE_TAG"
+            export IMAGE_TAG
+
+            echo "Logging into GHCR..."
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            echo "Pulling images for selected tag..."
+            docker compose --profile prod pull
+
+            echo "Running migrations..."
+            docker compose --profile prod run --rm migrate
+
+            echo "Starting services..."
+            docker compose --profile prod up -d
+
+            echo "Cleaning up old Docker images..."
+            docker image prune -af
+            docker builder prune -af
+
+            echo "Deployment status:"
+            docker compose --profile prod ps
