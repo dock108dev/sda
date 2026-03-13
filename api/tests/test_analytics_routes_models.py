@@ -122,6 +122,119 @@ class TestGetModels:
         )
         assert resp.status_code == 200
 
+    @patch("app.analytics.api._model_routes._model_registry")
+    def test_returns_models_from_training_jobs(self, mock_registry) -> None:
+        """When training jobs exist, returns model list with artifact status."""
+        from datetime import UTC, datetime
+
+        mock_registry.list_models.return_value = [
+            {"model_id": "model_a", "active": True},
+        ]
+
+        mock_db = AsyncMock()
+        job = MagicMock()
+        job.model_id = "model_a"
+        job.artifact_path = "/tmp/nonexistent.pkl"
+        job.id = 10
+        job.created_at = datetime(2026, 3, 1, tzinfo=UTC)
+        job.metrics = {"accuracy": 0.65}
+        job.sport = "mlb"
+        job.model_type = "game"
+        job.feature_config_id = None
+        job.algorithm = "gradient_boosting"
+        job.train_count = 1000
+        job.test_count = 200
+        job.feature_importance = None
+
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [job]
+        result_mock.scalar_one_or_none.return_value = None
+        result_mock.all.return_value = []
+        mock_db.execute.return_value = result_mock
+        mock_db.get.return_value = None
+
+        client = _make_client(mock_db)
+        resp = client.get("/api/analytics/models")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 1
+        assert data["models"][0]["model_id"] == "model_a"
+        assert data["models"][0]["active"] is True
+        assert data["models"][0]["artifact_status"] == "missing"
+
+    @patch("app.analytics.api._model_routes._model_registry")
+    def test_active_only_filters(self, mock_registry) -> None:
+        """active_only=true skips inactive models."""
+        from datetime import UTC, datetime
+
+        mock_registry.list_models.return_value = []  # no active models
+
+        mock_db = AsyncMock()
+        job = MagicMock()
+        job.model_id = "model_inactive"
+        job.artifact_path = None
+        job.id = 5
+        job.created_at = datetime(2026, 3, 1, tzinfo=UTC)
+        job.metrics = {}
+        job.sport = "mlb"
+        job.model_type = "game"
+        job.feature_config_id = None
+        job.algorithm = "random_forest"
+        job.train_count = 500
+        job.test_count = 100
+        job.feature_importance = None
+
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [job]
+        result_mock.scalar_one_or_none.return_value = None
+        result_mock.all.return_value = []
+        mock_db.execute.return_value = result_mock
+        mock_db.get.return_value = None
+
+        client = _make_client(mock_db)
+        resp = client.get("/api/analytics/models?active_only=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 0
+
+    @patch("app.analytics.api._model_routes._model_registry")
+    def test_sort_by_version(self, mock_registry) -> None:
+        """sort_by=version sorts models."""
+        from datetime import UTC, datetime
+
+        mock_registry.list_models.return_value = []
+
+        mock_db = AsyncMock()
+        jobs = []
+        for i, mid in enumerate(["model_a", "model_b"]):
+            job = MagicMock()
+            job.model_id = mid
+            job.artifact_path = None
+            job.id = i + 1
+            job.created_at = datetime(2026, 3, 1, tzinfo=UTC)
+            job.metrics = {}
+            job.sport = "mlb"
+            job.model_type = "game"
+            job.feature_config_id = None
+            job.algorithm = "gradient_boosting"
+            job.train_count = 100
+            job.test_count = 20
+            job.feature_importance = None
+            jobs.append(job)
+
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = jobs
+        result_mock.scalar_one_or_none.return_value = None
+        result_mock.all.return_value = []
+        mock_db.execute.return_value = result_mock
+        mock_db.get.return_value = None
+
+        client = _make_client(mock_db)
+        resp = client.get("/api/analytics/models?sort_by=version")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 2
+
 
 class TestGetModelDetails:
     """GET /api/analytics/models/details"""
@@ -139,6 +252,48 @@ class TestGetModelDetails:
         client = _make_client()
         resp = client.get("/api/analytics/models/details")
         assert resp.status_code == 422
+
+    @patch("app.analytics.api._model_routes._model_registry")
+    def test_returns_details_from_db(self, mock_registry) -> None:
+        """Returns model details from training job DB record."""
+        from datetime import UTC, datetime
+
+        mock_registry.list_models.return_value = [
+            {"model_id": "model_xyz", "active": True},
+        ]
+
+        mock_db = AsyncMock()
+        job = MagicMock()
+        job.model_id = "model_xyz"
+        job.artifact_path = "/tmp/model.pkl"
+        job.id = 7
+        job.created_at = datetime(2026, 3, 1, tzinfo=UTC)
+        job.metrics = {"accuracy": 0.70}
+        job.sport = "mlb"
+        job.model_type = "plate_appearance"
+        job.algorithm = "gradient_boosting"
+        job.train_count = 2000
+        job.test_count = 400
+        job.feature_names = ["f1", "f2"]
+        job.feature_importance = None
+        job.date_start = "2025-07-01"
+        job.date_end = "2025-10-01"
+        job.rolling_window = 30
+
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = job
+        result_mock.scalars.return_value.all.return_value = []
+        result_mock.all.return_value = []
+        mock_db.execute.return_value = result_mock
+        mock_db.get.return_value = None
+
+        client = _make_client(mock_db)
+        resp = client.get("/api/analytics/models/details?model_id=model_xyz")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["model_id"] == "model_xyz"
+        assert data["active"] is True
+        assert data["algorithm"] == "gradient_boosting"
 
 
 class TestGetModelCompare:
@@ -376,3 +531,53 @@ class TestPostEnsembleConfig:
             ],
         })
         assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Model Deletion
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteModel:
+    """DELETE /api/analytics/models"""
+
+    def test_not_found(self) -> None:
+        client = _make_client()
+        resp = client.request(
+            "DELETE", "/api/analytics/models",
+            json={"model_id": "nonexistent"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "not_found"
+
+    @patch("app.analytics.api._model_routes._inference_engine")
+    @patch("app.analytics.api._model_routes._model_registry")
+    def test_deletes_model(self, mock_registry, mock_engine) -> None:
+        mock_db = AsyncMock()
+
+        job = MagicMock()
+        job.sport = "mlb"
+        job.model_type = "game"
+        job.artifact_path = None
+
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = job
+        result_mock.scalars.return_value.all.return_value = []
+        result_mock.all.return_value = []
+        mock_db.execute.return_value = result_mock
+        mock_db.get.return_value = None
+        mock_db.delete = AsyncMock()
+        mock_db.commit = AsyncMock()
+
+        client = _make_client(mock_db)
+        resp = client.request(
+            "DELETE", "/api/analytics/models",
+            json={"model_id": "model_to_delete"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "deleted"
+        assert data["artifact_deleted"] is False
+        mock_registry.remove_model.assert_called_once()
+        mock_engine._cache.clear.assert_called_once()

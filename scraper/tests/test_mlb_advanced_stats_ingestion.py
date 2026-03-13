@@ -16,7 +16,11 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
-from sports_scraper.live.mlb_statcast import TeamStatcastAggregates
+from sports_scraper.live.mlb_statcast import (
+    PitcherStatcastAggregates,
+    PlayerStatcastAggregates,
+    TeamStatcastAggregates,
+)
 from sports_scraper.services.mlb_advanced_stats_ingestion import (
     _safe_div,
     ingest_advanced_stats_for_game,
@@ -126,7 +130,7 @@ class TestIngestAdvancedStatsForGame:
         assert result["reason"] == "no_game_pk"
 
     @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
-    def test_successful_ingestion(self, MockClient):
+    def test_successful_ingestion_with_player_and_pitcher_stats(self, MockClient):
         game = self._make_game()
         league = self._make_league(code="MLB")
         session = self._make_session(game, league)
@@ -159,26 +163,114 @@ class TestIngestAdvancedStatsForGame:
             barrel_count=2,
         )
 
+        # Mock player-level aggregates
+        player_agg_home = PlayerStatcastAggregates(
+            batter_id=100,
+            batter_name="Home Batter",
+            side="home",
+            stats=TeamStatcastAggregates(
+                total_pitches=50, zone_pitches=25, zone_swings=15, zone_contact=12,
+                outside_pitches=20, outside_swings=5, outside_contact=2,
+                balls_in_play=10, total_exit_velo=900.0, hard_hit_count=4, barrel_count=1,
+            ),
+        )
+        player_agg_away = PlayerStatcastAggregates(
+            batter_id=200,
+            batter_name="Away Batter",
+            side="away",
+            stats=TeamStatcastAggregates(
+                total_pitches=45, zone_pitches=20, zone_swings=10, zone_contact=8,
+                outside_pitches=18, outside_swings=6, outside_contact=2,
+                balls_in_play=8, total_exit_velo=700.0, hard_hit_count=3, barrel_count=1,
+            ),
+        )
+
+        # Mock pitcher-level aggregates
+        pitcher_agg_home = PitcherStatcastAggregates(
+            pitcher_id=300,
+            pitcher_name="Home Pitcher",
+            side="home",
+            total_batters_faced=15,
+            stats=TeamStatcastAggregates(
+                total_pitches=80, zone_pitches=40, zone_swings=20, zone_contact=15,
+                outside_pitches=30, outside_swings=8, outside_contact=3,
+                balls_in_play=12, total_exit_velo=1000.0, hard_hit_count=5, barrel_count=2,
+            ),
+        )
+        pitcher_agg_away = PitcherStatcastAggregates(
+            pitcher_id=400,
+            pitcher_name="Away Pitcher",
+            side="away",
+            total_batters_faced=12,
+            stats=TeamStatcastAggregates(
+                total_pitches=70, zone_pitches=35, zone_swings=18, zone_contact=14,
+                outside_pitches=28, outside_swings=7, outside_contact=3,
+                balls_in_play=10, total_exit_velo=850.0, hard_hit_count=4, barrel_count=1,
+            ),
+        )
+
         mock_client = MagicMock()
         mock_client.fetch_statcast_aggregates.return_value = {
             "home": home_agg,
             "away": away_agg,
         }
+        mock_client.fetch_player_statcast_aggregates.return_value = [
+            player_agg_home, player_agg_away,
+        ]
+        mock_client.fetch_pitcher_statcast_aggregates.return_value = [
+            pitcher_agg_home, pitcher_agg_away,
+        ]
         MockClient.return_value = mock_client
 
         result = ingest_advanced_stats_for_game(session, 1)
 
         assert result["status"] == "success"
         assert result["rows_upserted"] == 2
+        assert result["player_rows_upserted"] == 2
+        assert result["pitcher_rows_upserted"] == 2
 
         # Verify the client was called with the right game_pk
         mock_client.fetch_statcast_aggregates.assert_called_once_with(12345, game_status="final")
+        mock_client.fetch_player_statcast_aggregates.assert_called_once_with(
+            12345, game_status="final"
+        )
+        mock_client.fetch_pitcher_statcast_aggregates.assert_called_once_with(
+            12345, game_status="final"
+        )
 
-        # Verify session.execute was called twice (once per team)
-        assert session.execute.call_count == 2
+        # 2 team rows + 2 player rows + 2 pitcher rows = 6 execute calls
+        assert session.execute.call_count == 6
 
         # Verify game timestamp was updated
         assert game.last_advanced_stats_at is not None
 
         # Verify flush was called
         session.flush.assert_called_once()
+
+    @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
+    def test_ingestion_no_players_or_pitchers(self, MockClient):
+        """Test when there are no player or pitcher aggregates."""
+        game = self._make_game()
+        league = self._make_league(code="MLB")
+        session = self._make_session(game, league)
+
+        home_agg = TeamStatcastAggregates(total_pitches=10)
+        away_agg = TeamStatcastAggregates(total_pitches=8)
+
+        mock_client = MagicMock()
+        mock_client.fetch_statcast_aggregates.return_value = {
+            "home": home_agg,
+            "away": away_agg,
+        }
+        mock_client.fetch_player_statcast_aggregates.return_value = []
+        mock_client.fetch_pitcher_statcast_aggregates.return_value = []
+        MockClient.return_value = mock_client
+
+        result = ingest_advanced_stats_for_game(session, 1)
+
+        assert result["status"] == "success"
+        assert result["rows_upserted"] == 2
+        assert result["player_rows_upserted"] == 0
+        assert result["pitcher_rows_upserted"] == 0
+        # 2 team rows only
+        assert session.execute.call_count == 2

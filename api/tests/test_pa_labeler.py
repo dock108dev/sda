@@ -71,5 +71,20 @@ class TestLabelPaEvent:
     def test_fuzzy_flyout(self):
         assert label_pa_event("Sacrifice Fly Out") == "ball_in_play_out"
 
+    def test_fuzzy_single(self):
+        assert label_pa_event("Infield Single") == "single"
+
+    def test_fuzzy_double(self):
+        assert label_pa_event("Ground Rule Double") == "double"
+
+    def test_fuzzy_triple(self):
+        assert label_pa_event("Ground Rule Triple") == "triple"
+
+    def test_fuzzy_walk_variant(self):
+        assert label_pa_event("Base On Walk") == "walk_or_hbp"
+
+    def test_unknown_event_returns_none(self):
+        assert label_pa_event("Mound Visit") is None
+
     def test_canonical_labels_count(self):
         assert len(PA_OUTCOME_LABELS) == 7
