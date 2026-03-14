@@ -23,7 +23,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
-from sports_scraper.services.job_runs import (
+from sports_scraper.services.job_runs import (  # noqa: E402
     JobRunTracker,
     _get_current_celery_task_id,
     activate_queued_job_run,
@@ -110,7 +110,7 @@ class TestActivateQueuedJobRun:
         mock_session = MagicMock()
         mock_run = MagicMock()
         mock_run.id = 10
-        mock_run.status = "canceled"
+        mock_run.status = "interrupted"
         mock_run.phase = "social"
         mock_run.leagues = ["NBA"]
         mock_session.get.return_value = mock_run
@@ -120,6 +120,23 @@ class TestActivateQueuedJobRun:
 
         assert result == 77
         mock_start.assert_called_once_with("social", ["NBA"])
+
+    @patch("sports_scraper.services.job_runs.start_job_run")
+    @patch("sports_scraper.services.job_runs.get_session")
+    def test_canceled_status_raises(self, mock_get_session, mock_start):
+        mock_session = MagicMock()
+        mock_run = MagicMock()
+        mock_run.id = 10
+        mock_run.status = "canceled"
+        mock_run.phase = "social"
+        mock_run.leagues = ["NBA"]
+        mock_session.get.return_value = mock_run
+        mock_get_session.return_value.__enter__.return_value = mock_session
+
+        with pytest.raises(RuntimeError, match="canceled before pickup"):
+            activate_queued_job_run(10)
+
+        mock_start.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +293,7 @@ class TestTrackJobRun:
     @patch("sports_scraper.services.job_runs.complete_job_run")
     @patch("sports_scraper.services.job_runs.start_job_run", return_value=70)
     def test_empty_summary_passes_none(self, mock_start, mock_complete):
-        with track_job_run("pbp", ["MLB"]) as tracker:
+        with track_job_run("pbp", ["MLB"]):
             pass  # no data set
 
         mock_complete.assert_called_once_with(
