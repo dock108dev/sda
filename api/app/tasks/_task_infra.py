@@ -65,6 +65,14 @@ async def _complete_job_run(
         run = await db.get(SportsJobRun, run_id)
         if not run:
             return
+        if run.status == "canceled":
+            # Cancellation is terminal. Keep the canceled status even if the
+            # worker reaches normal completion/error handling paths.
+            logger.info(
+                "analytics_job_run_completion_skipped_canceled",
+                extra={"run_id": run_id, "attempted_status": status},
+            )
+            return
         finished = datetime.now(UTC)
         run.status = status
         run.finished_at = finished

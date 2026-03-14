@@ -7,6 +7,7 @@ import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+import pytest
 
 # Ensure the scraper package is importable
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -283,6 +284,7 @@ class TestDetectExternalIdConflicts:
 # ============================================================================
 
 from sports_scraper.services.job_runs import (
+    activate_queued_job_run,
     complete_job_run,
     start_job_run,
 )
@@ -367,6 +369,44 @@ class TestCompleteJobRun:
 
         assert mock_run.status == "failed"
         assert mock_run.error_summary == "Connection timeout"
+
+    @patch("sports_scraper.services.job_runs.get_session")
+    def test_does_not_overwrite_canceled_status(self, mock_get_session):
+        """Keeps canceled runs canceled even when completion handler runs."""
+        mock_session = MagicMock()
+        mock_run = MagicMock()
+        mock_run.status = "canceled"
+        mock_run.started_at = datetime.now(UTC)
+        mock_session.get.return_value = mock_run
+
+        mock_get_session.return_value.__enter__.return_value = mock_session
+
+        complete_job_run(
+            run_id=123,
+            status="success",
+        )
+
+        assert mock_run.status == "canceled"
+        mock_session.flush.assert_not_called()
+
+
+class TestActivateQueuedJobRun:
+    """Tests for activate_queued_job_run behavior."""
+
+    @patch("sports_scraper.services.job_runs.get_session")
+    def test_raises_when_run_was_canceled(self, mock_get_session):
+        """Canceled queued runs should not be reactivated."""
+        mock_session = MagicMock()
+        mock_run = MagicMock()
+        mock_run.id = 42
+        mock_run.phase = "social"
+        mock_run.status = "canceled"
+        mock_run.leagues = ["MLB"]
+        mock_session.get.return_value = mock_run
+        mock_get_session.return_value.__enter__.return_value = mock_session
+
+        with pytest.raises(RuntimeError, match="canceled before pickup"):
+            activate_queued_job_run(42)
 
 
 # ============================================================================

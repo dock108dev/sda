@@ -75,7 +75,11 @@ async def cancel_job_run(
     if run.celery_task_id:
         celery_app = get_celery_app()
         try:
-            celery_app.control.revoke(run.celery_task_id, terminate=True)
+            celery_app.control.revoke(
+                run.celery_task_id,
+                terminate=True,
+                signal="SIGKILL",
+            )
         except Exception as exc:
             logger.warning(
                 "failed_to_revoke_job_run",
@@ -89,7 +93,9 @@ async def cancel_job_run(
     now = now_utc()
     run.status = "canceled"
     run.finished_at = now
-    run.duration_seconds = 0.0 if original_status == "queued" else (now - run.started_at).total_seconds()
+    run.duration_seconds = (
+        0.0 if original_status == "queued" else (now - run.started_at).total_seconds()
+    )
     run.error_summary = "Canceled by user via admin UI"
     await session.commit()
     return _serialize_run(run)

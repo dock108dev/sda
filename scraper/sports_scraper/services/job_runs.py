@@ -47,6 +47,15 @@ def complete_job_run(
         if not run:
             logger.error("job_run_missing", run_id=run_id)
             return
+        if run.status == "canceled":
+            # Cancellation is terminal. Do not let normal task finalization
+            # overwrite a user-initiated cancel with success/error.
+            logger.info(
+                "job_run_completion_skipped_canceled",
+                run_id=run_id,
+                attempted_status=status,
+            )
+            return
         finished_at = _now_utc()
         run.status = status
         run.finished_at = finished_at
@@ -115,7 +124,16 @@ def activate_queued_job_run(job_run_id: int) -> int:
             return int(run.id)
 
         if run.status != "queued":
-            # Canceled or otherwise changed before worker picked it up
+            # If canceled before pickup, abort this task invocation.
+            if run.status == "canceled":
+                logger.info(
+                    "activate_queued_canceled",
+                    job_run_id=job_run_id,
+                    phase=run.phase,
+                )
+                raise RuntimeError(f"Job run {job_run_id} was canceled before pickup")
+
+            # Otherwise changed before worker pickup (unexpected)
             logger.warning(
                 "activate_queued_unexpected_status",
                 job_run_id=job_run_id,
