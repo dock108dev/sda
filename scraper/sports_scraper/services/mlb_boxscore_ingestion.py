@@ -81,7 +81,6 @@ def populate_mlb_games_from_schedule(
                 away_score=mg.away_score,
                 venue=mg.venue,
                 external_ids=external_ids,
-                tip_time=mg.game_date,
                 season_type=season_type,
             )
             if was_created:

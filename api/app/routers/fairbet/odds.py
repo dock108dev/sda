@@ -137,11 +137,7 @@ def _build_base_filters(
     """
     now = datetime.now(UTC)
 
-    # Use COALESCE to get actual start time (tip_time preferred, else game_date)
-    game_start = func.coalesce(
-        SportsGame.tip_time,
-        SportsGame.game_date,
-    )
+    game_start = SportsGame.game_date
 
     conditions = [
         SportsGame.status.notin_(["final", "completed"]),
@@ -328,8 +324,7 @@ async def get_fairbet_odds(
         .join(FairbetGameOddsWork, FairbetGameOddsWork.game_id == SportsGame.id)
         .where(
             SportsGame.status.notin_(["final", "completed"]),
-            func.coalesce(SportsGame.tip_time, SportsGame.game_date)
-            > datetime.now(UTC),
+            SportsGame.game_date > datetime.now(UTC),
         )
         .distinct()
         .options(
@@ -343,7 +338,7 @@ async def get_fairbet_odds(
         {
             "game_id": g.id,
             "matchup": f"{g.away_team.name if g.away_team else '?'} @ {g.home_team.name if g.home_team else '?'}",
-            "game_date": g.start_time.isoformat() if g.start_time else None,
+            "game_date": g.game_date.isoformat() if g.game_date else None,
         }
         for g in games_dropdown
     ]
@@ -361,7 +356,7 @@ async def get_fairbet_odds(
                 "league_code": game.league.code if game.league else "UNKNOWN",
                 "home_team": game.home_team.name if game.home_team else "Unknown",
                 "away_team": game.away_team.name if game.away_team else "Unknown",
-                "game_date": game.start_time,
+                "game_date": game.game_date,
                 "market_key": row.market_key,
                 "selection_key": row.selection_key,
                 "line_value": row.line_value,

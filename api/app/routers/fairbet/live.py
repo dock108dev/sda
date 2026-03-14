@@ -161,7 +161,6 @@ async def fairbet_live_games(
         stmt = (
             select(
                 SportsGame.id,
-                SportsGame.tip_time,
                 SportsGame.game_date,
                 SportsGame.status,
                 HomeTeam.name.label("home_name"),
@@ -173,7 +172,7 @@ async def fairbet_live_games(
         )
         rows = await session.execute(stmt)
 
-        for gid, tip_time, game_date, status, home_name, away_name in rows:
+        for gid, game_date, status, home_name, away_name in rows:
             # Only include games that are actually live (in_progress, live, halftime)
             if not status or status.lower().strip() not in LIVE_STATUSES:
                 continue
@@ -182,7 +181,7 @@ async def fairbet_live_games(
                 league_code=league_map.get(gid, ""),
                 home_team=home_name or "Unknown",
                 away_team=away_name or "Unknown",
-                game_date=tip_time or game_date,
+                game_date=game_date,
                 status=status,
             ))
 
@@ -230,7 +229,6 @@ async def fairbet_live(
         stmt = (
             select(
                 SportsGame.id,
-                SportsGame.tip_time,
                 SportsGame.game_date,
                 SportsGame.status,
                 SportsLeague.code,
@@ -248,8 +246,7 @@ async def fairbet_live(
         if not row:
             raise HTTPException(status_code=404, detail="Game not found")
 
-        _, tip_time, game_date_raw, game_status, league_code, home_team_name, away_team_name = row
-        game_date = tip_time or game_date_raw
+        _, game_date, game_status, league_code, home_team_name, away_team_name = row
         home_team_name = home_team_name or "Unknown"
         away_team_name = away_team_name or "Unknown"
 

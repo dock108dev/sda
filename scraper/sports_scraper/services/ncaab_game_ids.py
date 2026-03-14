@@ -28,7 +28,7 @@ def populate_ncaab_game_ids(
 ) -> int:
     """Populate cbb_game_id for NCAAB games that don't have it.
 
-    Matches games by cbb_team_id + tip_time (UTC) to CBB API startDate (UTC).
+    Matches games by cbb_team_id + game_date (UTC) to CBB API startDate (UTC).
     Both are actual start times in UTC - direct match.
 
     Returns:
@@ -42,13 +42,13 @@ def populate_ncaab_game_ids(
     if not league:
         return 0
 
-    # Find games without cbb_game_id that have tip_time
+    # Find games without cbb_game_id
     cbb_game_id_expr = db_models.SportsGame.external_ids["cbb_game_id"].astext
 
     games_missing_id = (
         session.query(
             db_models.SportsGame.id,
-            db_models.SportsGame.tip_time,
+            db_models.SportsGame.game_date,
             db_models.SportsGame.home_team_id,
             db_models.SportsGame.away_team_id,
         )
@@ -56,7 +56,6 @@ def populate_ncaab_game_ids(
             db_models.SportsGame.league_id == league.id,
             db_models.SportsGame.game_date >= datetime.combine(start_date, datetime.min.time(), tzinfo=UTC),
             db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
-            db_models.SportsGame.tip_time.isnot(None),
             or_(
                 cbb_game_id_expr.is_(None),
                 cbb_game_id_expr == "",
@@ -162,15 +161,15 @@ def populate_ncaab_game_ids(
     unmatched = 0
     unmatched_reasons: dict[str, int] = {"no_team_mapping": 0, "no_api_match": 0, "time_mismatch": 0}
 
-    for game_id, tip_time, home_team_id, away_team_id in games_missing_id:
+    for game_id, game_date, home_team_id, away_team_id in games_missing_id:
         cbb_home_id = team_to_cbb_id.get(home_team_id)
         cbb_away_id = team_to_cbb_id.get(away_team_id)
 
-        if not tip_time:
+        if not game_date:
             unmatched += 1
             continue
 
-        game_day = tip_time.date()
+        game_day = game_date.date()
         cbb_game_id = None
 
         # Try matching by team IDs first

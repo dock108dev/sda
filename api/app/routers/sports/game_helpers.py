@@ -205,7 +205,7 @@ def build_preview_context(
         home_team=game.home_team.name,
         away_team=game.away_team.name,
         league=game.league.code,
-        start_time=game.start_time,
+        start_time=game.game_date,
         rivalry=rivalry,
         projected_spread=projected_spread_value,
         has_big_name_players=has_big_name_players,
@@ -284,12 +284,12 @@ def summarize_game(
 
     from ...services.date_section import classify_date_section
 
-    date_section = classify_date_section(game.start_time)
+    date_section = classify_date_section(game.game_date)
 
     return GameSummary(
         id=game.id,
         league_code=league_code,
-        game_date=game.start_time,
+        game_date=game.game_date,
         status=game.status,
         home_team=game.home_team.name,
         away_team=game.away_team.name,

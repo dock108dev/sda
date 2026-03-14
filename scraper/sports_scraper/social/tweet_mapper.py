@@ -53,21 +53,8 @@ def _game_duration_hours(game) -> float:
 
 
 def _get_game_start(game) -> datetime:
-    """Resolve game start time from tip_time or game_date, always UTC-aware."""
-    if game.tip_time:
-        game_start = game.tip_time
-    else:
-        game_start = game.game_date
-        # If game_date is at midnight, estimate 7 PM ET on that calendar date.
-        # game_date is stored as midnight UTC for the ET calendar date,
-        # so we use the UTC date directly and construct 7 PM ET on that date.
-        if game_start.hour == 0 and game_start.minute == 0:
-            game_day = game_start.date()  # The correct ET calendar date
-            estimated_et = datetime.combine(
-                game_day, datetime.min.time(), tzinfo=EASTERN
-            ).replace(hour=19)
-            game_start = estimated_et.astimezone(UTC)
-
+    """Resolve game start time from game_date, always UTC-aware."""
+    game_start = game.game_date
     if game_start.tzinfo is None:
         game_start = game_start.replace(tzinfo=UTC)
     return game_start
@@ -110,7 +97,7 @@ def get_game_window(
     The window will cross midnight ET for evening games — this is expected.
 
     Args:
-        game: SportsGame object (must have game_date, tip_time, end_time)
+        game: SportsGame object (must have game_date, end_time)
         postgame_hours: Hours after game end to include (default: from LeagueConfig)
 
     Returns:
@@ -149,8 +136,8 @@ def classify_game_phase(
     """Classify a tweet as pregame/in_game/postgame relative to a game.
 
     All comparisons in ET. Boundaries:
-    - pregame:  posted_at < tip_time
-    - in_game:  tip_time <= posted_at <= end_time
+    - pregame:  posted_at < game_date
+    - in_game:  game_date <= posted_at <= end_time
     - postgame: end_time < posted_at
 
     Uses sport-specific game duration when end_time is unavailable.

@@ -3,10 +3,10 @@
 Pure DB operations — no external API calls. Designed to run every 3 minutes
 via Celery beat. State transitions:
 
-- scheduled → pregame: when now() >= tip_time - pregame_window_hours
-- pregame → live: when tip_time < now() AND tip_time + estimated_game_duration > now()
+- scheduled → pregame: when now() >= game_date - pregame_window_hours
+- pregame → live: when game_date < now() AND game_date + estimated_game_duration > now()
   (time-based fallback when scoreboard APIs don't report "live")
-- scheduled/pregame/live → final: when tip_time + estimated_game_duration_hours
+- scheduled/pregame/live → final: when game_date + estimated_game_duration_hours
   + postgame_window_hours < now() (stale timeout safety net — also catches
   live games whose polling missed the final update)
 - final → archived: when game has timeline artifacts AND end_time < now() - 7 days
@@ -62,8 +62,7 @@ def update_game_states(session: Session) -> dict[str, int]:
 def _promote_scheduled_to_pregame(session: Session) -> int:
     """Promote scheduled games to pregame when within the pregame window.
 
-    Uses per-league pregame_window_hours from config. Games without tip_time
-    are skipped (can't compute pregame window without a start time).
+    Uses per-league pregame_window_hours from config.
     """
     now = now_utc()
     promoted = 0
@@ -85,8 +84,8 @@ def _promote_scheduled_to_pregame(session: Session) -> int:
             .filter(
                 db_models.SportsGame.league_id == league_id,
                 db_models.SportsGame.status == db_models.GameStatus.scheduled.value,
-                db_models.SportsGame.tip_time.isnot(None),
-                db_models.SportsGame.tip_time <= cutoff,
+                db_models.SportsGame.game_date.isnot(None),
+                db_models.SportsGame.game_date <= cutoff,
             )
             .all()
         )
@@ -101,17 +100,17 @@ def _promote_scheduled_to_pregame(session: Session) -> int:
                 league=league_code,
                 from_status="scheduled",
                 to_status="pregame",
-                tip_time=str(game.tip_time),
+                game_date=str(game.game_date),
             )
 
     return promoted
 
 
 def _promote_pregame_to_live(session: Session) -> int:
-    """Promote pregame games to live based on tip_time.
+    """Promote pregame games to live based on game_date.
 
     Time-based fallback for when scoreboard APIs don't reliably report "live".
-    Condition: tip_time < now AND tip_time + estimated_game_duration > now.
+    Condition: game_date < now AND game_date + estimated_game_duration > now.
     This ensures we only promote games that are plausibly in progress.
     """
     now = now_utc()
@@ -133,9 +132,9 @@ def _promote_pregame_to_live(session: Session) -> int:
             .filter(
                 db_models.SportsGame.league_id == league_id,
                 db_models.SportsGame.status == db_models.GameStatus.pregame.value,
-                db_models.SportsGame.tip_time.isnot(None),
-                db_models.SportsGame.tip_time < now,  # past tip-off
-                db_models.SportsGame.tip_time > now - duration,  # not yet expired
+                db_models.SportsGame.game_date.isnot(None),
+                db_models.SportsGame.game_date < now,  # past start time
+                db_models.SportsGame.game_date > now - duration,  # not yet expired
             )
             .all()
         )
@@ -150,7 +149,7 @@ def _promote_pregame_to_live(session: Session) -> int:
                 league=league_code,
                 from_status="pregame",
                 to_status="live",
-                tip_time=str(game.tip_time),
+                game_date=str(game.game_date),
                 reason="time_based_promotion",
             )
 
@@ -192,8 +191,8 @@ def _promote_stale_to_final(session: Session) -> int:
                         db_models.GameStatus.live.value,
                     ]
                 ),
-                db_models.SportsGame.tip_time.isnot(None),
-                db_models.SportsGame.tip_time < stale_cutoff,
+                db_models.SportsGame.game_date.isnot(None),
+                db_models.SportsGame.game_date < stale_cutoff,
             )
             .all()
         )
@@ -201,7 +200,7 @@ def _promote_stale_to_final(session: Session) -> int:
         for game in games:
             old_status = game.status
             game.status = db_models.GameStatus.final.value
-            game.end_time = game.tip_time + timedelta(hours=config.estimated_game_duration_hours)
+            game.end_time = game.game_date + timedelta(hours=config.estimated_game_duration_hours)
             game.updated_at = now
             promoted += 1
             if old_status == db_models.GameStatus.live.value:
@@ -211,7 +210,7 @@ def _promote_stale_to_final(session: Session) -> int:
                     league=league_code,
                     from_status=old_status,
                     to_status="final",
-                    tip_time=str(game.tip_time),
+                    game_date=str(game.game_date),
                     reason="stale_live_timeout",
                 )
             else:
@@ -221,7 +220,7 @@ def _promote_stale_to_final(session: Session) -> int:
                     league=league_code,
                     from_status=old_status,
                     to_status="final",
-                    tip_time=str(game.tip_time),
+                    game_date=str(game.game_date),
                     reason="stale_timeout",
                 )
 

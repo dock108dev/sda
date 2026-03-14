@@ -103,8 +103,7 @@ class NormalizedOddsSnapshot(BaseModel):
     observed_at: datetime
     home_team: TeamIdentity
     away_team: TeamIdentity
-    game_date: datetime  # Date for matching (midnight ET as UTC)
-    tip_time: datetime | None = None  # Actual start time (UTC)
+    game_date: datetime  # Actual scheduled start time (UTC)
     source_key: str | None = None
     is_closing_line: bool = True
     raw_payload: dict = Field(default_factory=dict)

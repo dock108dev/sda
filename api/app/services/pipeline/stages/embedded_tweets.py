@@ -293,7 +293,7 @@ async def load_and_attach_embedded_tweets(
     from ....db.social import TeamSocialPost
     from ....db.sports import SportsGame
 
-    # Load game for tip_time
+    # Load game for game_date (scheduled start time)
     game_result = await session.execute(
         select(SportsGame).where(SportsGame.id == game_id)
     )
@@ -303,7 +303,7 @@ async def load_and_attach_embedded_tweets(
         logger.debug("load_and_attach_no_game", extra={"game_id": game_id})
         return blocks, None
 
-    game_start = game.tip_time or game.game_date
+    game_start = game.game_date
     if game_start and game_start.tzinfo is None:
         game_start = game_start.replace(tzinfo=UTC)
 

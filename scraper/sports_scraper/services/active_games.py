@@ -2,7 +2,7 @@
 
 Computes window_state at query time (never stored) so results are always fresh.
 Window states:
-- PRE:  scheduled/pregame game within pregame_window_hours of tip_time
+- PRE:  scheduled/pregame game within pregame_window_hours of game_date
 - IN:   live game
 - POST: final game within postgame_window_hours of end_time
 - NONE: game outside any active window
@@ -74,8 +74,8 @@ class ActiveGamesResolver:
                         db_models.GameStatus.pregame.value,
                     ])
                 )
-                & (db_models.SportsGame.tip_time.isnot(None))
-                & (db_models.SportsGame.tip_time < now + timedelta(hours=pregame_hours)),
+                & (db_models.SportsGame.game_date.isnot(None))
+                & (db_models.SportsGame.game_date < now + timedelta(hours=pregame_hours)),
                 literal_column("'PRE'"),
             ),
             else_=literal_column("'NONE'"),
@@ -89,7 +89,7 @@ class ActiveGamesResolver:
         """Build a SQL OR filter that matches only games in an active window.
 
         Mirrors the CASE branches in _window_state_expression so the DB can
-        use indexes on status/tip_time/end_time and avoid loading historical
+        use indexes on status/game_date/end_time and avoid loading historical
         final games that fall outside the postgame window.
         """
         now = now_utc()
@@ -108,8 +108,8 @@ class ActiveGamesResolver:
                     db_models.GameStatus.scheduled.value,
                     db_models.GameStatus.pregame.value,
                 ])
-                & (db_models.SportsGame.tip_time.isnot(None))
-                & (db_models.SportsGame.tip_time < now + timedelta(hours=pregame_hours))
+                & (db_models.SportsGame.game_date.isnot(None))
+                & (db_models.SportsGame.game_date < now + timedelta(hours=pregame_hours))
             ),
         )
 
@@ -185,7 +185,7 @@ class ActiveGamesResolver:
                     db_models.SportsGame.last_pbp_at < stale_threshold,
                 ),
             )
-            .order_by(db_models.SportsGame.tip_time.asc().nullslast())
+            .order_by(db_models.SportsGame.game_date.asc().nullslast())
             .all()
         )
 
@@ -237,7 +237,7 @@ class ActiveGamesResolver:
                     db_models.SportsGame.last_boxscore_at < stale_threshold,
                 ),
             )
-            .order_by(db_models.SportsGame.tip_time.asc().nullslast())
+            .order_by(db_models.SportsGame.game_date.asc().nullslast())
             .all()
         )
 
@@ -297,7 +297,7 @@ class ActiveGamesResolver:
                     ),
                 )
             )
-            .order_by(db_models.SportsGame.tip_time.asc().nullslast())
+            .order_by(db_models.SportsGame.game_date.asc().nullslast())
             .all()
         )
 

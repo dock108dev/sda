@@ -86,7 +86,7 @@ def update_game_states_task() -> dict:
     """Promote games through lifecycle states (runs every 3 min).
 
     Pure DB — no external API calls. Handles:
-    - scheduled → pregame (within pregame_window_hours of tip_time)
+    - scheduled → pregame (within pregame_window_hours of game_date)
     - final → archived (>7 days with timeline artifacts)
     """
     from ..services.game_state_updater import update_game_states

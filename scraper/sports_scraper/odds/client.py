@@ -454,7 +454,6 @@ class OddsAPIClient:
                                 home_team=home_team,
                                 away_team=away_team,
                                 game_date=game_date,
-                                tip_time=commence_utc,  # Actual start time in UTC
                                 source_key=market.get("key"),
                                 is_closing_line=True,
                                 raw_payload=outcome,
@@ -636,7 +635,6 @@ class OddsAPIClient:
                             home_team=home_team,
                             away_team=away_team,
                             game_date=game_date,
-                            tip_time=commence_utc,
                             source_key=market_key,
                             is_closing_line=True,
                             raw_payload=outcome,

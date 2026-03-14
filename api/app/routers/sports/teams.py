@@ -133,7 +133,7 @@ async def get_team(team_id: int, session: AsyncSession = Depends(get_db)) -> Tea
         recent_games.append(
             TeamGameSummary(
                 id=game.id,
-                gameDate=game.start_time.isoformat() if game.start_time else "",
+                gameDate=game.game_date.isoformat() if game.game_date else "",
                 opponent=game.away_team.name if game.away_team else "Unknown",
                 isHome=True,
                 score=score,
@@ -153,7 +153,7 @@ async def get_team(team_id: int, session: AsyncSession = Depends(get_db)) -> Tea
         recent_games.append(
             TeamGameSummary(
                 id=game.id,
-                gameDate=game.start_time.isoformat() if game.start_time else "",
+                gameDate=game.game_date.isoformat() if game.game_date else "",
                 opponent=game.home_team.name if game.home_team else "Unknown",
                 isHome=False,
                 score=score,
@@ -257,7 +257,7 @@ async def update_team_colors(
         recent_games.append(
             TeamGameSummary(
                 id=game.id,
-                gameDate=game.start_time.isoformat() if game.start_time else "",
+                gameDate=game.game_date.isoformat() if game.game_date else "",
                 opponent=game.away_team.name if game.away_team else "Unknown",
                 isHome=True,
                 score=score,
@@ -277,7 +277,7 @@ async def update_team_colors(
         recent_games.append(
             TeamGameSummary(
                 id=game.id,
-                gameDate=game.start_time.isoformat() if game.start_time else "",
+                gameDate=game.game_date.isoformat() if game.game_date else "",
                 opponent=game.home_team.name if game.home_team else "Unknown",
                 isHome=False,
                 score=score,

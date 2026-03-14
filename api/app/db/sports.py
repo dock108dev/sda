@@ -38,7 +38,7 @@ class GameStatus(str, Enum):
     """
 
     scheduled = "scheduled"
-    pregame = "pregame"  # Within pregame_window_hours of tip_time
+    pregame = "pregame"  # Within pregame_window_hours of game_date
     live = "live"
     final = "final"
     archived = "archived"  # Data complete, flows generated, >7 days old
@@ -190,9 +190,6 @@ class SportsGame(Base):
     season: Mapped[int] = mapped_column(Integer, nullable=False)
     season_type: Mapped[str] = mapped_column(String(50), nullable=False)
     game_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    tip_time: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, index=True
-    )
     end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     home_team_id: Mapped[int] = mapped_column(
         Integer,
@@ -328,15 +325,6 @@ class SportsGame(Base):
             GameStatus.final.value,
         )
 
-    @property
-    def start_time(self) -> datetime:
-        """Return actual game start time, preferring tip_time over game_date."""
-        return self.tip_time if self.tip_time else self.game_date
-
-    @property
-    def has_reliable_start_time(self) -> bool:
-        """Return True if we have an actual tip time, not just a date."""
-        return self.tip_time is not None
 
 
 class SportsTeamBoxscore(Base):

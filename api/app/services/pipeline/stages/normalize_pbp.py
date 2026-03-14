@@ -164,7 +164,7 @@ async def execute_normalize_pbp(
         output.add_log(f"Warning: Failed to persist entity resolutions: {e}", "warning")
 
     # Compute game timing (league-specific)
-    game_start = game.start_time
+    game_start = game.game_date
     is_ncaab = league_code == "NCAAB"
     is_nhl = league_code == "NHL"
     is_mlb = league_code == "MLB"

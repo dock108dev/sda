@@ -3,7 +3,7 @@
 Runs once daily (4 AM EST) as a safety net to catch anything the
 high-frequency polling tasks missed. Responsibilities:
 
-1. Status repair: find scheduled games past tip_time, check API for actual status
+1. Status repair: find scheduled games past game_date, check API for actual status
 2. Social: second-pass social scrape for postgame reactions
 3. Embedded tweet backfill: attach tweets to flows generated before social completed
 4. Archive: move final games >7 days with complete artifacts to archived
@@ -219,7 +219,7 @@ def _run_social_scrape_2() -> dict:
 
 
 def _repair_stale_statuses() -> dict:
-    """Find scheduled/pregame games past their tip_time and check APIs for actual status.
+    """Find scheduled/pregame games past their game_date and check APIs for actual status.
 
     Games that should have started but are still marked scheduled/pregame
     likely missed a status update. We check the league APIs to get the
@@ -232,7 +232,7 @@ def _repair_stale_statuses() -> dict:
     from ..utils.datetime_utils import now_utc
 
     now = now_utc()
-    # Games with tip_time > 3 hours ago that are still scheduled/pregame
+    # Games with game_date > 3 hours ago that are still scheduled/pregame
     stale_cutoff = now - timedelta(hours=3)
     repaired = 0
 
@@ -244,8 +244,8 @@ def _repair_stale_statuses() -> dict:
                     db_models.GameStatus.scheduled.value,
                     db_models.GameStatus.pregame.value,
                 ]),
-                db_models.SportsGame.tip_time.isnot(None),
-                db_models.SportsGame.tip_time < stale_cutoff,
+                db_models.SportsGame.game_date.isnot(None),
+                db_models.SportsGame.game_date < stale_cutoff,
             )
             .all()
         )

@@ -104,54 +104,43 @@ async def generate_timeline_artifact(
         if not plays:
             raise TimelineGenerationError("Missing play-by-play data", status_code=422)
 
-        game_start = game.start_time
+        game_start = game.game_date
         game_end = nba_game_end(game_start, plays)
         has_overtime = any((play.quarter or 0) > 4 for play in plays)
 
         # Compute phase boundaries for social event assignment
         phase_boundaries = compute_phase_boundaries(game_start, has_overtime)
 
-        # Only include social posts if we have a reliable tip_time
         # Use TeamSocialPost (mapped, pregame/in_game only) — postgame never affects flows
-        posts: list[TeamSocialPost] = []
-        if game.has_reliable_start_time:
-            social_window_start = game_start - timedelta(
-                seconds=SOCIAL_PREGAME_WINDOW_SECONDS
-            )
-            social_window_end = game_end + timedelta(
-                seconds=SOCIAL_POSTGAME_WINDOW_SECONDS
-            )
+        social_window_start = game_start - timedelta(
+            seconds=SOCIAL_PREGAME_WINDOW_SECONDS
+        )
+        social_window_end = game_end + timedelta(
+            seconds=SOCIAL_POSTGAME_WINDOW_SECONDS
+        )
 
-            posts_result = await session.execute(
-                select(TeamSocialPost)
-                .where(
-                    TeamSocialPost.game_id == game_id,
-                    TeamSocialPost.mapping_status == "mapped",
-                    TeamSocialPost.game_phase.in_(["pregame", "in_game"]),
-                    TeamSocialPost.posted_at >= social_window_start,
-                    TeamSocialPost.posted_at <= social_window_end,
-                )
-                .order_by(TeamSocialPost.posted_at)
+        posts_result = await session.execute(
+            select(TeamSocialPost)
+            .where(
+                TeamSocialPost.game_id == game_id,
+                TeamSocialPost.mapping_status == "mapped",
+                TeamSocialPost.game_phase.in_(["pregame", "in_game"]),
+                TeamSocialPost.posted_at >= social_window_start,
+                TeamSocialPost.posted_at <= social_window_end,
             )
-            posts = list(posts_result.scalars().all())
+            .order_by(TeamSocialPost.posted_at)
+        )
+        posts: list[TeamSocialPost] = list(posts_result.scalars().all())
 
-            logger.info(
-                "social_posts_window",
-                extra={
-                    "game_id": game_id,
-                    "window_start": social_window_start.isoformat(),
-                    "window_end": social_window_end.isoformat(),
-                    "posts_found": len(posts),
-                },
-            )
-        else:
-            logger.warning(
-                "social_posts_skipped_no_tip_time",
-                extra={
-                    "game_id": game_id,
-                    "reason": "No reliable tip_time available",
-                },
-            )
+        logger.info(
+            "social_posts_window",
+            extra={
+                "game_id": game_id,
+                "window_start": social_window_start.isoformat(),
+                "window_end": social_window_end.isoformat(),
+                "posts_found": len(posts),
+            },
+        )
 
         # Build PBP events
         logger.info(

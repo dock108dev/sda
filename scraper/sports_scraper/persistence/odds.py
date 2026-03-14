@@ -167,21 +167,12 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
         if game_id is None:
             return OddsUpsertResult.SKIPPED_NO_MATCH
 
-        # Update tip_time even on cache hit if not yet set
         game = session.get(db_models.SportsGame, game_id)
 
         # Skip live games to preserve pre-game closing lines
         if game and game.status == db_models.GameStatus.live.value:
             logger.debug("odds_skip_live_game", game_id=game_id, book=snapshot.book)
             return OddsUpsertResult.SKIPPED_LIVE
-
-        if game and game.tip_time is None and snapshot.tip_time:
-            game.tip_time = snapshot.tip_time
-            logger.debug(
-                "odds_set_tip_time_cached",
-                game_id=game_id,
-                tip_time=str(snapshot.tip_time),
-            )
 
         # Store odds_api_event_id for downstream prop fetching (cached path)
         if game and snapshot.event_id:
@@ -367,9 +358,6 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
             cache_set(cache_key, None)
             return OddsUpsertResult.SKIPPED_NO_MATCH
 
-        # Use tip_time from snapshot (actual start time in UTC)
-        tip_time = snapshot.tip_time
-
         # Build external_ids with Odds API source key if available
         external_ids = {}
         if snapshot.source_key:
@@ -384,7 +372,6 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
                 home_team=snapshot.home_team,
                 away_team=snapshot.away_team,
                 status="scheduled",
-                tip_time=tip_time,
                 external_ids=external_ids if external_ids else None,
             )
         except Exception as exc:
@@ -410,13 +397,11 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
             away_team=snapshot.away_team.name,
             game_date=str(game_date_only),
             is_historical=is_historical,
-            tip_time=str(tip_time) if tip_time else None,
         )
 
         # Cache the newly created game_id for subsequent odds records
         cache_set(cache_key, game_id)
 
-    # Update game's tip_time if null and we have tip_time from Odds API
     game = session.get(db_models.SportsGame, game_id)
 
     # Skip live games to preserve pre-game closing lines
@@ -424,14 +409,6 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
         logger.debug("odds_skip_live_game", game_id=game_id, book=snapshot.book)
         cache_set(cache_key, game_id)
         return OddsUpsertResult.SKIPPED_LIVE
-
-    if game and game.tip_time is None and snapshot.tip_time:
-        game.tip_time = snapshot.tip_time
-        logger.debug(
-            "odds_set_tip_time",
-            game_id=game_id,
-            tip_time=str(snapshot.tip_time),
-        )
 
     # Store odds_api_event_id for downstream prop fetching
     if game and snapshot.event_id:
