@@ -482,7 +482,6 @@ class TestUpsertOddsFunction:
 
         # Mock session.get to return a game and its teams
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         snapshot = NormalizedOddsSnapshot(
@@ -561,7 +560,6 @@ class TestUpsertOddsFunction:
         mock_cache_get.return_value = 42
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game, "New Team", "Another Team")
 
         snapshot = NormalizedOddsSnapshot(
@@ -580,48 +578,6 @@ class TestUpsertOddsFunction:
         assert result is OddsUpsertResult.PERSISTED
         assert mock_upsert_team.call_count == 2
 
-    @patch("sports_scraper.persistence.odds.cache_set")
-    @patch("sports_scraper.persistence.odds.cache_get")
-    @patch("sports_scraper.persistence.odds._upsert_team")
-    @patch("sports_scraper.persistence.odds._find_team_by_name")
-    @patch("sports_scraper.persistence.odds.get_league_id")
-    def test_updates_tip_time_on_cache_hit(
-        self,
-        mock_get_league_id,
-        mock_find_team,
-        mock_upsert_team,
-        mock_cache_get,
-        mock_cache_set,
-    ):
-        """Updates tip_time when game has none on cache hit."""
-        from sports_scraper.persistence.odds import upsert_odds
-
-        mock_session = MagicMock()
-        mock_get_league_id.return_value = 1
-        mock_find_team.side_effect = [10, 20]
-        mock_cache_get.return_value = 42
-
-        mock_game = MagicMock()
-        mock_game.tip_time = None  # No tip_time
-        _setup_session_get(mock_session, mock_game)
-
-        tip_time = datetime(2024, 1, 15, 19, 30, tzinfo=UTC)
-        snapshot = NormalizedOddsSnapshot(
-            league_code="NBA",
-            home_team=TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL"),
-            away_team=TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS"),
-            game_date=datetime(2024, 1, 15, 19, 0, tzinfo=UTC),
-            book="draftkings",
-            market_type="moneyline",
-            price=-110,
-            observed_at=datetime.now(UTC),
-            tip_time=tip_time,
-        )
-
-        result = upsert_odds(mock_session, snapshot)
-
-        assert result is OddsUpsertResult.PERSISTED
-        assert mock_game.tip_time == tip_time
 
 
 class TestUpsertOddsCacheMiss:
@@ -659,7 +615,6 @@ class TestUpsertOddsCacheMiss:
         mock_match_by_ids.return_value = 42  # Match found
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         # Mock execute for diagnostic queries
@@ -715,7 +670,6 @@ class TestUpsertOddsCacheMiss:
         mock_match_by_names.return_value = 42  # Match by names
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game, "Duke Blue Devils", "North Carolina Tar Heels")
 
         mock_session.execute.return_value.all.return_value = []
@@ -770,7 +724,6 @@ class TestUpsertOddsCacheMiss:
         mock_match_by_names.return_value = 42  # Match by names
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         mock_session.execute.return_value.all.return_value = []
@@ -825,12 +778,10 @@ class TestUpsertOddsCacheMiss:
         mock_upsert_stub.return_value = (42, True)  # Created new game
 
         mock_game = MagicMock()
-        mock_game.tip_time = None
         _setup_session_get(mock_session, mock_game)
 
         mock_session.execute.return_value.all.return_value = []
 
-        tip_time = datetime(2024, 1, 15, 19, 30, tzinfo=UTC)
         snapshot = NormalizedOddsSnapshot(
             league_code="NBA",
             home_team=TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL"),
@@ -840,7 +791,6 @@ class TestUpsertOddsCacheMiss:
             market_type="moneyline",
             price=-110,
             observed_at=datetime.now(UTC),
-            tip_time=tip_time,
             source_key="odds_api_123",
         )
 
@@ -939,7 +889,6 @@ class TestUpsertOddsDiagnostics:
         mock_match_by_ids.return_value = 42
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         # Mock diagnostic query results
@@ -990,7 +939,6 @@ class TestUpsertOddsWithSideValue:
         mock_cache_get.return_value = 42
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         snapshot = NormalizedOddsSnapshot(
@@ -1035,7 +983,6 @@ class TestUpsertOddsWithSideValue:
         mock_cache_get.return_value = 42
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         snapshot = NormalizedOddsSnapshot(
@@ -1081,7 +1028,6 @@ class TestUpsertOddsTeamCreation:
         mock_cache_get.return_value = 42
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game, "New Team", "Celtics")
 
         snapshot = NormalizedOddsSnapshot(
@@ -1123,7 +1069,6 @@ class TestUpsertOddsTeamCreation:
         mock_cache_get.return_value = 42
 
         mock_game = MagicMock()
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game, "Lakers", "New Team")
 
         snapshot = NormalizedOddsSnapshot(
@@ -1141,61 +1086,3 @@ class TestUpsertOddsTeamCreation:
 
         assert result is OddsUpsertResult.PERSISTED
         mock_upsert_team.assert_called_once()
-
-
-class TestUpsertOddsUpdateTipTime:
-    """Tests for tip_time updates in upsert_odds."""
-
-    @patch("sports_scraper.persistence.odds.upsert_game_stub")
-    @patch("sports_scraper.persistence.odds.match_game_by_names_non_ncaab")
-    @patch("sports_scraper.persistence.odds.match_game_by_team_ids")
-    @patch("sports_scraper.persistence.odds.canonicalize_team_names")
-    @patch("sports_scraper.persistence.odds.cache_set")
-    @patch("sports_scraper.persistence.odds.cache_get")
-    @patch("sports_scraper.persistence.odds._upsert_team")
-    @patch("sports_scraper.persistence.odds._find_team_by_name")
-    @patch("sports_scraper.persistence.odds.get_league_id")
-    def test_updates_tip_time_after_match(
-        self,
-        mock_get_league_id,
-        mock_find_team,
-        mock_upsert_team,
-        mock_cache_get,
-        mock_cache_set,
-        mock_canonicalize,
-        mock_match_by_ids,
-        mock_match_by_names,
-        mock_upsert_stub,
-    ):
-        """Updates tip_time on matched game when null."""
-        from sports_scraper.persistence.odds import upsert_odds
-
-        mock_session = MagicMock()
-        mock_get_league_id.return_value = 1
-        mock_find_team.side_effect = [10, 20]
-        mock_cache_get.return_value = False
-        mock_canonicalize.return_value = ("Lakers", "Celtics")
-        mock_match_by_ids.return_value = 42
-
-        mock_game = MagicMock()
-        mock_game.tip_time = None
-        _setup_session_get(mock_session, mock_game)
-        mock_session.execute.return_value.all.return_value = []
-
-        tip_time = datetime(2024, 1, 15, 19, 30, tzinfo=UTC)
-        snapshot = NormalizedOddsSnapshot(
-            league_code="NBA",
-            home_team=TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL"),
-            away_team=TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS"),
-            game_date=datetime(2024, 1, 15, 19, 0, tzinfo=UTC),
-            book="draftkings",
-            market_type="moneyline",
-            price=-110,
-            observed_at=datetime.now(UTC),
-            tip_time=tip_time,
-        )
-
-        result = upsert_odds(mock_session, snapshot)
-
-        assert result is OddsUpsertResult.PERSISTED
-        assert mock_game.tip_time == tip_time

@@ -27,7 +27,7 @@ def _make_game(**kwargs) -> MagicMock:
     game = MagicMock()
     game.id = kwargs.get("id", 1)
     game.status = kwargs.get("status", "scheduled")
-    game.tip_time = kwargs.get("tip_time")
+    game.game_date = kwargs.get("game_date")
     game.end_time = kwargs.get("end_time")
     game.updated_at = kwargs.get("updated_at")
     game.closed_at = kwargs.get("closed_at")
@@ -94,7 +94,7 @@ class TestPromoteScheduledToPregame:
         mock_config.items.return_value = [("NBA", config)]
 
         game = _make_game(
-            tip_time=now + timedelta(hours=3),  # within 6-hour window
+            game_date=now + timedelta(hours=3),  # within 6-hour window
             status="scheduled",
         )
 
@@ -129,8 +129,8 @@ class TestPromoteScheduledToPregame:
         mock_config.items.return_value = [("NBA", config)]
 
         games = [
-            _make_game(id=1, tip_time=now + timedelta(hours=2)),
-            _make_game(id=2, tip_time=now + timedelta(hours=4)),
+            _make_game(id=1, game_date=now + timedelta(hours=2)),
+            _make_game(id=2, game_date=now + timedelta(hours=4)),
         ]
 
         session = MagicMock()
@@ -164,7 +164,7 @@ _ESTIMATED_GAME_DURATION_HOURS = 3.0
 class TestPromotePregameToLive:
     @patch("sports_scraper.services.game_state_updater.LEAGUE_CONFIG")
     @patch("sports_scraper.services.game_state_updater.now_utc", return_value=_utc_now())
-    def test_promotes_game_past_tip_time(self, mock_now, mock_config):
+    def test_promotes_game_past_game_date(self, mock_now, mock_config):
         now = _utc_now()
         config = MagicMock()
         config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
@@ -172,7 +172,7 @@ class TestPromotePregameToLive:
 
         game = _make_game(
             status="pregame",
-            tip_time=now - timedelta(hours=1),  # started 1 hour ago
+            game_date=now - timedelta(hours=1),  # started 1 hour ago
         )
 
         session = MagicMock()
@@ -186,8 +186,8 @@ class TestPromotePregameToLive:
 
     @patch("sports_scraper.services.game_state_updater.LEAGUE_CONFIG")
     @patch("sports_scraper.services.game_state_updater.now_utc", return_value=_utc_now())
-    def test_skips_game_before_tip_time(self, mock_now, mock_config):
-        """Games whose tip_time is in the future should NOT be promoted."""
+    def test_skips_game_before_game_date(self, mock_now, mock_config):
+        """Games whose game_date is in the future should NOT be promoted."""
         now = _utc_now()
         config = MagicMock()
         config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
@@ -222,8 +222,8 @@ class TestPromotePregameToLive:
         mock_config.items.return_value = [("NBA", config)]
 
         games = [
-            _make_game(id=1, status="pregame", tip_time=now - timedelta(hours=1)),
-            _make_game(id=2, status="pregame", tip_time=now - timedelta(minutes=30)),
+            _make_game(id=1, status="pregame", game_date=now - timedelta(hours=1)),
+            _make_game(id=2, status="pregame", game_date=now - timedelta(minutes=30)),
         ]
 
         session = MagicMock()
@@ -255,7 +255,7 @@ class TestPromoteStaleToFinal:
 
         game = _make_game(
             status="live",
-            tip_time=now - timedelta(hours=7),  # 7 hrs ago, cutoff is 6
+            game_date=now - timedelta(hours=7),  # 7 hrs ago, cutoff is 6
         )
 
         session = MagicMock()
@@ -265,7 +265,7 @@ class TestPromoteStaleToFinal:
         result = _promote_stale_to_final(session)
         assert result == 1
         assert game.status == "final"
-        assert game.end_time == game.tip_time + timedelta(hours=_ESTIMATED_GAME_DURATION_HOURS)
+        assert game.end_time == game.game_date + timedelta(hours=_ESTIMATED_GAME_DURATION_HOURS)
         assert game.updated_at == now
 
     @patch(f"{_MOD}.LEAGUE_CONFIG")
@@ -298,7 +298,7 @@ class TestPromoteStaleToFinal:
 
         game = _make_game(
             status="live",
-            tip_time=now - timedelta(hours=7),
+            game_date=now - timedelta(hours=7),
         )
 
         session = MagicMock()
@@ -326,7 +326,7 @@ class TestPromoteStaleToFinal:
 
         game = _make_game(
             status="scheduled",
-            tip_time=now - timedelta(hours=7),
+            game_date=now - timedelta(hours=7),
         )
 
         session = MagicMock()
@@ -348,9 +348,9 @@ class TestPromoteStaleToFinal:
         mock_config.items.return_value = [("NBA", config)]
 
         games = [
-            _make_game(id=1, status="scheduled", tip_time=now - timedelta(hours=8)),
-            _make_game(id=2, status="pregame", tip_time=now - timedelta(hours=7)),
-            _make_game(id=3, status="live", tip_time=now - timedelta(hours=10)),
+            _make_game(id=1, status="scheduled", game_date=now - timedelta(hours=8)),
+            _make_game(id=2, status="pregame", game_date=now - timedelta(hours=7)),
+            _make_game(id=3, status="live", game_date=now - timedelta(hours=10)),
         ]
 
         session = MagicMock()

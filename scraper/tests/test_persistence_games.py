@@ -345,7 +345,6 @@ class TestUpsertGameStub:
         existing_game.away_score = None
         existing_game.venue = None
         existing_game.external_ids = {}
-        existing_game.tip_time = None
         mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
@@ -384,7 +383,6 @@ class TestUpsertGameStub:
         existing_game.away_score = None
         existing_game.venue = None
         existing_game.external_ids = {}
-        existing_game.tip_time = None
         mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
@@ -404,42 +402,6 @@ class TestUpsertGameStub:
 
     @patch("sports_scraper.persistence.games._upsert_team")
     @patch("sports_scraper.persistence.games.get_league_id")
-    def test_sets_tip_time_when_null(self, mock_get_league_id, mock_upsert_team):
-        """Sets tip_time when existing game has none."""
-        from sports_scraper.persistence.games import upsert_game_stub
-
-        mock_session = MagicMock()
-        mock_get_league_id.return_value = 1
-        mock_upsert_team.side_effect = [10, 20]
-
-        existing_game = MagicMock()
-        existing_game.id = 42
-        existing_game.status = "scheduled"
-        existing_game.home_score = None
-        existing_game.away_score = None
-        existing_game.venue = None
-        existing_game.external_ids = {}
-        existing_game.tip_time = None
-        mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
-
-        home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
-        away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")
-        tip_time = datetime(2024, 1, 15, 19, 30, tzinfo=UTC)
-
-        upsert_game_stub(
-            mock_session,
-            league_code="NBA",
-            game_date=datetime(2024, 1, 15, 19, 0, tzinfo=UTC),
-            home_team=home_team,
-            away_team=away_team,
-            status="scheduled",
-            tip_time=tip_time,
-        )
-
-        assert existing_game.tip_time == tip_time
-
-    @patch("sports_scraper.persistence.games._upsert_team")
-    @patch("sports_scraper.persistence.games.get_league_id")
     def test_merges_external_ids(self, mock_get_league_id, mock_upsert_team):
         """Merges external_ids with existing."""
         from sports_scraper.persistence.games import upsert_game_stub
@@ -455,7 +417,6 @@ class TestUpsertGameStub:
         existing_game.away_score = None
         existing_game.venue = None
         existing_game.external_ids = {"existing": "123"}
-        existing_game.tip_time = None
         mock_session.query.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.filter.return_value.first.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
@@ -488,7 +449,6 @@ class TestUpdateGameFromLiveFeed:
         mock_game.away_score = 48
         mock_game.venue = None
         mock_game.external_ids = {}
-        mock_game.tip_time = None
 
         result = update_game_from_live_feed(
             mock_session,
@@ -513,7 +473,6 @@ class TestUpdateGameFromLiveFeed:
         mock_game.away_score = None
         mock_game.venue = None
         mock_game.external_ids = {}
-        mock_game.tip_time = None
 
         result = update_game_from_live_feed(
             mock_session,
@@ -538,7 +497,6 @@ class TestUpdateGameFromLiveFeed:
         mock_game.away_score = None
         mock_game.venue = None
         mock_game.external_ids = {"existing": "123"}
-        mock_game.tip_time = None
 
         result = update_game_from_live_feed(
             mock_session,
@@ -563,7 +521,6 @@ class TestUpdateGameFromLiveFeed:
         mock_game.away_score = None
         mock_game.venue = None
         mock_game.external_ids = {}
-        mock_game.tip_time = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
 
         result = update_game_from_live_feed(
             mock_session,

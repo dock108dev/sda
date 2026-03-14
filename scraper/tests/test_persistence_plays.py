@@ -244,7 +244,6 @@ class TestUpsertPlaysIntegration:
         mock_game.home_team = mock_home_team
         mock_game.away_team = mock_away_team
         mock_game.status = "in_progress"
-        mock_game.tip_time = None
         mock_game.end_time = None
 
         mock_session.query.return_value.filter.return_value.first.return_value = mock_game
@@ -285,7 +284,6 @@ class TestUpsertPlaysIntegration:
         mock_game.home_team = mock_home_team
         mock_game.away_team = mock_away_team
         mock_game.status = "in_progress"
-        mock_game.tip_time = None
         mock_game.end_time = None
 
         mock_session.query.return_value.filter.return_value.first.return_value = mock_game
@@ -325,7 +323,6 @@ class TestUpsertPlaysIntegration:
         mock_game.home_team = mock_home_team
         mock_game.away_team = mock_away_team
         mock_game.status = "in_progress"
-        mock_game.tip_time = None
         mock_game.end_time = None
 
         # Mock player
@@ -371,7 +368,6 @@ class TestUpsertPlaysIntegration:
         mock_game.home_team = mock_home_team
         mock_game.away_team = mock_away_team
         mock_game.status = "in_progress"
-        mock_game.tip_time = None
         mock_game.end_time = None
         mock_game.last_pbp_at = None
 
@@ -415,7 +411,6 @@ class TestUpsertPlaysIntegration:
         mock_game.home_team = mock_home_team
         mock_game.away_team = mock_away_team
         mock_game.status = "in_progress"
-        mock_game.tip_time = None
         mock_game.end_time = None
 
         mock_session.query.return_value.filter.return_value.first.return_value = mock_game

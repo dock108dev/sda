@@ -242,7 +242,7 @@ class TestGetFairbetOddsEndpoint:
     def mock_game(self):
         """Create a mock game with related objects."""
         game = MagicMock()
-        game.start_time = datetime.now(UTC) + timedelta(hours=2)
+        game.game_date = datetime.now(UTC) + timedelta(hours=2)
         game.status = "scheduled"
 
         league = MagicMock()
@@ -758,7 +758,7 @@ class TestAltSpreadGrouping:
     def mock_game(self):
         """Create a mock game with related objects."""
         game = MagicMock()
-        game.start_time = datetime.now(UTC) + timedelta(hours=2)
+        game.game_date = datetime.now(UTC) + timedelta(hours=2)
         game.status = "scheduled"
 
         league = MagicMock()
@@ -1033,7 +1033,7 @@ class TestFairOddsOutlierHandling:
     @pytest.fixture
     def mock_game(self):
         game = MagicMock()
-        game.start_time = datetime.now(UTC) + timedelta(hours=2)
+        game.game_date = datetime.now(UTC) + timedelta(hours=2)
         game.status = "scheduled"
         league = MagicMock()
         league.code = "NBA"
@@ -1221,7 +1221,7 @@ class TestSharpBooksRetainedWhenEvDisabled:
     @pytest.fixture
     def mock_game(self):
         game = MagicMock()
-        game.start_time = datetime.now(UTC) + timedelta(hours=2)
+        game.game_date = datetime.now(UTC) + timedelta(hours=2)
         game.status = "scheduled"
         league = MagicMock()
         league.code = "NBA"
@@ -2476,7 +2476,7 @@ class TestExtrapolationEndToEnd:
     @pytest.fixture
     def mock_game(self):
         game = MagicMock()
-        game.start_time = datetime.now(UTC) + timedelta(hours=2)
+        game.game_date = datetime.now(UTC) + timedelta(hours=2)
         game.status = "scheduled"
         league = MagicMock()
         league.code = "NCAAB"

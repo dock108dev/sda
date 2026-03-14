@@ -23,7 +23,7 @@ def _make_game(**kwargs) -> MagicMock:
     game.status = kwargs.get("status", "live")
     game.home_team_id = kwargs.get("home_team_id", 100)
     game.away_team_id = kwargs.get("away_team_id", 200)
-    game.tip_time = kwargs.get("tip_time")
+    game.game_date = kwargs.get("game_date")
     game.end_time = kwargs.get("end_time")
     game.last_pbp_at = kwargs.get("last_pbp_at")
     game.league_id = kwargs.get("league_id", 10)

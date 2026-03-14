@@ -72,11 +72,8 @@ def _get_game_end(game, game_start: datetime) -> datetime:
 
 
 def _pregame_start_utc(game) -> datetime:
-    """Return pregame_start_hour_et on the game's calendar date, as a UTC datetime.
-
-    game.game_date is stored as midnight UTC representing the ET calendar date.
-    """
-    game_day = game.game_date.date()
+    """Return pregame_start_hour_et on the game's ET calendar date, as a UTC datetime."""
+    game_day = _to_et(game.game_date).date()
     pregame_et = datetime.combine(
         game_day, datetime.min.time(), tzinfo=EASTERN
     ).replace(hour=settings.social_config.pregame_start_hour_et)
@@ -119,7 +116,7 @@ def get_game_window(
     # Floor: window must extend to at least 4 AM ET on the day after game_date.
     # Late-night games (ending after midnight ET) need postgame tweets captured
     # until the sports day boundary.
-    next_day = game.game_date.date() + timedelta(days=1)
+    next_day = _to_et(game.game_date).date() + timedelta(days=1)
     floor_et = datetime.combine(
         next_day, datetime.min.time(), tzinfo=EASTERN
     ).replace(hour=SPORTS_DAY_BOUNDARY_HOUR_ET)

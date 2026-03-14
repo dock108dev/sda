@@ -23,7 +23,6 @@ def _utc(year: int, month: int, day: int, hour: int = 0, minute: int = 0) -> dat
 def _make_game(**kwargs) -> MagicMock:
     game = MagicMock()
     game.id = kwargs.get("id", 1)
-    game.tip_time = kwargs.get("tip_time")
     game.game_date = kwargs.get("game_date", _utc(2025, 6, 15, 0, 0))
     game.end_time = kwargs.get("end_time")
     game.home_team_id = kwargs.get("home_team_id", 100)
@@ -83,8 +82,7 @@ class TestGetGameWindow:
         """Pregame window starts at 5 AM ET on game_date."""
         # game_date=Jun 15 midnight UTC (EDT offset = -4), 5 AM EDT = 09:00 UTC
         game = _make_game(
-            tip_time=_utc(2025, 6, 15, 23, 0),  # 7 PM EDT
-            game_date=_utc(2025, 6, 15, 0, 0),
+            game_date=_utc(2025, 6, 15, 23, 0),  # 7 PM EDT
         )
         start, end = get_game_window(game)
         assert start == _utc(2025, 6, 15, 9, 0)  # 5 AM EDT = 09:00 UTC
@@ -92,8 +90,7 @@ class TestGetGameWindow:
     def test_window_starts_at_5am_et_winter(self):
         """During EST (UTC-5), 5 AM ET = 10:00 UTC."""
         game = _make_game(
-            tip_time=_utc(2026, 2, 6, 1, 10),  # 8:10 PM EST
-            game_date=_utc(2026, 2, 5, 0, 0),
+            game_date=_utc(2026, 2, 6, 1, 10),  # 8:10 PM EST
         )
         start, end = get_game_window(game)
         assert start == _utc(2026, 2, 5, 10, 0)  # 5 AM EST = 10:00 UTC
@@ -102,8 +99,7 @@ class TestGetGameWindow:
         """A 10 PM ET tip ends ~1 AM ET next day, postgame until 4 AM ET floor."""
         # 10 PM EST = 03:00 UTC next day
         game = _make_game(
-            tip_time=_utc(2026, 2, 7, 3, 0),   # 10 PM EST Feb 6
-            game_date=_utc(2026, 2, 6, 0, 0),
+            game_date=_utc(2026, 2, 7, 3, 0),   # 10 PM EST Feb 6
             league_code="NBA",
         )
         start, end = get_game_window(game)
@@ -115,9 +111,8 @@ class TestGetGameWindow:
 
     def test_uses_actual_end_time(self):
         game = _make_game(
-            tip_time=_utc(2025, 6, 15, 19, 0),
+            game_date=_utc(2025, 6, 15, 19, 0),
             end_time=_utc(2025, 6, 15, 22, 30),
-            game_date=_utc(2025, 6, 15, 0, 0),
         )
         start, end = get_game_window(game)
         # 3h after actual end = 01:30 UTC Jun 16
@@ -127,9 +122,8 @@ class TestGetGameWindow:
 
     def test_ignores_end_time_before_start(self):
         game = _make_game(
-            tip_time=_utc(2025, 6, 15, 19, 0),
+            game_date=_utc(2025, 6, 15, 19, 0),
             end_time=_utc(2025, 6, 15, 18, 0),  # before tip
-            game_date=_utc(2025, 6, 15, 0, 0),
         )
         start, end = get_game_window(game)
         # Falls back to estimated end (tip + 3.0h NBA + 3h postgame) = 01:00 UTC
@@ -139,8 +133,7 @@ class TestGetGameWindow:
 
     def test_sport_specific_duration_nhl(self):
         game = _make_game(
-            tip_time=_utc(2025, 6, 15, 23, 0),
-            game_date=_utc(2025, 6, 15, 0, 0),
+            game_date=_utc(2025, 6, 15, 23, 0),
             league_code="NHL",
         )
         start, end = get_game_window(game)
@@ -151,8 +144,7 @@ class TestGetGameWindow:
 
     def test_sport_specific_duration_ncaab(self):
         game = _make_game(
-            tip_time=_utc(2025, 6, 15, 23, 0),
-            game_date=_utc(2025, 6, 15, 0, 0),
+            game_date=_utc(2025, 6, 15, 23, 0),
             league_code="NCAAB",
         )
         start, end = get_game_window(game)
@@ -163,7 +155,7 @@ class TestGetGameWindow:
 
     def test_naive_datetime_gets_utc(self):
         naive_tip = datetime(2025, 6, 15, 19, 0)  # no tzinfo
-        game = _make_game(tip_time=naive_tip, game_date=_utc(2025, 6, 15, 0, 0))
+        game = _make_game(game_date=naive_tip)
         start, end = get_game_window(game)
         assert start.tzinfo is not None
         assert end.tzinfo is not None
@@ -173,8 +165,7 @@ class TestGetGameWindow:
         A tweet at 2:50 PM ET (19:50 UTC) should be inside the window.
         """
         game = _make_game(
-            tip_time=_utc(2026, 2, 7, 1, 10),
-            game_date=_utc(2026, 2, 6, 0, 0),
+            game_date=_utc(2026, 2, 7, 1, 10),
         )
         start, end = get_game_window(game)
         assert start == _utc(2026, 2, 6, 10, 0)  # 5 AM EST
@@ -223,47 +214,42 @@ class TestSearchDatesForTweet:
 class TestClassifyGamePhase:
     def test_before_tip_is_pregame(self):
         game = _make_game(
-            tip_time=_utc(2026, 2, 7, 1, 10),  # 8:10 PM EST
-            game_date=_utc(2026, 2, 6, 0, 0),
+            game_date=_utc(2026, 2, 7, 1, 10),  # 8:10 PM EST
         )
         # 3 PM EST = 20:00 UTC
         assert classify_game_phase(_utc(2026, 2, 6, 20, 0), game) == "pregame"
 
     def test_at_tip_is_in_game(self):
         tip = _utc(2026, 2, 7, 1, 10)
-        game = _make_game(tip_time=tip, game_date=_utc(2026, 2, 6, 0, 0))
+        game = _make_game(game_date=tip)
         assert classify_game_phase(tip, game) == "in_game"
 
     def test_during_game_is_in_game(self):
         game = _make_game(
-            tip_time=_utc(2026, 2, 7, 1, 10),
+            game_date=_utc(2026, 2, 7, 1, 10),
             end_time=_utc(2026, 2, 7, 3, 40),
-            game_date=_utc(2026, 2, 6, 0, 0),
         )
         assert classify_game_phase(_utc(2026, 2, 7, 2, 0), game) == "in_game"
 
     def test_after_end_is_postgame(self):
         game = _make_game(
-            tip_time=_utc(2026, 2, 7, 1, 10),
+            game_date=_utc(2026, 2, 7, 1, 10),
             end_time=_utc(2026, 2, 7, 3, 40),
-            game_date=_utc(2026, 2, 6, 0, 0),
         )
         assert classify_game_phase(_utc(2026, 2, 7, 4, 0), game) == "postgame"
 
     def test_at_end_time_is_in_game(self):
         end = _utc(2026, 2, 7, 3, 40)
         game = _make_game(
-            tip_time=_utc(2026, 2, 7, 1, 10),
+            game_date=_utc(2026, 2, 7, 1, 10),
             end_time=end,
-            game_date=_utc(2026, 2, 6, 0, 0),
         )
         assert classify_game_phase(end, game) == "in_game"
 
     def test_uses_sport_duration_when_no_end_time(self):
         """NBA game with no end_time: estimated end = tip + 3.0h."""
         game = _make_game(
-            tip_time=_utc(2026, 2, 7, 1, 10),
-            game_date=_utc(2026, 2, 6, 0, 0),
+            game_date=_utc(2026, 2, 7, 1, 10),
             league_code="NBA",
         )
         # 3h after tip → still in_game (within 3.0h)
@@ -281,7 +267,7 @@ class TestMapUnmappedTweets:
     def test_maps_tweet_to_matching_game(self, mock_db, mock_now):
         game = _make_game(
             id=10,
-            tip_time=_utc(2025, 6, 15, 19, 0),
+            game_date=_utc(2025, 6, 15, 19, 0),
             home_team_id=100,
         )
         tweet = _make_tweet(
@@ -381,7 +367,7 @@ class TestMapTweetsForTeam:
     def test_maps_for_specific_team(self, mock_db, mock_now):
         game = _make_game(
             id=10,
-            tip_time=_utc(2025, 6, 15, 19, 0),
+            game_date=_utc(2025, 6, 15, 19, 0),
         )
         tweet = _make_tweet(
             team_id=100,
