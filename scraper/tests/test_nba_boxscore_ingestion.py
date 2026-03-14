@@ -46,7 +46,7 @@ class TestSelectGamesForBoxscoresNbaApi:
         league = MagicMock(id=1)
         session.query.return_value.filter.return_value.first.return_value = league
 
-        game_date = datetime(2024, 1, 15, tzinfo=UTC)
+        game_date = datetime(2024, 1, 15, 17, 0, tzinfo=UTC)  # noon ET
         row = (100, "0022400123", game_date)
         session.query.return_value.filter.return_value.all.return_value = [row]
 

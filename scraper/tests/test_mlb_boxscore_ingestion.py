@@ -63,7 +63,7 @@ class TestPopulateMlbGameIds:
         league_query = MagicMock()
         league_query.first.return_value = league
 
-        game_date = datetime(2024, 7, 15, 0, 0, tzinfo=UTC)
+        game_date = datetime(2024, 7, 15, 17, 0, tzinfo=UTC)  # noon ET
         missing_game = (100, game_date, 10, 20)
         missing_query = MagicMock()
         missing_query.all.return_value = [missing_game]
@@ -120,7 +120,7 @@ class TestPopulateMlbGameIds:
         session = MagicMock()
         league = MagicMock(id=1)
 
-        game_date = datetime(2024, 7, 15, 0, 0, tzinfo=UTC)
+        game_date = datetime(2024, 7, 15, 17, 0, tzinfo=UTC)  # noon ET
         # home_team_id=10 has no abbreviation mapping
         missing_game = (100, game_date, 999, 20)
 
@@ -164,7 +164,7 @@ class TestSelectGamesForBoxscoresMlbApi:
         league = MagicMock(id=1)
         session.query.return_value.filter.return_value.first.return_value = league
 
-        game_date = datetime(2024, 7, 15, tzinfo=UTC)
+        game_date = datetime(2024, 7, 15, 17, 0, tzinfo=UTC)  # noon ET
         row = (100, "717001", game_date, "final")
         session.query.return_value.filter.return_value.all.return_value = [row]
 
