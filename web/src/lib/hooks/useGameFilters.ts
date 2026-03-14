@@ -27,6 +27,32 @@ function getDefaultGameFilters(limit = 25): GameFilters {
   };
 }
 
+const STORAGE_KEY = "gameFilters";
+
+function loadSavedFilters(defaultLimit: number): GameFilters | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as Partial<GameFilters>;
+    // Merge saved values over defaults, reset offset to 0
+    return { ...getDefaultGameFilters(defaultLimit), ...saved, offset: 0 };
+  } catch {
+    return null;
+  }
+}
+
+function saveFilters(filters: GameFilters) {
+  if (typeof window === "undefined") return;
+  try {
+    // Persist everything except offset
+    const { offset: _, ...rest } = filters;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+  } catch {
+    // localStorage unavailable — ignore
+  }
+}
+
 export const DEFAULT_GAME_FILTERS: GameFilters = getDefaultGameFilters();
 
 interface UseGameFiltersOptions {
@@ -66,10 +92,10 @@ export function useGameFilters(options: UseGameFiltersOptions = {}): UseGameFilt
   const { defaultLimit = 25, loadMoreMode = false } = options;
   
   const [formFilters, setFormFilters] = useState<GameFilters>(() =>
-    getDefaultGameFilters(defaultLimit),
+    loadSavedFilters(defaultLimit) ?? getDefaultGameFilters(defaultLimit),
   );
   const [appliedFilters, setAppliedFilters] = useState<GameFilters>(() =>
-    getDefaultGameFilters(defaultLimit),
+    loadSavedFilters(defaultLimit) ?? getDefaultGameFilters(defaultLimit),
   );
   const [games, setGames] = useState<GameSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -131,6 +157,7 @@ export function useGameFilters(options: UseGameFiltersOptions = {}): UseGameFilt
         ? { ...nextFilters, leagues: nextFilters.leagues ?? [] }
         : { ...formFilters, leagues: formFilters.leagues ?? [], offset: 0 };
       setAppliedFilters(filtersToApply);
+      saveFilters(filtersToApply);
     if (!loadMoreMode) {
       setGames([]);
     }
@@ -145,6 +172,7 @@ export function useGameFilters(options: UseGameFiltersOptions = {}): UseGameFilt
     setAppliedFilters(defaultFilters);
     setGames([]);
     setAggregates(null);
+    saveFilters(defaultFilters);
   }, [defaultLimit]);
 
   const loadMore = useCallback(() => {

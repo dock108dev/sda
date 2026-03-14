@@ -218,59 +218,69 @@ def upsert_player_boxscores(
     )
 
 
-def persist_game_payload(session: Session, payload: NormalizedGame) -> GamePersistResult:
+def persist_game_payload(
+    session: Session,
+    payload: NormalizedGame,
+    *,
+    game_id: int | None = None,
+) -> GamePersistResult:
     """Persist boxscore data by enriching an existing game record.
 
     ENRICHMENT-ONLY: This function does NOT create games. Games must already exist
-    (created by Odds API during schedule sync). If no matching game is found,
-    this function logs a warning and returns None.
+    in the database. If ``game_id`` is provided the lookup is a direct primary-key
+    fetch; otherwise the game is matched by league + teams + date window.
 
     Returns GamePersistResult with game_id=None if no matching game found.
     """
-    league_id = get_league_id(session, payload.identity.league_code)
-    home_team_id = _find_team_by_name(
-        session, league_id,
-        payload.identity.home_team.name,
-        payload.identity.home_team.abbreviation,
-    )
-    away_team_id = _find_team_by_name(
-        session, league_id,
-        payload.identity.away_team.name,
-        payload.identity.away_team.abbreviation,
-    )
-
-    # If teams don't exist, we can't match the game
-    if home_team_id is None or away_team_id is None:
-        logger.warning(
-            "boxscore_team_not_found",
-            league=payload.identity.league_code,
-            home_team=payload.identity.home_team.name,
-            away_team=payload.identity.away_team.name,
-            home_team_found=home_team_id is not None,
-            away_team_found=away_team_id is not None,
-            game_date=str(payload.identity.game_date.date()),
-            source_game_key=payload.identity.source_game_key,
+    if game_id is not None:
+        game = session.query(db_models.SportsGame).get(game_id)
+        if game is None:
+            logger.warning(
+                "boxscore_game_id_not_found",
+                game_id=game_id,
+                source_game_key=payload.identity.source_game_key,
+            )
+            return GamePersistResult(game_id=None, enriched=False)
+    else:
+        league_id = get_league_id(session, payload.identity.league_code)
+        home_team_id = _find_team_by_name(
+            session, league_id,
+            payload.identity.home_team.name,
+            payload.identity.home_team.abbreviation,
         )
-        return GamePersistResult(game_id=None, enriched=False)
-
-    # Find existing game
-    game = _find_game_for_boxscore(
-        session, league_id, home_team_id, away_team_id, payload.identity.game_date
-    )
-
-    if game is None:
-        # No matching game found - this is expected for games not in Odds API
-        # Log warning and return gracefully (no-op)
-        logger.warning(
-            "boxscore_game_not_found",
-            league=payload.identity.league_code,
-            home_team=payload.identity.home_team.name,
-            away_team=payload.identity.away_team.name,
-            game_date=str(payload.identity.game_date.date()),
-            source_game_key=payload.identity.source_game_key,
-            message="Game not found in database. Games must be created via Odds API first.",
+        away_team_id = _find_team_by_name(
+            session, league_id,
+            payload.identity.away_team.name,
+            payload.identity.away_team.abbreviation,
         )
-        return GamePersistResult(game_id=None, enriched=False)
+
+        if home_team_id is None or away_team_id is None:
+            logger.warning(
+                "boxscore_team_not_found",
+                league=payload.identity.league_code,
+                home_team=payload.identity.home_team.name,
+                away_team=payload.identity.away_team.name,
+                home_team_found=home_team_id is not None,
+                away_team_found=away_team_id is not None,
+                game_date=str(payload.identity.game_date.date()),
+                source_game_key=payload.identity.source_game_key,
+            )
+            return GamePersistResult(game_id=None, enriched=False)
+
+        game = _find_game_for_boxscore(
+            session, league_id, home_team_id, away_team_id, payload.identity.game_date
+        )
+
+        if game is None:
+            logger.warning(
+                "boxscore_game_not_found",
+                league=payload.identity.league_code,
+                home_team=payload.identity.home_team.name,
+                away_team=payload.identity.away_team.name,
+                game_date=str(payload.identity.game_date.date()),
+                source_game_key=payload.identity.source_game_key,
+            )
+            return GamePersistResult(game_id=None, enriched=False)
 
     # Enrich existing game with boxscore data
     enriched = _enrich_game_with_boxscore(session, game, payload)

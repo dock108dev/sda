@@ -389,7 +389,7 @@ def ingest_boxscores_via_mlb_api(
                 boxscore, game_date
             )
 
-            result = persist_game_payload(session, normalized_game)
+            result = persist_game_payload(session, normalized_game, game_id=game_id)
 
             if result.game_id is not None:
                 games_processed += 1
