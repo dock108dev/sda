@@ -32,6 +32,8 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 |-------|-------------|
 | `mlb_game_advanced_stats` | Statcast-derived team-level advanced batting stats (2 rows per game: home + away) |
 | `mlb_player_advanced_stats` | Statcast-derived player-level advanced batting stats (one row per batter per game) |
+| `mlb_pitcher_game_stats` | Per-game pitching stats (IP, K, BB, ERA, pitch count, etc.) linked to `sports_games` |
+| `mlb_player_fielding_stats` | Seasonal fielding stats (OAA, DRS, UZR, errors, innings) per player per team per season |
 
 ### Odds & FairBet
 
@@ -80,6 +82,9 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `analytics_batch_sim_jobs` | Batch Monte Carlo simulation jobs |
 | `analytics_prediction_outcomes` | Prediction vs actual outcome tracking for calibration |
 | `analytics_degradation_alerts` | Model quality degradation alerts |
+| `analytics_experiment_suites` | A/B experiment suites — groups of strategy variants to compare |
+| `analytics_experiment_variants` | Individual variants within an experiment suite (strategy config, metrics) |
+| `analytics_replay_jobs` | Historical replay jobs — re-simulate past games with different strategies |
 
 ### Authentication
 
@@ -91,6 +96,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 
 | Table | Description |
 |-------|-------------|
+| `user_preferences` | User preferences — synced settings, pins, revealed scores (JSONB) |
 | `game_reading_positions` | User reading position tracking (resume point per game) |
 | `openai_response_cache` | Cached OpenAI API responses for pipeline stages |
 

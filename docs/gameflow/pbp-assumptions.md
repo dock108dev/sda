@@ -2,7 +2,7 @@
 
 This document defines the explicit guarantees that Game Flow assumes about Play-by-Play (PBP) data. It is derived from a comprehensive audit of existing schemas, ingestion paths, and data samples.
 
-**Authoritative Reference:** `docs/GAMEFLOW_CONTRACT.md`
+**Authoritative Reference:** [Game Flow Contract](contract.md)
 
 ---
 

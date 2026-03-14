@@ -2,7 +2,7 @@
 
 Mathematical walkthrough of how expected value (EV) is computed from sharp book prices. This document should allow a human to manually compute EV for one bet and match the system.
 
-For the full pipeline (ingestion, game matching, eligibility gating, API consumption), see [Odds & FairBet Pipeline](ODDS_AND_FAIRBET.md).
+For the full pipeline (ingestion, game matching, eligibility gating, API consumption), see [Odds & FairBet Pipeline](odds-and-fairbet.md).
 
 ---
 
@@ -141,4 +141,4 @@ When flagged, the API layer sets `ev_disabled_reason = "fair_odds_outlier"` and 
 
 ## See Also
 
-- [Odds & FairBet Pipeline](ODDS_AND_FAIRBET.md) — Full pipeline: ingestion, matching, eligibility, API consumption
+- [Odds & FairBet Pipeline](odds-and-fairbet.md) — Full pipeline: ingestion, matching, eligibility, API consumption

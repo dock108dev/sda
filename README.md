@@ -17,7 +17,7 @@ docker compose --profile dev up -d --build
 - API Docs: http://localhost:8000/docs
 - Health: http://localhost:8000/healthz
 
-For manual setup, see [docs/INFRA.md](docs/INFRA.md#local-services-without-docker).
+For manual setup, see [docs/ops/infra.md](docs/ops/infra.md#local-services-without-docker).
 
 ## Architecture
 
@@ -72,14 +72,14 @@ sql/          Reference SQL queries
 
 | Guide | Description |
 |-------|-------------|
-| [docs/INDEX.md](docs/INDEX.md) | Full documentation index |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture |
-| [docs/INFRA.md](docs/INFRA.md) | Infrastructure & local development |
-| [docs/API.md](docs/API.md) | API reference |
-| [docs/ANALYTICS.md](docs/ANALYTICS.md) | Analytics & ML engine |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deployment guide |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Release changelog |
+| [docs/index.md](docs/index.md) | Full documentation index |
+| [docs/architecture.md](docs/architecture.md) | System architecture |
+| [docs/ops/infra.md](docs/ops/infra.md) | Infrastructure & local development |
+| [docs/api.md](docs/api.md) | API reference |
+| [docs/analytics.md](docs/analytics.md) | Analytics & ML engine |
+| [docs/ops/deployment.md](docs/ops/deployment.md) | Deployment guide |
+| [docs/changelog.md](docs/changelog.md) | Release changelog |
 
 ## Contributing
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system architecture and key principles.
+See [docs/architecture.md](docs/architecture.md) for system architecture and key principles.

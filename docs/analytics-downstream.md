@@ -7,7 +7,7 @@
 
 ## API Base
 
-All analytics endpoints live under `/api/analytics/`. Include `X-API-Key` header on every request. See `API.md` for auth details.
+All analytics endpoints live under `/api/analytics/`. Include `X-API-Key` header on every request. See `api.md` for auth details.
 
 ---
 

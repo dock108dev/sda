@@ -236,7 +236,7 @@ INPUT:                          ASSEMBLY:                       OUTPUT:
 
 ## Validation
 
-Assembled timelines are validated before persistence. See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for the full validation spec (6 critical checks, 4 warning checks).
+Assembled timelines are validated before persistence. See [Timeline Validation](timeline-validation.md) for the full validation spec (6 critical checks, 4 warning checks).
 
 ---
 

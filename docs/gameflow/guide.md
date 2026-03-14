@@ -555,6 +555,6 @@ func fetchGameFlow(gameId: Int) async throws -> GameFlowResponse {
 
 ## See Also
 
-- [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) — Authoritative specification (block fields, semantic roles, guardrails, narrative rules)
-- [GAMEFLOW_PIPELINE.md](GAMEFLOW_PIPELINE.md) — Pipeline implementation details (8 stages, execution modes)
-- [API.md](API.md) — Complete API reference
+- [Game Flow Contract](contract.md) — Authoritative specification (block fields, semantic roles, guardrails, narrative rules)
+- [Game Flow Pipeline](pipeline.md) — Pipeline implementation details (8 stages, execution modes)
+- [API Reference](../api.md) — Complete API reference

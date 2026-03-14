@@ -73,7 +73,7 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 - **Training:** Async Celery-based training pipeline — dataset building, label extraction, model evaluation, joblib artifact generation
 - **API:** `/api/analytics/*` endpoints for team/player profiles, matchup analysis, simulation, model management, feature loadout CRUD, training jobs, ensemble config, MLB advanced models
 
-See [ANALYTICS.md](ANALYTICS.md) for details.
+See [Analytics](analytics.md) for details.
 
 ### 4. Admin UI (`web/`)
 **Purpose:** Data management and monitoring
@@ -140,9 +140,9 @@ A narrative block contains:
 - **Guardrails enforced:** Hard limits on block count, social post count, word count
 - **Social-independent:** Game flow structure identical with/without social data
 
-See [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) for the authoritative specification.
+See [Gameflow Contract](gameflow/contract.md) for the authoritative specification.
 
-See [GAMEFLOW_PIPELINE.md](GAMEFLOW_PIPELINE.md) for implementation details.
+See [Gameflow Pipeline](gameflow/pipeline.md) for implementation details.
 
 **Code:** `api/app/services/pipeline/`
 
@@ -162,8 +162,8 @@ The timeline system merges PBP events, social media posts, and odds data into a 
 - `api/app/services/timeline_types.py` - Constants (`PHASE_ORDER`), data classes
 - `api/app/services/timeline_validation.py` - Validation rules (6 critical, 4 warning)
 
-See [TIMELINE_ASSEMBLY.md](TIMELINE_ASSEMBLY.md) for the assembly recipe.
-See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
+See [Timeline Assembly](gameflow/timeline-assembly.md) for the assembly recipe.
+See [Timeline Validation](gameflow/timeline-validation.md) for validation rules.
 
 ---
 
@@ -179,6 +179,8 @@ See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
 - `closing_lines` - Durable closing-line snapshots captured when games go LIVE
 - `mlb_game_advanced_stats` - Statcast-derived advanced batting stats per team per game
 - `mlb_player_advanced_stats` - Statcast-derived advanced batting stats per batter per game
+- `mlb_pitcher_game_stats` - Per-game pitching stats (IP, K, BB, ERA, etc.)
+- `mlb_player_fielding_stats` - Seasonal fielding stats (OAA, DRS, UZR, errors)
 - `team_social_posts` - Social media content (mapped to games via `mapping_status`)
 - `users` - User accounts for downstream app authentication (email, password_hash, role, is_active)
 
@@ -189,6 +191,9 @@ See [TIMELINE_VALIDATION.md](TIMELINE_VALIDATION.md) for validation rules.
 - `analytics_batch_sim_jobs` - Batch Monte Carlo simulation jobs
 - `analytics_prediction_outcomes` - Prediction vs actual outcome tracking for calibration
 - `analytics_degradation_alerts` - Model quality degradation alerts
+- `analytics_experiment_suites` - A/B experiment suites (groups of strategy variants)
+- `analytics_experiment_variants` - Individual variants within an experiment suite
+- `analytics_replay_jobs` - Historical replay jobs for strategy comparison
 
 Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). Reference data (leagues, teams, social handles) is seeded from `seed_data.sql`.
 
@@ -267,8 +272,8 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 
 FairBet reads from the `fairbet_game_odds_work` table (populated during odds ingestion with canonical DB team names) and annotates each bet with expected value computed at query time using Pinnacle as the sharp reference. Each bet includes server-computed display fields (fair American odds, selection display name, market display name, book abbreviations, confidence labels, EV method explanations) so clients don't need to maintain their own formatting logic.
 
-See [Odds & FairBet Pipeline](ODDS_AND_FAIRBET.md) for the full data flow.
-See [API.md](API.md) for complete endpoint reference.
+See [Odds & FairBet Pipeline](ingestion/odds-and-fairbet.md) for the full data flow.
+See [API Reference](api.md) for complete endpoint reference.
 
 ---
 

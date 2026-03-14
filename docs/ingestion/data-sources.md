@@ -197,7 +197,7 @@ Code: `scraper/sports_scraper/persistence/odds.py`, `scraper/sports_scraper/pers
 - Only populated for non-completed games
 - `line_value = 0.0` is sentinel for moneyline
 
-See [Odds & FairBet Pipeline](ODDS_AND_FAIRBET.md) for the full data flow including EV computation.
+See [Odds & FairBet Pipeline](odds-and-fairbet.md) for the full data flow including EV computation.
 
 ### Live Odds (During Games)
 
@@ -418,6 +418,6 @@ Configuration: `scraper/sports_scraper/celery_app.py`
 
 ## See Also
 
-- [ADDING_NEW_SPORTS.md](ADDING_NEW_SPORTS.md) - Adding new leagues and scrapers
-- [DATABASE_INTEGRATION.md](DATABASE_INTEGRATION.md) - Database schema and queries
-- [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) - Production operations
+- [Adding New Sports](../adding-sports.md) - Adding new leagues and scrapers
+- [Database Integration](../database.md) - Database schema and queries
+- [Operator Runbook](../ops/runbook.md) - Production operations

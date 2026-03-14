@@ -38,7 +38,7 @@ Both profiles run the same set of services.
 | api | 8000 | FastAPI backend |
 | api-worker | -- | Celery worker for API tasks (pipeline, flow generation) |
 | scraper | -- | Celery worker for data ingestion |
-| scraper-beat | -- | Celery scheduler (see [DATA_SOURCES.md](DATA_SOURCES.md) for full schedule) |
+| scraper-beat | -- | Celery scheduler (see [Data Sources](../ingestion/data-sources.md) for full schedule) |
 | social-scraper | -- | Social media scraper (X/Twitter) -- live tasks only (`social-scraper` queue) |
 | social-bulk | -- | Bulk social collection worker (`social-bulk` queue) -- isolated from live tasks |
 | migrate | -- | One-shot Alembic migration runner |
@@ -335,12 +335,12 @@ The `infra/scripts/restore.sh` script is destructive and requires `CONFIRM_DESTR
 CONFIRM_DESTRUCTIVE=true docker exec sports-postgres /scripts/restore.sh /backups/sports_YYYYMMDD.sql.gz
 ```
 
-For production troubleshooting, see [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md).
+For production troubleshooting, see [Operator Runbook](runbook.md).
 
 ---
 
 ## See Also
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and data flow
-- [DEPLOYMENT.md](DEPLOYMENT.md) - Production deployment
-- [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) - Production operations
+- [Architecture](../architecture.md) - System architecture and data flow
+- [Deployment](deployment.md) - Production deployment
+- [Operator Runbook](runbook.md) - Production operations

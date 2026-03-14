@@ -14,7 +14,7 @@ NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → ANALYZE_DRAMA → GR
 
 ## Output: Blocks vs Moments
 
-The pipeline produces **blocks** (consumer-facing narratives, 3-7 per game) and **moments** (internal traceability, 15-25 per game). See [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) for the authoritative specification of block fields, semantic roles, guardrail invariants, and narrative rules.
+The pipeline produces **blocks** (consumer-facing narratives, 3-7 per game) and **moments** (internal traceability, 15-25 per game). See [Game Flow Contract](contract.md) for the authoritative specification of block fields, semantic roles, guardrail invariants, and narrative rules.
 
 ## Stages
 
@@ -112,7 +112,7 @@ if total_plays > 400: base += 1
 return min(base, 7)
 ```
 
-**Semantic Roles:** SETUP → MOMENTUM_SHIFT → RESPONSE → DECISION_POINT → RESOLUTION (see [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) for definitions and constraints).
+**Semantic Roles:** SETUP → MOMENTUM_SHIFT → RESPONSE → DECISION_POINT → RESOLUTION (see [Game Flow Contract](contract.md) for definitions and constraints).
 
 **Output Schema:**
 ```python
@@ -190,7 +190,7 @@ return min(base, 7)
 
 **Implementation:** `stages/validate_blocks.py`
 
-**Guardrail invariants and validation rules** are defined in [GAMEFLOW_CONTRACT.md §6](GAMEFLOW_CONTRACT.md). The pipeline enforces all invariants listed there.
+**Guardrail invariants and validation rules** are defined in [Game Flow Contract §6](contract.md). The pipeline enforces all invariants listed there.
 
 ### 8. FINALIZE_MOMENTS
 
@@ -283,5 +283,5 @@ Returns:
 
 ## See Also
 
-- [GAMEFLOW_CONTRACT.md](GAMEFLOW_CONTRACT.md) - Full game flow specification
-- [API.md](API.md) - Complete API reference
+- [Game Flow Contract](contract.md) - Full game flow specification
+- [API Reference](../api.md) - Complete API reference

@@ -43,7 +43,7 @@ flowchart LR
 
 ## Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the full deployment flow including GitHub secrets, edge routing, and rollback strategy.
+See [Deployment](deployment.md) for the full deployment flow including GitHub secrets, edge routing, and rollback strategy.
 
 ### Quick Manual Deploy
 
@@ -75,7 +75,7 @@ docker inspect --format='{{.State.Health.Status}}' sports-api
 
 ## Backups & Restore
 
-See [INFRA.md](INFRA.md#database-backup--restore) for full backup/restore procedures.
+See [Infrastructure](infra.md#database-backup--restore) for full backup/restore procedures.
 
 ### Quick Reference
 
@@ -125,7 +125,7 @@ Containers validate required environment at startup and exit if misconfigured.
 - `DATABASE_URL` and `REDIS_URL` must not point at `localhost`
 - `DATABASE_URL` must not use default `postgres:postgres` credentials
 
-For the full environment variable reference, see [INFRA.md](INFRA.md#environment-variables).
+For the full environment variable reference, see [Infrastructure](infra.md#environment-variables).
 
 ### Destructive Operation Guardrails
 
@@ -142,13 +142,13 @@ For the full environment variable reference, see [INFRA.md](INFRA.md#environment
 - Verify required env vars are set (see [Startup Validation](#startup-validation-fail-fast))
 - Check database connectivity
 
-For deployment troubleshooting (SSH, GHCR, health checks), see [DEPLOYMENT.md](DEPLOYMENT.md#troubleshooting).
+For deployment troubleshooting (SSH, GHCR, health checks), see [Deployment](deployment.md#troubleshooting).
 
-For local development troubleshooting (port conflicts, DB connections), see [INFRA.md](INFRA.md#troubleshooting).
+For local development troubleshooting (port conflicts, DB connections), see [Infrastructure](infra.md#troubleshooting).
 
 ---
 
 ## See Also
 
-- [INFRA.md](INFRA.md) - Docker configuration, environment variables, backups
-- [DEPLOYMENT.md](DEPLOYMENT.md) - Full deployment flow, edge routing, rollbacks
+- [Infrastructure](infra.md) - Docker configuration, environment variables, backups
+- [Deployment](deployment.md) - Full deployment flow, edge routing, rollbacks

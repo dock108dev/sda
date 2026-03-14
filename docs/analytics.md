@@ -366,7 +366,7 @@ Separate router at `/api/simulator` — simplified, downstream-friendly interfac
 | GET | `/api/simulator/mlb/teams` | List MLB teams available for simulation |
 | POST | `/api/simulator/mlb` | Run MLB game simulation (only home_team + away_team required) |
 
-See [API.md — Simulator](API.md#simulator) for full request/response documentation.
+See [API — Simulator](api.md#simulator) for full request/response documentation.
 
 ### Prediction Outcomes & Calibration
 

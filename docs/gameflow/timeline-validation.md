@@ -1,7 +1,7 @@
 # Timeline Validation
 
 > **Status:** Canonical
-> **Parent Contract:** [TIMELINE_ASSEMBLY.md](./TIMELINE_ASSEMBLY.md)
+> **Parent Contract:** [Timeline Assembly](timeline-assembly.md)
 > **Last Updated:** 2026-02-11
 
 ---

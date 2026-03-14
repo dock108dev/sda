@@ -1151,7 +1151,7 @@ Create/update account.
 
 Odds comparison tool with expected value (EV) analysis across multiple sportsbooks. Displays cross-book betting lines with fair odds computation using Pinnacle as the sharp reference.
 
-> **Deep Dive:** See [Odds & FairBet Pipeline](ODDS_AND_FAIRBET.md) for the full data flow from ingestion through game matching, selection key generation, and EV computation.
+> **Deep Dive:** See [Odds & FairBet Pipeline](ingestion/odds-and-fairbet.md) for the full data flow from ingestion through game matching, selection key generation, and EV computation.
 
 ### Supported Leagues
 
@@ -1463,7 +1463,7 @@ The `bets` array uses the same `BetDefinition` shape as the pre-game `/odds` end
 
 **Base path:** `/api/analytics`
 
-Predictive modeling, simulation, and matchup analysis. See [ANALYTICS.md](ANALYTICS.md) for the full engine architecture.
+Predictive modeling, simulation, and matchup analysis. See [Analytics](analytics.md) for the full engine architecture.
 
 ### Profiles & Matchups
 

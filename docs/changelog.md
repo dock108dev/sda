@@ -2,7 +2,51 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-13] - Current
+## [2026-03-14] - Current
+
+### game_date SSOT — tip_time Removal
+
+- **Breaking:** `tip_time` column removed from `sports_games`. `game_date` now stores the actual scheduled start time (UTC datetime) instead of a midnight placeholder
+- **Migration:** `20260314_merge_tip_time` copies `tip_time` into `game_date` where non-null, then drops the column and its indexes
+- **API:** `start_time` property and `has_reliable_start_time` property removed from `SportsGame` model. All API responses now use `gameDate` for the scheduled start time
+- **Scraper:** All `tip_time` parameters removed from `upsert_game_stub()`, `update_game_from_live_feed()`, `upsert_game()`, and `NormalizedOddsSnapshot`
+- **Tweet mapper:** `_get_game_start()` simplified to use `game.game_date` directly. `_pregame_start_utc()` and window floor calculation now convert to ET before extracting the calendar date
+- **Game state updater:** All queries updated from `SportsGame.tip_time` to `SportsGame.game_date`
+- **Odds persistence:** Removed `tip_time` backfill logic from `upsert_odds()`
+- **Tests:** All test files updated — removed `tip_time` mock attributes, deleted tests for removed behavior (`test_sets_tip_time_when_null`, `test_updates_tip_time_on_cache_hit`, `TestUpsertOddsUpdateTipTime` class)
+
+### MLB Game Detail — Pitcher and Fielding Stats
+
+- **Pitcher game stats:** Game detail endpoint now loads `MLBPitcherGameStats` for the current game via `selectinload`
+- **Seasonal fielding stats:** Game detail endpoint queries `MLBPlayerFieldingStats` for both teams in the current season. Gated to regular season and postseason games only
+- **Migration:** `20260313_add_mlb_player_level_tables` adds `mlb_pitcher_game_stats` and `mlb_player_fielding_stats` tables
+
+### Rate Limiting — SSE/Auth Exemption
+
+- **Fix:** SSE (`/v1/sse`) and auth (`/auth/me`) endpoints exempted from rate limiting to prevent 429 cascade on SSE reconnects
+
+### Boxscore Ingestion — Direct PK Lookup
+
+- **Fix:** `persist_game_payload()` accepts optional `game_id` parameter for direct PK fetch, bypassing fuzzy team+date matching when the caller already knows the game ID. Reduced MLB boxscore miss rate from 39% to ~0%
+
+### FairBet Indexes — Concurrent Creation
+
+- **Migration:** `20260314_add_fairbet_odds_indexes` creates indexes on `fairbet_game_odds_work` using `postgresql_concurrently=True` with `autocommit_block()` to avoid deadlocks with active scrapers
+
+### Preferences — MissingGreenlet Fix
+
+- **Fix:** Added `await db.refresh(prefs, ["updated_at"])` after flush in both `put_preferences` and `patch_preferences` to prevent `MissingGreenlet` error from async lazy loading
+
+### CI/CD — Image Tagging
+
+- **PR builds:** Now tagged as `pr-<N>-<short-sha>` + `latest`
+- **Push builds:** Tagged as `<short-sha>` + `latest`
+
+### Game Browser — Filter Persistence
+
+- **localStorage caching:** Game browser filters saved to `localStorage` on apply/reset, restored on page load. Offset excluded from persistence
+
+## [2026-03-13]
 
 ### User Account Email Flows
 
