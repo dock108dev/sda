@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
@@ -14,7 +14,7 @@ from ..db import db_models
 from ..logging import logger
 from ..models import NormalizedGame
 from ..utils.date_utils import season_from_date
-from ..utils.datetime_utils import end_of_et_day_utc, now_utc
+from ..utils.datetime_utils import end_of_et_day_utc, now_utc, start_of_et_day_utc
 from ..utils.db_queries import get_league_id
 from .teams import _upsert_team
 
@@ -131,7 +131,7 @@ def upsert_game_stub(
 
     # Match by ET sports-calendar day to prevent duplicates across sources.
     game_date_only = game_date.astimezone(ZoneInfo("America/New_York")).date()
-    day_start_utc = datetime.combine(game_date_only, datetime.min.time(), tzinfo=UTC)
+    day_start_utc = start_of_et_day_utc(game_date_only)
     day_end_utc = end_of_et_day_utc(game_date_only)
 
     existing = (
