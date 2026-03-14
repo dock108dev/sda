@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Literal
 
-from sqlalchemy import case, literal_column, or_
+from sqlalchemy import case, exists, literal_column, not_, or_
 from sqlalchemy.orm import Session
 
 from ..config_sports import LEAGUE_CONFIG, LeagueConfig
@@ -172,17 +172,33 @@ class ActiveGamesResolver:
         if not league_id_list:
             return []
 
+        # Include pregame/live games with stale PBP, plus final games
+        # that never got any play data (backfill after missed live window).
+        has_plays = exists().where(
+            db_models.SportsGamePlay.game_id == db_models.SportsGame.id
+        )
+
         games = (
             session.query(db_models.SportsGame)
             .filter(
                 db_models.SportsGame.league_id.in_(league_id_list),
-                db_models.SportsGame.status.in_([
-                    db_models.GameStatus.pregame.value,
-                    db_models.GameStatus.live.value,
-                ]),
                 or_(
-                    db_models.SportsGame.last_pbp_at.is_(None),
-                    db_models.SportsGame.last_pbp_at < stale_threshold,
+                    # Normal: pregame/live with stale PBP
+                    (
+                        db_models.SportsGame.status.in_([
+                            db_models.GameStatus.pregame.value,
+                            db_models.GameStatus.live.value,
+                        ])
+                        & or_(
+                            db_models.SportsGame.last_pbp_at.is_(None),
+                            db_models.SportsGame.last_pbp_at < stale_threshold,
+                        )
+                    ),
+                    # Backfill: final games with no play data at all
+                    (
+                        (db_models.SportsGame.status == db_models.GameStatus.final.value)
+                        & not_(has_plays)
+                    ),
                 ),
             )
             .order_by(db_models.SportsGame.game_date.asc().nullslast())
