@@ -115,12 +115,28 @@ export default function GameDetailClient() {
         </div>
         <div className={styles.scoreLine}>
           <div>
-            <strong><FieldLabel label={g.awayTeam} field="awayTeam" /></strong>
+            <strong>
+              {g.awayTeamId ? (
+                <Link href={ROUTES.SPORTS_TEAM(g.awayTeamId)} style={{ color: "inherit", textDecoration: "underline" }}>
+                  <FieldLabel label={g.awayTeam} field="awayTeam" />
+                </Link>
+              ) : (
+                <FieldLabel label={g.awayTeam} field="awayTeam" />
+              )}
+            </strong>
             <span>Away</span>
             <span><FieldLabel label={String(g.awayScore ?? "—")} field="awayScore" /></span>
           </div>
           <div>
-            <strong><FieldLabel label={g.homeTeam} field="homeTeam" /></strong>
+            <strong>
+              {g.homeTeamId ? (
+                <Link href={ROUTES.SPORTS_TEAM(g.homeTeamId)} style={{ color: "inherit", textDecoration: "underline" }}>
+                  <FieldLabel label={g.homeTeam} field="homeTeam" />
+                </Link>
+              ) : (
+                <FieldLabel label={g.homeTeam} field="homeTeam" />
+              )}
+            </strong>
             <span>Home</span>
             <span><FieldLabel label={String(g.homeScore ?? "—")} field="homeScore" /></span>
           </div>
@@ -200,6 +216,7 @@ export default function GameDetailClient() {
         nhlGoalies={game.nhlGoalies}
         mlbBatters={game.mlbBatters}
         mlbPitchers={game.mlbPitchers}
+        mlbPitcherGameStats={game.mlbPitcherGameStats}
         isNHL={g.leagueCode === "NHL"}
         isMLB={g.leagueCode === "MLB"}
       />
@@ -209,6 +226,60 @@ export default function GameDetailClient() {
           stats={game.mlbAdvancedStats}
           playerStats={game.mlbAdvancedPlayerStats}
         />
+      )}
+
+      {game.mlbFieldingStats && game.mlbFieldingStats.length > 0 && (
+        <CollapsibleSection title="Fielding Stats (Season)" defaultOpen={false}>
+          {(() => {
+            const byTeam = game.mlbFieldingStats.reduce<Record<string, typeof game.mlbFieldingStats>>((acc, s) => {
+              const arr = acc[s.team] || [];
+              arr.push(s);
+              acc[s.team] = arr;
+              return acc;
+            }, {});
+            return (
+              <div className={styles.teamStatsGrid}>
+                {Object.entries(byTeam).map(([team, rows]) => (
+                  <div key={team} className={styles.teamStatsCard}>
+                    <div className={styles.teamStatsHeader}><h3>{team}</h3></div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table className={styles.table} style={{ fontSize: "0.85rem" }}>
+                        <thead>
+                          <tr>
+                            <th>Player</th>
+                            <th>Pos</th>
+                            <th>OAA</th>
+                            <th>DRS</th>
+                            <th>UZR</th>
+                            <th>E</th>
+                            <th>A</th>
+                            <th>PO</th>
+                            <th>GP</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((s, idx) => (
+                            <tr key={`${team}-${idx}-${s.playerName}`}>
+                              <td>{s.playerName}</td>
+                              <td>{s.position ?? "—"}</td>
+                              <td>{s.outsAboveAverage ?? "—"}</td>
+                              <td>{s.defensiveRunsSaved ?? "—"}</td>
+                              <td>{s.uzr != null ? s.uzr.toFixed(1) : "—"}</td>
+                              <td>{s.errors ?? "—"}</td>
+                              <td>{s.assists ?? "—"}</td>
+                              <td>{s.putouts ?? "—"}</td>
+                              <td>{s.gamesPlayed ?? "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </CollapsibleSection>
       )}
 
       <OddsSection odds={game.odds} />

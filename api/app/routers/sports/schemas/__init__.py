@@ -42,7 +42,12 @@ from .games import (
     GameSummary,
     JobResponse,
 )
-from .mlb_advanced import MLBAdvancedPlayerStats, MLBAdvancedTeamStats
+from .mlb_advanced import (
+    MLBAdvancedPlayerStats,
+    MLBAdvancedTeamStats,
+    MLBFieldingStatSchema,
+    MLBPitcherGameStatSchema,
+)
 from .scraper import ScrapeRunConfig, ScrapeRunCreateRequest, ScrapeRunResponse
 from .teams import (
     TeamColorUpdate,
@@ -95,6 +100,8 @@ __all__ = [
     # mlb_advanced
     "MLBAdvancedPlayerStats",
     "MLBAdvancedTeamStats",
+    "MLBFieldingStatSchema",
+    "MLBPitcherGameStatSchema",
     # scraper
     "ScrapeRunConfig",
     "ScrapeRunCreateRequest",

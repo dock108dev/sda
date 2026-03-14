@@ -10,7 +10,12 @@ from sqlalchemy.orm import selectinload
 
 from ...db import AsyncSession, get_db
 from ...db.flow import SportsGameFlow
-from ...db.mlb_advanced import MLBGameAdvancedStats, MLBPlayerAdvancedStats
+from ...db.mlb_advanced import (
+    MLBGameAdvancedStats,
+    MLBPitcherGameStats,
+    MLBPlayerAdvancedStats,
+    MLBPlayerFieldingStats,
+)
 from ...db.social import TeamSocialPost
 from ...db.sports import (
     SportsGame,
@@ -54,6 +59,8 @@ from .schemas import (
     MLBAdvancedPlayerStats,
     MLBAdvancedTeamStats,
     MLBBatterStat,
+    MLBFieldingStatSchema,
+    MLBPitcherGameStatSchema,
     MLBPitcherStat,
     NHLGoalieStat,
     NHLSkaterStat,
@@ -139,6 +146,9 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
             selectinload(SportsGame.advanced_stats).selectinload(MLBGameAdvancedStats.team),
             selectinload(SportsGame.player_advanced_stats).selectinload(
                 MLBPlayerAdvancedStats.team
+            ),
+            selectinload(SportsGame.pitcher_game_stats).selectinload(
+                MLBPitcherGameStats.team
             ),
         )
         .where(SportsGame.id == game_id)
@@ -269,6 +279,8 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         game_date=game.start_time,  # Use start_time which prioritizes tip_time
         home_team=game.home_team.name if game.home_team else "Unknown",
         away_team=game.away_team.name if game.away_team else "Unknown",
+        home_team_id=game.home_team.id if game.home_team else None,
+        away_team_id=game.away_team.id if game.away_team else None,
         home_score=game.home_score,
         away_score=game.away_score,
         status=game.status,
@@ -398,6 +410,59 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
             for stat in game.player_advanced_stats
         ]
 
+    # MLB pitcher game stats (Statcast per-pitcher)
+    mlb_pitcher_game_stats_list: list[MLBPitcherGameStatSchema] | None = None
+    if is_mlb and game.pitcher_game_stats:
+        mlb_pitcher_game_stats_list = [
+            MLBPitcherGameStatSchema(
+                team=stat.team.name if stat.team else "Unknown",
+                player_name=stat.player_name,
+                is_starter=stat.is_starter or False,
+                innings_pitched=stat.innings_pitched,
+                strikeouts=stat.strikeouts,
+                walks=stat.walks,
+                k_rate=stat.k_rate,
+                bb_rate=stat.bb_rate,
+                whiff_rate=stat.whiff_rate,
+                z_contact_pct=stat.z_contact_pct,
+                chase_rate=stat.chase_rate,
+                avg_exit_velo_against=stat.avg_exit_velo_against,
+                hard_hit_pct_against=stat.hard_hit_pct_against,
+                barrel_pct_against=stat.barrel_pct_against,
+            )
+            for stat in game.pitcher_game_stats
+        ]
+
+    # MLB fielding stats (seasonal context for teams in this game)
+    mlb_fielding_stats_list: list[MLBFieldingStatSchema] | None = None
+    if is_mlb and game.home_team and game.away_team:
+        team_ids = [game.home_team.id, game.away_team.id]
+        fielding_result = await session.execute(
+            select(MLBPlayerFieldingStats)
+            .options(selectinload(MLBPlayerFieldingStats.team))
+            .where(
+                MLBPlayerFieldingStats.team_id.in_(team_ids),
+                MLBPlayerFieldingStats.season == game.season,
+            )
+        )
+        fielding_rows = fielding_result.scalars().all()
+        if fielding_rows:
+            mlb_fielding_stats_list = [
+                MLBFieldingStatSchema(
+                    team=row.team.name if row.team else "Unknown",
+                    player_name=row.player_name,
+                    position=row.position,
+                    outs_above_average=row.outs_above_average,
+                    defensive_runs_saved=row.defensive_runs_saved,
+                    uzr=row.uzr,
+                    errors=row.errors,
+                    assists=row.assists,
+                    putouts=row.putouts,
+                    games_played=row.games_played,
+                )
+                for row in fielding_rows
+            ]
+
     from ...services.play_tiers import enrich_play_entries
 
     if plays_entries and league_code:
@@ -416,6 +481,8 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         mlb_pitchers=mlb_pitchers,
         mlb_advanced_stats=mlb_advanced_stats_list,
         mlb_advanced_player_stats=mlb_advanced_player_stats_list,
+        mlb_pitcher_game_stats=mlb_pitcher_game_stats_list,
+        mlb_fielding_stats=mlb_fielding_stats_list,
         odds=odds_entries,
         social_posts=social_posts_entries,
         plays=plays_entries,

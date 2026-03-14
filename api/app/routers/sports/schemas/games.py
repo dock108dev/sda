@@ -21,7 +21,12 @@ from .common import (
     TeamStat,
     TieredPlayGroup,
 )
-from .mlb_advanced import MLBAdvancedPlayerStats, MLBAdvancedTeamStats
+from .mlb_advanced import (
+    MLBAdvancedPlayerStats,
+    MLBAdvancedTeamStats,
+    MLBFieldingStatSchema,
+    MLBPitcherGameStatSchema,
+)
 
 
 class GameSummary(BaseModel):
@@ -101,6 +106,8 @@ class GameMeta(BaseModel):
     game_date: datetime = Field(..., alias="gameDate")
     home_team: str = Field(..., alias="homeTeam")
     away_team: str = Field(..., alias="awayTeam")
+    home_team_id: int | None = Field(None, alias="homeTeamId")
+    away_team_id: int | None = Field(None, alias="awayTeamId")
     home_score: int | None = Field(None, alias="homeScore")
     away_score: int | None = Field(None, alias="awayScore")
     status: str
@@ -156,6 +163,12 @@ class GameDetailResponse(BaseModel):
     mlb_advanced_stats: list[MLBAdvancedTeamStats] | None = Field(None, alias="mlbAdvancedStats")
     mlb_advanced_player_stats: list[MLBAdvancedPlayerStats] | None = Field(
         None, alias="mlbAdvancedPlayerStats"
+    )
+    mlb_pitcher_game_stats: list[MLBPitcherGameStatSchema] | None = Field(
+        None, alias="mlbPitcherGameStats"
+    )
+    mlb_fielding_stats: list[MLBFieldingStatSchema] | None = Field(
+        None, alias="mlbFieldingStats"
     )
     odds: list[OddsEntry]
     social_posts: list[SocialPostEntry] = Field(..., alias="socialPosts")

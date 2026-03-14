@@ -14,6 +14,7 @@ export const ROUTES = {
   FAIRBET_ODDS: "/admin/fairbet/odds",
   FAIRBET_LIVE: "/admin/fairbet/live",
   SPORTS_GAME: (id: number | string) => `/admin/sports/games/${id}`,
+  SPORTS_TEAM: (id: number | string) => `/admin/sports/teams/${id}`,
 
   /** Analytics */
   ANALYTICS: "/admin/analytics",

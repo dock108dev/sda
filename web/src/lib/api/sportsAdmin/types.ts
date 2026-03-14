@@ -160,6 +160,36 @@ export type MLBPitcherStat = {
   rawStats: Record<string, unknown>;
 };
 
+export type MLBPitcherGameStat = {
+  team: string;
+  playerName: string;
+  isStarter: boolean;
+  inningsPitched: number | null;
+  strikeouts: number | null;
+  walks: number | null;
+  kRate: number | null;
+  bbRate: number | null;
+  whiffRate: number | null;
+  zContactPct: number | null;
+  chaseRate: number | null;
+  avgExitVeloAgainst: number | null;
+  hardHitPctAgainst: number | null;
+  barrelPctAgainst: number | null;
+};
+
+export type MLBFieldingStat = {
+  team: string;
+  playerName: string;
+  position: string | null;
+  outsAboveAverage: number | null;
+  defensiveRunsSaved: number | null;
+  uzr: number | null;
+  errors: number | null;
+  assists: number | null;
+  putouts: number | null;
+  gamesPlayed: number | null;
+};
+
 export type MLBAdvancedTeamStats = {
   team: string;
   isHome: boolean;
@@ -246,6 +276,8 @@ export type AdminGameDetail = {
     gameDate: string;
     homeTeam: string;
     awayTeam: string;
+    homeTeamId: number | null;
+    awayTeamId: number | null;
     homeScore: number | null;
     awayScore: number | null;
     status: string;
@@ -276,6 +308,8 @@ export type AdminGameDetail = {
   mlbPitchers?: MLBPitcherStat[] | null;
   mlbAdvancedStats?: MLBAdvancedTeamStats[] | null;
   mlbAdvancedPlayerStats?: MLBAdvancedPlayerStats[] | null;
+  mlbPitcherGameStats?: MLBPitcherGameStat[] | null;
+  mlbFieldingStats?: MLBFieldingStat[] | null;
   odds: OddsEntry[];
   socialPosts: SocialPost[];
   plays: PlayEntry[];

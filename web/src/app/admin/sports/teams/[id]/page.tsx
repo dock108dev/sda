@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import styles from "./page.module.css";
 import { fetchTeam, listTeams, updateTeamColors, type TeamDetail, type TeamSummary } from "@/lib/api/sportsAdmin";
+import { ROUTES } from "@/lib/constants/routes";
 
 const API_REF_FIELDS: { label: string; field: keyof TeamDetail }[] = [
   { label: "ID", field: "id" },
@@ -270,7 +271,7 @@ export default function TeamDetailPage() {
               {team.recentGames.map((game) => (
                 <tr key={game.id}>
                   <td>
-                    <Link href={`/admin/boxscores/${game.id}`}>
+                    <Link href={ROUTES.SPORTS_GAME(game.id)}>
                       {new Date(game.gameDate).toLocaleDateString()}
                     </Link>
                   </td>
