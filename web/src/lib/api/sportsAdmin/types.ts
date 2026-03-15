@@ -165,16 +165,20 @@ export type MLBPitcherGameStat = {
   playerName: string;
   isStarter: boolean;
   inningsPitched: number | null;
+  battersFaced: number | null;
+  pitchesThrown: number | null;
   strikeouts: number | null;
   walks: number | null;
-  kRate: number | null;
-  bbRate: number | null;
-  whiffRate: number | null;
-  zContactPct: number | null;
-  chaseRate: number | null;
+  zonePitches: number | null;
+  zoneSwings: number | null;
+  zoneContact: number | null;
+  outsidePitches: number | null;
+  outsideSwings: number | null;
+  outsideContact: number | null;
+  ballsInPlay: number | null;
   avgExitVeloAgainst: number | null;
-  hardHitPctAgainst: number | null;
-  barrelPctAgainst: number | null;
+  hardHitAgainst: number | null;
+  barrelAgainst: number | null;
 };
 
 export type MLBFieldingStat = {
@@ -208,14 +212,16 @@ export type MLBAdvancedPlayerStats = {
   playerName: string;
   isHome: boolean;
   totalPitches: number;
-  zSwingPct: number | null;
-  oSwingPct: number | null;
-  zContactPct: number | null;
-  oContactPct: number | null;
+  zonePitches: number;
+  zoneSwings: number;
+  zoneContact: number;
+  outsidePitches: number;
+  outsideSwings: number;
+  outsideContact: number;
   ballsInPlay: number;
   avgExitVelo: number | null;
-  hardHitPct: number | null;
-  barrelPct: number | null;
+  hardHitCount: number;
+  barrelCount: number;
 };
 
 export type OddsEntry = {

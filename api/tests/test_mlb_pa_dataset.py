@@ -805,7 +805,7 @@ class TestMLBPADatasetBuilder:
         db = AsyncMock()
 
         fielding_row = SimpleNamespace(
-            team_id=10, avg_oaa=2.5, avg_drs=3.0, avg_def_value=1.5,
+            team_id=10, avg_oaa=2.5, avg_drs=3.0,
             player_count=9,
         )
 
@@ -821,7 +821,7 @@ class TestMLBPADatasetBuilder:
         assert 10 in fielding
         assert fielding[10]["team_oaa"] == 2.5
         assert fielding[10]["team_drs"] == 3.0
-        assert fielding[10]["team_defensive_value"] == 1.5
+        assert fielding[10]["team_defensive_value"] == 0.0
         assert fielding[10]["fielding_player_count"] == 9
 
     @pytest.mark.asyncio

@@ -99,28 +99,40 @@ export function MLBAdvancedStatsSection({
                     <thead>
                       <tr>
                         <th>Player</th>
-                        <th>K%</th>
-                        <th>BB%</th>
-                        <th>Whiff%</th>
-                        <th>Zone Con%</th>
-                        <th>Chase%</th>
-                        <th>EV Against</th>
-                        <th>HH% Against</th>
-                        <th>Brl% Against</th>
+                        <th>BF</th>
+                        <th>PC</th>
+                        <th>K</th>
+                        <th>BB</th>
+                        <th>ZoneP</th>
+                        <th>ZoneSw</th>
+                        <th>ZoneCon</th>
+                        <th>OtsP</th>
+                        <th>OtsSw</th>
+                        <th>OtsCon</th>
+                        <th>BIP</th>
+                        <th>Avg EV</th>
+                        <th>HH</th>
+                        <th>Brl</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pitchers.map((p, idx) => (
                         <tr key={`${team}-pitcher-${idx}-${p.playerName}`}>
                           <td>{p.playerName}{p.isStarter ? " (S)" : ""}</td>
-                          <td>{fmtPct(p.kRate)}</td>
-                          <td>{fmtPct(p.bbRate)}</td>
-                          <td>{fmtPct(p.whiffRate)}</td>
-                          <td>{fmtPct(p.zContactPct)}</td>
-                          <td>{fmtPct(p.chaseRate)}</td>
+                          <td>{p.battersFaced ?? "—"}</td>
+                          <td>{p.pitchesThrown ?? "—"}</td>
+                          <td>{p.strikeouts ?? "—"}</td>
+                          <td>{p.walks ?? "—"}</td>
+                          <td>{p.zonePitches ?? "—"}</td>
+                          <td>{p.zoneSwings ?? "—"}</td>
+                          <td>{p.zoneContact ?? "—"}</td>
+                          <td>{p.outsidePitches ?? "—"}</td>
+                          <td>{p.outsideSwings ?? "—"}</td>
+                          <td>{p.outsideContact ?? "—"}</td>
+                          <td>{p.ballsInPlay ?? "—"}</td>
                           <td>{fmtNum(p.avgExitVeloAgainst)}</td>
-                          <td>{fmtPct(p.hardHitPctAgainst)}</td>
-                          <td>{fmtPct(p.barrelPctAgainst)}</td>
+                          <td>{p.hardHitAgainst ?? "—"}</td>
+                          <td>{p.barrelAgainst ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -155,14 +167,16 @@ export function MLBAdvancedStatsSection({
                       <tr>
                         <th>Batter</th>
                         <th>Pitches</th>
-                        <th>Z-Sw%</th>
-                        <th>O-Sw%</th>
-                        <th>Z-Con%</th>
-                        <th>O-Con%</th>
+                        <th>ZoneP</th>
+                        <th>ZoneSw</th>
+                        <th>ZoneCon</th>
+                        <th>OtsP</th>
+                        <th>OtsSw</th>
+                        <th>OtsCon</th>
                         <th>BIP</th>
                         <th>Avg EV</th>
-                        <th>HH%</th>
-                        <th>Brl%</th>
+                        <th>HH</th>
+                        <th>Brl</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -170,14 +184,16 @@ export function MLBAdvancedStatsSection({
                         <tr key={p.playerName}>
                           <td>{p.playerName}</td>
                           <td>{p.totalPitches}</td>
-                          <td>{fmtPct(p.zSwingPct)}</td>
-                          <td>{fmtPct(p.oSwingPct)}</td>
-                          <td>{fmtPct(p.zContactPct)}</td>
-                          <td>{fmtPct(p.oContactPct)}</td>
+                          <td>{p.zonePitches}</td>
+                          <td>{p.zoneSwings}</td>
+                          <td>{p.zoneContact}</td>
+                          <td>{p.outsidePitches}</td>
+                          <td>{p.outsideSwings}</td>
+                          <td>{p.outsideContact}</td>
                           <td>{p.ballsInPlay}</td>
                           <td>{fmtVelo(p.avgExitVelo)}</td>
-                          <td>{fmtPct(p.hardHitPct)}</td>
-                          <td>{fmtPct(p.barrelPct)}</td>
+                          <td>{p.hardHitCount}</td>
+                          <td>{p.barrelCount}</td>
                         </tr>
                       ))}
                     </tbody>
