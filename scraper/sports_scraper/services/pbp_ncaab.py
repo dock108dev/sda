@@ -13,62 +13,6 @@ from ..db import db_models
 from ..logging import logger
 
 
-def _select_ncaa_pbp_fallback_games(
-    session: Session,
-    *,
-    start_date: date,
-    end_date: date,
-    only_missing: bool,
-    already_have_pbp: set[int],
-) -> list[tuple[int, str, str | None, str | None, str | None]]:
-    """Select games with ncaa_game_id that still need PBP (NCAA API fallback).
-
-    Returns:
-        List of (game_id, ncaa_game_id, status, home_abbr, away_abbr) tuples.
-    """
-    from ..utils.datetime_utils import end_of_et_day_utc
-
-    league = session.query(db_models.SportsLeague).filter(
-        db_models.SportsLeague.code == "NCAAB"
-    ).first()
-    if not league:
-        return []
-
-    ncaa_game_id_expr = db_models.SportsGame.external_ids["ncaa_game_id"].astext
-
-    query = session.query(
-        db_models.SportsGame.id,
-        ncaa_game_id_expr.label("ncaa_game_id"),
-        db_models.SportsGame.status,
-        db_models.SportsGame.home_team_id,
-        db_models.SportsGame.away_team_id,
-    ).filter(
-        db_models.SportsGame.league_id == league.id,
-        db_models.SportsGame.game_date >= start_of_et_day_utc(start_date),
-        db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
-        ncaa_game_id_expr.isnot(None),
-    )
-
-    if only_missing:
-        has_pbp = exists().where(db_models.SportsGamePlay.game_id == db_models.SportsGame.id)
-        query = query.filter(not_(has_pbp))
-
-    rows = query.all()
-    results: list[tuple[int, str, str | None, str | None, str | None]] = []
-    for game_id, ncaa_game_id, status, home_team_id, away_team_id in rows:
-        if not ncaa_game_id or game_id in already_have_pbp:
-            continue
-
-        home_team = session.query(db_models.SportsTeam).get(home_team_id)
-        away_team = session.query(db_models.SportsTeam).get(away_team_id)
-        home_abbr = home_team.abbreviation if home_team else None
-        away_abbr = away_team.abbreviation if away_team else None
-
-        results.append((game_id, ncaa_game_id, status, home_abbr, away_abbr))
-
-    return results
-
-
 def select_games_for_pbp_ncaab_api(
     session: Session,
     *,

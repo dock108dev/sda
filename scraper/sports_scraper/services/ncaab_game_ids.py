@@ -6,7 +6,7 @@ games that need boxscore data fetched.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 

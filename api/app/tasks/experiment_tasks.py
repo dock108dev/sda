@@ -34,7 +34,6 @@ async def _run_suite(suite_id: int, celery_task_id: str | None = None) -> dict:
     from app.db.analytics import (
         AnalyticsExperimentSuite,
         AnalyticsExperimentVariant,
-        AnalyticsTrainingJob,
     )
 
     async with _task_db() as sf:

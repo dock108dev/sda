@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.tasks._training_data_pa import _derive_pa_outcome  # noqa: F401
-from app.tasks._training_helpers import build_rolling_profile, get_game_score, stats_to_metrics
+from app.tasks._training_helpers import build_rolling_profile, get_game_score
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

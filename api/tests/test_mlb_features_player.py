@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.analytics.features.sports.mlb_features import (
     MLBFeatureBuilder,

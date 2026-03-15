@@ -349,7 +349,6 @@ async def get_mlb_data_coverage(
         MLBPlayerAdvancedStats,
         MLBPlayerFieldingStats,
     )
-    from app.db.sports import SportsGamePlay
 
     # PA data: based on MLBPlayerAdvancedStats count
     pa_count_result = await db.execute(

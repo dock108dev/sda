@@ -19,7 +19,6 @@ os.environ.setdefault("ENVIRONMENT", "development")
 from datetime import date
 
 import httpx
-import pytest
 
 
 # ---------------------------------------------------------------------------

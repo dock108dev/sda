@@ -16,7 +16,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sports_scraper.odds.fairbet import build_selection_key, delete_stale_fairbet_odds, slugify
 

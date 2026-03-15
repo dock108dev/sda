@@ -19,7 +19,6 @@ import pytest
 
 from sports_scraper.live.mlb_statcast import (
     MLBStatcastFetcher,
-    TeamStatcastAggregates,
     aggregate_from_payload,
     aggregate_pitchers_from_payload,
     aggregate_players_from_payload,

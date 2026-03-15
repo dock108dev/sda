@@ -5,11 +5,9 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRAPER_ROOT = REPO_ROOT / "scraper"
@@ -21,8 +19,6 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
 from sports_scraper.live_odds.redis_store import (
-    HISTORY_MAX_LEN,
-    HISTORY_TTL_S,
     LIVE_SNAPSHOT_TTL_S,
     _history_key,
     _snapshot_key,

@@ -64,7 +64,6 @@ class MLBPADatasetBuilder:
         """
         from sqlalchemy import select
 
-        from app.db.mlb_advanced import MLBGameAdvancedStats, MLBPlayerAdvancedStats
         from app.db.sports import SportsGame, SportsGamePlay
 
         db = self._db
@@ -446,6 +445,7 @@ def _pitcher_stats_to_metrics(stats: Any) -> dict[str, float]:
         "power_suppression": max(-0.30, min(0.50,
             1.0 - (((stats.home_runs_allowed or 0) / bf) / 0.03) if bf > 0 else 0.0
         )),
+        # Aliases for matchup.py compatibility (same values as k_rate/bb_rate)
         "strikeout_rate": (stats.strikeouts / bf) if bf > 0 else 0.22,
         "walk_rate": (stats.walks / bf) if bf > 0 else 0.08,
     }

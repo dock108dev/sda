@@ -18,7 +18,7 @@ import httpx
 from ..config import settings
 from ..logging import logger
 from ..models import NormalizedOddsSnapshot
-from .parser import ALLOWED_BOOKS, parse_odds_events, parse_prop_event
+from .parser import parse_odds_events, parse_prop_event
 
 SPORT_KEY_MAP = {
     "NBA": "basketball_nba",

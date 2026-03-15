@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.analytics.services.profile_service import ProfileResult
 from app.routers.simulator import MLBSimulationRequest
 
 

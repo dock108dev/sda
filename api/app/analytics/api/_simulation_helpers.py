@@ -16,7 +16,6 @@ from app.analytics.services.profile_service import (
     get_pitcher_rolling_profile,
     get_player_rolling_profile,
     get_team_info,
-    profile_to_pa_probabilities,
 )
 
 if TYPE_CHECKING:

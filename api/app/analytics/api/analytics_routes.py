@@ -24,8 +24,6 @@ from app.analytics.core.simulation_cache import SimulationCache
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.services.profile_service import (
     ProfileResult,
-    get_pitcher_rolling_profile,
-    get_player_rolling_profile,
     get_team_info,
     get_team_rolling_profile,
     get_team_roster,

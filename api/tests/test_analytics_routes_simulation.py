@@ -18,7 +18,6 @@ from fastapi.testclient import TestClient
 from app.analytics.api.analytics_routes import (
     _pitching_metrics_from_profile,
     _regress_pitcher_profile,
-    _STARTER_IP_THRESHOLD,
     router,
 )
 from app.analytics.services.profile_service import ProfileResult
@@ -247,9 +246,6 @@ class TestPostSimulateTeamLevel:
             "probability_mode": "ml",
         })
         assert resp.status_code == 200
-        # Verify the game_context passed to run_full_simulation
-        call_kwargs = mock_service.run_full_simulation.call_args
-        gc = call_kwargs.kwargs.get("game_context") or call_kwargs[1].get("game_context")
         # ml mode should NOT have home_pa_source = team_profile
         data = resp.json()
         pm = data.get("profile_meta", {})

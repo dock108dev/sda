@@ -11,14 +11,11 @@ import logging
 import traceback
 from collections import defaultdict
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from app.celery_app import celery_app
 from app.tasks._task_infra import _complete_job_run, _start_job_run, _task_db
 from app.tasks._training_helpers import build_rolling_profile
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
