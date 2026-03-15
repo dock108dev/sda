@@ -11,15 +11,11 @@ type PlayerStatsSectionProps = {
   nhlGoalies: AdminGameDetail["nhlGoalies"];
   mlbBatters: AdminGameDetail["mlbBatters"];
   mlbPitchers: AdminGameDetail["mlbPitchers"];
-  mlbPitcherGameStats?: AdminGameDetail["mlbPitcherGameStats"];
   isNHL: boolean;
   isMLB: boolean;
 };
 
-const fmtPct = (v: number | null | undefined): string => (v != null ? `${(v * 100).toFixed(1)}%` : "—");
-const fmtNum = (v: number | null | undefined, decimals = 1): string => (v != null ? v.toFixed(decimals) : "—");
-
-export function PlayerStatsSection({ playerStats, nhlSkaters, nhlGoalies, mlbBatters, mlbPitchers, mlbPitcherGameStats, isNHL, isMLB }: PlayerStatsSectionProps) {
+export function PlayerStatsSection({ playerStats, nhlSkaters, nhlGoalies, mlbBatters, mlbPitchers, isNHL, isMLB }: PlayerStatsSectionProps) {
   const playerStatsByTeam = useMemo(() => {
     return playerStats.reduce<Record<string, typeof playerStats>>((acc, p) => {
       acc[p.team] = acc[p.team] || [];
@@ -63,15 +59,6 @@ export function PlayerStatsSection({ playerStats, nhlSkaters, nhlGoalies, mlbBat
       return acc;
     }, {});
   }, [mlbPitchers]);
-
-  const mlbPitcherGameStatsByTeam = useMemo(() => {
-    if (!mlbPitcherGameStats) return {};
-    return mlbPitcherGameStats.reduce<Record<string, NonNullable<typeof mlbPitcherGameStats>>>((acc, p) => {
-      acc[p.team] = acc[p.team] || [];
-      acc[p.team].push(p);
-      return acc;
-    }, {});
-  }, [mlbPitcherGameStats]);
 
   return (
     <CollapsibleSection title="Player Stats" defaultOpen={false}>
@@ -267,44 +254,6 @@ export function PlayerStatsSection({ playerStats, nhlSkaters, nhlGoalies, mlbBat
                   </>
                 )}
 
-                {/* Pitcher Advanced (Statcast) */}
-                {mlbPitcherGameStatsByTeam[team] && mlbPitcherGameStatsByTeam[team].length > 0 && (
-                  <>
-                    <h4 style={{ margin: "0.75rem 0 0.25rem", fontSize: "0.9rem", color: "#475569" }}>Pitcher Advanced (Statcast)</h4>
-                    <div style={{ overflowX: "auto" }}>
-                      <table className={styles.table} style={{ fontSize: "0.85rem" }}>
-                        <thead>
-                          <tr>
-                            <th>Player</th>
-                            <th>K%</th>
-                            <th>BB%</th>
-                            <th>Whiff%</th>
-                            <th>Zone Contact%</th>
-                            <th>Chase%</th>
-                            <th>Exit Velo Against</th>
-                            <th>Hard Hit% Against</th>
-                            <th>Barrel% Against</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {mlbPitcherGameStatsByTeam[team].map((p, idx) => (
-                            <tr key={`${team}-adv-pitcher-${idx}-${p.playerName}`}>
-                              <td>{p.playerName}{p.isStarter ? " (S)" : ""}</td>
-                              <td>{fmtPct(p.kRate)}</td>
-                              <td>{fmtPct(p.bbRate)}</td>
-                              <td>{fmtPct(p.whiffRate)}</td>
-                              <td>{fmtPct(p.zContactPct)}</td>
-                              <td>{fmtPct(p.chaseRate)}</td>
-                              <td>{fmtNum(p.avgExitVeloAgainst)}</td>
-                              <td>{fmtPct(p.hardHitPctAgainst)}</td>
-                              <td>{fmtPct(p.barrelPctAgainst)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
               </div>
             ))}
           </div>

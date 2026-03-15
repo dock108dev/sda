@@ -380,7 +380,6 @@ class MLBPADatasetBuilder:
                 MLBPlayerFieldingStats.team_id,
                 func.avg(MLBPlayerFieldingStats.outs_above_average).label("avg_oaa"),
                 func.avg(MLBPlayerFieldingStats.defensive_runs_saved).label("avg_drs"),
-                func.avg(MLBPlayerFieldingStats.defensive_value).label("avg_def_value"),
                 func.count().label("player_count"),
             )
             .where(MLBPlayerFieldingStats.team_id.isnot(None))
@@ -393,7 +392,7 @@ class MLBPADatasetBuilder:
             fielding[row.team_id] = {
                 "team_oaa": round(float(row.avg_oaa or 0), 4),
                 "team_drs": round(float(row.avg_drs or 0), 4),
-                "team_defensive_value": round(float(row.avg_def_value or 0), 4),
+                "team_defensive_value": 0.0,
                 "fielding_player_count": int(row.player_count),
             }
         return fielding

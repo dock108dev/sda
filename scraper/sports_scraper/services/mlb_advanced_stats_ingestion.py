@@ -73,6 +73,55 @@ def _extract_pitcher_boxscore_data(boxscore_raw: dict) -> dict[str, dict]:
     return result
 
 
+def _extract_player_fielding_data(boxscore_raw: dict) -> list[dict]:
+    """Extract per-player fielding stats from raw MLB boxscore JSON.
+
+    Returns list of dicts with player_id, player_name, team_side, position,
+    errors, assists, putouts, and other fielding metrics.
+    """
+    result: list[dict] = []
+    teams = boxscore_raw.get("teams", {})
+
+    for side in ("home", "away"):
+        team_data = teams.get(side, {})
+        players = team_data.get("players", {})
+
+        for _player_key, player_data in players.items():
+            person = player_data.get("person", {})
+            player_id = person.get("id")
+            player_name = person.get("fullName", "")
+            if not player_id or not player_name:
+                continue
+
+            position = player_data.get("position", {}).get("abbreviation", "")
+            stats = player_data.get("stats", {})
+            fielding = stats.get("fielding", {})
+
+            if not fielding:
+                continue
+
+            # Skip players with no fielding activity
+            errors = int(fielding.get("errors", 0))
+            assists = int(fielding.get("assists", 0))
+            putouts = int(fielding.get("putOuts", 0))
+
+            if errors == 0 and assists == 0 and putouts == 0:
+                continue
+
+            result.append({
+                "player_id": str(player_id),
+                "player_name": player_name,
+                "side": side,
+                "position": position,
+                "errors": errors,
+                "assists": assists,
+                "putouts": putouts,
+                "innings_at_position": None,  # not available per-game from boxscore
+            })
+
+    return result
+
+
 def _safe_div(numerator: int | float, denominator: int | float) -> float | None:
     """Safe division returning None when denominator is zero."""
     if denominator == 0:
@@ -286,6 +335,40 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         session.execute(stmt)
         pitcher_upserted += 1
 
+    # Player fielding stats (from boxscore — per-game, same pattern as pitcher stats)
+    fielding_upserted = 0
+    if boxscore_raw:
+        try:
+            fielding_data = _extract_player_fielding_data(boxscore_raw)
+            for fd in fielding_data:
+                team_id = game.home_team_id if fd["side"] == "home" else game.away_team_id
+                row = {
+                    "game_id": game_id,
+                    "team_id": team_id,
+                    "player_external_ref": fd["player_id"],
+                    "player_name": fd["player_name"],
+                    "position": fd["position"],
+                    "errors": fd["errors"],
+                    "assists": fd["assists"],
+                    "putouts": fd["putouts"],
+                    "source": "mlb_statsapi_boxscore",
+                    "updated_at": datetime.now(UTC),
+                }
+                stmt = pg_insert(db_models.MLBPlayerFieldingStats).values(**row)
+                update_cols = {
+                    col: stmt.excluded[col]
+                    for col in row
+                    if col not in ("game_id", "player_external_ref")
+                }
+                stmt = stmt.on_conflict_do_update(
+                    constraint="uq_mlb_fielding_game_player",
+                    set_=update_cols,
+                )
+                session.execute(stmt)
+                fielding_upserted += 1
+        except Exception as exc:
+            logger.warning("mlb_fielding_stats_error", game_id=game_id, error=str(exc))
+
     game.last_advanced_stats_at = datetime.now(UTC)
     session.flush()
 
@@ -296,6 +379,7 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         team_rows_upserted=upserted,
         player_rows_upserted=player_upserted,
         pitcher_rows_upserted=pitcher_upserted,
+        fielding_rows_upserted=fielding_upserted,
     )
 
     return {
@@ -304,4 +388,5 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         "rows_upserted": upserted,
         "player_rows_upserted": player_upserted,
         "pitcher_rows_upserted": pitcher_upserted,
+        "fielding_rows_upserted": fielding_upserted,
     }

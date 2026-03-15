@@ -433,35 +433,23 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
             for stat in game.pitcher_game_stats
         ]
 
-    # MLB fielding stats (seasonal context for teams in this game)
+    # MLB fielding stats (per-game, loaded via game relationship)
     mlb_fielding_stats_list: list[MLBFieldingStatSchema] | None = None
-    if is_mlb and game.home_team and game.away_team and game.season_type in ("regular", "postseason"):
-        team_ids = [game.home_team.id, game.away_team.id]
-        fielding_result = await session.execute(
-            select(MLBPlayerFieldingStats)
-            .options(selectinload(MLBPlayerFieldingStats.team))
-            .where(
-                MLBPlayerFieldingStats.team_id.in_(team_ids),
-                MLBPlayerFieldingStats.season == game.season,
+    if is_mlb and game.fielding_stats:
+        mlb_fielding_stats_list = [
+            MLBFieldingStatSchema(
+                team=row.team.name if row.team else "Unknown",
+                player_name=row.player_name,
+                position=row.position,
+                outs_above_average=row.outs_above_average,
+                defensive_runs_saved=row.defensive_runs_saved,
+                uzr=row.uzr,
+                errors=row.errors,
+                assists=row.assists,
+                putouts=row.putouts,
             )
-        )
-        fielding_rows = fielding_result.scalars().all()
-        if fielding_rows:
-            mlb_fielding_stats_list = [
-                MLBFieldingStatSchema(
-                    team=row.team.name if row.team else "Unknown",
-                    player_name=row.player_name,
-                    position=row.position,
-                    outs_above_average=row.outs_above_average,
-                    defensive_runs_saved=row.defensive_runs_saved,
-                    uzr=row.uzr,
-                    errors=row.errors,
-                    assists=row.assists,
-                    putouts=row.putouts,
-                    games_played=row.games_played,
-                )
-                for row in fielding_rows
-            ]
+            for row in game.fielding_stats
+        ]
 
     from ...services.play_tiers import enrich_play_entries
 

@@ -216,20 +216,21 @@ export default function GameDetailClient() {
         nhlGoalies={game.nhlGoalies}
         mlbBatters={game.mlbBatters}
         mlbPitchers={game.mlbPitchers}
-        mlbPitcherGameStats={game.mlbPitcherGameStats}
         isNHL={g.leagueCode === "NHL"}
         isMLB={g.leagueCode === "MLB"}
       />
 
-      {game.mlbAdvancedStats && game.mlbAdvancedStats.length > 0 && (
+      {((game.mlbAdvancedStats && game.mlbAdvancedStats.length > 0) ||
+        (game.mlbPitcherGameStats && game.mlbPitcherGameStats.length > 0)) && (
         <MLBAdvancedStatsSection
           stats={game.mlbAdvancedStats}
           playerStats={game.mlbAdvancedPlayerStats}
+          pitcherGameStats={game.mlbPitcherGameStats}
         />
       )}
 
       {game.mlbFieldingStats && game.mlbFieldingStats.length > 0 && (
-        <CollapsibleSection title="Fielding Stats (Season)" defaultOpen={false}>
+        <CollapsibleSection title="Fielding Stats" defaultOpen={false}>
           {(() => {
             const byTeam = game.mlbFieldingStats.reduce<Record<string, typeof game.mlbFieldingStats>>((acc, s) => {
               const arr = acc[s.team] || [];
@@ -254,7 +255,6 @@ export default function GameDetailClient() {
                             <th>E</th>
                             <th>A</th>
                             <th>PO</th>
-                            <th>GP</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -268,7 +268,6 @@ export default function GameDetailClient() {
                               <td>{s.errors ?? "—"}</td>
                               <td>{s.assists ?? "—"}</td>
                               <td>{s.putouts ?? "—"}</td>
-                              <td>{s.gamesPlayed ?? "—"}</td>
                             </tr>
                           ))}
                         </tbody>

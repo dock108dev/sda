@@ -37,7 +37,7 @@ try:
         SportsGameFlow,
         SportsGameTimelineArtifact,
     )
-    from app.db.mlb_advanced import MLBGameAdvancedStats, MLBPitcherGameStats, MLBPlayerAdvancedStats  # type: ignore
+    from app.db.mlb_advanced import MLBGameAdvancedStats, MLBPlayerFieldingStats, MLBPitcherGameStats, MLBPlayerAdvancedStats  # type: ignore
     from app.db.odds import (  # type: ignore
         ClosingLine,
         FairbetGameOddsWork,
@@ -133,6 +133,7 @@ try:
         MLBGameAdvancedStats=MLBGameAdvancedStats,
         MLBPlayerAdvancedStats=MLBPlayerAdvancedStats,
         MLBPitcherGameStats=MLBPitcherGameStats,
+        MLBPlayerFieldingStats=MLBPlayerFieldingStats,
     )
 except ImportError as exc:
     raise RuntimeError(

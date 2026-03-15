@@ -109,24 +109,29 @@ def ingest_boxscores_via_ncaab_api(
     client = NCAABLiveFeedClient()
     season = season_ending_year(start_date)
 
-    cbb_game_ids = [cbb_game_id for _, cbb_game_id, _, _, _ in games]
+    # Filter out cbb_game_id=0 (games with only ncaa_game_id, handled by fallback)
+    cbb_game_ids = [cbb_game_id for _, cbb_game_id, _, _, _ in games if cbb_game_id]
     team_names_by_game = {
         cbb_game_id: (home_team_name, away_team_name)
         for _, cbb_game_id, _, home_team_name, away_team_name in games
+        if cbb_game_id
     }
 
-    boxscores = client.fetch_boxscores_batch(
-        game_ids=cbb_game_ids,
-        start_date=start_date,
-        end_date=end_date,
-        season=season,
-        team_names_by_game=team_names_by_game,
-    )
+    boxscores: dict = {}
+    if cbb_game_ids:
+        boxscores = client.fetch_boxscores_batch(
+            game_ids=cbb_game_ids,
+            start_date=start_date,
+            end_date=end_date,
+            season=season,
+            team_names_by_game=team_names_by_game,
+        )
 
     logger.info(
         "ncaab_boxscore_batch_fetched",
         run_id=run_id,
         requested_games=len(games),
+        cbb_games=len(cbb_game_ids),
         boxscores_received=len(boxscores),
     )
 

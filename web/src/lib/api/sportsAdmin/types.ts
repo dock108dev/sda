@@ -187,7 +187,6 @@ export type MLBFieldingStat = {
   errors: number | null;
   assists: number | null;
   putouts: number | null;
-  gamesPlayed: number | null;
 };
 
 export type MLBAdvancedTeamStats = {

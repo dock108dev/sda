@@ -8,6 +8,7 @@ transitions during polling.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 import httpx
 
@@ -39,17 +40,24 @@ class NCAAScoreboardClient:
     def __init__(self, client: httpx.Client) -> None:
         self.client = client
 
-    def fetch_scoreboard(self) -> list[NCAAScoreboardGame]:
-        """Fetch today's D1 men's basketball scoreboard.
+    def fetch_scoreboard(self, game_date: date | None = None) -> list[NCAAScoreboardGame]:
+        """Fetch D1 men's basketball scoreboard.
+
+        Args:
+            game_date: Specific date to fetch. None = today's scoreboard.
 
         Returns:
-            List of NCAAScoreboardGame for all games on today's scoreboard.
+            List of NCAAScoreboardGame for all games on the scoreboard.
             Returns empty list on network error.
         """
-        logger.info("ncaa_scoreboard_fetch", url=NCAA_SCOREBOARD_URL)
+        if game_date:
+            url = f"{NCAA_SCOREBOARD_URL}/{game_date.year}/{game_date.month:02d}/{game_date.day:02d}"
+        else:
+            url = NCAA_SCOREBOARD_URL
+        logger.info("ncaa_scoreboard_fetch", url=url)
 
         try:
-            response = self.client.get(NCAA_SCOREBOARD_URL)
+            response = self.client.get(url)
         except Exception as exc:
             logger.error("ncaa_scoreboard_fetch_error", error=str(exc))
             return []

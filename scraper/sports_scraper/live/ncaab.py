@@ -293,9 +293,13 @@ class NCAABLiveFeedClient:
 
     # --- NCAA API delegation methods ---
 
-    def fetch_ncaa_scoreboard(self) -> list[NCAAScoreboardGame]:
-        """Fetch today's NCAA scoreboard for live game states."""
-        return self._ncaa_scoreboard.fetch_scoreboard()
+    def fetch_ncaa_scoreboard(self, game_date=None) -> list[NCAAScoreboardGame]:
+        """Fetch NCAA scoreboard for live game states.
+
+        Args:
+            game_date: Specific date to fetch. None = today's scoreboard.
+        """
+        return self._ncaa_scoreboard.fetch_scoreboard(game_date)
 
     def fetch_ncaa_play_by_play(
         self,

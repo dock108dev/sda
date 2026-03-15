@@ -281,50 +281,44 @@ class MLBPitcherGameStats(Base):
 
 
 class MLBPlayerFieldingStats(Base):
-    """Player-level fielding stats (season or rolling window).
+    """Per-game player fielding stats from boxscore data.
 
-    Stores advanced defensive metrics sourced from Baseball Savant or
-    derived from boxscore data. Supports both season-level aggregates
-    (OAA, DRS, UZR from Savant) and game-level basics (errors, assists,
-    putouts from boxscores).
-
-    The system degrades gracefully when fielding data is missing — it is
-    optional for training and simulation.
+    Same pattern as MLBPitcherGameStats — one row per player per game.
+    Stores errors, assists, putouts, and position from the boxscore
+    fielding section. Idempotent via game_id + player_external_ref
+    unique constraint.
     """
 
     __tablename__ = "mlb_player_fielding_stats"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    player_external_ref: Mapped[str] = mapped_column(String(100), nullable=False)
-    player_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    team_id: Mapped[int | None] = mapped_column(
+    game_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("sports_teams.id", ondelete="SET NULL"),
-        nullable=True,
+        ForeignKey("sports_games.id", ondelete="CASCADE"),
+        nullable=False,
         index=True,
     )
-    season: Mapped[int] = mapped_column(Integer, nullable=False)
+    team_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("sports_teams.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    player_external_ref: Mapped[str] = mapped_column(String(100), nullable=False)
+    player_name: Mapped[str] = mapped_column(String(200), nullable=False)
     position: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
-    # Advanced metrics (from Baseball Savant — nullable when unavailable)
-    outs_above_average: Mapped[float | None] = mapped_column(Float, nullable=True)
-    defensive_runs_saved: Mapped[float | None] = mapped_column(Float, nullable=True)
-    uzr: Mapped[float | None] = mapped_column(Float, nullable=True)
-
-    # Basic metrics (from boxscores — more commonly available)
-    games_played: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    innings_at_position: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Basic fielding metrics (from boxscores)
     errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     assists: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     putouts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    # Composite defensive value (derived or provided)
-    defensive_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Advanced metrics (from Baseball Savant — nullable, future enrichment)
+    outs_above_average: Mapped[float | None] = mapped_column(Float, nullable=True)
+    defensive_runs_saved: Mapped[float | None] = mapped_column(Float, nullable=True)
+    uzr: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     source: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    raw_extras: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, server_default=text("'{}'::jsonb"), nullable=False
-    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -336,13 +330,15 @@ class MLBPlayerFieldingStats(Base):
         nullable=False,
     )
 
+    game = relationship("SportsGame", back_populates="fielding_stats")
     team = relationship("SportsTeam")
 
     __table_args__ = (
         UniqueConstraint(
-            "player_external_ref", "season", "position",
-            name="uq_mlb_fielding_player_season_pos",
+            "game_id", "player_external_ref",
+            name="uq_mlb_fielding_game_player",
         ),
+        Index("idx_fielding_game", "game_id"),
         Index("idx_fielding_player", "player_external_ref"),
-        Index("idx_fielding_team_season", "team_id", "season"),
+        Index("idx_fielding_team", "team_id"),
     )

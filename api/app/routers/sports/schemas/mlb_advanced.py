@@ -49,7 +49,7 @@ class MLBPitcherGameStatSchema(BaseModel):
 
 
 class MLBFieldingStatSchema(BaseModel):
-    """Season-level fielding stats per player."""
+    """Per-game fielding stats per player."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -62,7 +62,6 @@ class MLBFieldingStatSchema(BaseModel):
     errors: int | None = None
     assists: int | None = None
     putouts: int | None = None
-    games_played: int | None = Field(None, alias="gamesPlayed")
 
 
 class MLBAdvancedPlayerStats(BaseModel):

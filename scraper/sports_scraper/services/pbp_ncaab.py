@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
-from sqlalchemy import exists, not_
+from sqlalchemy import exists, not_, or_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
@@ -76,11 +76,11 @@ def select_games_for_pbp_ncaab_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> list[tuple[int, int, str | None]]:
-    """Return game ids, CBB game IDs, and status for NCAAB API play-by-play ingestion.
+) -> list[tuple[int, int | None, str | None]]:
+    """Return games needing NCAAB PBP ingestion.
 
-    NCAAB PBP is fetched via the College Basketball Data API using the CBB game ID
-    stored in external_ids['cbb_game_id'].
+    Selects games with either cbb_game_id OR ncaa_game_id — the SSOT
+    game_processors handle fallback between the two APIs internally.
 
     Args:
         session: Database session
@@ -90,7 +90,8 @@ def select_games_for_pbp_ncaab_api(
         updated_before: Only include games with stale PBP data
 
     Returns:
-        List of (game_id, cbb_game_id, status) tuples for games needing PBP
+        List of (game_id, cbb_game_id_or_0, status) tuples for games needing PBP.
+        cbb_game_id may be 0 for games with only ncaa_game_id.
     """
     league = session.query(db_models.SportsLeague).filter(
         db_models.SportsLeague.code == "NCAAB"
@@ -98,8 +99,8 @@ def select_games_for_pbp_ncaab_api(
     if not league:
         return []
 
-    # CBB game ID is stored in external_ids JSONB field under 'cbb_game_id' key
     cbb_game_id_expr = db_models.SportsGame.external_ids["cbb_game_id"].astext
+    ncaa_game_id_expr = db_models.SportsGame.external_ids["ncaa_game_id"].astext
 
     query = session.query(
         db_models.SportsGame.id,
@@ -109,8 +110,8 @@ def select_games_for_pbp_ncaab_api(
         db_models.SportsGame.league_id == league.id,
         db_models.SportsGame.game_date >= start_of_et_day_utc(start_date),
         db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
-        # cbb_game_id is required for CBB API PBP fetch
-        cbb_game_id_expr.isnot(None),
+        # Need at least one game ID for data fetching
+        or_(cbb_game_id_expr.isnot(None), ncaa_game_id_expr.isnot(None)),
     )
 
     if only_missing:
@@ -125,7 +126,7 @@ def select_games_for_pbp_ncaab_api(
         query = query.filter(not_(has_fresh))
 
     rows = query.all()
-    results: list[tuple[int, int, str | None]] = []
+    results: list[tuple[int, int | None, str | None]] = []
     for game_id, cbb_game_id, status in rows:
         if cbb_game_id:
             try:
@@ -137,6 +138,9 @@ def select_games_for_pbp_ncaab_api(
                     game_id=game_id,
                     cbb_game_id=cbb_game_id,
                 )
+        else:
+            # Game has ncaa_game_id only — process_game_pbp_ncaab handles this
+            results.append((game_id, 0, status))
     return results
 
 

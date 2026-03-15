@@ -1,23 +1,30 @@
 "use client";
 
-import type { MLBAdvancedTeamStats, MLBAdvancedPlayerStats } from "@/lib/api/sportsAdmin/types";
+import { useMemo } from "react";
+import type { MLBAdvancedTeamStats, MLBAdvancedPlayerStats, MLBPitcherGameStat } from "@/lib/api/sportsAdmin/types";
 import { CollapsibleSection } from "./CollapsibleSection";
 import styles from "./styles.module.css";
 
-function fmtPct(v: number | null): string {
+function fmtPct(v: number | null | undefined): string {
   return v != null ? `${(v * 100).toFixed(1)}%` : "—";
 }
 
-function fmtVelo(v: number | null): string {
+function fmtVelo(v: number | null | undefined): string {
   return v != null ? `${v.toFixed(1)} mph` : "—";
+}
+
+function fmtNum(v: number | null | undefined, decimals = 1): string {
+  return v != null ? v.toFixed(decimals) : "—";
 }
 
 export function MLBAdvancedStatsSection({
   stats,
   playerStats,
+  pitcherGameStats,
 }: {
-  stats: MLBAdvancedTeamStats[];
+  stats?: MLBAdvancedTeamStats[] | null;
   playerStats?: MLBAdvancedPlayerStats[] | null;
+  pitcherGameStats?: MLBPitcherGameStat[] | null;
 }) {
   const homePlayers = (playerStats ?? [])
     .filter((p) => p.isHome)
@@ -27,48 +34,109 @@ export function MLBAdvancedStatsSection({
     .filter((p) => !p.isHome)
     .sort((a, b) => b.totalPitches - a.totalPitches);
 
+  const pitcherStatsByTeam = useMemo(() => {
+    if (!pitcherGameStats) return {};
+    return pitcherGameStats.reduce<Record<string, MLBPitcherGameStat[]>>((acc, p) => {
+      acc[p.team] = acc[p.team] || [];
+      acc[p.team].push(p);
+      return acc;
+    }, {});
+  }, [pitcherGameStats]);
+
   return (
     <CollapsibleSection title="Advanced Stats (Statcast)" defaultOpen={false}>
-      <div className={styles.teamStatsGrid}>
-        {stats.map((t) => (
-          <div key={t.team} className={styles.teamStatsCard}>
-            <div className={styles.teamStatsHeader}>
-              <h3>{t.team}</h3>
-              <span className={styles.badge}>{t.isHome ? "Home" : "Away"}</span>
+      {/* Team-level batting stats */}
+      {stats && stats.length > 0 && (
+        <div className={styles.teamStatsGrid}>
+          {stats.map((t) => (
+            <div key={t.team} className={styles.teamStatsCard}>
+              <div className={styles.teamStatsHeader}>
+                <h3>{t.team}</h3>
+                <span className={styles.badge}>{t.isHome ? "Home" : "Away"}</span>
+              </div>
+
+              <h4 style={{ margin: "0.75rem 0 0.25rem", fontSize: "0.85rem", color: "#64748b" }}>
+                Plate Discipline
+              </h4>
+              <table className={styles.table}>
+                <tbody>
+                  <tr><td>Z-Swing%</td><td>{fmtPct(t.zSwingPct)}</td></tr>
+                  <tr><td>O-Swing%</td><td>{fmtPct(t.oSwingPct)}</td></tr>
+                  <tr><td>Z-Contact%</td><td>{fmtPct(t.zContactPct)}</td></tr>
+                  <tr><td>O-Contact%</td><td>{fmtPct(t.oContactPct)}</td></tr>
+                </tbody>
+              </table>
+
+              <h4 style={{ margin: "0.75rem 0 0.25rem", fontSize: "0.85rem", color: "#64748b" }}>
+                Quality of Contact
+              </h4>
+              <table className={styles.table}>
+                <tbody>
+                  <tr><td>Total Pitches</td><td>{t.totalPitches}</td></tr>
+                  <tr><td>Balls in Play</td><td>{t.ballsInPlay}</td></tr>
+                  <tr><td>Avg Exit Velo</td><td>{fmtVelo(t.avgExitVelo)}</td></tr>
+                  <tr><td>Hard Hit%</td><td>{fmtPct(t.hardHitPct)}</td></tr>
+                  <tr><td>Barrel%</td><td>{fmtPct(t.barrelPct)}</td></tr>
+                </tbody>
+              </table>
             </div>
+          ))}
+        </div>
+      )}
 
-            <h4 style={{ margin: "0.75rem 0 0.25rem", fontSize: "0.85rem", color: "#64748b" }}>
-              Plate Discipline
-            </h4>
-            <table className={styles.table}>
-              <tbody>
-                <tr><td>Z-Swing%</td><td>{fmtPct(t.zSwingPct)}</td></tr>
-                <tr><td>O-Swing%</td><td>{fmtPct(t.oSwingPct)}</td></tr>
-                <tr><td>Z-Contact%</td><td>{fmtPct(t.zContactPct)}</td></tr>
-                <tr><td>O-Contact%</td><td>{fmtPct(t.oContactPct)}</td></tr>
-              </tbody>
-            </table>
-
-            <h4 style={{ margin: "0.75rem 0 0.25rem", fontSize: "0.85rem", color: "#64748b" }}>
-              Quality of Contact
-            </h4>
-            <table className={styles.table}>
-              <tbody>
-                <tr><td>Total Pitches</td><td>{t.totalPitches}</td></tr>
-                <tr><td>Balls in Play</td><td>{t.ballsInPlay}</td></tr>
-                <tr><td>Avg Exit Velo</td><td>{fmtVelo(t.avgExitVelo)}</td></tr>
-                <tr><td>Hard Hit%</td><td>{fmtPct(t.hardHitPct)}</td></tr>
-                <tr><td>Barrel%</td><td>{fmtPct(t.barrelPct)}</td></tr>
-              </tbody>
-            </table>
+      {/* Pitcher Advanced (Statcast) */}
+      {pitcherGameStats && pitcherGameStats.length > 0 && (
+        <>
+          <h3 style={{ margin: "1.5rem 0 0.75rem", fontSize: "1rem", color: "#1e293b" }}>
+            Pitcher Breakdown
+          </h3>
+          <div className={styles.teamStatsGrid}>
+            {Object.entries(pitcherStatsByTeam).map(([team, pitchers]) => (
+              <div key={team} className={styles.teamStatsCard}>
+                <div className={styles.teamStatsHeader}><h3>{team}</h3></div>
+                <div style={{ overflowX: "auto" }}>
+                  <table className={styles.table} style={{ fontSize: "0.85rem" }}>
+                    <thead>
+                      <tr>
+                        <th>Player</th>
+                        <th>K%</th>
+                        <th>BB%</th>
+                        <th>Whiff%</th>
+                        <th>Zone Con%</th>
+                        <th>Chase%</th>
+                        <th>EV Against</th>
+                        <th>HH% Against</th>
+                        <th>Brl% Against</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pitchers.map((p, idx) => (
+                        <tr key={`${team}-pitcher-${idx}-${p.playerName}`}>
+                          <td>{p.playerName}{p.isStarter ? " (S)" : ""}</td>
+                          <td>{fmtPct(p.kRate)}</td>
+                          <td>{fmtPct(p.bbRate)}</td>
+                          <td>{fmtPct(p.whiffRate)}</td>
+                          <td>{fmtPct(p.zContactPct)}</td>
+                          <td>{fmtPct(p.chaseRate)}</td>
+                          <td>{fmtNum(p.avgExitVeloAgainst)}</td>
+                          <td>{fmtPct(p.hardHitPctAgainst)}</td>
+                          <td>{fmtPct(p.barrelPctAgainst)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
+      {/* Batter breakdown */}
       {playerStats && playerStats.length > 0 && (
         <>
           <h3 style={{ margin: "1.5rem 0 0.75rem", fontSize: "1rem", color: "#1e293b" }}>
-            Player Breakdown
+            Batter Breakdown
           </h3>
           {[
             { label: "Away", players: awayPlayers },
