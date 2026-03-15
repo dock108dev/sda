@@ -143,9 +143,29 @@ FEATURE_BASELINES: dict[str, float] = {
     "power_suppression": 0.0,
     "strikeout_rate": 0.22,
     "walk_rate": 0.08,
+    # Standard batting baselines (from boxscore raw_stats)
+    "box_avg": 0.250,
+    "box_obp": 0.320,
+    "box_slg": 0.400,
+    "box_iso": 0.150,
+    "box_ops": 0.720,
+    "box_k_rate": 0.22,
+    "box_bb_rate": 0.08,
+    "box_hr_rate": 0.03,
+    # Traditional pitcher rate baselines (per-9 and ratio stats)
+    "era": 4.50,
+    "whip": 1.30,
+    "k_per_9": 8.5,
+    "bb_per_9": 3.2,
+    "hr_per_9": 1.2,
+    "h_per_9": 9.0,
     # Matchup baselines
     "batter_hand_code": 0.5,
     "pitcher_hand_code": 0.5,
+    # Game-state baselines (midpoint approximations)
+    "inning": 5.0,
+    "outs": 1.0,
+    "score_diff": 0.0,
     # Fielding baselines
     "team_oaa": 0.0,
     "team_drs": 0.0,

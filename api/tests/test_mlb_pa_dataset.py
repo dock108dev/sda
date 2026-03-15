@@ -9,9 +9,9 @@ import pytest
 
 from app.analytics.datasets.mlb_pa_dataset import (
     MLBPADatasetBuilder,
+    _boxscore_batting_metrics,
     _pitcher_stats_to_metrics,
 )
-
 
 # ---------------------------------------------------------------------------
 # _pitcher_stats_to_metrics
@@ -29,6 +29,7 @@ class TestPitcherStatsToMetrics:
             walks=2,
             home_runs_allowed=1,
             hits=6,
+            earned_runs=3,
             pitches_thrown=90,
             zone_swings=20,
             zone_contact=15,
@@ -117,6 +118,60 @@ class TestPitcherStatsToMetrics:
         m = _pitcher_stats_to_metrics(stats)
         assert -0.15 <= m["contact_suppression"] <= 0.30
         assert -0.30 <= m["power_suppression"] <= 0.50
+
+    def test_era_and_whip(self):
+        stats = self._make_stats()
+        m = _pitcher_stats_to_metrics(stats)
+        assert abs(m["era"] - (3 * 9.0 / 6.0)) < 0.001
+        assert abs(m["whip"] - ((2 + 6) / 6.0)) < 0.001
+        assert abs(m["k_per_9"] - (5 * 9.0 / 6.0)) < 0.001
+        assert abs(m["bb_per_9"] - (2 * 9.0 / 6.0)) < 0.001
+        assert abs(m["hr_per_9"] - (1 * 9.0 / 6.0)) < 0.001
+        assert abs(m["h_per_9"] - (6 * 9.0 / 6.0)) < 0.001
+        assert "earned_runs" in m
+
+    def test_zero_ip_uses_era_default(self):
+        stats = self._make_stats(innings_pitched=0)
+        m = _pitcher_stats_to_metrics(stats)
+        assert m["era"] == 4.50
+        assert m["whip"] == 1.30
+
+
+# ---------------------------------------------------------------------------
+# _boxscore_batting_metrics
+# ---------------------------------------------------------------------------
+
+
+class TestBoxscoreBattingMetrics:
+    """Unit tests for the _boxscore_batting_metrics helper."""
+
+    def test_basic_extraction(self):
+        raw = {
+            "atBats": 4, "hits": 2, "homeRuns": 1, "baseOnBalls": 1,
+            "strikeOuts": 1, "doubles": 0, "triples": 0, "rbi": 2,
+            "avg": ".300", "obp": ".380", "slg": ".550", "ops": ".930",
+        }
+        m = _boxscore_batting_metrics(raw)
+        assert m["box_hits"] == 2.0
+        assert m["box_home_runs"] == 1.0
+        assert abs(m["box_avg"] - 0.300) < 0.001
+        assert abs(m["box_obp"] - 0.380) < 0.001
+        assert abs(m["box_slg"] - 0.550) < 0.001
+        assert abs(m["box_k_rate"] - 1 / 4) < 0.001
+        assert abs(m["box_hr_rate"] - 1 / 4) < 0.001
+
+    def test_empty_raw_uses_defaults(self):
+        m = _boxscore_batting_metrics({})
+        assert m["box_at_bats"] == 0.0
+        assert m["box_avg"] == 0.250
+        assert m["box_obp"] == 0.320
+        assert m["box_k_rate"] == 0.22  # default when ab=0
+
+    def test_iso_calculation(self):
+        raw = {"atBats": 100, "hits": 30, "homeRuns": 5, "doubles": 8, "triples": 2}
+        m = _boxscore_batting_metrics(raw)
+        expected_iso = (8 + 2 * 2 + 3 * 5) / 100
+        assert abs(m["box_iso"] - expected_iso) < 0.001
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +276,7 @@ class TestMLBPADatasetBuilder:
         assert rows[0]["inning"] == 1
         assert rows[0]["half"] == "top"
         assert rows[0]["batter_hand"] == "R"
+        assert "score_diff" in rows[0]
 
         assert rows[1]["outcome"] == "single"
         assert rows[1]["batter_external_ref"] == "101"
@@ -499,6 +555,10 @@ class TestMLBPADatasetBuilder:
         assert rows[0]["outcome"] == "home_run"
         assert rows[0]["half"] == "bottom"
         assert rows[0]["batter_hand"] == "L"
+        # Game-state context included in matchup dict
+        assert "matchup" in rows[0]
+        assert rows[0]["matchup"]["inning"] == 3.0
+        assert rows[0]["matchup"]["outs"] == 1.0
 
     @pytest.mark.asyncio
     async def test_build_pitcher_fallback_to_team_profile(self):
@@ -796,8 +856,8 @@ class TestMLBPADatasetBuilder:
         assert batter_h == {}
         assert pitcher_h == {}
         assert team_h == {}
-        # All 3 queries should have executed
-        assert call_count == 3
+        # All 4 queries should have executed (batter, pitcher, team, boxscore)
+        assert call_count == 4
 
     @pytest.mark.asyncio
     async def test_load_team_fielding(self):

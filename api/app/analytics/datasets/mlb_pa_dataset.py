@@ -192,6 +192,17 @@ class MLBPADatasetBuilder:
                 batter_hand = matchup.get("batSide", {}).get("code", "")
                 pitcher_hand = matchup.get("pitchHand", {}).get("code", "")
 
+                # Compute score differential from the batter's perspective
+                try:
+                    home_score = int(play.home_score or 0)
+                    away_score = int(play.away_score or 0)
+                except (TypeError, ValueError):
+                    home_score = away_score = 0
+                score_diff = (
+                    (away_score - home_score) if is_top
+                    else (home_score - away_score)
+                )
+
                 row: dict[str, Any] = {
                     "game_id": game_id,
                     "game_date": game_date_str,
@@ -205,6 +216,7 @@ class MLBPADatasetBuilder:
                     "outs_before": outs_before,
                     "batter_hand": batter_hand,
                     "pitcher_hand": pitcher_hand,
+                    "score_diff": score_diff,
                     "outcome": outcome,
                 }
 
@@ -232,6 +244,13 @@ class MLBPADatasetBuilder:
 
                     row["batter_profile"] = {"metrics": batter_profile}
                     row["pitcher_profile"] = {"metrics": pitcher_profile}
+                    row["matchup"] = {
+                        "batter_hand": batter_hand,
+                        "pitcher_hand": pitcher_hand,
+                        "inning": float(inning),
+                        "outs": float(outs_before),
+                        "score_diff": float(score_diff),
+                    }
 
                 if include_fielding and fielding_by_team:
                     team_def = fielding_by_team.get(fielding_team_id)
@@ -252,7 +271,12 @@ class MLBPADatasetBuilder:
         window: int,
         min_games: int,
     ) -> dict[str, float] | None:
-        """Build a player rolling profile from pre-loaded history."""
+        """Build a player rolling profile from pre-loaded history.
+
+        Merges Statcast metrics (from MLBPlayerAdvancedStats) with standard
+        batting stats (from SportsPlayerBoxscore) when boxscore history is
+        available.
+        """
         player_games = history.get(player_ref, [])
         prior = [s for d, s in player_games if d < before_date]
         if len(prior) < min_games:
@@ -264,6 +288,20 @@ class MLBPADatasetBuilder:
             vals = [m[key] for m in metrics_list if key in m]
             if vals:
                 aggregated[key] = round(sum(vals) / len(vals), 4)
+
+        # Merge standard batting stats from boxscore history if available
+        box_history = getattr(self, "_boxscore_history", None)
+        if box_history:
+            box_games = box_history.get(player_ref, [])
+            box_prior = [raw for d, raw in box_games if d < before_date]
+            if box_prior:
+                box_recent = box_prior[-window:]
+                box_metrics = [_boxscore_batting_metrics(raw) for raw in box_recent]
+                for key in box_metrics[0]:
+                    vals = [m[key] for m in box_metrics if key in m]
+                    if vals:
+                        aggregated[key] = round(sum(vals) / len(vals), 4)
+
         return aggregated
 
     def _build_pitcher_profile(
@@ -361,6 +399,33 @@ class MLBPADatasetBuilder:
         for stats_row, game_date in team_result:
             team_history[stats_row.team_id].append((str(game_date), stats_row))
 
+        # Batter boxscore history from SportsPlayerBoxscore for standard batting stats
+        from app.db.sports import SportsPlayerBoxscore
+
+        box_stmt = (
+            select(SportsPlayerBoxscore, SportsGame.game_date)
+            .join(SportsGame, SportsGame.id == SportsPlayerBoxscore.game_id)
+            .where(
+                SportsGame.status.in_(["final", "archived"]),
+                SportsPlayerBoxscore.player_external_ref.isnot(None),
+            )
+            .order_by(SportsGame.game_date.asc())
+        )
+        if dt_end:
+            box_stmt = box_stmt.where(SportsGame.game_date <= dt_end)
+        box_result = await db.execute(box_stmt)
+
+        boxscore_history: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+        for box_row, game_date in box_result:
+            raw = box_row.stats or box_row.raw_stats_json or {}
+            if raw.get("player_role") == "batter" and box_row.player_external_ref:
+                boxscore_history[box_row.player_external_ref].append(
+                    (str(game_date), raw)
+                )
+
+        # Attach to batter_history metadata for profile building
+        self._boxscore_history = boxscore_history
+
         return batter_history, pitcher_history, team_history
 
     async def _load_team_fielding(
@@ -397,6 +462,49 @@ class MLBPADatasetBuilder:
         return fielding
 
 
+def _boxscore_batting_metrics(raw: dict) -> dict[str, float]:
+    """Extract standard batting metrics from SportsPlayerBoxscore raw_stats.
+
+    These supplement the Statcast-derived metrics from MLBPlayerAdvancedStats,
+    giving the model access to traditional slash-line stats (AVG/OBP/SLG)
+    and counting stats (H, HR, BB, K) that Statcast alone doesn't capture.
+    """
+    ab = float(raw.get("atBats", 0) or 0)
+    h = float(raw.get("hits", 0) or 0)
+    hr = float(raw.get("homeRuns", 0) or 0)
+    bb = float(raw.get("baseOnBalls", 0) or 0)
+    so = float(raw.get("strikeOuts", 0) or 0)
+    doubles = float(raw.get("doubles", 0) or 0)
+    triples = float(raw.get("triples", 0) or 0)
+    rbi = float(raw.get("rbi", 0) or 0)
+
+    def _parse_float(val: Any, default: float) -> float:
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return default
+
+    return {
+        "box_at_bats": ab,
+        "box_hits": h,
+        "box_home_runs": hr,
+        "box_walks": bb,
+        "box_strikeouts": so,
+        "box_doubles": doubles,
+        "box_triples": triples,
+        "box_rbi": rbi,
+        "box_avg": _parse_float(raw.get("avg"), 0.250),
+        "box_obp": _parse_float(raw.get("obp"), 0.320),
+        "box_slg": _parse_float(raw.get("slg"), 0.400),
+        "box_ops": _parse_float(raw.get("ops"), 0.720),
+        # Per-AB rates for single-game context
+        "box_k_rate": (so / ab) if ab > 0 else 0.22,
+        "box_bb_rate": (bb / (ab + bb)) if (ab + bb) > 0 else 0.08,
+        "box_hr_rate": (hr / ab) if ab > 0 else 0.03,
+        "box_iso": ((doubles + 2 * triples + 3 * hr) / ab) if ab > 0 else 0.150,
+    }
+
+
 def _pitcher_stats_to_metrics(stats: Any) -> dict[str, float]:
     """Convert MLBPitcherGameStats to a metrics dict for rolling profiles."""
     bf = stats.batters_faced or 0
@@ -405,19 +513,31 @@ def _pitcher_stats_to_metrics(stats: Any) -> dict[str, float]:
     total_swings = (stats.zone_swings or 0) + (stats.outside_swings or 0)
     total_contact = (stats.zone_contact or 0) + (stats.outside_contact or 0)
     bip = stats.balls_in_play or 0
+    er = stats.earned_runs or 0
+    h = stats.hits or 0
+    bb = stats.walks or 0
+    hr = stats.home_runs_allowed or 0
 
     return {
         "innings_pitched": float(ip),
         "batters_faced": float(bf),
         "strikeouts": float(stats.strikeouts or 0),
-        "walks": float(stats.walks or 0),
-        "home_runs_allowed": float(stats.home_runs_allowed or 0),
-        "hits": float(stats.hits or 0),
+        "walks": float(bb),
+        "home_runs_allowed": float(hr),
+        "hits": float(h),
+        "earned_runs": float(er),
         "pitches_thrown": float(stats.pitches_thrown or 0),
-        # Derived rates
+        # Traditional derived rates (from stored IP, H, ER, BB, HR)
+        "era": (er * 9.0 / ip) if ip > 0 else 4.50,
+        "whip": ((bb + h) / ip) if ip > 0 else 1.30,
+        "h_per_9": (h * 9.0 / ip) if ip > 0 else 9.0,
+        "hr_per_9": (hr * 9.0 / ip) if ip > 0 else 1.2,
+        "k_per_9": ((stats.strikeouts or 0) * 9.0 / ip) if ip > 0 else 8.5,
+        "bb_per_9": (bb * 9.0 / ip) if ip > 0 else 3.2,
+        # Statcast rates
         "k_rate": (stats.strikeouts / bf) if bf > 0 else 0.22,
-        "bb_rate": (stats.walks / bf) if bf > 0 else 0.08,
-        "hr_rate": (stats.home_runs_allowed / bf) if bf > 0 else 0.03,
+        "bb_rate": (bb / bf) if bf > 0 else 0.08,
+        "hr_rate": (hr / bf) if bf > 0 else 0.03,
         "whiff_rate": (
             1.0 - (total_contact / total_swings) if total_swings > 0 else 0.23
         ),
@@ -440,12 +560,12 @@ def _pitcher_stats_to_metrics(stats: Any) -> dict[str, float]:
         ),
         # Contact/power suppression for matchup compatibility
         "contact_suppression": max(-0.15, min(0.30,
-            1.0 - ((stats.hits or 0) / bf) - 0.30 if bf > 0 else 0.0
+            1.0 - (h / bf) - 0.30 if bf > 0 else 0.0
         )),
         "power_suppression": max(-0.30, min(0.50,
-            1.0 - (((stats.home_runs_allowed or 0) / bf) / 0.03) if bf > 0 else 0.0
+            1.0 - ((hr / bf) / 0.03) if bf > 0 else 0.0
         )),
         # Aliases for matchup.py compatibility (same values as k_rate/bb_rate)
         "strikeout_rate": (stats.strikeouts / bf) if bf > 0 else 0.22,
-        "walk_rate": (stats.walks / bf) if bf > 0 else 0.08,
+        "walk_rate": (bb / bf) if bf > 0 else 0.08,
     }

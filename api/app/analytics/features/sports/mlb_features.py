@@ -87,9 +87,24 @@ _PLAYER_PA_FEATURES: list[tuple[str, str, str]] = [
     ("pitcher_power_suppression", "pitcher", "power_suppression"),
     ("pitcher_strikeout_rate", "pitcher", "strikeout_rate"),
     ("pitcher_walk_rate", "pitcher", "walk_rate"),
+    # Standard batting (from boxscore raw_stats, averaged over rolling window)
+    ("batter_box_avg", "batter", "box_avg"),
+    ("batter_box_obp", "batter", "box_obp"),
+    ("batter_box_slg", "batter", "box_slg"),
+    ("batter_box_iso", "batter", "box_iso"),
+    # Traditional pitcher rates (from existing stored IP/ER/H/BB/HR)
+    ("pitcher_era", "pitcher", "era"),
+    ("pitcher_whip", "pitcher", "whip"),
+    ("pitcher_k_per_9", "pitcher", "k_per_9"),
+    ("pitcher_bb_per_9", "pitcher", "bb_per_9"),
+    ("pitcher_hr_per_9", "pitcher", "hr_per_9"),
     # Matchup context
     ("matchup_batter_hand", "matchup", "batter_hand_code"),
     ("matchup_pitcher_hand", "matchup", "pitcher_hand_code"),
+    # Game-state context (from PBP play context)
+    ("context_inning", "matchup", "inning"),
+    ("context_outs", "matchup", "outs"),
+    ("context_score_diff", "matchup", "score_diff"),
 ]
 
 # Fielding features — appended when fielding data is available
