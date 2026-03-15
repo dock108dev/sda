@@ -84,7 +84,7 @@ See [Analytics](analytics.md) for details.
   - Control Panel for on-demand Celery task dispatch (ingestion, odds, social, flows, timelines, utility)
   - Job run monitoring via RunsDrawer (IDE-style bottom panel, available on all admin pages)
   - Cross-book odds comparison: pre-game (`/admin/fairbet/odds`) and dedicated live odds page (`/admin/fairbet/live`) with auto-refresh, multi-game view, and game scoreboard strips
-  - Analytics section (4 pages): Simulator (team-level or lineup-aware), Models (registry, loadouts, training, performance), Batch Sims, Team Explorer
+  - Analytics section (3 pages): Simulator (team-level or lineup-aware), Models (registry, loadouts, training, performance), Batch Sims
   - Container log viewer
   - Game detail with boxscores, player stats, odds, social, PBP, flow, and pipeline runs
 

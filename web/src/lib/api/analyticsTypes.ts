@@ -5,29 +5,6 @@
  * runtime API logic.
  */
 
-export interface TeamAnalytics {
-  sport: string;
-  team_id: string;
-  name: string;
-  metrics: Record<string, number>;
-}
-
-export interface PlayerAnalytics {
-  sport: string;
-  player_id: string;
-  name: string;
-  metrics: Record<string, number>;
-}
-
-export interface MatchupAnalytics {
-  sport: string;
-  entity_a: string;
-  entity_b: string;
-  probabilities: Record<string, number>;
-  comparison: Record<string, unknown>;
-  advantages: Record<string, string>;
-}
-
 export interface SimulationRequest {
   sport: string;
   home_team: string;

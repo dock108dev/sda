@@ -7,9 +7,6 @@
 import { getApiBase } from "./apiBase";
 
 import type {
-  TeamAnalytics,
-  PlayerAnalytics,
-  MatchupAnalytics,
   SimulationRequest,
   SimulationResult,
   LiveSimulateRequest,
@@ -39,9 +36,6 @@ import type {
 
 // Re-export every type so existing consumers of "@/lib/api/analytics" keep working.
 export type {
-  TeamAnalytics,
-  PlayerAnalytics,
-  MatchupAnalytics,
   SimulationRequest,
   PitcherAnalytics,
   ScoreEntry,
@@ -94,31 +88,6 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(`API error: ${res.status} — ${detail}`);
   }
   return res.json() as Promise<T>;
-}
-
-export async function getTeamAnalytics(
-  sport: string,
-  teamId: string,
-): Promise<TeamAnalytics> {
-  const params = new URLSearchParams({ sport, team_id: teamId });
-  return fetchJson<TeamAnalytics>(`${base()}/api/analytics/team?${params}`);
-}
-
-export async function getPlayerAnalytics(
-  sport: string,
-  playerId: string,
-): Promise<PlayerAnalytics> {
-  const params = new URLSearchParams({ sport, player_id: playerId });
-  return fetchJson<PlayerAnalytics>(`${base()}/api/analytics/player?${params}`);
-}
-
-export async function getMatchupAnalytics(
-  sport: string,
-  entityA: string,
-  entityB: string,
-): Promise<MatchupAnalytics> {
-  const params = new URLSearchParams({ sport, entity_a: entityA, entity_b: entityB });
-  return fetchJson<MatchupAnalytics>(`${base()}/api/analytics/matchup?${params}`);
 }
 
 export async function runSimulation(

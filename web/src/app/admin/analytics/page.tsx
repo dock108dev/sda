@@ -21,11 +21,6 @@ const sections = [
     title: "Batch Sims",
     desc: "Queue and monitor batch simulation runs",
   },
-  {
-    href: ROUTES.ANALYTICS_EXPLORER,
-    title: "Team Explorer",
-    desc: "Browse team and matchup data with advanced stats",
-  },
 ];
 
 export default function AnalyticsPage() {

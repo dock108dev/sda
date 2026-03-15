@@ -20,7 +20,6 @@ The analytics section has **4 pages**:
 | **Simulator** | `/analytics/simulator` | Run pregame and live game simulations |
 | **Models** | `/analytics/models` | Feature loadouts, training, model registry, performance |
 | **Batch Sims** | `/analytics/batch` | Bulk simulation jobs + prediction outcome tracking |
-| **Team Explorer** | `/analytics/explorer` | Team/player/matchup data lookup |
 
 ---
 
@@ -243,18 +242,6 @@ Run bulk simulations across all upcoming games and track prediction accuracy.
 - `GET /api/analytics/batch-simulate-jobs?sport=mlb` — list jobs
 - `POST /api/analytics/record-outcomes` — match predictions to final scores
 - `GET /api/analytics/prediction-outcomes` — list per-game predictions with actuals
-
----
-
-## Team Explorer Page
-
-Lookup and comparison tools.
-
-### Endpoints
-
-- `GET /api/analytics/team?sport=mlb&team_id=xxx` — team rolling metrics
-- `GET /api/analytics/player?sport=mlb&player_id=xxx` — player metrics
-- `GET /api/analytics/matchup?sport=mlb&entity_a=xxx&entity_b=yyy` — head-to-head probabilities
 
 ---
 
