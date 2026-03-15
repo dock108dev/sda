@@ -350,7 +350,8 @@ class TestMLBPADatasetBuilder:
         def _make_pitcher_stats():
             return SimpleNamespace(
                 batters_faced=20, innings_pitched=6.0, strikeouts=5,
-                walks=2, home_runs_allowed=1, hits=6, pitches_thrown=90,
+                walks=2, home_runs_allowed=1, hits=6, earned_runs=3,
+                pitches_thrown=90,
                 zone_swings=20, zone_contact=15, outside_swings=10,
                 outside_contact=5, outside_pitches=30, balls_in_play=12,
                 total_exit_velo_against=1056.0, hard_hit_against=4,
@@ -489,7 +490,8 @@ class TestMLBPADatasetBuilder:
         def _make_pitcher_stats():
             return SimpleNamespace(
                 batters_faced=20, innings_pitched=6.0, strikeouts=5,
-                walks=2, home_runs_allowed=1, hits=6, pitches_thrown=90,
+                walks=2, home_runs_allowed=1, hits=6, earned_runs=3,
+                pitches_thrown=90,
                 zone_swings=20, zone_contact=15, outside_swings=10,
                 outside_contact=5, outside_pitches=30, balls_in_play=12,
                 total_exit_velo_against=1056.0, hard_hit_against=4,

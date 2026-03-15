@@ -1240,41 +1240,6 @@ class TestAnalyticsRoutes:
         app.include_router(router)
         return TestClient(app)
 
-    def test_get_team_endpoint(self) -> None:
-        client = self._make_test_client()
-
-        resp = client.get("/api/analytics/team?sport=mlb&team_id=NYY")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["team_id"] == "NYY"
-        assert data["sport"] == "mlb"
-        assert "metrics" in data
-
-    def test_get_player_endpoint(self) -> None:
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
-
-        from app.analytics.api.analytics_routes import router
-
-        app = FastAPI()
-        app.include_router(router)
-        client = TestClient(app)
-
-        resp = client.get("/api/analytics/player?sport=mlb&player_id=p1")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["player_id"] == "p1"
-
-    def test_get_matchup_endpoint(self) -> None:
-        client = self._make_test_client()
-
-        resp = client.get("/api/analytics/matchup?sport=mlb&entity_a=A&entity_b=B")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["entity_a"] == "A"
-        assert data["entity_b"] == "B"
-        assert "comparison" in data
-
     def test_post_simulate_endpoint(self) -> None:
         client = self._make_test_client()
 

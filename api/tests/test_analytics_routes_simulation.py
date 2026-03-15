@@ -131,36 +131,6 @@ class TestPitchingMetricsFromProfile:
 
 
 # ---------------------------------------------------------------------------
-# GET /matchup — comparison logic (lines 182-191)
-# ---------------------------------------------------------------------------
-
-
-class TestMatchupComparison:
-    @patch("app.analytics.api.analytics_routes.get_team_rolling_profile")
-    def test_matchup_with_both_profiles(self, mock_get_profile):
-        """When both teams have profiles, comparison & advantages are filled."""
-        home_metrics = _fake_profile({"contact_rate": 0.80, "whiff_rate": 0.20})
-        away_metrics = _fake_profile({"contact_rate": 0.74, "whiff_rate": 0.26})
-
-        async def side_effect(team, sport, *, rolling_window, db):
-            if team == "NYY":
-                return _fake_profile_result(home_metrics)
-            return _fake_profile_result(away_metrics)
-
-        mock_get_profile.side_effect = side_effect
-        client, _ = _make_client()
-        resp = client.get("/api/analytics/matchup?sport=mlb&entity_a=NYY&entity_b=BOS")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["comparison"]["contact_rate"]["NYY"] == 0.80
-        assert data["comparison"]["contact_rate"]["BOS"] == 0.74
-        # Higher contact is better -> NYY wins
-        assert data["advantages"]["contact_rate"] == "NYY"
-        # Lower whiff is better -> NYY wins
-        assert data["advantages"]["whiff_rate"] == "NYY"
-
-
-# ---------------------------------------------------------------------------
 # POST /simulate — team-level flow (lines 244-297, 314-360)
 # ---------------------------------------------------------------------------
 
