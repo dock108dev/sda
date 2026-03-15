@@ -150,6 +150,9 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
             selectinload(SportsGame.pitcher_game_stats).selectinload(
                 MLBPitcherGameStats.team
             ),
+            selectinload(SportsGame.fielding_stats).selectinload(
+                MLBPlayerFieldingStats.team
+            ),
         )
         .where(SportsGame.id == game_id)
     )
