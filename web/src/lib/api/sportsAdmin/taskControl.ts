@@ -1,6 +1,25 @@
 import { request } from "./client";
 import type { ScrapeRunConfig, ScrapeRunResponse } from "./types";
 
+// ── Hold status ──
+
+export interface HoldStatus {
+  held: boolean;
+}
+
+export async function getHoldStatus(): Promise<HoldStatus> {
+  return request("/api/admin/tasks/hold");
+}
+
+export async function setHoldStatus(held: boolean): Promise<HoldStatus> {
+  return request("/api/admin/tasks/hold", {
+    method: "PUT",
+    body: JSON.stringify({ held }),
+  });
+}
+
+// ── Task trigger ──
+
 export interface TriggerTaskResponse {
   status: string;
   task_name: string;

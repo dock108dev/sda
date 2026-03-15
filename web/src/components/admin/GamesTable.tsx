@@ -87,7 +87,7 @@ export function GamesTable({ games, detailLink = ROUTES.SPORTS_GAME, showComplet
               return (
               <tr key={gameId ?? `${game.awayTeam}-${game.homeTeam}-${game.gameDate}`}>
                 <td>{idContent}</td>
-                <td>{new Date(game.gameDate).toLocaleDateString()}</td>
+                <td>{new Date(game.gameDate).toLocaleString()}</td>
                 <td>{game.leagueCode}</td>
                 <td>
                   {game.awayTeam} @ {game.homeTeam}

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./styles.module.css";
 import {
   triggerTask,
   createScrapeRun,
   triggerBulkFlowGeneration,
+  getHoldStatus,
+  setHoldStatus,
 } from "@/lib/api/sportsAdmin/taskControl";
 import {
   type TaskDef,
@@ -16,7 +18,7 @@ import {
 
 // ── TaskCard component ──
 
-function TaskCard({ task }: { task: TaskDef }) {
+function TaskCard({ task, held }: { task: TaskDef; held: boolean }) {
   const [paramValues, setParamValues] = useState<Record<string, string>>(() => {
     const defaults: Record<string, string> = {};
     for (const p of task.params) {
@@ -129,7 +131,7 @@ function TaskCard({ task }: { task: TaskDef }) {
       <div className={styles.taskFooter}>
         <button
           className={styles.runButton}
-          disabled={!canRun || dispatching}
+          disabled={!canRun || dispatching || held}
           onClick={handleRun}
         >
           {dispatching ? "Dispatching..." : "Run"}
@@ -432,6 +434,27 @@ function GameflowCard() {
 // ── Main page ──
 
 export default function ControlPanelPage() {
+  const [held, setHeld] = useState(false);
+  const [toggling, setToggling] = useState(false);
+
+  useEffect(() => {
+    getHoldStatus()
+      .then((s) => setHeld(s.held))
+      .catch(() => {});
+  }, []);
+
+  const toggleHold = useCallback(async () => {
+    setToggling(true);
+    try {
+      const res = await setHoldStatus(!held);
+      setHeld(res.held);
+    } catch {
+      // ignore
+    } finally {
+      setToggling(false);
+    }
+  }, [held]);
+
   return (
     <div className={styles.container}>
       <h1>Control Panel</h1>
@@ -439,6 +462,27 @@ export default function ControlPanelPage() {
         Trigger Celery tasks on-demand. Open the Runs drawer at the bottom to
         monitor job history.
       </p>
+
+      <div className={held ? styles.holdBannerActive : styles.holdBanner}>
+        <div className={styles.holdBannerContent}>
+          <span className={styles.holdBannerText}>
+            {held
+              ? "All task dispatch is HELD — no tasks will be sent to workers."
+              : "Task dispatch is active."}
+          </span>
+          <button
+            className={held ? styles.holdButtonRelease : styles.holdButtonHold}
+            disabled={toggling}
+            onClick={toggleHold}
+          >
+            {toggling
+              ? "..."
+              : held
+                ? "Release Hold"
+                : "Hold All Tasks"}
+          </button>
+        </div>
+      </div>
 
       <div className={styles.categoryGroup}>
         <h2 className={styles.categoryTitle}>Backfill</h2>
@@ -453,7 +497,7 @@ export default function ControlPanelPage() {
           <h2 className={styles.categoryTitle}>{cat}</h2>
           <div className={styles.taskGrid}>
             {TASK_REGISTRY.filter((t) => t.category === cat).map((task) => (
-              <TaskCard key={task.name} task={task} />
+              <TaskCard key={task.name} task={task} held={held} />
             ))}
           </div>
         </div>

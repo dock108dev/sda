@@ -16,6 +16,80 @@
   margin-bottom: var(--space-section-card);
 }
 
+/* ── Hold banner ── */
+
+.holdBanner {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  padding: 0.75rem 1.25rem;
+  margin-bottom: var(--space-section-card);
+  background: #ffffff;
+}
+
+.holdBannerActive {
+  composes: holdBanner;
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.holdBannerContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.holdBannerText {
+  font-size: var(--font-body-size);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.holdBannerActive .holdBannerText {
+  color: #92400e;
+}
+
+.holdButtonHold {
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-button);
+  border: 1px solid #f59e0b;
+  background: #ffffff;
+  color: #92400e;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: var(--font-body-size);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.holdButtonHold:hover:not(:disabled) {
+  background: #fffbeb;
+}
+
+.holdButtonRelease {
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-button);
+  border: 1px solid #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: var(--font-body-size);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.holdButtonRelease:hover:not(:disabled) {
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.holdButtonHold:disabled,
+.holdButtonRelease:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Category groups ── */
 
 .categoryGroup {
