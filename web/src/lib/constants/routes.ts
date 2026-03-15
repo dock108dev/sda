@@ -22,6 +22,7 @@ export const ROUTES = {
   ANALYTICS_MODELS: "/admin/analytics/models",
   ANALYTICS_BATCH: "/admin/analytics/batch",
   ANALYTICS_PROFILES: "/admin/analytics/profiles",
+  ANALYTICS_EXPERIMENTS: "/admin/analytics/experiments",
   /** System */
   USERS: "/admin/users",
 } as const;

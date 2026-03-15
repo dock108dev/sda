@@ -9,7 +9,7 @@ const sections = [
   {
     href: ROUTES.ANALYTICS_SIMULATOR,
     title: "Simulator",
-    desc: "Run lineup-aware Monte Carlo pregame simulations",
+    desc: "Monte Carlo simulations using pitch-level data and team profiles",
   },
   {
     href: ROUTES.ANALYTICS_MODELS,
@@ -20,6 +20,11 @@ const sections = [
     href: ROUTES.ANALYTICS_BATCH,
     title: "Batch Sims",
     desc: "Queue and monitor batch simulation runs",
+  },
+  {
+    href: ROUTES.ANALYTICS_EXPERIMENTS,
+    title: "Experiments",
+    desc: "Run parameter sweeps — permutate algorithms, features, and windows, then compare results",
   },
   {
     href: ROUTES.ANALYTICS_PROFILES,

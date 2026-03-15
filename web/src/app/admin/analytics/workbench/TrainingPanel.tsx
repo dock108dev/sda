@@ -42,7 +42,7 @@ export function TrainingPanel() {
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
   const [selectedLoadout, setSelectedLoadout] = useState<number | null>(null);
-  const [modelType, setModelType] = useState("game");
+  const [modelType, setModelType] = useState("plate_appearance");
   const [algorithm, setAlgorithm] = useState("gradient_boosting");
   const [dateStart, setDateStart] = useState("");
   const [dateEnd, setDateEnd] = useState("");
@@ -155,13 +155,6 @@ export function TrainingPanel() {
 
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label>Model Type</label>
-            <select value={modelType} onChange={(e) => setModelType(e.target.value)}>
-              <option value="game">Game (Win/Loss)</option>
-              <option value="plate_appearance">Plate Appearance</option>
-            </select>
-          </div>
-          <div className={styles.formGroup}>
             <label>Algorithm</label>
             <select value={algorithm} onChange={(e) => setAlgorithm(e.target.value)}>
               <option value="gradient_boosting">Gradient Boosting</option>
@@ -233,11 +226,10 @@ export function TrainingPanel() {
         {jobs.length === 0 ? (
           <p style={{ color: "#666" }}>No training jobs yet. Start one from the form.</p>
         ) : (
-          <AdminTable headers={["ID", "Type", "Algorithm", "Status", "Metrics", "Actions"]}>
+          <AdminTable headers={["ID", "Algorithm", "Status", "Metrics", "Actions"]}>
             {jobs.flatMap((job) => [
               <tr key={job.id}>
                 <td>#{job.id}</td>
-                <td style={{ fontSize: "0.85rem" }}>{job.model_type}</td>
                 <td style={{ fontSize: "0.85rem" }}>{job.algorithm}</td>
                 <td>
                   <StatusBadge status={job.status} />
@@ -289,7 +281,7 @@ export function TrainingPanel() {
               </tr>,
               expandedJobId === job.id && (job.error_message || job.metrics) ? (
                 <tr key={`${job.id}-detail`}>
-                  <td colSpan={6} style={{ padding: "0.5rem 1rem", background: "#fafbfc" }}>
+                  <td colSpan={5} style={{ padding: "0.5rem 1rem", background: "#fafbfc" }}>
                     {job.error_message && (
                       <pre style={{
                         fontFamily: "monospace",

@@ -15,8 +15,7 @@ import { ROUTES } from "@/lib/constants/routes";
 import styles from "../analytics.module.css";
 
 export default function BatchSimsPage() {
-  const [sport] = useState("mlb");
-  const [probabilityMode, setProbabilityMode] = useState("ml");
+  const sport = "mlb";
   const [iterations, setIterations] = useState(5000);
   const [rollingWindow, setRollingWindow] = useState(30);
   const [dateStart, setDateStart] = useState("");
@@ -71,7 +70,7 @@ export default function BatchSimsPage() {
     try {
       const res = await startBatchSimulation({
         sport,
-        probability_mode: probabilityMode,
+        probability_mode: "ml",
         iterations,
         rolling_window: rollingWindow,
         date_start: dateStart || undefined,
@@ -111,28 +110,14 @@ export default function BatchSimsPage() {
         </p>
       </header>
 
-      <AdminCard title="Run New Batch">
+      <AdminCard title="Run New Batch" subtitle="Uses the active ML model — falls back to rule-based if none trained">
         <div className={styles.formRow}>
-          <div className={styles.formGroup}>
-            <label>Sport</label>
-            <select value={sport} disabled>
-              <option value="mlb">MLB</option>
-            </select>
-          </div>
-          <div className={styles.formGroup}>
-            <label>Probability Mode</label>
-            <select value={probabilityMode} onChange={(e) => setProbabilityMode(e.target.value)}>
-              <option value="ml">ML Model</option>
-              <option value="rule_based">Rule Based</option>
-              <option value="ensemble">Ensemble</option>
-            </select>
-          </div>
           <div className={styles.formGroup}>
             <label>Iterations</label>
             <input type="number" value={iterations} onChange={(e) => setIterations(Math.max(100, parseInt(e.target.value) || 100))} min={100} max={50000} />
           </div>
           <div className={styles.formGroup}>
-            <label>Rolling Window: {rollingWindow}</label>
+            <label>Rolling Window: {rollingWindow} games</label>
             <input type="range" min={5} max={80} step={5} value={rollingWindow} onChange={(e) => setRollingWindow(parseInt(e.target.value))} />
           </div>
         </div>
@@ -164,11 +149,10 @@ export default function BatchSimsPage() {
         {jobs.length === 0 && !jobsError ? (
           <p style={{ color: "var(--text-muted)" }}>No batch simulation jobs yet.</p>
         ) : (
-          <AdminTable headers={["ID", "Mode", "Iterations", "Window", "Date Range", "Status", "Games", "Created", ""]}>
+          <AdminTable headers={["ID", "Iterations", "Window", "Date Range", "Status", "Games", "Created", ""]}>
             {jobs.map((job) => (
               <tr key={job.id}>
                 <td>#{job.id}</td>
-                <td>{job.probability_mode}</td>
                 <td>{job.iterations.toLocaleString()}</td>
                 <td>{job.rolling_window}</td>
                 <td style={{ fontSize: "0.85rem" }}>

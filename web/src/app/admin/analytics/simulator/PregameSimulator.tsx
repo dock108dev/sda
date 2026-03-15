@@ -27,11 +27,10 @@ interface StarterSlot {
 }
 
 export function PregameSimulator() {
-  const [sport] = useState("mlb");
+  const sport = "mlb";
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
   const [iterations, setIterations] = useState(5000);
-  const [probabilityMode, setProbabilityMode] = useState<"rule_based" | "ml" | "ensemble">("ml");
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +146,7 @@ export function PregameSimulator() {
         home_team: homeTeam,
         away_team: awayTeam,
         iterations,
-        probability_mode: probabilityMode,
+        probability_mode: "ml",
         exclude_playoffs: excludePlayoffs || undefined,
       };
       // Sportsbook lines
@@ -203,12 +202,6 @@ export function PregameSimulator() {
       <AdminCard title="Pregame Setup">
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label>Sport</label>
-            <select value={sport} disabled>
-              <option value="mlb">MLB</option>
-            </select>
-          </div>
-          <div className={styles.formGroup}>
             <label>Home Team</label>
             {teamsLoading ? (
               <select disabled><option>Loading...</option></select>
@@ -238,19 +231,9 @@ export function PregameSimulator() {
               </select>
             )}
           </div>
-        </div>
-        <div className={styles.formRow}>
           <div className={styles.formGroup}>
             <label>Iterations</label>
             <input type="number" value={iterations} onChange={(e) => setIterations(Math.max(100, parseInt(e.target.value) || 100))} min={100} max={50000} />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Probability Mode</label>
-            <select value={probabilityMode} onChange={(e) => setProbabilityMode(e.target.value as "rule_based" | "ml" | "ensemble")}>
-              <option value="rule_based">Rule-Based</option>
-              <option value="ml">ML Model</option>
-              <option value="ensemble">Ensemble</option>
-            </select>
           </div>
         </div>
 
@@ -487,23 +470,8 @@ export function PregameSimulator() {
             );
           })()}
 
-          {result.model_home_win_probability != null && (
-            <AdminCard title="Game Model Prediction" subtitle="Trained classifier (separate from Monte Carlo)">
-              <div className={styles.statsRow}>
-                <div className={styles.statBox}>
-                  <div className={styles.statValue}>{(result.model_home_win_probability * 100).toFixed(1)}%</div>
-                  <div className={styles.statLabel}>{result.home_team} (Model)</div>
-                </div>
-                <div className={styles.statBox}>
-                  <div className={styles.statValue}>{((1 - result.model_home_win_probability) * 100).toFixed(1)}%</div>
-                  <div className={styles.statLabel}>{result.away_team} (Model)</div>
-                </div>
-              </div>
-            </AdminCard>
-          )}
-
           {result.home_pa_probabilities && result.away_pa_probabilities && (
-            <AdminCard title="PA Probabilities" subtitle="From rolling 30-game profiles">
+            <AdminCard title="Pitch-Level Probabilities" subtitle="From rolling 30-game profiles">
               <PAProbabilitiesChart
                 homeProbs={result.home_pa_probabilities}
                 awayProbs={result.away_pa_probabilities}

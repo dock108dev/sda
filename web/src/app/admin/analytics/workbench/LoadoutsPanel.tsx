@@ -26,7 +26,7 @@ export function LoadoutsPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newModelType, setNewModelType] = useState("game");
+  const [newModelType, setNewModelType] = useState("plate_appearance");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -170,7 +170,7 @@ export function LoadoutsPanel() {
               >
                 <div style={{ fontWeight: 500, fontSize: "0.875rem" }}>{l.name}</div>
                 <div style={{ fontSize: "0.75rem", color: "#666" }}>
-                  {l.model_type} &middot; {l.enabled_count}/{l.total_count} features
+                  {l.enabled_count}/{l.total_count} features
                 </div>
                 <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.25rem" }}>
                   <button
@@ -202,14 +202,6 @@ export function LoadoutsPanel() {
                   onChange={(e) => setNewName(e.target.value)}
                   style={{ padding: "0.375rem", fontSize: "0.875rem" }}
                 />
-                <select
-                  value={newModelType}
-                  onChange={(e) => setNewModelType(e.target.value)}
-                  style={{ padding: "0.375rem", fontSize: "0.875rem" }}
-                >
-                  <option value="game">Game</option>
-                  <option value="plate_appearance">Plate Appearance</option>
-                </select>
                 <div style={{ display: "flex", gap: "0.25rem" }}>
                   <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleCreate}>
                     Create
@@ -246,7 +238,7 @@ export function LoadoutsPanel() {
         {selected ? (
           <AdminCard
             title={selected.name}
-            subtitle={`${selected.sport.toUpperCase()} ${selected.model_type} | ${selected.features.filter((f) => f.enabled).length}/${selected.features.length} features enabled`}
+            subtitle={`${selected.features.filter((f) => f.enabled).length}/${selected.features.length} features enabled`}
           >
             <div style={{ marginBottom: "0.75rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
               <input

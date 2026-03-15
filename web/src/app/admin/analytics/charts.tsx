@@ -45,10 +45,10 @@ export function ScoreDistributionChart({ data }: { data: ScoreEntry[] }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* PA probabilities grouped bar chart                                  */
+/* Pitch-level probabilities grouped bar chart                         */
 /* ------------------------------------------------------------------ */
 
-/** League-average PA probabilities (2024 MLB season). */
+/** League-average pitch-level outcome probabilities (2024 MLB season). */
 const LEAGUE_AVG_PA: Record<string, number> = {
   strikeout: 0.22,
   walk: 0.08,

@@ -7,9 +7,9 @@ export default function SimulatorPage() {
   return (
     <div className={styles.container}>
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Game Simulator</h1>
+        <h1 className={styles.pageTitle}>MLB Simulator</h1>
         <p className={styles.pageSubtitle}>
-          Run lineup-aware Monte Carlo pregame simulations
+          Monte Carlo simulations using pitch-level data and team profiles
         </p>
       </header>
 

@@ -488,8 +488,7 @@ function PerformanceSection() {
                 }}>
                   <strong>Baselines:</strong>
                   <ul style={{ margin: "0.25rem 0 0 1.25rem", padding: 0 }}>
-                    <li>PA model (7-class): Random baseline: 14.3%, majority-class baseline: ~46%</li>
-                    <li>Game model (binary): Random baseline: 50%, home-team bias: ~54%</li>
+                    <li>Pitch-level model (7-class): Random baseline: 14.3%, majority-class baseline: ~46%</li>
                     <li>Brier score: Perfect = 0.0, uninformed = 0.25</li>
                   </ul>
                 </div>
