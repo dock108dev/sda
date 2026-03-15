@@ -125,26 +125,3 @@ class AnalyticsService:
         analysis = SimulationAnalysis(sport)
         return analysis.summarize_results(raw_results, sportsbook=sportsbook)
 
-    def run_live_simulation(
-        self,
-        sport: str,
-        game_state: dict[str, Any],
-        iterations: int = 2000,
-        seed: int | None = None,
-    ) -> dict[str, Any]:
-        """Run a live simulation from a partial game state.
-
-        Args:
-            sport: Sport code.
-            game_state: Current game state (inning, outs, bases, score).
-            iterations: Number of simulations.
-            seed: Optional seed for determinism.
-
-        Returns:
-            Dict with win probabilities and expected final score.
-        """
-        from app.analytics.core.live_simulation_engine import LiveSimulationEngine
-        engine = LiveSimulationEngine(sport)
-        return engine.simulate_from_state(
-            game_state, iterations=iterations, seed=seed,
-        )

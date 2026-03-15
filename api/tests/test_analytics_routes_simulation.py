@@ -4,7 +4,6 @@ Covers uncovered lines in analytics_routes.py:
 - POST /simulate (team-level and lineup-level flows)
 - GET /matchup (comparison logic)
 - GET /mlb-roster
-- POST /live-simulate with optional probability overrides
 - Helper functions: _regress_pitcher_profile, _pitching_metrics_from_profile
 """
 
@@ -565,67 +564,6 @@ class TestGetMLBRoster:
         assert "error" in data
         assert data["batters"] == []
         assert data["pitchers"] == []
-
-
-# ---------------------------------------------------------------------------
-# POST /live-simulate with optional probability overrides (lines 784-789)
-# ---------------------------------------------------------------------------
-
-
-class TestPostLiveSimulate:
-    @patch("app.analytics.api.analytics_routes._service")
-    def test_live_simulate_with_probability_overrides(self, mock_service):
-        """Custom probabilities and probability_mode flow through."""
-        mock_service.run_live_simulation.return_value = {
-            "home_win_probability": 0.65,
-        }
-
-        client, _ = _make_client()
-        resp = client.post("/api/analytics/live-simulate", json={
-            "sport": "mlb",
-            "inning": 7,
-            "half": "top",
-            "outs": 1,
-            "bases": {"first": True, "second": False, "third": False},
-            "score": {"home": 3, "away": 2},
-            "home_probabilities": {"strikeout_probability": 0.20},
-            "away_probabilities": {"strikeout_probability": 0.25},
-            "probability_mode": "ml",
-        })
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["sport"] == "mlb"
-        assert data["home_win_probability"] == 0.65
-
-        # Verify the game_state passed to the service
-        call_args = mock_service.run_live_simulation.call_args
-        game_state = call_args.kwargs.get("game_state") or call_args[1].get("game_state")
-        assert game_state["home_probabilities"] == {"strikeout_probability": 0.20}
-        assert game_state["away_probabilities"] == {"strikeout_probability": 0.25}
-        assert game_state["probability_mode"] == "ml"
-
-    @patch("app.analytics.api.analytics_routes._service")
-    def test_live_simulate_no_overrides(self, mock_service):
-        """Without optional fields, game_state should not contain them."""
-        mock_service.run_live_simulation.return_value = {
-            "home_win_probability": 0.50,
-        }
-
-        client, _ = _make_client()
-        resp = client.post("/api/analytics/live-simulate", json={
-            "sport": "mlb",
-            "inning": 1,
-            "half": "top",
-            "outs": 0,
-            "bases": {"first": False, "second": False, "third": False},
-            "score": {"home": 0, "away": 0},
-        })
-        assert resp.status_code == 200
-        call_args = mock_service.run_live_simulation.call_args
-        game_state = call_args.kwargs.get("game_state") or call_args[1].get("game_state")
-        assert "home_probabilities" not in game_state
-        assert "away_probabilities" not in game_state
-        assert "probability_mode" not in game_state
 
 
 # ---------------------------------------------------------------------------

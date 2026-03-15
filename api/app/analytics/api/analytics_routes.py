@@ -20,7 +20,6 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.analytics.core.simulation_cache import SimulationCache
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.services.profile_service import (
     ProfileResult,
@@ -63,31 +62,11 @@ from ._pipeline_routes import router as _pipeline_router
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 _service = AnalyticsService()
-_cache = SimulationCache()
 
 
 # ---------------------------------------------------------------------------
 # Core simulation & profile endpoints (kept here — small and foundational)
 # ---------------------------------------------------------------------------
-
-
-class LiveSimulateRequest(BaseModel):
-    """Request body for POST /api/analytics/live-simulate."""
-    sport: str = Field(..., description="Sport code (e.g., mlb)")
-    inning: int = Field(..., ge=1, description="Current inning")
-    half: str = Field(..., description="top or bottom")
-    outs: int = Field(..., ge=0, le=3, description="Current outs")
-    bases: dict[str, bool] = Field(
-        ..., description="Base occupancy (first, second, third)",
-    )
-    score: dict[str, int] = Field(
-        ..., description="Current score (home, away)",
-    )
-    iterations: int = Field(5000, ge=100, le=50000, description="Monte Carlo iterations")
-    seed: int | None = Field(None, description="Random seed for reproducibility")
-    home_probabilities: dict[str, float] | None = Field(None, description="Custom home team probabilities")
-    away_probabilities: dict[str, float] | None = Field(None, description="Custom away team probabilities")
-    probability_mode: str | None = Field(None, description="Probability mode: rule_based, ml, ensemble")
 
 
 class LineupSlot(BaseModel):
@@ -282,14 +261,14 @@ async def post_simulate(
         response["home_pa_probabilities"] = game_context["home_probabilities"]
         response["away_pa_probabilities"] = game_context.get("away_probabilities")
 
-    # --- Phase 1C: Surface diagnostics in response ---
+    # Surface simulation diagnostics (mode, fallback, model info)
     diagnostics = result.get("_diagnostics")
     if diagnostics is not None:
         response["simulation_info"] = diagnostics.to_dict()
         # Clean up internal key
         response.pop("_diagnostics", None)
 
-    # --- Phase 3C: Clarify the two prediction systems ---
+    # Bundle both prediction systems: MC simulation + trained classifier
     predictions: dict[str, Any] = {
         "monte_carlo": {
             "home_win_probability": response.get("home_win_probability"),
@@ -399,34 +378,6 @@ async def get_mlb_roster(
     if roster is None:
         return {"error": f"Team not found: {team}", "batters": [], "pitchers": []}
     return roster
-
-
-@router.post("/live-simulate")
-async def post_live_simulate(req: LiveSimulateRequest) -> dict[str, Any]:
-    """Run a simulation from a live game state."""
-    game_state: dict[str, Any] = {
-        "inning": req.inning,
-        "half": req.half,
-        "outs": req.outs,
-        "bases": req.bases,
-        "score": req.score,
-    }
-
-    if req.home_probabilities:
-        game_state["home_probabilities"] = req.home_probabilities
-    if req.away_probabilities:
-        game_state["away_probabilities"] = req.away_probabilities
-    if req.probability_mode:
-        game_state["probability_mode"] = req.probability_mode
-
-    result = _service.run_live_simulation(
-        sport=req.sport,
-        game_state=game_state,
-        iterations=req.iterations,
-        seed=req.seed,
-    )
-
-    return {"sport": req.sport, **result}
 
 
 # ---------------------------------------------------------------------------
