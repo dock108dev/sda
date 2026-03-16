@@ -373,12 +373,17 @@ async def _generate_feature_loadouts(
     rng = random.Random(suite.id)  # deterministic per suite
     combos: list[list[dict]] = []
 
+    def _mid(f: dict) -> float:
+        return round((f["weight_min"] + f["weight_max"]) / 2, 2)
+
+    def _rand_weight(f: dict) -> float:
+        return round(rng.uniform(f["weight_min"], f["weight_max"]), 2)
+
     # 1. Baseline: all features on at midpoint weights
-    baseline = [
-        {"name": f["name"], "enabled": True, "weight": round((f["weight_min"] + f["weight_max"]) / 2, 2)}
+    combos.append([
+        {"name": f["name"], "enabled": True, "weight": _mid(f)}
         for f in variable
-    ]
-    combos.append(baseline)
+    ])
 
     # 2. Ablation: drop each variable feature one at a time
     for i in range(len(variable)):
@@ -387,27 +392,32 @@ async def _generate_feature_loadouts(
             if i == j:
                 ablation.append({"name": f["name"], "enabled": False, "weight": 0})
             else:
-                ablation.append({"name": f["name"], "enabled": True, "weight": round((f["weight_min"] + f["weight_max"]) / 2, 2)})
+                ablation.append({"name": f["name"], "enabled": True, "weight": _mid(f)})
         combos.append(ablation)
 
-    # 3. Boundary: all min, all max
-    combos.append([
-        {"name": f["name"], "enabled": True, "weight": f["weight_min"]}
-        for f in variable
-    ])
-    combos.append([
-        {"name": f["name"], "enabled": True, "weight": f["weight_max"]}
-        for f in variable
-    ])
+    # 3. Solo boost: one feature at max while others at midpoint
+    for i, fi in enumerate(variable):
+        if fi["weight_min"] == fi["weight_max"]:
+            continue  # no weight range to boost
+        solo = []
+        for j, f in enumerate(variable):
+            if i == j:
+                solo.append({"name": f["name"], "enabled": True, "weight": f["weight_max"]})
+            else:
+                solo.append({"name": f["name"], "enabled": True, "weight": _mid(f)})
+        combos.append(solo)
 
-    # 4. Random samples to fill remaining budget
+    # 4. Random samples — each feature gets an independent random weight
     budget = max_combos - len(combos)
     for _ in range(max(0, budget)):
         sample = []
         for f in variable:
-            # 20% chance of disabling a variable feature
-            enabled = rng.random() > 0.2
-            weight = round(rng.uniform(f["weight_min"], f["weight_max"]), 2) if enabled else 0
+            if f.get("vary_enabled"):
+                # 15% chance of disabling when vary_enabled is on
+                enabled = rng.random() > 0.15
+            else:
+                enabled = True
+            weight = _rand_weight(f) if enabled else 0
             sample.append({"name": f["name"], "enabled": enabled, "weight": weight})
         combos.append(sample)
 

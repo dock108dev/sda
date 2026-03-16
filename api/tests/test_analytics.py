@@ -2834,6 +2834,7 @@ class TestModelInferenceEngine:
             n_estimators=10, max_depth=3, random_state=42,
         )
         sklearn_model.fit(X, y)
+        sklearn_model._training_feature_names = names
         artifact_path = str(tmp_path / "test_pa.pkl")
         joblib.dump(sklearn_model, artifact_path)
 
@@ -2868,10 +2869,11 @@ class TestModelInferenceEngine:
         records = _make_pa_records(60)
         mlb_train = MLBTrainingPipeline()
         ds_builder = DatasetBuilder("mlb", "plate_appearance")
-        X, y, _ = ds_builder.build(records, label_fn=mlb_train.pa_label_fn)
+        X, y, names = ds_builder.build(records, label_fn=mlb_train.pa_label_fn)
 
         sklearn_model = GradientBoostingClassifier(n_estimators=5, random_state=42)
         sklearn_model.fit(X, y)
+        sklearn_model._training_feature_names = names
         path = str(tmp_path / "cache_test.pkl")
         joblib.dump(sklearn_model, path)
 

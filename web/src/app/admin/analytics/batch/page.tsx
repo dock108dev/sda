@@ -202,10 +202,14 @@ export default function BatchSimsPage() {
               {(() => {
                 const results = job.results!;
                 const totalGames = results.length;
-                const avgHomeWP = results.reduce((s, g) => s + g.home_win_probability, 0) / totalGames;
+                const successResults = results.filter((g) => !g.error && g.home_win_probability != null);
+                const errorCount = results.filter((g) => g.error).length;
+                const avgHomeWP = successResults.length > 0
+                  ? successResults.reduce((s, g) => s + (g.home_win_probability ?? 0), 0) / successResults.length
+                  : 0;
                 const dist = { "50-55": 0, "55-60": 0, "60-70": 0, "70+": 0 };
-                results.forEach((g) => {
-                  const wp = Math.max(g.home_win_probability, g.away_win_probability) * 100;
+                successResults.forEach((g) => {
+                  const wp = Math.max(g.home_win_probability ?? 0, g.away_win_probability ?? 0) * 100;
                   if (wp >= 70) dist["70+"]++;
                   else if (wp >= 60) dist["60-70"]++;
                   else if (wp >= 55) dist["55-60"]++;
@@ -217,14 +221,24 @@ export default function BatchSimsPage() {
                       <div className={styles.statValue}>{totalGames}</div>
                       <div className={styles.statLabel}>Games</div>
                     </div>
-                    <div className={styles.statBox}>
-                      <div className={styles.statValue}>{(avgHomeWP * 100).toFixed(1)}%</div>
-                      <div className={styles.statLabel}>Avg Home WP</div>
-                    </div>
-                    <div className={styles.statBox}>
-                      <div className={styles.statValue}>{dist["50-55"]}/{dist["55-60"]}/{dist["60-70"]}/{dist["70+"]}</div>
-                      <div className={styles.statLabel}>50-55/55-60/60-70/70+%</div>
-                    </div>
+                    {successResults.length > 0 ? (
+                      <>
+                        <div className={styles.statBox}>
+                          <div className={styles.statValue}>{(avgHomeWP * 100).toFixed(1)}%</div>
+                          <div className={styles.statLabel}>Avg Home WP</div>
+                        </div>
+                        <div className={styles.statBox}>
+                          <div className={styles.statValue}>{dist["50-55"]}/{dist["55-60"]}/{dist["60-70"]}/{dist["70+"]}</div>
+                          <div className={styles.statLabel}>50-55/55-60/60-70/70+%</div>
+                        </div>
+                      </>
+                    ) : null}
+                    {errorCount > 0 && (
+                      <div className={styles.statBox}>
+                        <div className={styles.statValue} style={{ color: "#dc2626" }}>{errorCount}</div>
+                        <div className={styles.statLabel}>Errors</div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -267,16 +281,24 @@ export default function BatchSimsPage() {
                 );
               })()}
 
-              <AdminTable headers={["Matchup", "Home WP", "Away WP", "Avg Home", "Avg Away", "Source", "Profiles"]}>
+              <AdminTable headers={["Matchup", "Home WP", "Away WP", "Avg Home", "Avg Away", "Source", "Status"]}>
                 {job.results.map((g: BatchSimGameResult, i: number) => (
-                  <tr key={i}>
+                  <tr key={i} style={g.error ? { opacity: 0.6 } : {}}>
                     <td>{g.away_team} @ {g.home_team}</td>
-                    <td>{(g.home_win_probability * 100).toFixed(1)}%</td>
-                    <td>{(g.away_win_probability * 100).toFixed(1)}%</td>
-                    <td>{g.average_home_score.toFixed(1)}</td>
-                    <td>{g.average_away_score.toFixed(1)}</td>
-                    <td style={{ fontSize: "0.85rem" }}>{g.probability_source}</td>
-                    <td>{g.has_profiles ? "Yes" : "No"}</td>
+                    {g.error ? (
+                      <td colSpan={5} style={{ color: "#dc2626", fontSize: "0.8rem" }} title={g.error}>
+                        {g.error.length > 80 ? g.error.slice(0, 80) + "..." : g.error}
+                      </td>
+                    ) : (
+                      <>
+                        <td>{g.home_win_probability != null ? (g.home_win_probability * 100).toFixed(1) + "%" : "-"}</td>
+                        <td>{g.away_win_probability != null ? (g.away_win_probability * 100).toFixed(1) + "%" : "-"}</td>
+                        <td>{g.average_home_score != null ? g.average_home_score.toFixed(1) : "-"}</td>
+                        <td>{g.average_away_score != null ? g.average_away_score.toFixed(1) : "-"}</td>
+                        <td style={{ fontSize: "0.85rem" }}>{g.probability_source ?? "-"}</td>
+                        <td>{g.has_profiles ? "Yes" : "No"}</td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </AdminTable>

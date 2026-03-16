@@ -78,20 +78,16 @@ class MLBPlateAppearanceModel(BaseModel):
     def _predict_with_model(self, features: dict[str, Any]) -> dict[str, float]:
         """Use the loaded ML model for prediction.
 
-        Builds a feature vector from the input dict. If the model
-        expects more features than ``FEATURE_KEYS``, uses
-        all float values from the dict in sorted key order.
+        Uses the model's stored ``_training_feature_names`` (set during
+        training) to build the feature vector in the correct order.
+        Falls back to ``FEATURE_KEYS`` for built-in models.
         """
-        n_expected = getattr(self._model, "n_features_in_", len(FEATURE_KEYS))
-
-        if n_expected == len(FEATURE_KEYS):
-            feature_vector = [features.get(k, 0.0) for k in FEATURE_KEYS]
+        # Prefer the feature names stored on the model at training time
+        training_names = getattr(self._model, "_training_feature_names", None)
+        if training_names:
+            feature_vector = [float(features.get(k, 0.0)) for k in training_names]
         else:
-            # Use all numeric features in sorted order (from FeatureBuilder)
-            feature_vector = [
-                float(features.get(k, 0.0))
-                for k in sorted(features.keys())
-            ]
+            feature_vector = [features.get(k, 0.0) for k in FEATURE_KEYS]
 
         if hasattr(self._model, "predict_proba"):
             proba = self._model.predict_proba([feature_vector])[0]

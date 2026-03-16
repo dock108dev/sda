@@ -80,12 +80,19 @@ function TrainingSection() {
 
 type SortKey = "version" | "accuracy" | "log_loss" | "brier_score" | "created_at";
 
+/** Display-friendly model type label. */
+function modelTypeLabel(raw: string): string {
+  if (raw === "plate_appearance") return "Pitch";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
 function RegistryPanel() {
   const [models, setModels] = useState<RegisteredModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activating, setActivating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Filters
   const [sportFilter, setSportFilter] = useState("");
@@ -185,6 +192,43 @@ function RegistryPanel() {
     }
   }
 
+  function selectAll() {
+    setSelected(new Set(filtered.map((m) => m.model_id)));
+    setComparison(null);
+  }
+
+  function selectNone() {
+    setSelected(new Set());
+    setComparison(null);
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selected);
+    // Don't allow deleting the active model in bulk
+    const activeIds = new Set(models.filter((m) => m.active).map((m) => m.model_id));
+    const toDelete = ids.filter((id) => !activeIds.has(id));
+    if (toDelete.length === 0) {
+      setError("No non-active models selected for deletion");
+      return;
+    }
+    if (!window.confirm(`Delete ${toDelete.length} model(s)? This cannot be undone.${toDelete.length < ids.length ? ` (${ids.length - toDelete.length} active model(s) will be skipped)` : ""}`)) {
+      return;
+    }
+    setBulkDeleting(true);
+    setError(null);
+    try {
+      for (const id of toDelete) {
+        await deleteModel(id, true);
+      }
+      setSelected(new Set());
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   // Apply client-side filtering and sorting
   let filtered = activeOnly ? models.filter((m) => m.active) : models;
   filtered = [...filtered].sort((a, b) => {
@@ -204,7 +248,7 @@ function RegistryPanel() {
 
   // Group by sport / model_type
   const grouped = filtered.reduce<Record<string, RegisteredModel[]>>((acc, m) => {
-    const key = `${m.sport} / ${m.model_type}`;
+    const key = `${m.sport.toUpperCase()} / ${modelTypeLabel(m.model_type)}`;
     if (!acc[key]) acc[key] = [];
     acc[key].push(m);
     return acc;
@@ -243,16 +287,29 @@ function RegistryPanel() {
           <label>Model Type</label>
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
             <option value="">All</option>
-            {types.map((t) => <option key={t} value={t}>{t}</option>)}
+            {types.map((t) => <option key={t} value={t}>{modelTypeLabel(t)}</option>)}
           </select>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} />
           Active only
         </label>
+        <button className={styles.btn} onClick={selected.size === filtered.length ? selectNone : selectAll} style={{ fontSize: "0.8rem" }}>
+          {selected.size === filtered.length && filtered.length > 0 ? "Deselect All" : "Select All"}
+        </button>
         {selected.size >= 2 && (
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleCompare}>
             Compare ({selected.size})
+          </button>
+        )}
+        {selected.size >= 1 && (
+          <button
+            className={styles.btn}
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            style={{ fontSize: "0.8rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: "4px" }}
+          >
+            {bulkDeleting ? "Deleting..." : `Delete ${selected.size} Selected`}
           </button>
         )}
       </div>
@@ -271,7 +328,7 @@ function RegistryPanel() {
         return (
           <AdminCard
             key={group}
-            title={group.toUpperCase()}
+            title={group}
             subtitle={`${groupModels.length} version(s)${activeModel ? ` — Active: ${activeModel.model_id}` : ""}`}
           >
             <AdminTable
@@ -368,7 +425,7 @@ function RegistryPanel() {
 
       {/* Comparison Section */}
       {comparison && comparison.models.length >= 2 && (
-        <AdminCard title="Model Comparison" subtitle={`${comparison.sport.toUpperCase()} / ${comparison.model_type}`}>
+        <AdminCard title="Model Comparison" subtitle={`${comparison.sport.toUpperCase()} / ${modelTypeLabel(comparison.model_type)}`}>
           <AdminTable
             headers={["Metric", ...comparison.models.map((m) => m.model_id)]}
           >
@@ -488,7 +545,7 @@ function PerformanceSection() {
                 }}>
                   <strong>Baselines:</strong>
                   <ul style={{ margin: "0.25rem 0 0 1.25rem", padding: 0 }}>
-                    <li>Pitch-level model (7-class): Random baseline: 14.3%, majority-class baseline: ~46%</li>
+                    <li>Pitch model (7-class): Random baseline: 14.3%, majority-class baseline: ~46%</li>
                     <li>Brier score: Perfect = 0.0, uninformed = 0.25</li>
                   </ul>
                 </div>

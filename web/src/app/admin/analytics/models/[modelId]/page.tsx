@@ -54,7 +54,7 @@ export default function ModelDetailPage() {
         </p>
         <h1 className={styles.pageTitle}>{model.model_id}</h1>
         <p className={styles.pageSubtitle}>
-          {model.sport?.toUpperCase()} / {model.model_type}
+          {model.sport?.toUpperCase()} / {model.model_type === "plate_appearance" ? "Pitch" : model.model_type}
         </p>
       </header>
 

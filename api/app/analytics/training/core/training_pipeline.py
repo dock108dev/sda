@@ -181,6 +181,8 @@ class TrainingPipeline:
             sklearn_model = self._default_model()
 
         sklearn_model.fit(X_train, y_train)
+        # Attach feature names so inference can filter to the correct features
+        sklearn_model._training_feature_names = list(self._feature_names)
         self._model = sklearn_model
         return sklearn_model
 
