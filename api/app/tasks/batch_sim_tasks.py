@@ -186,7 +186,7 @@ async def _execute_batch_sim(
         # Filter to MLB games via league join
         from app.db.sports import SportsLeague
         mlb_league = await db.execute(
-            select(SportsLeague.id).where(SportsLeague.abbreviation == "MLB")
+            select(SportsLeague.id).where(SportsLeague.code == "MLB")
         )
         mlb_league_id = mlb_league.scalar_one_or_none()
         if mlb_league_id:
