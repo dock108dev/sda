@@ -159,23 +159,21 @@ async def _execute_batch_sim(
         return {"error": "only_mlb_supported"}
 
     async with sf() as db:
-        # 1. Find upcoming games (scheduled or pregame)
-        game_stmt = (
-            select(SportsGame)
-            .where(SportsGame.status.in_(["scheduled", "pregame"]))
-            .order_by(SportsGame.game_date.asc())
-        )
+        # 1. Find games to simulate
+        # When a date range is provided, include all games (historical + future).
+        # Without dates, default to upcoming (scheduled/pregame) from today.
+        game_stmt = select(SportsGame).order_by(SportsGame.game_date.asc())
 
-        # Apply date filters — default to today onward
-        # Parse strings to datetime for timestamptz column comparison
         if date_start:
             dt_start = datetime.strptime(date_start, "%Y-%m-%d").replace(tzinfo=UTC)
             game_stmt = game_stmt.where(SportsGame.game_date >= dt_start)
         else:
+            # No start date — only upcoming games
             game_stmt = game_stmt.where(
+                SportsGame.status.in_(["scheduled", "pregame"]),
                 SportsGame.game_date >= datetime.now(UTC).replace(
                     hour=0, minute=0, second=0, microsecond=0
-                )
+                ),
             )
         if date_end:
             dt_end = datetime.strptime(date_end, "%Y-%m-%d").replace(
@@ -196,7 +194,7 @@ async def _execute_batch_sim(
         upcoming_games = game_result.scalars().all()
 
         if not upcoming_games:
-            return {"error": "no_upcoming_games", "game_count": 0, "results": []}
+            return {"error": "no_games_found", "game_count": 0, "results": []}
 
         # 2. Load team names for display
         team_ids = set()
@@ -256,8 +254,8 @@ async def _execute_batch_sim(
 
         # Build rolling profiles
         game_date_str = str(game.game_date)[:10]  # YYYY-MM-DD
-        # Use tomorrow as cutoff so today's completed games are included
-        profile_cutoff = game_date_str + "Z"  # Compare as string, anything today or before
+        # Strict cutoff: only use data from games before this date
+        profile_cutoff = game_date_str
 
         home_profile = _build_rolling_profile(
             team_history.get(game.home_team_id, []),
