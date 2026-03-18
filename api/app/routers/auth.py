@@ -54,6 +54,7 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., description="Password")
+    remember_me: bool = Field(default=False, description="Issue a long-lived token (30 days)")
 
 
 class TokenResponse(BaseModel):
@@ -202,8 +203,8 @@ async def login(
             detail="Account is disabled",
         )
 
-    token = create_access_token(user.id, user.role)
-    logger.info("user_login", extra={"user_id": user.id, "email": user.email})
+    token = create_access_token(user.id, user.role, remember_me=body.remember_me)
+    logger.info("user_login", extra={"user_id": user.id, "email": user.email, "remember_me": body.remember_me})
 
     return TokenResponse(access_token=token, role=user.role)
 
