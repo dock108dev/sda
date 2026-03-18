@@ -293,16 +293,35 @@ def delete_stale_fairbet_odds(session: Session, batch_ts: datetime) -> int:
     (updated_at < batch_ts). This removes alt lines or bets that a
     sportsbook no longer offers.
 
+    Uses a PostgreSQL advisory lock to prevent deadlocks when multiple
+    Celery workers (mainline + props) run stale deletes concurrently.
+    If the lock is already held, the delete is skipped — the next
+    batch cycle will clean up.
+
     Args:
         session: Database session (caller manages commit)
         batch_ts: Timestamp captured before the upsert loop
 
     Returns:
-        Number of stale rows deleted
+        Number of stale rows deleted (0 if lock not acquired)
     """
     from sqlalchemy import text
 
     from ..logging import logger
+
+    # Advisory lock key — arbitrary constant unique to this operation.
+    # pg_try_advisory_xact_lock is transaction-scoped and non-blocking:
+    # returns true if acquired, false if another session holds it.
+    _STALE_DELETE_LOCK_KEY = 839271654
+
+    lock_result = session.execute(
+        text("SELECT pg_try_advisory_xact_lock(:key)"),
+        {"key": _STALE_DELETE_LOCK_KEY},
+    )
+    acquired = lock_result.scalar()
+    if not acquired:
+        logger.debug("fairbet_stale_delete_skipped_lock_held")
+        return 0
 
     sql = text("""
         DELETE FROM fairbet_game_odds_work AS stale
