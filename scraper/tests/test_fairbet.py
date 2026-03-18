@@ -222,30 +222,54 @@ class TestDeleteStaleFairbetOdds:
     """Tests for delete_stale_fairbet_odds function."""
 
     def test_stale_rows_deleted(self):
-        """Executes DELETE and returns rowcount."""
+        """Acquires advisory lock, executes DELETE, returns rowcount."""
         from datetime import datetime, timezone
 
         mock_session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.rowcount = 5
-        mock_session.execute.return_value = mock_result
+
+        # First call: advisory lock (returns True via scalar())
+        mock_lock_result = MagicMock()
+        mock_lock_result.scalar.return_value = True
+        # Second call: DELETE (returns rowcount)
+        mock_delete_result = MagicMock()
+        mock_delete_result.rowcount = 5
+        mock_session.execute.side_effect = [mock_lock_result, mock_delete_result]
 
         batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         count = delete_stale_fairbet_odds(mock_session, batch_ts)
 
         assert count == 5
-        mock_session.execute.assert_called_once()
+        assert mock_session.execute.call_count == 2
 
     def test_returns_zero_when_no_stale(self):
         """Returns 0 when nothing to delete."""
         from datetime import datetime, timezone
 
         mock_session = MagicMock()
-        mock_result = MagicMock()
-        mock_result.rowcount = 0
-        mock_session.execute.return_value = mock_result
+
+        mock_lock_result = MagicMock()
+        mock_lock_result.scalar.return_value = True
+        mock_delete_result = MagicMock()
+        mock_delete_result.rowcount = 0
+        mock_session.execute.side_effect = [mock_lock_result, mock_delete_result]
 
         batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         count = delete_stale_fairbet_odds(mock_session, batch_ts)
 
         assert count == 0
+
+    def test_skips_when_lock_not_acquired(self):
+        """Returns 0 without executing DELETE if advisory lock is held."""
+        from datetime import datetime, timezone
+
+        mock_session = MagicMock()
+        mock_lock_result = MagicMock()
+        mock_lock_result.scalar.return_value = False
+        mock_session.execute.return_value = mock_lock_result
+
+        batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        count = delete_stale_fairbet_odds(mock_session, batch_ts)
+
+        assert count == 0
+        # Only the lock query should have been called, not the DELETE
+        mock_session.execute.assert_called_once()
