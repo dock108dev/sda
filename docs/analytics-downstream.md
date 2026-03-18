@@ -98,6 +98,9 @@ Parameter sweep training — combinatorial grid of algorithms, rolling windows, 
 - `GET /api/analytics/experiments` — list suites
 - `GET /api/analytics/experiments/:id` — suite detail with variant leaderboard
 - `POST /api/analytics/experiments/:id/promote/:variant_id` — activate winning model
+- `POST /api/analytics/experiments/:id/cancel` — stop a running experiment
+- `DELETE /api/analytics/experiments/:id` — delete suite and all variants
+- `DELETE /api/analytics/experiments/:id/variant/:variant_id` — delete single variant
 
 ### Historical Replay
 

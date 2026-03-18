@@ -55,13 +55,11 @@ class ModelInfo:
 class SimulationDiagnostics:
     requested_mode: str              # what the user asked for
     executed_mode: str               # what actually ran
-    fallback_used: bool = False
-    fallback_reason: str | None      # e.g., "no_active_ml_model"
     model_info: ModelInfo | None
     warnings: list[str]              # validation issues, etc.
 ```
 
-The diagnostics are surfaced in the API response as `simulation_info` and in the frontend as the `SimulationInfoBanner` component (mode badge, fallback warnings, model version/accuracy).
+The diagnostics are surfaced in the API response as `simulation_info` and in the frontend as the `SimulationInfoBanner` component (mode badge, model version/accuracy). There is no silent fallback — ML failures raise directly.
 
 ### Profile Freshness
 
@@ -149,12 +147,12 @@ Four probability sources, selected via `probability_mode`:
 
 | Provider | Description |
 |----------|-------------|
-| **RuleBasedProvider** | League-average defaults adjusted by batter/pitcher features. Always available as fallback. |
+| **RuleBasedProvider** | League-average defaults adjusted by batter/pitcher features. |
 | **MLProvider** | Loads active trained model from registry, builds features, runs inference. |
 | **EnsembleProvider** | Weighted average of rule-based and ML predictions (configurable weights). |
 | **Pitch-level** | Implicit — when mode is `pitch_level`, SimulationEngine routes to PitchLevelGameSimulator. |
 
-**Fallback:** If ML model fails to load and `strict_mode=False`, falls back to rule-based automatically. The `SimulationDiagnostics` object records `fallback_used=True` with a `fallback_reason` so the user is never surprised by a silent fallback.
+**No silent fallback.** If the requested provider fails (missing artifact, feature mismatch, inference error), the error propagates directly — there is no automatic degradation to a different provider.
 
 ---
 
@@ -374,6 +372,9 @@ See [API — Simulator](api.md#simulator) for full request/response documentatio
 | GET | `/experiments` | List experiment suites |
 | GET | `/experiments/{id}` | Suite detail with variant leaderboard |
 | POST | `/experiments/{id}/promote/{variant_id}` | Activate winning variant's model |
+| POST | `/experiments/{id}/cancel` | Cancel a running experiment |
+| DELETE | `/experiments/{id}` | Delete suite and all variants |
+| DELETE | `/experiments/{id}/variant/{variant_id}` | Delete single variant |
 | POST | `/replay` | Start historical replay job (evaluate model on past games) |
 | GET | `/replay-jobs` | List replay jobs |
 

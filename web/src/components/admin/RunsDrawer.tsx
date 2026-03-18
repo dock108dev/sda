@@ -18,6 +18,8 @@ const PHASE_OPTIONS = [
   { value: "trigger_flow", label: "Trigger Flow" },
   { value: "daily_sweep", label: "Daily Sweep" },
   { value: "analytics_train", label: "Analytics: Train" },
+  { value: "analytics_experiment", label: "Analytics: Experiment" },
+  { value: "analytics_replay", label: "Analytics: Replay" },
   { value: "analytics_backtest", label: "Analytics: Backtest" },
   { value: "analytics_batch_sim", label: "Analytics: Batch Sim" },
   { value: "analytics_record_outcomes", label: "Analytics: Record Outcomes" },

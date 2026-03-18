@@ -266,6 +266,31 @@ async def get_batch_simulate_job(
     return _serialize_batch_sim_job(job)
 
 
+@router.delete("/batch-simulate-job/{job_id}")
+async def delete_batch_simulate_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete a batch simulation job."""
+    from app.db.analytics import AnalyticsBatchSimJob
+
+    job = await db.get(AnalyticsBatchSimJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Batch sim job not found")
+
+    # Revoke Celery task if still running
+    if job.celery_task_id and job.status in ("pending", "queued", "running"):
+        try:
+            from app.celery_app import celery_app
+            celery_app.control.revoke(job.celery_task_id, terminate=True)
+        except Exception:
+            pass  # best-effort
+
+    await db.delete(job)
+    await db.flush()
+    return {"status": "deleted", "id": job_id}
+
+
 def _serialize_batch_sim_job(job: Any) -> dict[str, Any]:
     return {
         "id": job.id,

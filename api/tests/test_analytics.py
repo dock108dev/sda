@@ -3095,7 +3095,7 @@ class TestProbabilityResolver:
         result = resolver.get_probabilities_with_meta("mlb", "plate_appearance", {})
         meta = result.get("_meta", {})
         assert meta.get("probability_source") == "rule_based"
-        assert meta.get("fallback_used") is False
+        assert "fallback_used" not in meta
 
     def test_unsupported_mode_raises(self) -> None:
         resolver = ProbabilityResolver()

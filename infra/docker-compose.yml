@@ -97,6 +97,8 @@ services:
       timeout: 5s
       retries: 5
 
+  # General-purpose worker: batch sims, flow generation, outcomes, experiments orchestrator.
+  # Always has capacity — never blocked by training.
   api-worker:
     image: ghcr.io/dock108dev/sports-data-admin-util-api:${IMAGE_TAG:-latest}
     build:
@@ -105,17 +107,15 @@ services:
     container_name: sports-api-worker
     profiles: ["dev", "prod"]
     logging: *default-logging
-    command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=celery,training", "--autoscale=${CELERY_API_MAX_CONCURRENCY:-4},1", "-O", "fair"]
+    command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=celery", "--concurrency=2", "-O", "fair", "-n", "general@%h"]
     volumes:
       - model-artifacts:/app/models
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
       REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/0
-      # Must match API's CELERY_BROKER_URL so worker receives tasks
       CELERY_BROKER_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      # API authentication key (required for production/staging)
       API_KEY: ${API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL_CLASSIFICATION: ${OPENAI_MODEL_CLASSIFICATION:-}
@@ -129,10 +129,36 @@ services:
       - internal
       - app
     healthcheck:
-      test: ["CMD-SHELL", "celery -A app.celery_app.celery_app inspect ping -d celery@$(hostname) --timeout=5 | grep -q pong"]
+      test: ["CMD-SHELL", "celery -A app.celery_app.celery_app inspect ping -d general@$(hostname) --timeout=5 | grep -q pong"]
       interval: 30s
       timeout: 10s
       retries: 5
+
+  # Training worker: only model training tasks. Lowest priority — never blocks other work.
+  api-training-worker:
+    image: ghcr.io/dock108dev/sports-data-admin-util-api:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: infra/api.Dockerfile
+    container_name: sports-api-training-worker
+    profiles: ["dev", "prod"]
+    logging: *default-logging
+    command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=training", "--autoscale=${CELERY_TRAINING_MAX_CONCURRENCY:-4},1", "-O", "fair", "-n", "training@%h"]
+    volumes:
+      - model-artifacts:/app/models
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
+      REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/0
+      CELERY_BROKER_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+      - app
 
   scraper:
     image: ghcr.io/dock108dev/sports-data-admin-util-scraper:${IMAGE_TAG:-latest}

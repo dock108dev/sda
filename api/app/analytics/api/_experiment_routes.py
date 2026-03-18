@@ -205,6 +205,143 @@ async def promote_experiment_variant(
     }
 
 
+async def _revoke_suite_tasks(
+    suite: Any, db: Any,
+) -> None:
+    """Revoke the suite orchestrator and all dispatched variant training tasks."""
+    from app.db.analytics import AnalyticsExperimentVariant, AnalyticsTrainingJob
+
+    task_ids: list[str] = []
+
+    # Suite orchestrator task
+    if suite.celery_task_id:
+        task_ids.append(suite.celery_task_id)
+
+    # All variant training tasks that are still in-flight
+    stmt = (
+        select(AnalyticsTrainingJob.celery_task_id)
+        .join(
+            AnalyticsExperimentVariant,
+            AnalyticsExperimentVariant.training_job_id == AnalyticsTrainingJob.id,
+        )
+        .where(
+            AnalyticsExperimentVariant.suite_id == suite.id,
+            AnalyticsTrainingJob.status.in_(["pending", "queued", "running"]),
+            AnalyticsTrainingJob.celery_task_id.isnot(None),
+        )
+    )
+    result = await db.execute(stmt)
+    for (tid,) in result.all():
+        if tid:
+            task_ids.append(tid)
+
+    if task_ids:
+        try:
+            from app.celery_app import celery_app
+            for tid in task_ids:
+                celery_app.control.revoke(tid, terminate=True)
+        except Exception:
+            pass  # best-effort
+
+
+@router.post("/experiments/{suite_id}/cancel")
+async def cancel_experiment_suite(
+    suite_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Cancel a running experiment suite.
+
+    Revokes the orchestrator task AND all dispatched variant training tasks,
+    then marks pending/running variants as cancelled.
+    """
+    from app.db.analytics import AnalyticsExperimentSuite, AnalyticsExperimentVariant
+
+    suite = await db.get(AnalyticsExperimentSuite, suite_id)
+    if suite is None:
+        raise HTTPException(status_code=404, detail="Suite not found")
+
+    await _revoke_suite_tasks(suite, db)
+
+    suite.status = "cancelled"
+    suite.completed_at = datetime.now(UTC)
+
+    # Mark pending/running variants as cancelled
+    stmt = (
+        select(AnalyticsExperimentVariant)
+        .where(
+            AnalyticsExperimentVariant.suite_id == suite_id,
+            AnalyticsExperimentVariant.status.in_(["pending", "running"]),
+        )
+    )
+    result = await db.execute(stmt)
+    for v in result.scalars().all():
+        v.status = "cancelled"
+        v.completed_at = datetime.now(UTC)
+
+    await db.flush()
+    await db.refresh(suite)
+    return {"status": "cancelled", "suite": _serialize_experiment_suite(suite)}
+
+
+@router.delete("/experiments/{suite_id}")
+async def delete_experiment_suite(
+    suite_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete an experiment suite and all its variants.
+
+    Revokes in-flight tasks. Variants are deleted via CASCADE.
+    """
+    from app.db.analytics import AnalyticsExperimentSuite
+
+    suite = await db.get(AnalyticsExperimentSuite, suite_id)
+    if suite is None:
+        raise HTTPException(status_code=404, detail="Suite not found")
+
+    if suite.status in ("pending", "queued", "running"):
+        await _revoke_suite_tasks(suite, db)
+
+    # Variants are deleted via CASCADE (ondelete="CASCADE" on FK)
+    await db.delete(suite)
+    await db.flush()
+    return {"status": "deleted", "id": suite_id}
+
+
+@router.delete("/experiments/{suite_id}/variant/{variant_id}")
+async def delete_experiment_variant(
+    suite_id: int,
+    variant_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete a single variant and fix suite counters."""
+    from app.db.analytics import AnalyticsExperimentSuite, AnalyticsExperimentVariant
+
+    suite = await db.get(AnalyticsExperimentSuite, suite_id)
+    if suite is None:
+        raise HTTPException(status_code=404, detail="Suite not found")
+
+    variant = await db.get(AnalyticsExperimentVariant, variant_id)
+    if variant is None or variant.suite_id != suite_id:
+        raise HTTPException(status_code=404, detail="Variant not found in suite")
+
+    # Fix suite counters based on variant's current status
+    if suite.total_variants > 0:
+        suite.total_variants -= 1
+    if variant.status == "completed" and suite.completed_variants > 0:
+        suite.completed_variants -= 1
+    if variant.status == "failed" and suite.failed_variants > 0:
+        suite.failed_variants -= 1
+
+    # Clear promoted model if this variant was the promoted one
+    if variant.model_id and variant.model_id == suite.promoted_model_id:
+        suite.promoted_model_id = None
+        suite.promoted_at = None
+
+    await db.delete(variant)
+    await db.flush()
+    return {"status": "deleted", "variant_id": variant_id, "suite_id": suite_id}
+
+
 # ---------------------------------------------------------------------------
 # Historical Replay
 # ---------------------------------------------------------------------------

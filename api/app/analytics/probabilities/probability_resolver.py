@@ -131,8 +131,7 @@ class ProbabilityResolver:
         Returns:
             Probability dict with an additional ``_meta`` key containing
             ``requested_mode``, ``executed_mode``, ``probability_source``,
-            ``model_info`` (when ML provider succeeds), and optionally
-            ``fallback_used``.
+            and ``model_info`` (when ML provider succeeds).
         """
         effective_mode = mode or self.mode
 
@@ -144,7 +143,6 @@ class ProbabilityResolver:
                 "model_type": model_type,
                 "requested_mode": effective_mode,
                 "executed_mode": provider.provider_name,
-                "fallback_used": False,
             }
             # Attach model_info when ML provider was used
             if effective_mode in (MODE_ML, MODE_ENSEMBLE):

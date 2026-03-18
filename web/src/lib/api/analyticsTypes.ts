@@ -48,8 +48,6 @@ export interface SimulationModelInfo {
 export interface SimulationInfo {
   requested_mode: string;
   executed_mode: string;
-  fallback_used: boolean;
-  fallback_reason: string | null;
   model_info: SimulationModelInfo | null;
   warnings: string[];
 }

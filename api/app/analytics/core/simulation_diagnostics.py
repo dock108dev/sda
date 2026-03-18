@@ -1,8 +1,8 @@
 """Simulation diagnostics — structured transparency for simulation runs.
 
-Captures what the user requested, what actually ran, whether a fallback
-occurred, and details about the model (if any) that produced the
-probabilities.
+Captures what the user requested, what actually ran, and details about
+the model (if any) that produced the probabilities. ML failures raise
+directly — there is no silent fallback.
 """
 
 from __future__ import annotations
@@ -26,21 +26,14 @@ class SimulationDiagnostics:
     """Full diagnostics for a single simulation run.
 
     Attributes:
-        requested_mode: What the user asked for (``"ml"``, ``"ensemble"``,
-            ``"rule_based"``).
-        executed_mode: What actually ran — may differ when a fallback fires.
-        fallback_used: True if the requested mode could not be satisfied.
-        fallback_reason: Human-readable explanation when ``fallback_used``
-            is True (e.g., ``"no_active_ml_model"``, ``"inference_error"``).
+        requested_mode: Probability mode (``"ml"``).
+        executed_mode: What actually ran.
         model_info: Populated when an ML model was successfully used.
-        warnings: Non-fatal issues discovered during the run (e.g.,
-            probability validation problems).
+        warnings: Non-fatal issues (e.g., probability validation problems).
     """
 
     requested_mode: str
     executed_mode: str
-    fallback_used: bool = False
-    fallback_reason: str | None = None
     model_info: ModelInfo | None = None
     warnings: list[str] = field(default_factory=list)
 
@@ -49,8 +42,6 @@ class SimulationDiagnostics:
         d: dict[str, Any] = {
             "requested_mode": self.requested_mode,
             "executed_mode": self.executed_mode,
-            "fallback_used": self.fallback_used,
-            "fallback_reason": self.fallback_reason,
             "model_info": None,
             "warnings": self.warnings,
         }

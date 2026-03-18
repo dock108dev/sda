@@ -9,6 +9,7 @@ const CONTAINERS = [
   { label: "Scraper", container: "sports-scraper" },
   { label: "Social Scraper", container: "sports-social-scraper" },
   { label: "API Worker", container: "sports-api-worker" },
+  { label: "Training Worker", container: "sports-api-training-worker" },
 ];
 
 const LINE_COUNTS = [500, 1000, 5000];

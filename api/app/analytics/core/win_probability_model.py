@@ -78,32 +78,3 @@ class WinProbabilityModel:
 
         return timeline
 
-    def generate_live_timeline(
-        self,
-        game_states: list[dict[str, Any]],
-        engine: Any,
-        iterations: int = 1000,
-        seed: int | None = None,
-    ) -> list[dict[str, Any]]:
-        """Generate a full win probability timeline by simulating from
-        each game state snapshot.
-
-        Args:
-            game_states: Ordered list of game state dicts (from PBP data).
-            engine: A ``LiveSimulationEngine`` instance.
-            iterations: Simulations per state.
-            seed: Optional base seed (incremented per state).
-
-        Returns:
-            Win probability timeline.
-        """
-        snapshots: list[dict[str, Any]] = []
-
-        for i, state in enumerate(game_states):
-            state_seed = (seed + i) if seed is not None else None
-            result = engine.simulate_from_state(
-                state, iterations=iterations, seed=state_seed,
-            )
-            snapshots.append(result)
-
-        return self.build_timeline(snapshots)

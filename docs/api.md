@@ -1591,7 +1591,7 @@ Run a full Monte Carlo simulation. Supports two modes:
 | `iterations` | `int` | 5000 | Simulation count (100–50,000) |
 | `rolling_window` | `int` | 30 | Recent games for profile building (5–162) |
 | `seed` | `int?` | `null` | Deterministic seed for reproducibility |
-| `probability_mode` | `string?` | `null` | `rule_based`, `ml`, `ensemble`, or `pitch_level` |
+| `probability_mode` | `string?` | `"ml"` | Probability source: `ml` (trained model), `ensemble` (weighted blend), or `rule_based` (league-average defaults). ML failures raise — no silent fallback. |
 | `sportsbook` | `object?` | `null` | Sportsbook lines for EV comparison |
 | `home_lineup` | `LineupSlot[9]?` | `null` | Home batting order (exactly 9 batters) |
 | `away_lineup` | `LineupSlot[9]?` | `null` | Away batting order (exactly 9 batters) |
@@ -1754,7 +1754,7 @@ Start an async model training job via Celery.
 {
   "feature_config_id": 1,
   "sport": "mlb",
-  "model_type": "game",
+  "model_type": "plate_appearance",
   "algorithm": "gradient_boosting",
   "date_start": "2025-04-01",
   "date_end": "2025-10-01",
@@ -1969,6 +1969,22 @@ Get suite detail including all variants with metrics and rankings.
 #### `POST /experiments/{suite_id}/promote/{variant_id}`
 
 Activate the winning variant's model in the registry.
+
+#### `POST /experiments/{suite_id}/cancel`
+
+Cancel a running experiment. Revokes the Celery task and marks pending/running variants as cancelled.
+
+#### `DELETE /experiments/{suite_id}`
+
+Delete an experiment suite and all its variants. Cancels if still running.
+
+#### `DELETE /experiments/{suite_id}/variant/{variant_id}`
+
+Delete a single variant from a suite.
+
+#### `DELETE /batch-simulate-job/{job_id}`
+
+Delete a batch simulation job.
 
 ### Historical Replay
 

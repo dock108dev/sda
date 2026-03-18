@@ -28,25 +28,21 @@ class TestSimulationDiagnostics:
 
     def test_defaults(self):
         diag = SimulationDiagnostics(requested_mode="ml", executed_mode="ml")
-        assert diag.fallback_used is False
-        assert diag.fallback_reason is None
         assert diag.model_info is None
         assert diag.warnings == []
 
     def test_to_dict_without_model(self):
         diag = SimulationDiagnostics(
             requested_mode="ml",
-            executed_mode="rule_based",
-            fallback_used=True,
-            fallback_reason="no_active_ml_model",
+            executed_mode="ml",
         )
         d = diag.to_dict()
         assert d["requested_mode"] == "ml"
-        assert d["executed_mode"] == "rule_based"
-        assert d["fallback_used"] is True
-        assert d["fallback_reason"] == "no_active_ml_model"
+        assert d["executed_mode"] == "ml"
         assert d["model_info"] is None
         assert d["warnings"] == []
+        assert "fallback_used" not in d
+        assert "fallback_reason" not in d
 
     def test_to_dict_with_model_info(self):
         info = ModelInfo(
@@ -109,7 +105,6 @@ class TestApplyProbabilityResolver:
                 "model_type": "plate_appearance",
                 "requested_mode": "ml",
                 "executed_mode": "ml",
-                "fallback_used": False,
                 "model_info": {
                     "model_id": "pa-v5",
                     "version": 5,
@@ -125,7 +120,6 @@ class TestApplyProbabilityResolver:
 
         diag = meta.get("_diagnostics")
         assert diag is not None
-        assert diag.fallback_used is False
         assert diag.executed_mode == "ml"
         assert diag.model_info is not None
         assert diag.model_info.model_id == "pa-v5"
@@ -143,7 +137,6 @@ class TestApplyProbabilityResolver:
                 "model_type": "plate_appearance",
                 "requested_mode": "rule_based",
                 "executed_mode": "rule_based",
-                "fallback_used": False,
             },
         }
 
@@ -154,7 +147,6 @@ class TestApplyProbabilityResolver:
         diag = meta.get("_diagnostics")
         assert diag is not None
         assert diag.executed_mode == "rule_based"
-        assert diag.fallback_used is False
 
     def test_exception_in_resolver_propagates(self):
         """When the resolver throws, error propagates — no silent fallback."""
@@ -191,7 +183,6 @@ class TestPriorityBugFix:
                 "model_type": "plate_appearance",
                 "requested_mode": "ml",
                 "executed_mode": "ml",
-                "fallback_used": False,
             },
         }
 

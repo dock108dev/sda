@@ -227,9 +227,6 @@ class SimulationEngine:
 
         # Build diagnostics from resolver metadata
         diagnostics.executed_mode = prob_meta.get("executed_mode", mode)
-        diagnostics.fallback_used = False
-        diagnostics.fallback_reason = None
-
         model_info_raw = prob_meta.get("model_info")
         if model_info_raw and isinstance(model_info_raw, dict):
             diagnostics.model_info = ModelInfo(
