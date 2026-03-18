@@ -205,6 +205,107 @@ async def promote_experiment_variant(
     }
 
 
+@router.post("/experiments/{suite_id}/cancel")
+async def cancel_experiment_suite(
+    suite_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Cancel a running experiment suite.
+
+    Revokes the Celery task and marks pending/running variants as cancelled.
+    """
+    from app.db.analytics import AnalyticsExperimentSuite, AnalyticsExperimentVariant
+
+    suite = await db.get(AnalyticsExperimentSuite, suite_id)
+    if suite is None:
+        raise HTTPException(status_code=404, detail="Suite not found")
+
+    # Revoke the Celery task if still running
+    if suite.celery_task_id:
+        try:
+            from app.celery_app import celery_app
+            celery_app.control.revoke(suite.celery_task_id, terminate=True)
+        except Exception:
+            pass  # best-effort revoke
+
+    suite.status = "cancelled"
+    suite.completed_at = datetime.now(UTC)
+
+    # Mark pending/running variants as cancelled
+    stmt = (
+        select(AnalyticsExperimentVariant)
+        .where(
+            AnalyticsExperimentVariant.suite_id == suite_id,
+            AnalyticsExperimentVariant.status.in_(["pending", "running"]),
+        )
+    )
+    result = await db.execute(stmt)
+    for v in result.scalars().all():
+        v.status = "cancelled"
+        v.completed_at = datetime.now(UTC)
+
+    await db.flush()
+    await db.refresh(suite)
+    return {"status": "cancelled", "suite": _serialize_experiment_suite(suite)}
+
+
+@router.delete("/experiments/{suite_id}")
+async def delete_experiment_suite(
+    suite_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete an experiment suite and all its variants."""
+    from app.db.analytics import AnalyticsExperimentSuite, AnalyticsExperimentVariant
+
+    suite = await db.get(AnalyticsExperimentSuite, suite_id)
+    if suite is None:
+        raise HTTPException(status_code=404, detail="Suite not found")
+
+    # Cancel if still running
+    if suite.celery_task_id and suite.status in ("pending", "queued", "running"):
+        try:
+            from app.celery_app import celery_app
+            celery_app.control.revoke(suite.celery_task_id, terminate=True)
+        except Exception:
+            pass
+
+    # Delete variants first
+    stmt = select(AnalyticsExperimentVariant).where(
+        AnalyticsExperimentVariant.suite_id == suite_id
+    )
+    result = await db.execute(stmt)
+    for v in result.scalars().all():
+        await db.delete(v)
+
+    await db.delete(suite)
+    await db.flush()
+    return {"status": "deleted", "id": suite_id}
+
+
+@router.delete("/experiments/{suite_id}/variant/{variant_id}")
+async def delete_experiment_variant(
+    suite_id: int,
+    variant_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete a single variant from an experiment suite."""
+    from app.db.analytics import AnalyticsExperimentSuite, AnalyticsExperimentVariant
+
+    suite = await db.get(AnalyticsExperimentSuite, suite_id)
+    if suite is None:
+        raise HTTPException(status_code=404, detail="Suite not found")
+
+    variant = await db.get(AnalyticsExperimentVariant, variant_id)
+    if variant is None or variant.suite_id != suite_id:
+        raise HTTPException(status_code=404, detail="Variant not found in suite")
+
+    await db.delete(variant)
+    if suite.total_variants > 0:
+        suite.total_variants -= 1
+    await db.flush()
+    return {"status": "deleted", "variant_id": variant_id, "suite_id": suite_id}
+
+
 # ---------------------------------------------------------------------------
 # Historical Replay
 # ---------------------------------------------------------------------------

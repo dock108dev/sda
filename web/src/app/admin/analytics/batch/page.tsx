@@ -7,6 +7,7 @@ import {
   startBatchSimulation,
   listBatchSimJobs,
   listPredictionOutcomes,
+  deleteBatchSimJob,
   type BatchSimJob,
   type BatchSimGameResult,
   type PredictionOutcome,
@@ -28,6 +29,8 @@ export default function BatchSimsPage() {
   const [jobsError, setJobsError] = useState<string | null>(null);
   const [expandedJob, setExpandedJob] = useState<number | null>(null);
   const [accuracyData, setAccuracyData] = useState<Record<number, { outcomes: PredictionOutcome[]; loading: boolean }>>({});
+  const [selectedJobs, setSelectedJobs] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   async function loadAccuracy(jobId: number) {
     setAccuracyData((prev) => ({ ...prev, [jobId]: { outcomes: [], loading: true } }));
@@ -36,6 +39,34 @@ export default function BatchSimsPage() {
       setAccuracyData((prev) => ({ ...prev, [jobId]: { outcomes: res.outcomes, loading: false } }));
     } catch {
       setAccuracyData((prev) => ({ ...prev, [jobId]: { outcomes: [], loading: false } }));
+    }
+  }
+
+  function toggleSelectJob(id: number) {
+    setSelectedJobs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedJobs);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} batch sim job(s)? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      for (const id of ids) {
+        await deleteBatchSimJob(id);
+      }
+      setSelectedJobs(new Set());
+      setExpandedJob(null);
+      await refresh();
+    } catch (err) {
+      setJobsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBulkDeleting(false);
     }
   }
 
@@ -146,12 +177,44 @@ export default function BatchSimsPage() {
       {/* Job History */}
       <AdminCard title="Job History" subtitle={`${jobs.length} batch simulation job(s)`}>
         {jobsError && <div className={styles.error} style={{ marginBottom: "0.5rem" }}>{jobsError}</div>}
+
+        {jobs.length > 0 && (
+          <div className={styles.formRow} style={{ marginBottom: "0.5rem" }}>
+            <button
+              className={styles.btn}
+              style={{ fontSize: "0.8rem" }}
+              onClick={() => setSelectedJobs(
+                selectedJobs.size === jobs.length ? new Set() : new Set(jobs.map((j) => j.id))
+              )}
+            >
+              {selectedJobs.size === jobs.length ? "Deselect All" : "Select All"}
+            </button>
+            {selectedJobs.size > 0 && (
+              <button
+                className={styles.btn}
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                style={{ fontSize: "0.8rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: "4px" }}
+              >
+                {bulkDeleting ? "Deleting..." : `Delete ${selectedJobs.size} Selected`}
+              </button>
+            )}
+          </div>
+        )}
+
         {jobs.length === 0 && !jobsError ? (
           <p style={{ color: "var(--text-muted)" }}>No batch simulation jobs yet.</p>
         ) : (
-          <AdminTable headers={["ID", "Iterations", "Window", "Date Range", "Status", "Games", "Created", ""]}>
+          <AdminTable headers={["", "ID", "Iterations", "Window", "Date Range", "Status", "Games", "Created", ""]}>
             {jobs.map((job) => (
               <tr key={job.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedJobs.has(job.id)}
+                    onChange={() => toggleSelectJob(job.id)}
+                  />
+                </td>
                 <td>#{job.id}</td>
                 <td>{job.iterations.toLocaleString()}</td>
                 <td>{job.rolling_window}</td>

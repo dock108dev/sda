@@ -8,6 +8,9 @@ import {
   listExperimentSuites,
   getExperimentSuite,
   promoteExperimentVariant,
+  cancelExperimentSuite,
+  deleteExperimentSuite,
+  deleteExperimentVariant,
   type AvailableFeature,
   type ExperimentSuite,
 } from "@/lib/api/analytics";
@@ -409,6 +412,8 @@ function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [promoting, setPromoting] = useState<number | null>(null);
+  const [selectedSuites, setSelectedSuites] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -452,6 +457,50 @@ function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
     }
   }
 
+  async function handleCancel(suiteId: number) {
+    if (!window.confirm("Cancel this experiment? Running variants will be stopped.")) return;
+    try {
+      await cancelExperimentSuite(suiteId);
+      await refresh();
+      if (expanded?.id === suiteId) {
+        const detail = await getExperimentSuite(suiteId);
+        setExpanded(detail);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleDeleteSuite(suiteId: number) {
+    if (!window.confirm("Delete this experiment and all its variants? This cannot be undone.")) return;
+    try {
+      await deleteExperimentSuite(suiteId);
+      if (expanded?.id === suiteId) setExpanded(null);
+      setSelectedSuites((prev) => { const n = new Set(prev); n.delete(suiteId); return n; });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedSuites);
+    if (!window.confirm(`Delete ${ids.length} experiment(s) and all their variants? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      for (const id of ids) {
+        await deleteExperimentSuite(id);
+      }
+      setSelectedSuites(new Set());
+      setExpanded(null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   async function handlePromote(suiteId: number, variantId: number) {
     if (!window.confirm("Promote this variant's model to active? This will replace the currently active model.")) return;
     setPromoting(variantId);
@@ -467,18 +516,64 @@ function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
     }
   }
 
+  async function handleDeleteVariant(suiteId: number, variantId: number) {
+    if (!window.confirm("Delete this variant?")) return;
+    try {
+      await deleteExperimentVariant(suiteId, variantId);
+      const detail = await getExperimentSuite(suiteId);
+      setExpanded(detail);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   if (loading) return <div className={styles.loading}>Loading experiments...</div>;
 
   return (
     <AdminCard title="Experiment History" subtitle={`${suites.length} experiment(s)`}>
       {error && <div className={styles.error} style={{ marginBottom: "0.5rem" }}>{error}</div>}
 
+      {suites.length > 0 && (
+        <div className={styles.formRow} style={{ marginBottom: "0.5rem" }}>
+          <button
+            className={styles.btn}
+            style={{ fontSize: "0.8rem" }}
+            onClick={() => setSelectedSuites(
+              selectedSuites.size === suites.length ? new Set() : new Set(suites.map((s) => s.id))
+            )}
+          >
+            {selectedSuites.size === suites.length ? "Deselect All" : "Select All"}
+          </button>
+          {selectedSuites.size > 0 && (
+            <button
+              className={styles.btn}
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              style={{ fontSize: "0.8rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: "4px" }}
+            >
+              {bulkDeleting ? "Deleting..." : `Delete ${selectedSuites.size} Selected`}
+            </button>
+          )}
+        </div>
+      )}
+
       {suites.length === 0 ? (
         <p style={{ color: "var(--text-muted)" }}>No experiments yet. Configure and run one above.</p>
       ) : (
-        <AdminTable headers={["ID", "Name", "Variants", "Progress", "Status", "Promoted", "Created", ""]}>
+        <AdminTable headers={["", "ID", "Name", "Variants", "Progress", "Status", "Promoted", "Created", ""]}>
           {suites.map((s) => (
             <tr key={s.id}>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={selectedSuites.has(s.id)}
+                  onChange={() => setSelectedSuites((prev) => {
+                    const n = new Set(prev);
+                    if (n.has(s.id)) n.delete(s.id); else n.add(s.id);
+                    return n;
+                  })}
+                />
+              </td>
               <td>#{s.id}</td>
               <td style={{ fontWeight: 500 }}>{s.name}</td>
               <td>{s.total_variants}</td>
@@ -490,19 +585,38 @@ function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
               <td style={{ fontSize: "0.8rem" }}>{s.promoted_model_id || "-"}</td>
               <td style={{ fontSize: "0.85rem" }}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : "-"}</td>
               <td>
-                <button
-                  className={styles.btn}
-                  style={{ fontSize: "0.8rem", padding: "2px 8px" }}
-                  onClick={() => handleExpand(s.id)}
-                >
-                  {expanded?.id === s.id ? "Hide" : "Details"}
-                </button>
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <button
+                    className={styles.btn}
+                    style={{ fontSize: "0.75rem", padding: "2px 8px" }}
+                    onClick={() => handleExpand(s.id)}
+                  >
+                    {expanded?.id === s.id ? "Hide" : "Details"}
+                  </button>
+                  {["pending", "queued", "running"].includes(s.status) && (
+                    <button
+                      className={styles.btn}
+                      style={{ fontSize: "0.75rem", padding: "2px 8px", color: "#c00", border: "1px solid #c00", background: "#fff" }}
+                      onClick={() => handleCancel(s.id)}
+                    >
+                      Stop
+                    </button>
+                  )}
+                  <button
+                    className={styles.btn}
+                    style={{ fontSize: "0.75rem", padding: "2px 8px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "4px" }}
+                    onClick={() => handleDeleteSuite(s.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
         </AdminTable>
       )}
 
+      {/* Expanded variant leaderboard */}
       {expanded?.variants && (
         <div style={{ marginTop: "1rem" }}>
           <h4 style={{ marginBottom: "0.25rem" }}>
@@ -535,24 +649,33 @@ function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
                   <td>{v.training_metrics?.log_loss != null ? v.training_metrics.log_loss.toFixed(4) : "-"}</td>
                   <td style={{ fontSize: "0.8rem", fontFamily: "monospace" }}>{v.model_id ?? "-"}</td>
                   <td>
-                    {v.model_id && v.status === "completed" && v.model_id !== expanded.promoted_model_id && (
+                    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                      {v.model_id && v.status === "completed" && v.model_id !== expanded.promoted_model_id && (
+                        <button
+                          className={`${styles.btn} ${styles.btnPrimary}`}
+                          style={{ fontSize: "0.7rem", padding: "2px 6px" }}
+                          onClick={() => handlePromote(expanded.id, v.id)}
+                          disabled={promoting === v.id}
+                        >
+                          {promoting === v.id ? "..." : "Promote"}
+                        </button>
+                      )}
+                      {v.model_id === expanded.promoted_model_id && (
+                        <span style={{ fontSize: "0.7rem", color: "#16a34a", fontWeight: 600 }}>Active</span>
+                      )}
                       <button
-                        className={`${styles.btn} ${styles.btnPrimary}`}
-                        style={{ fontSize: "0.75rem", padding: "2px 8px" }}
-                        onClick={() => handlePromote(expanded.id, v.id)}
-                        disabled={promoting === v.id}
+                        className={styles.btn}
+                        style={{ fontSize: "0.7rem", padding: "2px 6px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "4px" }}
+                        onClick={() => handleDeleteVariant(expanded.id, v.id)}
                       >
-                        {promoting === v.id ? "..." : "Promote"}
+                        Del
                       </button>
-                    )}
-                    {v.model_id === expanded.promoted_model_id && (
-                      <span style={{ fontSize: "0.75rem", color: "#16a34a", fontWeight: 600 }}>Active</span>
-                    )}
-                    {v.error_message && (
-                      <span style={{ fontSize: "0.75rem", color: "#dc2626", cursor: "help" }} title={v.error_message}>
-                        Error
-                      </span>
-                    )}
+                      {v.error_message && (
+                        <span style={{ fontSize: "0.7rem", color: "#dc2626", cursor: "help" }} title={v.error_message}>
+                          Err
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -266,6 +266,22 @@ async def get_batch_simulate_job(
     return _serialize_batch_sim_job(job)
 
 
+@router.delete("/batch-simulate-job/{job_id}")
+async def delete_batch_simulate_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete a batch simulation job."""
+    from app.db.analytics import AnalyticsBatchSimJob
+
+    job = await db.get(AnalyticsBatchSimJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Batch sim job not found")
+    await db.delete(job)
+    await db.flush()
+    return {"status": "deleted", "id": job_id}
+
+
 def _serialize_batch_sim_job(job: Any) -> dict[str, Any]:
     return {
         "id": job.id,

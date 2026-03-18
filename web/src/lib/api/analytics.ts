@@ -327,6 +327,14 @@ export async function listBatchSimJobs(
   );
 }
 
+export async function deleteBatchSimJob(
+  jobId: number,
+): Promise<{ status: string; id: number }> {
+  return fetchJson(`${base()}/api/analytics/batch-simulate-job/${jobId}`, {
+    method: "DELETE",
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Prediction Outcomes / Calibration
 // ---------------------------------------------------------------------------
@@ -489,6 +497,31 @@ export async function promoteExperimentVariant(
 ): Promise<{ status: string; model_id: string; suite: ExperimentSuite }> {
   return fetchJson(`${base()}/api/analytics/experiments/${suiteId}/promote/${variantId}`, {
     method: "POST",
+  });
+}
+
+export async function cancelExperimentSuite(
+  suiteId: number,
+): Promise<{ status: string; suite: ExperimentSuite }> {
+  return fetchJson(`${base()}/api/analytics/experiments/${suiteId}/cancel`, {
+    method: "POST",
+  });
+}
+
+export async function deleteExperimentSuite(
+  suiteId: number,
+): Promise<{ status: string; id: number }> {
+  return fetchJson(`${base()}/api/analytics/experiments/${suiteId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteExperimentVariant(
+  suiteId: number,
+  variantId: number,
+): Promise<{ status: string; variant_id: number }> {
+  return fetchJson(`${base()}/api/analytics/experiments/${suiteId}/variant/${variantId}`, {
+    method: "DELETE",
   });
 }
 
