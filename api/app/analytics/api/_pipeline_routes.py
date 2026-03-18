@@ -292,7 +292,7 @@ async def delete_batch_simulate_job(
 
 
 def _serialize_batch_sim_job(job: Any) -> dict[str, Any]:
-    return {
+    data: dict[str, Any] = {
         "id": job.id,
         "sport": job.sport,
         "probability_mode": job.probability_mode,
@@ -308,3 +308,14 @@ def _serialize_batch_sim_job(job: Any) -> dict[str, Any]:
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
+
+    # Compute batch_summary and warnings from stored results
+    if job.results and job.status == "completed":
+        from app.tasks.batch_sim_tasks import _build_batch_summary
+        batch_summary, warnings = _build_batch_summary(job.results)
+        if batch_summary:
+            data["batch_summary"] = batch_summary
+        if warnings:
+            data["warnings"] = warnings
+
+    return data

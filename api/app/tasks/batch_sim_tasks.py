@@ -307,7 +307,7 @@ async def _execute_batch_sim(
             })
             continue
 
-        sim_results.append({
+        game_result = {
             "game_id": game.id,
             "game_date": game_date_str,
             "home_team": home_name,
@@ -318,17 +318,81 @@ async def _execute_batch_sim(
             "average_away_score": sim.get("average_away_score"),
             "probability_source": sim.get("probability_source", "team_profile"),
             "has_profiles": bool(home_profile and away_profile),
-        })
+        }
+        if "event_summary" in sim:
+            game_result["event_summary"] = sim["event_summary"]
+        sim_results.append(game_result)
 
     logger.info(
         "batch_sim_complete",
         extra={"game_count": len(sim_results), "sport": sport},
     )
 
-    return {
+    # Build batch summary and sanity warnings
+    batch_summary, batch_warnings = _build_batch_summary(sim_results)
+
+    result_payload: dict = {
         "game_count": len(sim_results),
         "results": sim_results,
     }
+    if batch_summary:
+        result_payload["batch_summary"] = batch_summary
+    if batch_warnings:
+        result_payload["warnings"] = batch_warnings
+
+    return result_payload
+
+
+def _build_batch_summary(
+    sim_results: list[dict],
+) -> tuple[dict | None, list[str]]:
+    """Compute batch-level summary stats and sanity warnings."""
+    success = [r for r in sim_results if "error" not in r and r.get("home_win_probability") is not None]
+    if not success:
+        return None, []
+
+    n = len(success)
+    avg_home_score = sum(r.get("average_home_score", 0) or 0 for r in success) / n
+    avg_away_score = sum(r.get("average_away_score", 0) or 0 for r in success) / n
+    home_wins = sum(1 for r in success if (r.get("home_win_probability", 0) or 0) > 0.5)
+
+    # WP distribution buckets
+    wp_dist = {"50-55": 0, "55-60": 0, "60-70": 0, "70+": 0}
+    for r in success:
+        wp = max(r.get("home_win_probability", 0) or 0, r.get("away_win_probability", 0) or 0) * 100
+        if wp >= 70:
+            wp_dist["70+"] += 1
+        elif wp >= 60:
+            wp_dist["60-70"] += 1
+        elif wp >= 55:
+            wp_dist["55-60"] += 1
+        else:
+            wp_dist["50-55"] += 1
+
+    # Collect per-game event summaries to compute aggregate
+    event_summaries = [r.get("event_summary") for r in success if r.get("event_summary")]
+    avg_pa = 0.0
+    if event_summaries:
+        avg_pa = sum(
+            (es.get("home", {}).get("avg_pa", 0) + es.get("away", {}).get("avg_pa", 0)) / 2
+            for es in event_summaries
+        ) / len(event_summaries)
+
+    batch_summary = {
+        "avg_runs_per_team": round((avg_home_score + avg_away_score) / 2, 1),
+        "avg_total_per_game": round(avg_home_score + avg_away_score, 1),
+        "avg_pa_per_team": round(avg_pa, 1) if avg_pa else None,
+        "home_win_rate": round(home_wins / n, 3),
+        "wp_distribution": wp_dist,
+    }
+
+    # Sanity warnings
+    from app.analytics.core.simulation_analysis import check_batch_sanity
+    # Use the first game's event_summary for event-level checks if available
+    first_event_summary = event_summaries[0] if event_summaries else None
+    warnings = check_batch_sanity(success, first_event_summary)
+
+    return batch_summary, warnings
 
 
 # ---------------------------------------------------------------------------
