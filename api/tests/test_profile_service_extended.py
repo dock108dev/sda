@@ -623,7 +623,7 @@ class TestProfileToPaProbabilities:
         }
         result = profile_to_pa_probabilities(profile)
         expected_keys = {
-            "strikeout_probability", "walk_probability", "single_probability",
+            "strikeout_probability", "walk_or_hbp_probability", "single_probability",
             "double_probability", "triple_probability", "home_run_probability",
         }
         assert set(result.keys()) == expected_keys

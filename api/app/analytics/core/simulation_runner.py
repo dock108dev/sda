@@ -154,11 +154,17 @@ class SimulationRunner:
             pa = totals.get("pa_total", 1) or 1
             hits = totals.get("single", 0) + totals.get("double", 0) + totals.get("triple", 0) + totals.get("home_run", 0)
 
+            # Support both event key styles:
+            # PA-level sim uses canonical labels (walk_or_hbp, ball_in_play_out)
+            # Pitch-level sim uses result labels (walk, out)
+            bb = totals.get("walk_or_hbp", 0) + totals.get("walk", 0)
+            outs = totals.get("ball_in_play_out", 0) + totals.get("out", 0)
+
             return {
                 "avg_pa": round(totals.get("pa_total", 0) / n, 1),
                 "avg_hits": round(hits / n, 1),
                 "avg_hr": round(totals.get("home_run", 0) / n, 1),
-                "avg_bb": round(totals.get("walk", 0) / n, 1),
+                "avg_bb": round(bb / n, 1),
                 "avg_k": round(totals.get("strikeout", 0) / n, 1),
                 "avg_runs": round(
                     sum(r.get("home_score" if key == "home_events" else "away_score", 0) for r in sim_results) / n,
@@ -166,12 +172,12 @@ class SimulationRunner:
                 ),
                 "pa_rates": {
                     "k_pct": round(totals.get("strikeout", 0) / pa, 3),
-                    "bb_pct": round(totals.get("walk", 0) / pa, 3),
+                    "bb_pct": round(bb / pa, 3),
                     "single_pct": round(totals.get("single", 0) / pa, 3),
                     "double_pct": round(totals.get("double", 0) / pa, 3),
                     "triple_pct": round(totals.get("triple", 0) / pa, 3),
                     "hr_pct": round(totals.get("home_run", 0) / pa, 3),
-                    "out_pct": round(totals.get("out", 0) / pa, 3),
+                    "out_pct": round(outs / pa, 3),
                 },
             }
 

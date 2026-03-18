@@ -108,10 +108,10 @@ class MLBGameSimulator:
                 events[event] = events.get(event, 0) + 1
                 events["pa_total"] = events.get("pa_total", 0) + 1
 
-            if event == "strikeout" or event == "out":
+            if event in ("strikeout", "ball_in_play_out"):
                 outs += 1
 
-            elif event == "walk":
+            elif event == "walk_or_hbp":
                 runs += _advance_walk(bases)
 
             elif event == "single":
@@ -283,10 +283,10 @@ class MLBGameSimulator:
                 events[event] = events.get(event, 0) + 1
                 events["pa_total"] = events.get("pa_total", 0) + 1
 
-            if event == "strikeout" or event == "out":
+            if event in ("strikeout", "ball_in_play_out"):
                 outs += 1
 
-            elif event == "walk":
+            elif event == "walk_or_hbp":
                 runs += _advance_walk(bases)
 
             elif event == "single":
@@ -392,18 +392,18 @@ def _advance_home_run(bases: list[bool]) -> int:
 def _build_weights(probs: dict[str, float]) -> list[float]:
     """Convert a probability dict into ordered weights for ``EVENTS``.
 
-    Maps probability keys to event order. Generic "out" absorbs the
-    remaining probability mass after all named events.
+    Maps ``*_probability`` keys to event order.  ``ball_in_play_out``
+    absorbs the remaining probability mass after all named events.
     """
-    k_prob = max(probs.get("strikeout_probability", _DEFAULT_PROBS["strikeout_probability"]), 0.0)
-    bb_prob = max(probs.get("walk_probability", _DEFAULT_PROBS["walk_probability"]), 0.0)
+    k = max(probs.get("strikeout_probability", _DEFAULT_PROBS["strikeout_probability"]), 0.0)
+    bb = max(probs.get("walk_or_hbp_probability", _DEFAULT_PROBS["walk_or_hbp_probability"]), 0.0)
     single = max(probs.get("single_probability", _DEFAULT_PROBS["single_probability"]), 0.0)
     double = max(probs.get("double_probability", _DEFAULT_PROBS["double_probability"]), 0.0)
     triple = max(probs.get("triple_probability", _DEFAULT_PROBS["triple_probability"]), 0.0)
     hr = max(probs.get("home_run_probability", _DEFAULT_PROBS["home_run_probability"]), 0.0)
 
-    named_total = k_prob + bb_prob + single + double + triple + hr
+    named_total = k + bb + single + double + triple + hr
     out_prob = max(1.0 - named_total, 0.0)
 
-    # Order matches EVENTS: strikeout, out, walk, single, double, triple, home_run
-    return [k_prob, out_prob, bb_prob, single, double, triple, hr]
+    # Order matches EVENTS: strikeout, ball_in_play_out, walk_or_hbp, single, double, triple, home_run
+    return [k, out_prob, bb, single, double, triple, hr]

@@ -556,7 +556,7 @@ def _to_pa_model(pa: dict[str, float]) -> TeamPAProbabilities:
     """Convert raw PA probability dict to typed model."""
     return TeamPAProbabilities(
         strikeout=pa.get("strikeout_probability", 0),
-        walk=pa.get("walk_probability", 0),
+        walk=pa.get("walk_or_hbp_probability", 0),
         single=pa.get("single_probability", 0),
         double=pa.get("double_probability", 0),
         triple=pa.get("triple_probability", 0),

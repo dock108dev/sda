@@ -31,24 +31,12 @@ from app.analytics.sports.mlb.constants import (
 )
 
 
-# V2 (PBP-derived) labels → V1 (simulator) labels.  Models trained on
-# true play-by-play events use V2 class names; the simulation engine
-# expects V1.  Mapping happens once in normalize_probabilities() so
-# every provider benefits automatically.
-_V2_TO_V1: dict[str, str] = {
-    "walk_or_hbp": "walk",
-    "ball_in_play_out": "out",
-}
-
-
 def normalize_probabilities(
     probs: dict[str, float],
     valid_events: list[str] | None = None,
 ) -> dict[str, float]:
     """Normalize a probability dict so values sum to 1.0.
 
-    - V2 label names (``walk_or_hbp``, ``ball_in_play_out``) are
-      translated to V1 names (``walk``, ``out``) before lookup.
     - Negative values are clamped to 0.
     - Missing events from ``valid_events`` default to 0.
     - If all values are 0, returns uniform distribution.
@@ -64,19 +52,11 @@ def normalize_probabilities(
     Raises:
         ValueError: If no valid events provided and probs is empty.
     """
-    # Translate V2 labels → V1 so models trained on PBP events work
-    # with the V1-keyed simulation engine.
-    translated: dict[str, float] = {}
-    for key, val in probs.items():
-        canonical = _V2_TO_V1.get(key, key)
-        # Accumulate in case both V1 and V2 keys are present
-        translated[canonical] = translated.get(canonical, 0.0) + float(val)
-
-    events = valid_events or list(translated.keys())
+    events = valid_events or list(probs.keys())
     if not events:
         raise ValueError("Cannot normalize empty probability set")
 
-    clamped = {e: max(0.0, float(translated.get(e, 0.0))) for e in events}
+    clamped = {e: max(0.0, float(probs.get(e, 0.0))) for e in events}
     total = sum(clamped.values())
 
     if total <= 0:

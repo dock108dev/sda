@@ -233,7 +233,7 @@ def profile_to_pa_probabilities(profile: dict[str, float]) -> dict[str, float]:
 
     return {
         "strikeout_probability": round(k_prob, 4),
-        "walk_probability": round(walk_prob, 4),
+        "walk_or_hbp_probability": round(walk_prob, 4),
         "single_probability": round(single_prob, 4),
         "double_probability": round(double_prob, 4),
         "triple_probability": round(triple_prob, 4),

@@ -213,12 +213,12 @@ class TestValidateProbabilities:
         )
         probs = {
             "strikeout_probability": 0.22,
-            "walk_probability": 0.08,
+            "walk_or_hbp_probability": 0.08,
             "single_probability": 0.18,
             "double_probability": 0.05,
             "triple_probability": 0.01,
             "home_run_probability": 0.03,
-            "out_probability": 0.43,
+            "ball_in_play_out_probability": 0.43,
         }
         issues = validate_probabilities(probs)
         assert issues == []
@@ -248,20 +248,20 @@ class TestValidateProbabilities:
 
 
 # ---------------------------------------------------------------------------
-# 4b. normalize_probabilities V2→V1 translation
+# 4b. normalize_probabilities with canonical PA labels
 # ---------------------------------------------------------------------------
 
 
-class TestNormalizeProbabilitiesV2Translation:
-    """V2 PBP labels (walk_or_hbp, ball_in_play_out) translate to V1."""
+class TestNormalizeProbabilitiesCanonicalLabels:
+    """PA labels use canonical names (walk_or_hbp, ball_in_play_out)."""
 
-    def test_v2_labels_translate_to_v1(self):
+    def test_canonical_labels_normalize(self):
         from app.analytics.probabilities.probability_provider import (
             normalize_probabilities,
         )
         from app.analytics.sports.mlb.constants import PA_EVENTS
 
-        v2_probs = {
+        probs = {
             "strikeout": 0.22,
             "walk_or_hbp": 0.08,
             "single": 0.15,
@@ -270,40 +270,24 @@ class TestNormalizeProbabilitiesV2Translation:
             "home_run": 0.03,
             "ball_in_play_out": 0.46,
         }
-        result = normalize_probabilities(v2_probs, PA_EVENTS)
+        result = normalize_probabilities(probs, PA_EVENTS)
 
-        assert result["walk"] > 0, "walk_or_hbp should map to walk"
-        assert result["out"] > 0, "ball_in_play_out should map to out"
+        assert result["walk_or_hbp"] > 0
+        assert result["ball_in_play_out"] > 0
         assert abs(sum(result.values()) - 1.0) < 0.01
 
-    def test_v1_labels_unchanged(self):
+    def test_missing_events_default_to_zero(self):
         from app.analytics.probabilities.probability_provider import (
             normalize_probabilities,
         )
         from app.analytics.sports.mlb.constants import PA_EVENTS
 
-        v1_probs = {
-            "strikeout": 0.22,
-            "out": 0.46,
-            "walk": 0.08,
-            "single": 0.15,
-            "double": 0.05,
-            "triple": 0.01,
-            "home_run": 0.03,
-        }
-        result = normalize_probabilities(v1_probs, PA_EVENTS)
-        assert result["out"] == 0.46
-        assert result["walk"] == 0.08
-
-    def test_mixed_v1_v2_accumulates(self):
-        """If both walk and walk_or_hbp present, values should accumulate."""
-        from app.analytics.probabilities.probability_provider import (
-            normalize_probabilities,
-        )
-
-        probs = {"walk": 0.05, "walk_or_hbp": 0.03, "out": 0.92}
-        result = normalize_probabilities(probs, ["walk", "out"])
-        assert result["walk"] > 0.05  # accumulated from both keys
+        # Only provide a few events — rest should be 0
+        probs = {"strikeout": 0.5, "home_run": 0.5}
+        result = normalize_probabilities(probs, PA_EVENTS)
+        assert result["walk_or_hbp"] == 0.0
+        assert result["ball_in_play_out"] == 0.0
+        assert abs(sum(result.values()) - 1.0) < 0.01
 
 
 # ---------------------------------------------------------------------------

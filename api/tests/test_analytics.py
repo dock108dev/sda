@@ -202,7 +202,7 @@ class TestMLBMetrics:
         assert "barrel_probability" in result
         assert "hit_probability" in result
         assert "strikeout_probability" in result
-        assert "walk_probability" in result
+        assert "walk_or_hbp_probability" in result
         # All probabilities should be in [0, 1]
         for key, val in result.items():
             assert 0.0 <= val <= 1.0, f"{key}={val} out of range"
@@ -361,7 +361,7 @@ class TestMatchupEngine:
         )
         probs = result.probabilities
         assert "strikeout_probability" in probs
-        assert "walk_probability" in probs
+        assert "walk_or_hbp_probability" in probs
         assert "single_probability" in probs
         assert "double_probability" in probs
         assert "triple_probability" in probs
@@ -506,10 +506,10 @@ class TestMLBGameSimulator:
 
         sim = MLBGameSimulator()
         ctx = {
-            "home_probabilities": {"strikeout_probability": 0.20, "walk_probability": 0.09,
+            "home_probabilities": {"strikeout_probability": 0.20, "walk_or_hbp_probability": 0.09,
                                    "single_probability": 0.16, "double_probability": 0.05,
                                    "triple_probability": 0.01, "home_run_probability": 0.04},
-            "away_probabilities": {"strikeout_probability": 0.22, "walk_probability": 0.08,
+            "away_probabilities": {"strikeout_probability": 0.22, "walk_or_hbp_probability": 0.08,
                                    "single_probability": 0.15, "double_probability": 0.05,
                                    "triple_probability": 0.01, "home_run_probability": 0.03},
         }
@@ -1223,7 +1223,7 @@ class TestMLBPlateAppearanceModel:
         probs = model.predict_proba({})
         assert "strikeout" in probs
         assert "home_run" in probs
-        assert "out" in probs
+        assert "ball_in_play_out" in probs
         total = sum(probs.values())
         assert abs(total - 1.0) < 0.01
 
@@ -1259,7 +1259,7 @@ class TestMLBPlateAppearanceModel:
         probs = model.predict_proba({})
         sim_probs = model.to_simulation_probs(probs)
         assert "strikeout_probability" in sim_probs
-        assert "walk_probability" in sim_probs
+        assert "walk_or_hbp_probability" in sim_probs
         assert "home_run_probability" in sim_probs
 
     def test_default_favors_home(self) -> None:
@@ -1677,7 +1677,7 @@ def _make_pa_records(n: int = 50) -> list[dict]:
     """Generate synthetic plate-appearance training records."""
     import random
     rng = random.Random(42)
-    outcomes = ["strikeout", "out", "walk", "single", "double", "triple", "home_run"]
+    outcomes = ["strikeout", "ball_in_play_out", "walk_or_hbp", "single", "double", "triple", "home_run"]
     weights = [0.22, 0.35, 0.08, 0.18, 0.07, 0.02, 0.08]
     records = []
     for _ in range(n):
@@ -2192,7 +2192,7 @@ class TestModelInferenceEngine:
         assert isinstance(probs, dict)
         assert len(probs) > 0
         assert "strikeout" in probs
-        assert "out" in probs
+        assert "ball_in_play_out" in probs
         assert "single" in probs
         assert all(0 <= v <= 1 for v in probs.values())
 
@@ -2219,7 +2219,7 @@ class TestModelInferenceEngine:
         )
 
         assert "strikeout_probability" in sim_probs
-        assert "walk_probability" in sim_probs
+        assert "walk_or_hbp_probability" in sim_probs
         assert "single_probability" in sim_probs
         assert "home_run_probability" in sim_probs
 
@@ -2397,8 +2397,8 @@ class TestNormalizeProbabilities:
 
     def test_fills_missing_events(self) -> None:
         raw = {"strikeout": 0.3}
-        result = normalize_probabilities(raw, valid_events=["strikeout", "out"])
-        assert "out" in result
+        result = normalize_probabilities(raw, valid_events=["strikeout", "ball_in_play_out"])
+        assert "ball_in_play_out" in result
         assert abs(sum(result.values()) - 1.0) < 0.001
 
     def test_empty_raises(self) -> None:
@@ -3439,8 +3439,8 @@ class TestEnsembleEngine:
         from app.analytics.ensemble.ensemble_engine import EnsembleEngine
 
         engine = EnsembleEngine()
-        rule = {"strikeout": 0.22, "walk": 0.07, "single": 0.16, "out": 0.55}
-        ml = {"strikeout": 0.19, "walk": 0.09, "single": 0.18, "out": 0.54}
+        rule = {"strikeout": 0.22, "walk_or_hbp": 0.07, "single": 0.16, "ball_in_play_out": 0.55}
+        ml = {"strikeout": 0.19, "walk_or_hbp": 0.09, "single": 0.18, "ball_in_play_out": 0.54}
 
         result = engine.combine(
             {"rule_based": rule, "ml": ml},
@@ -3475,7 +3475,7 @@ class TestEnsembleEngine:
         from app.analytics.ensemble.ensemble_engine import EnsembleEngine
 
         engine = EnsembleEngine()
-        probs = {"strikeout": 0.22, "out": 0.78}
+        probs = {"strikeout": 0.22, "ball_in_play_out": 0.78}
 
         result = engine.combine({"rule": probs}, {"rule": 1.0})
         assert abs(sum(result.values()) - 1.0) < 0.001

@@ -192,11 +192,11 @@ class TestToSimulationKeys:
     def test_adds_probability_suffix(self):
         from app.analytics.core.simulation_engine import _to_simulation_keys
 
-        probs = {"strikeout": 0.22, "walk": 0.08, "single": 0.15}
+        probs = {"strikeout": 0.22, "walk_or_hbp": 0.08, "single": 0.15}
         result = _to_simulation_keys(probs)
         assert result == {
             "strikeout_probability": 0.22,
-            "walk_probability": 0.08,
+            "walk_or_hbp_probability": 0.08,
             "single_probability": 0.15,
         }
 
@@ -217,12 +217,12 @@ class TestToSimulationKeys:
 
         probs = {
             "_internal": 0.5,
-            "walk": 0.08,
+            "walk_or_hbp": 0.08,
             "home_run_probability": 0.03,
         }
         result = _to_simulation_keys(probs)
         assert result == {
-            "walk_probability": 0.08,
+            "walk_or_hbp_probability": 0.08,
             "home_run_probability": 0.03,
         }
 

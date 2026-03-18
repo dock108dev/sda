@@ -196,7 +196,7 @@ class MLBMetrics:
             "barrel_probability": _round(barrel_prob),
             "hit_probability": _round(hit_prob),
             "strikeout_probability": _round(strikeout_prob),
-            "walk_probability": _round(walk_prob),
+            "walk_or_hbp_probability": _round(walk_prob),
         }
 
     # ------------------------------------------------------------------

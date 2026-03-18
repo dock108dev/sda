@@ -116,12 +116,12 @@ class MLBPlateAppearanceModel(BaseModel):
             probs["home_run"] = max(0.01, probs["home_run"] + pwr_adj)
             probs["double"] = max(0.02, probs["double"] + pwr_adj * 0.5)
 
-        # Normalize so out absorbs remainder
+        # Normalize so ball_in_play_out absorbs remainder
         named = (
-            probs["strikeout"] + probs["walk"] + probs["single"]
+            probs["strikeout"] + probs["walk_or_hbp"] + probs["single"]
             + probs["double"] + probs["triple"] + probs["home_run"]
         )
-        probs["out"] = max(0.1, 1.0 - named)
+        probs["ball_in_play_out"] = max(0.1, 1.0 - named)
 
         return {k: round(v, 4) for k, v in probs.items()}
 
@@ -132,7 +132,7 @@ class MLBPlateAppearanceModel(BaseModel):
         """
         return {
             "strikeout_probability": probs.get("strikeout", 0.22),
-            "walk_probability": probs.get("walk", 0.08),
+            "walk_or_hbp_probability": probs.get("walk_or_hbp", 0.08),
             "single_probability": probs.get("single", 0.15),
             "double_probability": probs.get("double", 0.05),
             "triple_probability": probs.get("triple", 0.01),

@@ -43,7 +43,7 @@ class TestDerivePaOutcome:
             zone_swings=8, outside_swings=2,
             zone_contact=7, outside_contact=2,
         )
-        assert _derive_pa_outcome(stats) == "walk"
+        assert _derive_pa_outcome(stats) == "walk_or_hbp"
 
     def test_high_barrel_high_ev_returns_home_run(self) -> None:
         stats = self._make_stats(
@@ -79,7 +79,7 @@ class TestDerivePaOutcome:
             zone_swings=10, outside_swings=5,
             zone_contact=8, outside_contact=4,
         )
-        assert _derive_pa_outcome(stats) == "out"
+        assert _derive_pa_outcome(stats) == "ball_in_play_out"
 
     def test_no_bip_returns_out(self) -> None:
         stats = self._make_stats(
@@ -87,7 +87,7 @@ class TestDerivePaOutcome:
             zone_swings=10, outside_swings=5,
             zone_contact=8, outside_contact=4,
         )
-        assert _derive_pa_outcome(stats) == "out"
+        assert _derive_pa_outcome(stats) == "ball_in_play_out"
 
     def test_moderate_whiff_returns_strikeout(self) -> None:
         stats = self._make_stats(

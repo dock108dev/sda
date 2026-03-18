@@ -15,24 +15,12 @@ from __future__ import annotations
 
 PA_EVENTS: list[str] = [
     "strikeout",
-    "out",
-    "walk",
-    "single",
-    "double",
-    "triple",
-    "home_run",
-]
-
-# V2 labels from true PBP events (used by MLBPADatasetBuilder).
-# Backward-compatible: models trained on v1 labels still work.
-PA_EVENTS_V2: list[str] = [
-    "strikeout",
+    "ball_in_play_out",
     "walk_or_hbp",
     "single",
     "double",
     "triple",
     "home_run",
-    "ball_in_play_out",
 ]
 
 # ---------------------------------------------------------------------------
@@ -41,8 +29,8 @@ PA_EVENTS_V2: list[str] = [
 
 DEFAULT_EVENT_PROBS: dict[str, float] = {
     "strikeout": 0.22,
-    "out": 0.46,
-    "walk": 0.08,
+    "ball_in_play_out": 0.46,
+    "walk_or_hbp": 0.08,
     "single": 0.15,
     "double": 0.05,
     "triple": 0.01,
@@ -52,7 +40,7 @@ DEFAULT_EVENT_PROBS: dict[str, float] = {
 # Keyed with ``_probability`` suffix (used by game simulator).
 DEFAULT_EVENT_PROBS_SUFFIXED: dict[str, float] = {
     "strikeout_probability": 0.22,
-    "walk_probability": 0.08,
+    "walk_or_hbp_probability": 0.08,
     "single_probability": 0.15,
     "double_probability": 0.05,
     "triple_probability": 0.01,

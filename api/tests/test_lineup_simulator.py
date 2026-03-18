@@ -78,7 +78,7 @@ class TestPitcherTransition:
         # Starter: moderate (league avg)
         starter_probs = {
             "strikeout_probability": 0.22,
-            "walk_probability": 0.08,
+            "walk_or_hbp_probability": 0.08,
             "single_probability": 0.15,
             "double_probability": 0.05,
             "triple_probability": 0.01,
@@ -89,7 +89,7 @@ class TestPitcherTransition:
         # Bullpen: much more strikeouts
         bullpen_probs = {
             "strikeout_probability": 0.40,
-            "walk_probability": 0.05,
+            "walk_or_hbp_probability": 0.05,
             "single_probability": 0.10,
             "double_probability": 0.03,
             "triple_probability": 0.005,
@@ -120,7 +120,7 @@ class TestBackwardCompat:
         game_context = {
             "home_probabilities": {
                 "strikeout_probability": 0.22,
-                "walk_probability": 0.08,
+                "walk_or_hbp_probability": 0.08,
                 "single_probability": 0.15,
                 "double_probability": 0.05,
                 "triple_probability": 0.01,
@@ -128,7 +128,7 @@ class TestBackwardCompat:
             },
             "away_probabilities": {
                 "strikeout_probability": 0.22,
-                "walk_probability": 0.08,
+                "walk_or_hbp_probability": 0.08,
                 "single_probability": 0.15,
                 "double_probability": 0.05,
                 "triple_probability": 0.01,
@@ -148,7 +148,7 @@ class TestBackwardCompat:
         game_context = {
             "home_probabilities": {
                 "strikeout_probability": 0.22,
-                "walk_probability": 0.08,
+                "walk_or_hbp_probability": 0.08,
                 "single_probability": 0.15,
                 "double_probability": 0.05,
                 "triple_probability": 0.01,
@@ -156,7 +156,7 @@ class TestBackwardCompat:
             },
             "away_probabilities": {
                 "strikeout_probability": 0.22,
-                "walk_probability": 0.08,
+                "walk_or_hbp_probability": 0.08,
                 "single_probability": 0.15,
                 "double_probability": 0.05,
                 "triple_probability": 0.01,
@@ -177,7 +177,7 @@ class TestDeterminism:
         sim = MLBGameSimulator()
         probs = {
             "strikeout_probability": 0.22,
-            "walk_probability": 0.08,
+            "walk_or_hbp_probability": 0.08,
             "single_probability": 0.15,
             "double_probability": 0.05,
             "triple_probability": 0.01,

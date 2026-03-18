@@ -326,7 +326,7 @@ def _derive_pa_outcome(player_stats: object) -> str:
     if whiff_rate > 0.40:
         return "strikeout"
     if o_swing < 0.20 and z_swing < 0.55:
-        return "walk"
+        return "walk_or_hbp"
     if barrel > 0.15 and avg_ev > 95:
         return "home_run"
     if hard_hit > 0.50 and avg_ev > 93:
@@ -336,7 +336,7 @@ def _derive_pa_outcome(player_stats: object) -> str:
     if whiff_rate > 0.28:
         return "strikeout"
     if bip == 0 and total_pitches > 0:
-        return "out"
+        return "ball_in_play_out"
     if hard_hit < 0.20:
-        return "out"
+        return "ball_in_play_out"
     return "single"

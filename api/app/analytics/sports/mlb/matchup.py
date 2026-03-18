@@ -118,7 +118,7 @@ class MLBMatchup:
 
         raw = {
             "strikeout_probability": strikeout_prob,
-            "walk_probability": walk_prob,
+            "walk_or_hbp_probability": walk_prob,
             "single_probability": single_prob,
             "double_probability": double_prob,
             "triple_probability": triple_prob,
@@ -178,7 +178,7 @@ class MLBMatchup:
 
         raw = {
             "strikeout_probability": strikeout_prob,
-            "walk_probability": walk_prob,
+            "walk_or_hbp_probability": walk_prob,
             "single_probability": single_prob,
             "double_probability": double_prob,
             "triple_probability": triple_prob,
