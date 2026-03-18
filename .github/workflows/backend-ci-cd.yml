@@ -288,7 +288,7 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
             echo "Pulling images..."
-            docker compose --profile prod pull --ignore-buildable 2>/dev/null || docker compose --profile prod pull
+            docker compose --profile prod pull --policy always
 
             echo "Running migrations..."
             docker compose --profile prod run --rm migrate
