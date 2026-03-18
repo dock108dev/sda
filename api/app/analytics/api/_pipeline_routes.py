@@ -199,6 +199,7 @@ class BatchSimulateRequest(BaseModel):
     rolling_window: int = Field(30, ge=5, le=162, description="Rolling window for profile building")
     date_start: str | None = Field(None, description="Start date (YYYY-MM-DD)")
     date_end: str | None = Field(None, description="End date (YYYY-MM-DD)")
+    model_id: str | None = Field(None, description="Specific model ID to test (uses active model if omitted)")
 
 
 @router.post("/batch-simulate")
@@ -223,7 +224,7 @@ async def post_batch_simulate(
     await db.commit()
     await db.refresh(job)
 
-    task = batch_simulate_games.delay(job.id)
+    task = batch_simulate_games.delay(job.id, model_id=req.model_id)
     job.celery_task_id = task.id
     job.status = "queued"
     await db.commit()
@@ -263,7 +264,7 @@ async def get_batch_simulate_job(
     job = await db.get(AnalyticsBatchSimJob, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Batch sim job not found")
-    return _serialize_batch_sim_job(job)
+    return _serialize_batch_sim_job(job, include_diagnostics=True)
 
 
 @router.delete("/batch-simulate-job/{job_id}")
@@ -291,8 +292,20 @@ async def delete_batch_simulate_job(
     return {"status": "deleted", "id": job_id}
 
 
-def _serialize_batch_sim_job(job: Any) -> dict[str, Any]:
-    return {
+def _serialize_batch_sim_job(
+    job: Any,
+    *,
+    include_diagnostics: bool = False,
+) -> dict[str, Any]:
+    """Serialize a batch sim job to a dict.
+
+    Args:
+        job: ``AnalyticsBatchSimJob`` ORM instance.
+        include_diagnostics: When True, compute ``batch_summary`` and
+            ``warnings`` from stored results. Skipped for list endpoints
+            to avoid O(num_jobs x num_games) cost.
+    """
+    data: dict[str, Any] = {
         "id": job.id,
         "sport": job.sport,
         "probability_mode": job.probability_mode,
@@ -308,3 +321,13 @@ def _serialize_batch_sim_job(job: Any) -> dict[str, Any]:
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
+
+    if include_diagnostics and job.results and job.status == "completed":
+        from app.tasks.batch_sim_tasks import _build_batch_summary
+        batch_summary, warnings = _build_batch_summary(job.results)
+        if batch_summary:
+            data["batch_summary"] = batch_summary
+        if warnings:
+            data["warnings"] = warnings
+
+    return data

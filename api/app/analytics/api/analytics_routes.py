@@ -101,6 +101,7 @@ class SimulateRequest(BaseModel):
     away_starter: PitcherSlot | None = Field(None, description="Away starting pitcher")
     starter_innings: float = Field(6.0, ge=4.0, le=9.0, description="Innings before bullpen takes over")
     exclude_playoffs: bool = Field(False, description="Exclude postseason games from rolling profiles")
+    model_id: str | None = Field(None, description="Specific model ID to use instead of the active model")
 
 
 @router.post("/simulate")
@@ -218,6 +219,8 @@ async def post_simulate(
         game_context["away_probabilities"] = req.away_probabilities
     if req.probability_mode:
         game_context["probability_mode"] = req.probability_mode
+    if req.model_id:
+        game_context["_model_id"] = req.model_id
 
     # --- Lineup-level orchestration ---
     lineup_mode = False
@@ -285,6 +288,16 @@ async def post_simulate(
             "method": "trained classifier on team profile features",
         }
     response["predictions"] = predictions
+
+    # Include event summary and sanity warnings when available
+    if "event_summary" in result:
+        response["event_summary"] = result["event_summary"]
+        from app.analytics.core.simulation_analysis import check_simulation_sanity
+        warnings = check_simulation_sanity(result["event_summary"])
+        if warnings:
+            response.setdefault("simulation_info", {})
+            if isinstance(response["simulation_info"], dict):
+                response["simulation_info"]["sanity_warnings"] = warnings
 
     return response
 

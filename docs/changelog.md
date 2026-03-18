@@ -2,7 +2,27 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-14] - Current
+## [2026-03-17] - Current
+
+### Post-Simulation Diagnostics & Sanity Analysis
+
+- **Event tracking:** `MLBGameSimulator` now returns per-team PA event counts (`home_events`/`away_events`) and `innings_played` from both `simulate_game()` and `simulate_game_with_lineups()`. Backward compatible — existing callers unaffected
+- **Event summary aggregation:** `SimulationRunner.aggregate_results()` computes `event_summary` with per-team PA rates (K%, BB%, HR%, hit rate) and game-shape metrics (extra innings %, shutout %, 1-run game %)
+- **Sanity warnings:** `check_simulation_sanity()` and `check_batch_sanity()` in `simulation_analysis.py` flag anomalous results (unrealistic runs, PA outside 30–50, WP flatness)
+- **Batch sim enrichment:** Batch results include `batch_summary` (avg runs/team, avg total/game, home win rate, WP distribution) and `warnings` array. Computed on-the-fly during API serialization — no DB migration required
+- **UI sanity panel:** Batch sim results page shows a "Simulation Sanity" section with score realism, PA mix breakdown, game shape metrics, and yellow warning cards
+
+### Model-Specific Simulation (`model_id` Parameter)
+
+- **`model_id` on `/simulate`:** Test a specific trained model without activating it globally. Threads through `SimulationEngine` → `ProbabilityResolver` → `MLProvider` → `ModelInferenceEngine`
+- **`model_id` on `/batch-simulate`:** Test a model across a full date range of games. When `model_id` or `probability_mode=ml` is set, batch sim now routes through the ML pipeline instead of rule-based `profile_to_pa_probabilities()` conversion
+- **`ModelRegistry.get_model_info_by_id()`:** Look up any registered model by ID, not just the active one
+- **`ModelInferenceEngine._get_model(model_id=...)`:** Load a specific model artifact without switching the active model
+- **Event summary in `/simulate` response:** Fixed `AnalyticsService.run_full_simulation()` to preserve `event_summary`, diagnostics, and probability metadata that was previously discarded when `SimulationAnalysis.summarize_results()` replaced the runner result
+
+**Files changed:** `game_simulator.py`, `simulation_runner.py`, `simulation_analysis.py`, `simulation_engine.py`, `analytics_service.py`, `analytics_routes.py`, `_pipeline_routes.py`, `batch_sim_tasks.py`, `model_registry.py`, `model_inference_engine.py`, `probability_provider.py`, `analyticsTypes.ts`, `batch/page.tsx`
+
+## [2026-03-14]
 
 ### Datetime SSOT — `to_et_date()` Consolidation
 

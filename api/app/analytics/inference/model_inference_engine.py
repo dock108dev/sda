@@ -82,6 +82,7 @@ class ModelInferenceEngine:
         profiles: dict[str, Any],
         *,
         config_name: str | None = None,
+        model_id: str | None = None,
     ) -> dict[str, float]:
         """Generate probability distribution from entity profiles.
 
@@ -90,11 +91,13 @@ class ModelInferenceEngine:
             model_type: Model type.
             profiles: Entity profiles dict.
             config_name: Optional feature config name.
+            model_id: Optional specific model ID to use instead
+                of the active model.
 
         Returns:
             Dict mapping outcome labels to probabilities.
         """
-        model = self._get_model(sport, model_type)
+        model = self._get_model(sport, model_type, model_id=model_id)
         if model is None:
             return {}
 
@@ -176,30 +179,43 @@ class ModelInferenceEngine:
             "reason": None if artifact_exists else "artifact_not_found",
         }
 
-    def _get_model(self, sport: str, model_type: str) -> Any:
-        """Get the active model instance, using cache for artifacts.
+    def _get_model(
+        self,
+        sport: str,
+        model_type: str,
+        *,
+        model_id: str | None = None,
+    ) -> Any:
+        """Get a model instance, using cache for artifacts.
 
-        Automatically detects when the active model has changed in the
-        registry and invalidates the cached artifact so the new model
-        is loaded on the next call.
+        When ``model_id`` is provided, loads that specific model
+        instead of the active one. Otherwise automatically detects
+        when the active model has changed in the registry and
+        invalidates the cached artifact.
         """
         sport = sport.lower()
         cache_key = f"{sport}:{model_type}"
 
-        # Check if there's an active registered model with a path
-        info = self._registry.get_active_model_info(sport, model_type)
+        # Resolve model info — specific model_id or active model
+        if model_id:
+            info = self._registry.get_model_info_by_id(sport, model_type, model_id)
+            cache_key = f"{sport}:{model_type}:{model_id}"
+        else:
+            info = self._registry.get_active_model_info(sport, model_type)
+
         if info and info.get("path"):
             current_id = info["model_id"]
             path = info["path"]
 
             # Auto-reload: if the active model changed, invalidate old cache
-            prev_id = self._loaded_model_ids.get(cache_key)
-            if prev_id and prev_id != current_id:
-                logger.info(
-                    "model_switch_detected",
-                    extra={"previous": prev_id, "current": current_id},
-                )
-                self._cache.clear()
+            if not model_id:
+                prev_id = self._loaded_model_ids.get(cache_key)
+                if prev_id and prev_id != current_id:
+                    logger.info(
+                        "model_switch_detected",
+                        extra={"previous": prev_id, "current": current_id},
+                    )
+                    self._cache.clear()
 
             try:
                 sklearn_model = self._cache.get_model(path)
@@ -215,9 +231,6 @@ class ModelInferenceEngine:
                     "artifact_load_failed",
                     extra={"path": path, "error": str(exc)},
                 )
-                # Artifact exists in registry but can't be loaded — return
-                # None so callers (MLProvider) raise and the resolver can
-                # trigger a proper fallback with diagnostics.
                 return None
 
         # No registered model with a path — fall back to built-in model

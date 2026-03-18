@@ -321,6 +321,35 @@ class ModelRegistry:
             "metrics": active.get("metrics", {}),
         }
 
+    def get_model_info_by_id(
+        self,
+        sport: str,
+        model_type: str,
+        model_id: str,
+    ) -> dict[str, Any] | None:
+        """Get metadata for a specific model by ID.
+
+        Like ``get_active_model_info`` but looks up by ``model_id``
+        instead of using the active model. Returns ``None`` if the
+        model is not found.
+        """
+        sport = sport.lower()
+        bucket = self._get_bucket(sport, model_type)
+        if bucket is None:
+            return None
+
+        for model in bucket.get("models", []):
+            if model["model_id"] == model_id:
+                return {
+                    "model_id": model["model_id"],
+                    "path": model.get("artifact_path"),
+                    "sport": sport,
+                    "model_type": model_type,
+                    "version": model.get("version"),
+                    "metrics": model.get("metrics", {}),
+                }
+        return None
+
     def get_active_model_instance(self, sport: str, model_type: str) -> Any | None:
         """Get an instantiated model object for the active model.
 

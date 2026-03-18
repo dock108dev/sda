@@ -101,8 +101,9 @@ class SimulationEngine:
         context = dict(game_context)
         prob_meta: dict[str, Any] = {}
 
-        # Resolve probability mode
+        # Resolve probability mode and optional model override
         probability_mode = context.pop("probability_mode", None)
+        model_id = context.pop("_model_id", None)
 
         # Pitch-level simulation uses a different simulator entirely
         if probability_mode == "pitch_level" and self.sport == "mlb":
@@ -111,6 +112,7 @@ class SimulationEngine:
         if probability_mode in ("ml", "ensemble"):
             context, prob_meta = self._apply_probability_resolver(
                 context, probability_mode, "plate_appearance",
+                model_id=model_id,
             )
         elif probability_mode == "rule_based":
             context, prob_meta = self._apply_probability_resolver(
@@ -180,6 +182,8 @@ class SimulationEngine:
         game_context: dict[str, Any],
         mode: str,
         model_type: str,
+        *,
+        model_id: str | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Use the ProbabilityResolver to generate event probabilities.
 
@@ -218,6 +222,8 @@ class SimulationEngine:
         resolver = ProbabilityResolver(config=resolver_config)
 
         profiles = game_context.get("profiles", {})
+        if model_id:
+            profiles = {**profiles, "_model_id": model_id}
         result = resolver.get_probabilities_with_meta(
             self.sport, model_type, profiles, mode=mode,
         )

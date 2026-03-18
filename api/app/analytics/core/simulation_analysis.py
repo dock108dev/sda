@@ -283,6 +283,87 @@ def _score_distribution(scores: list[int], n: int) -> dict[str, float]:
     }
 
 
+def check_simulation_sanity(event_summary: dict[str, Any]) -> list[str]:
+    """Flag impossible or anomalous simulation results.
+
+    Args:
+        event_summary: The ``event_summary`` dict produced by
+            ``SimulationRunner._aggregate_events()``.
+
+    Returns:
+        List of human-readable warning strings. Empty if everything
+        looks reasonable.
+    """
+    warnings: list[str] = []
+
+    for side in ("home", "away"):
+        team = event_summary.get(side, {})
+        label = side.capitalize()
+
+        avg_runs = team.get("avg_runs", 0)
+        if avg_runs > 15:
+            warnings.append(f"{label} avg runs ({avg_runs}) is unrealistically high (>15)")
+        elif avg_runs < 1:
+            warnings.append(f"{label} avg runs ({avg_runs}) is unrealistically low (<1)")
+
+        avg_pa = team.get("avg_pa", 0)
+        if avg_pa < 30 or avg_pa > 50:
+            warnings.append(f"{label} avg PA ({avg_pa}) is outside expected range (30-50)")
+
+        avg_hr = team.get("avg_hr", 0)
+        if avg_hr > 5:
+            warnings.append(f"{label} avg HR ({avg_hr}) is unrealistically high (>5)")
+
+        rates = team.get("pa_rates", {})
+        k_pct = rates.get("k_pct", 0)
+        if k_pct < 0.10 or k_pct > 0.40:
+            warnings.append(f"{label} K% ({k_pct:.1%}) is outside expected range (10-40%)")
+
+        bb_pct = rates.get("bb_pct", 0)
+        if bb_pct < 0.02 or bb_pct > 0.20:
+            warnings.append(f"{label} BB% ({bb_pct:.1%}) is outside expected range (2-20%)")
+
+    game = event_summary.get("game", {})
+    ei_pct = game.get("extra_innings_pct", 0)
+    if ei_pct > 0.25:
+        warnings.append(f"Extra innings rate ({ei_pct:.1%}) is unusually high (>25%)")
+
+    return warnings
+
+
+def check_batch_sanity(
+    results: list[dict[str, Any]],
+    event_summary: dict[str, Any] | None = None,
+) -> list[str]:
+    """Check batch-level sanity across all per-game sim results.
+
+    Args:
+        results: List of per-game result dicts with ``home_win_probability``.
+        event_summary: Optional event summary for event-level checks.
+
+    Returns:
+        List of warning strings.
+    """
+    warnings: list[str] = []
+
+    # WP flatness check
+    success = [r for r in results if "error" not in r and r.get("home_win_probability") is not None]
+    if success:
+        wps = [max(r["home_win_probability"], r.get("away_win_probability", 0)) for r in success]
+        flat_count = sum(1 for wp in wps if 0.49 <= wp <= 0.51)
+        if flat_count == len(success) and len(success) > 1:
+            warnings.append(
+                f"All {len(success)} games have WP between 49-51% "
+                "— matchup differentiation may be too flat"
+            )
+
+    # Delegate to event-level checks
+    if event_summary:
+        warnings.extend(check_simulation_sanity(event_summary))
+
+    return warnings
+
+
 def _empty_summary() -> dict[str, Any]:
     return {
         "home_win_probability": 0.0,

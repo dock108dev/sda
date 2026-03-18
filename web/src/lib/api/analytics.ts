@@ -64,6 +64,11 @@ export type {
   BatchSimRequest,
   BatchSimGameResult,
   BatchSimJob,
+  BatchSimSummary,
+  EventSummary,
+  EventTeamSummary,
+  EventGameSummary,
+  EventPARates,
   PredictionOutcome,
   CalibrationReport,
   DegradationAlert,
@@ -324,6 +329,14 @@ export async function listBatchSimJobs(
   if (sport) params.set("sport", sport);
   return fetchJson<{ jobs: BatchSimJob[]; count: number }>(
     `${base()}/api/analytics/batch-simulate-jobs?${params}`,
+  );
+}
+
+export async function getBatchSimJob(
+  jobId: number,
+): Promise<BatchSimJob> {
+  return fetchJson<BatchSimJob>(
+    `${base()}/api/analytics/batch-simulate-job/${jobId}`,
   );
 }
 

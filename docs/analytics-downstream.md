@@ -46,6 +46,7 @@ POST /api/analytics/simulate
   "iterations": 5000,
   "rolling_window": 30,
   "probability_mode": "ml",
+  "model_id": "mlb_pa_v3",  // optional: test a specific model without activating it
   "home_lineup": [...],     // optional: exactly 9 batters
   "away_lineup": [...],     // optional: exactly 9 batters
   "home_starter": {...},    // optional
@@ -55,7 +56,9 @@ POST /api/analytics/simulate
 }
 ```
 
-The backend uses the active trained model. Falls back to rule-based if no model is trained.
+The backend uses the active trained model (or the model specified by `model_id`). Falls back to rule-based if no model is trained.
+
+The response includes `event_summary` (per-team PA rates and game shape metrics) and `simulation_info.sanity_warnings` when anomalous results are detected.
 
 ---
 
@@ -83,10 +86,18 @@ The backend uses the active trained model. Falls back to rule-based if no model 
 
 ## Batch Sims
 
-- `POST /api/analytics/batch-simulate`
-- `GET /api/analytics/batch-simulate-jobs`
+- `POST /api/analytics/batch-simulate` — accepts optional `model_id` to test a specific trained model
+- `GET /api/analytics/batch-simulate-jobs` — results include `batch_summary` (avg runs, PA, home win rate, WP distribution) and `warnings` (sanity alerts)
 - `POST /api/analytics/record-outcomes`
 - `GET /api/analytics/prediction-outcomes`
+
+### Model Testing Workflow
+
+1. `POST /api/analytics/train` — train a model with custom parameters, get `job_id`
+2. `GET /api/analytics/training-job/{id}` — poll until complete, get `model_id`
+3. `POST /api/analytics/batch-simulate` with `model_id` — test that model on real games
+4. Results include `event_summary` (PA rates), `batch_summary`, and `warnings` for tuning
+5. `POST /api/analytics/simulate` with `model_id` — test single matchups with diagnostics
 
 ---
 

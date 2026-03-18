@@ -83,10 +83,25 @@ Each game simulation runs 9+ innings. Each half-inning simulates plate appearanc
 1. Sample event (strikeout, out, walk, single, double, triple, home_run) from probability distribution
 2. Advance base runners based on event type
 3. Track runs scored
+4. Accumulate event counts per team (K, BB, HR, singles, etc.)
+
+The simulator returns enriched results including per-team event counts and innings played:
+
+```python
+{
+    "home_score": 5, "away_score": 3, "winner": "home",
+    "home_events": {"strikeout": 8, "out": 5, "walk": 3, "single": 6, "double": 2, "triple": 0, "home_run": 1, "pa_total": 38},
+    "away_events": {"strikeout": 9, "out": 4, "walk": 2, "single": 5, "double": 1, "triple": 1, "home_run": 0, "pa_total": 35},
+    "innings_played": 9,
+}
+```
+
+Event data is backward compatible — existing callers that only read `home_score`/`away_score`/`winner` are unaffected.
 
 **Key files:**
 - `core/simulation_engine.py` — orchestrator
-- `core/simulation_runner.py` — N iterations + aggregation
+- `core/simulation_runner.py` — N iterations + aggregation + event summary
+- `core/simulation_analysis.py` — sanity checks
 - `sports/mlb/game_simulator.py` — PA-level MLB simulator
 
 ### Lineup-Aware Simulation
@@ -131,6 +146,36 @@ Rolling statistical profiles for individual batters and pitchers, used by lineup
 - Recent batters: distinct players from `MLBPlayerAdvancedStats` in last 30 days with game count
 - Recent pitchers: distinct from `SportsPlayerBoxscore` with games started and avg IP
 - Returns `{batters: [...], pitchers: [...]}`
+
+### Event Summary & Sanity Analysis
+
+When event data is present in simulation results, `SimulationRunner.aggregate_results()` computes an `event_summary` with per-team PA rates and game-shape metrics:
+
+```python
+"event_summary": {
+    "home": {
+        "avg_pa": 37.2, "avg_hits": 8.4, "avg_hr": 1.1,
+        "avg_bb": 3.2, "avg_k": 8.7, "avg_runs": 4.3,
+        "pa_rates": {"k_pct": 0.234, "bb_pct": 0.086, "hr_pct": 0.030, ...}
+    },
+    "away": { ... },
+    "game": {
+        "avg_total_runs": 8.6, "median_total_runs": 8,
+        "extra_innings_pct": 0.082, "shutout_pct": 0.043, "one_run_game_pct": 0.187,
+    }
+}
+```
+
+**Sanity warnings** automatically flag anomalous results via `check_simulation_sanity()` and `check_batch_sanity()` in `core/simulation_analysis.py`:
+
+- Avg runs per team > 15 or < 1
+- Avg PA per team outside 30–50
+- Avg HR per team > 5
+- K% outside 10–40%, BB% outside 2–20%
+- Extra innings rate > 25%
+- All games in a batch with WP between 49–51% (matchup flatness)
+
+Warnings are included in both the `/simulate` response (`simulation_info.sanity_warnings`) and batch sim results (`warnings` array).
 
 ### Pitch-Level Simulation
 
@@ -179,11 +224,13 @@ JSON-backed registry at `models/registry/registry.json`. Organized by sport + mo
 
 ### Inference Flow
 
-1. `ModelInferenceEngine.predict_proba(sport, model_type, profiles)` called
-2. Check registry for active model; auto-reload if active model changed
+1. `ModelInferenceEngine.predict_proba(sport, model_type, profiles, model_id=...)` called
+2. If `model_id` is provided, load that specific model via `get_model_info_by_id()`; otherwise check registry for the active model with auto-reload detection
 3. `InferenceCache` loads artifact via joblib (or returns cached)
 4. `FeatureBuilder` extracts features from profiles
 5. Model's `predict_proba(features)` returns probability dict
+
+The `model_id` parameter threads through the entire stack: API request → `SimulationEngine` → `ProbabilityResolver` → `MLProvider` → `ModelInferenceEngine`. This allows testing any registered model without activating it globally.
 
 ### Model Status
 
@@ -348,8 +395,8 @@ All endpoints prefixed with `/api/analytics`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/simulate` | Monte Carlo sim using active ML model (falls back to rule-based). Response includes `simulation_info` (diagnostics), `predictions`, `profile_meta` with edge analysis data |
-| POST | `/batch-simulate` | Async batch simulation over upcoming games (Celery task) |
+| POST | `/simulate` | Monte Carlo sim. Supports optional `model_id` to test a specific model (else uses active model). Response includes `simulation_info` (diagnostics + sanity warnings), `event_summary` (PA rates, game shape), `predictions`, `profile_meta` with edge analysis data |
+| POST | `/batch-simulate` | Async batch simulation over upcoming games (Celery task). Supports optional `model_id` to test a specific model. When `model_id` or `probability_mode=ml` is set, routes through the ML pipeline instead of rule-based profile conversion |
 | GET | `/batch-simulate-jobs` | List batch simulation jobs |
 | GET | `/batch-simulate-job/{id}` | Get batch simulation job details |
 

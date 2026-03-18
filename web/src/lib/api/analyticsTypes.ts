@@ -103,6 +103,7 @@ export interface SimulationResult {
     monte_carlo: PredictionEntry;
     game_model?: PredictionEntry;
   };
+  event_summary?: EventSummary;
 }
 
 // ---------------------------------------------------------------------------
@@ -406,6 +407,49 @@ export interface BatchSimRequest {
   rolling_window?: number;
   date_start?: string;
   date_end?: string;
+  model_id?: string;
+}
+
+export interface BatchSimSummary {
+  avg_runs_per_team: number;
+  avg_total_per_game: number;
+  avg_pa_per_team: number | null;
+  home_win_rate: number;
+  wp_distribution?: Record<string, number>;
+}
+
+export interface EventPARates {
+  k_pct: number;
+  bb_pct: number;
+  single_pct: number;
+  double_pct: number;
+  triple_pct: number;
+  hr_pct: number;
+  out_pct: number;
+}
+
+export interface EventTeamSummary {
+  avg_pa: number;
+  avg_hits: number;
+  avg_hr: number;
+  avg_bb: number;
+  avg_k: number;
+  avg_runs: number;
+  pa_rates: EventPARates;
+}
+
+export interface EventGameSummary {
+  avg_total_runs: number;
+  median_total_runs: number;
+  extra_innings_pct: number;
+  shutout_pct: number;
+  one_run_game_pct: number;
+}
+
+export interface EventSummary {
+  home: EventTeamSummary;
+  away: EventTeamSummary;
+  game: EventGameSummary;
 }
 
 export interface BatchSimGameResult {
@@ -420,6 +464,7 @@ export interface BatchSimGameResult {
   probability_source?: string;
   has_profiles?: boolean;
   error?: string;
+  event_summary?: EventSummary;
 }
 
 export interface BatchSimJob {
@@ -437,6 +482,8 @@ export interface BatchSimJob {
   error_message: string | null;
   created_at: string | null;
   completed_at: string | null;
+  batch_summary?: BatchSimSummary;
+  warnings?: string[];
 }
 
 // ---------------------------------------------------------------------------

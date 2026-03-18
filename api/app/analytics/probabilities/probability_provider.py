@@ -5,7 +5,7 @@ simulation engine. All providers return normalized event probability
 dicts in a standard format.
 
 Supported implementations:
-    - ``RuleBasedProvider`` — uses MatchupEngine/static defaults
+    - ``RuleBasedProvider`` — uses PA model rule-based path / static defaults
     - ``MLProvider`` — uses ModelInferenceEngine
     - ``EnsembleProvider`` — combines multiple providers
 
@@ -127,10 +127,10 @@ class ProbabilityProvider(ABC):
 
 
 class RuleBasedProvider(ProbabilityProvider):
-    """Generate probabilities from rule-based matchup logic.
+    """Generate probabilities from the PA model's rule-based path.
 
-    Wraps the existing MatchupEngine output or uses static defaults
-    when no profiles are available.
+    Uses the MLBPlateAppearanceModel rule-based logic or static
+    league-average defaults when no profiles are available.
     """
 
     @property
@@ -205,13 +205,16 @@ class MLProvider(ProbabilityProvider):
         """Generate ML-based event probabilities.
 
         Builds features from profiles and runs inference through
-        the active model.
+        the active model (or a specific model if ``_model_id`` is
+        present in the context).
         """
         engine = self._get_engine()
+        model_id = context.get("_model_id")
         probs = engine.predict_proba(
             sport=sport,
             model_type=self._model_type,
             profiles=context,
+            model_id=model_id,
         )
 
         if not probs:

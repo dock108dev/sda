@@ -117,11 +117,87 @@ class SimulationRunner:
             for score, count in score_counts.most_common(20)
         }
 
-        return {
+        summary = {
             "home_win_probability": round(home_wins / n, 4),
             "away_win_probability": round((n - home_wins) / n, 4),
             "average_home_score": round(total_home / n, 2),
             "average_away_score": round(total_away / n, 2),
             "score_distribution": distribution,
             "iterations": n,
+        }
+
+        # Add event summary if results contain event data
+        if sim_results and "home_events" in sim_results[0]:
+            summary["event_summary"] = self._aggregate_events(sim_results)
+
+        return summary
+
+    def _aggregate_events(
+        self,
+        sim_results: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Aggregate per-game event counts into batch-level statistics."""
+        n = len(sim_results)
+
+        def _team_summary(key: str) -> dict[str, Any]:
+            totals: Counter[str] = Counter()
+            for r in sim_results:
+                ev = r.get(key, {})
+                for k, v in ev.items():
+                    totals[k] += v
+
+            pa = totals.get("pa_total", 1) or 1
+            hits = totals.get("single", 0) + totals.get("double", 0) + totals.get("triple", 0) + totals.get("home_run", 0)
+
+            return {
+                "avg_pa": round(totals.get("pa_total", 0) / n, 1),
+                "avg_hits": round(hits / n, 1),
+                "avg_hr": round(totals.get("home_run", 0) / n, 1),
+                "avg_bb": round(totals.get("walk", 0) / n, 1),
+                "avg_k": round(totals.get("strikeout", 0) / n, 1),
+                "avg_runs": round(
+                    sum(r.get("home_score" if key == "home_events" else "away_score", 0) for r in sim_results) / n,
+                    1,
+                ),
+                "pa_rates": {
+                    "k_pct": round(totals.get("strikeout", 0) / pa, 3),
+                    "bb_pct": round(totals.get("walk", 0) / pa, 3),
+                    "single_pct": round(totals.get("single", 0) / pa, 3),
+                    "double_pct": round(totals.get("double", 0) / pa, 3),
+                    "triple_pct": round(totals.get("triple", 0) / pa, 3),
+                    "hr_pct": round(totals.get("home_run", 0) / pa, 3),
+                    "out_pct": round(totals.get("out", 0) / pa, 3),
+                },
+            }
+
+        # Game-level metrics
+        from .simulation_analysis import _median
+
+        total_runs = [
+            r.get("home_score", 0) + r.get("away_score", 0)
+            for r in sim_results
+        ]
+        median_total = _median(total_runs)
+        extra_innings = sum(
+            1 for r in sim_results if r.get("innings_played", 9) > 9
+        )
+        shutouts = sum(
+            1 for r in sim_results
+            if r.get("home_score", 0) == 0 or r.get("away_score", 0) == 0
+        )
+        one_run_games = sum(
+            1 for r in sim_results
+            if abs(r.get("home_score", 0) - r.get("away_score", 0)) == 1
+        )
+
+        return {
+            "home": _team_summary("home_events"),
+            "away": _team_summary("away_events"),
+            "game": {
+                "avg_total_runs": round(sum(total_runs) / n, 1),
+                "median_total_runs": round(median_total, 0),
+                "extra_innings_pct": round(extra_innings / n, 3),
+                "shutout_pct": round(shutouts / n, 3),
+                "one_run_game_pct": round(one_run_games / n, 3),
+            },
         }

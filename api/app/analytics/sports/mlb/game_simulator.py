@@ -44,7 +44,8 @@ class MLBGameSimulator:
             rng: Optional ``random.Random`` instance for determinism.
 
         Returns:
-            Dict with ``home_score``, ``away_score``, and ``winner``.
+            Dict with ``home_score``, ``away_score``, ``winner``,
+            ``home_events``, ``away_events``, and ``innings_played``.
         """
         if rng is None:
             rng = random.Random()
@@ -54,14 +55,18 @@ class MLBGameSimulator:
 
         home_score = 0
         away_score = 0
+        home_events = _new_event_counts()
+        away_events = _new_event_counts()
+        innings_played = 0
 
         # Regulation: 9 innings
         for inning in range(1, 10):
-            away_score += self._simulate_half_inning(away_probs, rng)
+            innings_played = inning
+            away_score += self._simulate_half_inning(away_probs, rng, away_events)
             # Bottom of 9th: skip if home already ahead
             if inning == 9 and home_score > away_score:
                 break
-            home_score += self._simulate_half_inning(home_probs, rng)
+            home_score += self._simulate_half_inning(home_probs, rng, home_events)
             # Walk-off in bottom of 9th
             if inning == 9 and home_score > away_score:
                 break
@@ -69,9 +74,10 @@ class MLBGameSimulator:
         # Extra innings
         extra = 0
         while home_score == away_score and extra < _MAX_EXTRA_INNINGS:
-            away_score += self._simulate_half_inning(away_probs, rng)
-            home_score += self._simulate_half_inning(home_probs, rng)
+            away_score += self._simulate_half_inning(away_probs, rng, away_events)
+            home_score += self._simulate_half_inning(home_probs, rng, home_events)
             extra += 1
+            innings_played += 1
 
         winner = "home" if home_score >= away_score else "away"
 
@@ -79,12 +85,16 @@ class MLBGameSimulator:
             "home_score": home_score,
             "away_score": away_score,
             "winner": winner,
+            "home_events": home_events,
+            "away_events": away_events,
+            "innings_played": innings_played,
         }
 
     def _simulate_half_inning(
         self,
         weights: list[float],
         rng: random.Random,
+        events: dict[str, int] | None = None,
     ) -> int:
         """Simulate one half-inning, returning runs scored."""
         outs = 0
@@ -93,6 +103,10 @@ class MLBGameSimulator:
 
         while outs < 3:
             event = rng.choices(EVENTS, weights=weights, k=1)[0]
+
+            if events is not None:
+                events[event] = events.get(event, 0) + 1
+                events["pa_total"] = events.get("pa_total", 0) + 1
 
             if event == "strikeout" or event == "out":
                 outs += 1
@@ -176,6 +190,8 @@ class MLBGameSimulator:
         home_lineup_idx = 0
         away_lineup_idx = 0
         innings_played = 0
+        home_events = _new_event_counts()
+        away_events = _new_event_counts()
 
         # Regulation: 9 innings
         for inning in range(1, 10):
@@ -191,7 +207,7 @@ class MLBGameSimulator:
 
             # Top half — away bats
             runs, away_lineup_idx = self._simulate_half_inning_lineup(
-                away_weights, away_lineup_idx, rng,
+                away_weights, away_lineup_idx, rng, away_events,
             )
             away_score += runs
 
@@ -201,7 +217,7 @@ class MLBGameSimulator:
 
             # Bottom half — home bats
             runs, home_lineup_idx = self._simulate_half_inning_lineup(
-                home_weights, home_lineup_idx, rng,
+                home_weights, home_lineup_idx, rng, home_events,
             )
             home_score += runs
 
@@ -213,12 +229,12 @@ class MLBGameSimulator:
         extra = 0
         while home_score == away_score and extra < _MAX_EXTRA_INNINGS:
             runs, away_lineup_idx = self._simulate_half_inning_lineup(
-                away_bullpen_weights, away_lineup_idx, rng,
+                away_bullpen_weights, away_lineup_idx, rng, away_events,
             )
             away_score += runs
 
             runs, home_lineup_idx = self._simulate_half_inning_lineup(
-                home_bullpen_weights, home_lineup_idx, rng,
+                home_bullpen_weights, home_lineup_idx, rng, home_events,
             )
             home_score += runs
 
@@ -232,6 +248,8 @@ class MLBGameSimulator:
             "away_score": away_score,
             "winner": winner,
             "innings_played": innings_played,
+            "home_events": home_events,
+            "away_events": away_events,
         }
 
     def _simulate_half_inning_lineup(
@@ -239,6 +257,7 @@ class MLBGameSimulator:
         weights_list: list[list[float]],
         lineup_idx: int,
         rng: random.Random,
+        events: dict[str, int] | None = None,
     ) -> tuple[int, int]:
         """Simulate one half-inning with per-batter weights.
 
@@ -247,6 +266,7 @@ class MLBGameSimulator:
                 lineup slot.
             lineup_idx: Current position in the batting order (0-8).
             rng: Random instance.
+            events: Optional event counter dict to accumulate into.
 
         Returns:
             Tuple of ``(runs_scored, new_lineup_idx)``.
@@ -258,6 +278,10 @@ class MLBGameSimulator:
         while outs < 3:
             weights = weights_list[lineup_idx % 9]
             event = rng.choices(EVENTS, weights=weights, k=1)[0]
+
+            if events is not None:
+                events[event] = events.get(event, 0) + 1
+                events["pa_total"] = events.get("pa_total", 0) + 1
 
             if event == "strikeout" or event == "out":
                 outs += 1
@@ -280,6 +304,16 @@ class MLBGameSimulator:
             lineup_idx = (lineup_idx + 1) % 9
 
         return runs, lineup_idx
+
+
+# ---------------------------------------------------------------------------
+# Event counter helper
+# ---------------------------------------------------------------------------
+
+
+def _new_event_counts() -> dict[str, int]:
+    """Return a fresh event counter dict with all PA event keys zeroed."""
+    return {e: 0 for e in EVENTS} | {"pa_total": 0}
 
 
 # ---------------------------------------------------------------------------

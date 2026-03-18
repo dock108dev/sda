@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   startBatchSimulation,
   listBatchSimJobs,
+  getBatchSimJob,
   listPredictionOutcomes,
   deleteBatchSimJob,
   type BatchSimJob,
@@ -31,6 +32,28 @@ export default function BatchSimsPage() {
   const [accuracyData, setAccuracyData] = useState<Record<number, { outcomes: PredictionOutcome[]; loading: boolean }>>({});
   const [selectedJobs, setSelectedJobs] = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  async function expandJob(jobId: number) {
+    if (expandedJob === jobId) {
+      setExpandedJob(null);
+      return;
+    }
+    setExpandedJob(jobId);
+    // Fetch detail endpoint for batch_summary/warnings (only computed there)
+    const job = jobs.find((j) => j.id === jobId);
+    if (job && job.status === "completed" && !job.batch_summary) {
+      try {
+        const detail = await getBatchSimJob(jobId);
+        setJobs((prev) => prev.map((j) =>
+          j.id === jobId
+            ? { ...j, batch_summary: detail.batch_summary, warnings: detail.warnings }
+            : j
+        ));
+      } catch {
+        // Detail fetch failed — expand still works, just no diagnostics
+      }
+    }
+  }
 
   async function loadAccuracy(jobId: number) {
     setAccuracyData((prev) => ({ ...prev, [jobId]: { outcomes: [], loading: true } }));
@@ -231,7 +254,7 @@ export default function BatchSimsPage() {
                     {job.results && job.results.length > 0 && (
                       <button
                         className={styles.btn}
-                        onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}
+                        onClick={() => expandJob(job.id)}
                         style={{ fontSize: "0.8rem", padding: "2px 8px" }}
                       >
                         {expandedJob === job.id ? "Hide" : "Results"}
@@ -300,6 +323,97 @@ export default function BatchSimsPage() {
                       <div className={styles.statBox}>
                         <div className={styles.statValue} style={{ color: "#dc2626" }}>{errorCount}</div>
                         <div className={styles.statLabel}>Errors</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Sanity Warnings */}
+              {job.warnings && job.warnings.length > 0 && (
+                <div style={{ marginBottom: "1rem" }}>
+                  {job.warnings.map((w, i) => (
+                    <div key={i} style={{
+                      padding: "0.5rem 0.75rem",
+                      marginBottom: "0.25rem",
+                      background: "#fef3c7",
+                      border: "1px solid #f59e0b",
+                      borderRadius: "4px",
+                      color: "#92400e",
+                      fontSize: "0.85rem",
+                    }}>
+                      {w}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Simulation Sanity Panel */}
+              {(() => {
+                // Use first game's event_summary or batch_summary
+                const bs = job.batch_summary;
+                const firstEvent = job.results?.find((g) => g.event_summary)?.event_summary;
+                if (!bs && !firstEvent) return null;
+
+                return (
+                  <div style={{
+                    marginBottom: "1rem",
+                    padding: "0.75rem",
+                    background: "#f8fafc",
+                    borderRadius: "6px",
+                    border: "1px solid #e2e8f0",
+                  }}>
+                    <h5 style={{ marginBottom: "0.5rem", fontSize: "0.9rem" }}>Simulation Sanity</h5>
+                    <div className={styles.statsRow}>
+                      {bs && (
+                        <>
+                          <div className={styles.statBox}>
+                            <div className={styles.statValue}>{bs.avg_runs_per_team}</div>
+                            <div className={styles.statLabel}>Avg Runs/Team</div>
+                          </div>
+                          <div className={styles.statBox}>
+                            <div className={styles.statValue}>{bs.avg_total_per_game}</div>
+                            <div className={styles.statLabel}>Avg Total/Game</div>
+                          </div>
+                          {bs.avg_pa_per_team != null && (
+                            <div className={styles.statBox}>
+                              <div className={styles.statValue}>{bs.avg_pa_per_team}</div>
+                              <div className={styles.statLabel}>Avg PA/Team</div>
+                            </div>
+                          )}
+                          <div className={styles.statBox}>
+                            <div className={styles.statValue}>{(bs.home_win_rate * 100).toFixed(1)}%</div>
+                            <div className={styles.statLabel}>Home Win Rate</div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {firstEvent && (
+                      <div style={{ marginTop: "0.5rem" }}>
+                        <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", fontSize: "0.8rem" }}>
+                          <div>
+                            <strong>PA Mix (Home):</strong>{" "}
+                            K {(firstEvent.home.pa_rates.k_pct * 100).toFixed(1)}%{" / "}
+                            BB {(firstEvent.home.pa_rates.bb_pct * 100).toFixed(1)}%{" / "}
+                            HR {(firstEvent.home.pa_rates.hr_pct * 100).toFixed(1)}%{" / "}
+                            Hit {((firstEvent.home.pa_rates.single_pct + firstEvent.home.pa_rates.double_pct + firstEvent.home.pa_rates.triple_pct + firstEvent.home.pa_rates.hr_pct) * 100).toFixed(1)}%
+                          </div>
+                          <div>
+                            <strong>PA Mix (Away):</strong>{" "}
+                            K {(firstEvent.away.pa_rates.k_pct * 100).toFixed(1)}%{" / "}
+                            BB {(firstEvent.away.pa_rates.bb_pct * 100).toFixed(1)}%{" / "}
+                            HR {(firstEvent.away.pa_rates.hr_pct * 100).toFixed(1)}%{" / "}
+                            Hit {((firstEvent.away.pa_rates.single_pct + firstEvent.away.pa_rates.double_pct + firstEvent.away.pa_rates.triple_pct + firstEvent.away.pa_rates.hr_pct) * 100).toFixed(1)}%
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", fontSize: "0.8rem", marginTop: "0.25rem" }}>
+                          <div>
+                            <strong>Game Shape:</strong>{" "}
+                            Extra inn. {(firstEvent.game.extra_innings_pct * 100).toFixed(1)}%{" / "}
+                            Shutout {(firstEvent.game.shutout_pct * 100).toFixed(1)}%{" / "}
+                            1-run {(firstEvent.game.one_run_game_pct * 100).toFixed(1)}%
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
