@@ -12,7 +12,7 @@
     "@dock108/js-core": "file:../packages/js-core",
     "@dock108/ui": "file:../packages/ui",
     "@dock108/ui-kit": "file:../packages/ui-kit",
-    "next": "16.1.6",
+    "next": "16.1.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.0"
