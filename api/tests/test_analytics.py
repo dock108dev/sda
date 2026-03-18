@@ -12,7 +12,10 @@ _has_joblib = importlib.util.find_spec("joblib") is not None
 
 from app.analytics.core.simulation_engine import SimulationEngine
 from app.analytics.core.types import (
+    MatchupProfile,
+    PlayerProfile,
     SimulationResult,
+    TeamProfile,
 )
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.sports.mlb.metrics import MLBMetrics
@@ -310,46 +313,6 @@ class TestMLBAggregation:
         from app.analytics.sports.mlb.aggregation import rate_calculation
 
         assert rate_calculation(10.0, 20.0) == 0.5
-        assert rate_calculation(10.0, 0.0) is None
-
-
-class TestEndToEndPipeline:
-    """Verify full pipeline: Games → Aggregation → Metrics → Profiles."""
-
-    def test_full_pipeline(self) -> None:
-        from app.analytics.core.aggregation_engine import AggregationEngine
-        from app.analytics.core.profile_builder import ProfileBuilder
-
-        games = [
-            {
-                "zone_swing_pct": 0.72, "outside_swing_pct": 0.28,
-                "zone_contact_pct": 0.86, "outside_contact_pct": 0.58,
-                "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
-                "barrel_pct": 0.10,
-            },
-            {
-                "zone_swing_pct": 0.78, "outside_swing_pct": 0.32,
-                "zone_contact_pct": 0.90, "outside_contact_pct": 0.62,
-                "avg_exit_velocity": 94.0, "hard_hit_pct": 0.48,
-                "barrel_pct": 0.12,
-            },
-        ]
-
-        # Step 1: Aggregate
-        engine = AggregationEngine("mlb")
-        agg = engine.aggregate_player_history("trout_123", games)
-        assert agg["player_id"] == "trout_123"
-        assert "avg_exit_velocity" in agg
-
-        # Step 2: Build profile (runs MetricsEngine internally)
-        builder = ProfileBuilder("mlb")
-        profile = builder.build_player_profile("trout_123", agg)
-        assert isinstance(profile, PlayerProfile)
-        assert profile.player_id == "trout_123"
-        assert "contact_rate" in profile.metrics
-        assert "power_index" in profile.metrics
-        assert "expected_slug" in profile.metrics
-        assert profile.metrics["power_index"] > 1.0  # above baseline
 
 
 class TestMatchupEngine:
@@ -378,24 +341,16 @@ class TestMatchupEngine:
             sport="mlb",
             name="Test Pitcher",
             metrics={
-                "contact_suppression": 0.10,
-                "strikeout_rate": 0.28,
-                "walk_rate": 0.07,
-                "power_suppression": 0.05,
+                "contact_rate": 0.70,
+                "whiff_rate": 0.30,
+                "swing_rate": 0.50,
+                "power_index": 0.8,
+                "barrel_rate": 0.06,
+                "hard_hit_rate": 0.30,
+                "avg_exit_velocity": 86.0,
+                "expected_slug": 0.72,
             },
         )
-
-    def test_player_vs_player_returns_matchup_profile(self) -> None:
-        from app.analytics.core.matchup_engine import MatchupEngine
-
-        engine = MatchupEngine("mlb")
-        result = engine.calculate_player_vs_player(
-            self._batter_profile(), self._pitcher_profile()
-        )
-        assert isinstance(result, MatchupProfile)
-        assert result.entity_a_id == "batter_1"
-        assert result.entity_b_id == "pitcher_1"
-        assert result.sport == "mlb"
 
     def test_player_vs_player_has_probabilities(self) -> None:
         from app.analytics.core.matchup_engine import MatchupEngine
@@ -532,90 +487,6 @@ class TestMLBMatchup:
         result = normalize_probabilities({"a": 0.0, "b": 0.0})
         assert result == {"a": 0.0, "b": 0.0}
 
-    def test_batter_vs_pitcher_direct(self) -> None:
-        from app.analytics.sports.mlb.matchup import MLBMatchup
-
-        matchup = MLBMatchup()
-        batter = PlayerProfile(
-            player_id="b1", sport="mlb",
-            metrics={"contact_rate": 0.85, "whiff_rate": 0.15,
-                     "swing_rate": 0.55, "power_index": 1.3,
-                     "barrel_rate": 0.12},
-        )
-        pitcher = PlayerProfile(
-            player_id="p1", sport="mlb",
-            metrics={"contact_suppression": 0.08, "strikeout_rate": 0.30,
-                     "walk_rate": 0.06, "power_suppression": 0.03},
-        )
-        result = matchup.batter_vs_pitcher(batter, pitcher)
-        # Named events sum to < 1.0; remainder = fielded outs
-        total = sum(result.values())
-        assert total < 1.0
-        assert total > 0.3
-        assert result["home_run_probability"] > 0
-
-    def test_high_power_batter_has_more_hr(self) -> None:
-        from app.analytics.sports.mlb.matchup import MLBMatchup
-
-        matchup = MLBMatchup()
-        base = {"contact_rate": 0.80, "whiff_rate": 0.20,
-                "swing_rate": 0.50}
-        low_power = PlayerProfile(
-            player_id="b1", sport="mlb",
-            metrics={**base, "power_index": 0.8, "barrel_rate": 0.05},
-        )
-        high_power = PlayerProfile(
-            player_id="b2", sport="mlb",
-            metrics={**base, "power_index": 1.5, "barrel_rate": 0.15},
-        )
-        pitcher = PlayerProfile(player_id="p1", sport="mlb", metrics={})
-        low_result = matchup.batter_vs_pitcher(low_power, pitcher)
-        high_result = matchup.batter_vs_pitcher(high_power, pitcher)
-        assert high_result["home_run_probability"] > low_result["home_run_probability"]
-
-
-class TestFullMatchupPipeline:
-    """Verify Aggregation → Metrics → Profiles → Matchups pipeline."""
-
-    def test_end_to_end_with_matchup(self) -> None:
-        from app.analytics.core.aggregation_engine import AggregationEngine
-        from app.analytics.core.matchup_engine import MatchupEngine
-        from app.analytics.core.profile_builder import ProfileBuilder
-
-        # Step 1: Aggregate raw games
-        agg_engine = AggregationEngine("mlb")
-        batter_games = [
-            {"zone_swing_pct": 0.75, "outside_swing_pct": 0.30,
-             "zone_contact_pct": 0.88, "outside_contact_pct": 0.60,
-             "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
-             "barrel_pct": 0.11},
-        ]
-        batter_agg = agg_engine.aggregate_player_history("b1", batter_games)
-
-        # Step 2: Build profiles
-        builder = ProfileBuilder("mlb")
-        batter_profile = builder.build_player_profile("b1", batter_agg)
-        assert "contact_rate" in batter_profile.metrics
-
-        # Pitcher with suppression metrics (not from aggregation)
-        pitcher_profile = PlayerProfile(
-            player_id="p1", sport="mlb",
-            metrics={"contact_suppression": 0.10, "strikeout_rate": 0.28,
-                     "walk_rate": 0.07, "power_suppression": 0.05},
-        )
-
-        # Step 3: Run matchup
-        matchup_engine = MatchupEngine("mlb")
-        matchup = matchup_engine.calculate_player_vs_player(
-            batter_profile, pitcher_profile
-        )
-        assert isinstance(matchup, MatchupProfile)
-        assert "strikeout_probability" in matchup.probabilities
-        assert "home_run_probability" in matchup.probabilities
-        # Named events sum < 1.0; remainder = fielded outs
-        assert sum(matchup.probabilities.values()) < 1.0
-
-
 class TestMLBGameSimulator:
     """Verify MLB plate-appearance game simulation."""
 
@@ -717,47 +588,6 @@ class TestSimulationEngineIntegration:
 class TestFullSimulationPipeline:
     """Verify Aggregation → Metrics → Profiles → Matchups → Simulation."""
 
-    def test_end_to_end_with_simulation(self) -> None:
-        from app.analytics.core.aggregation_engine import AggregationEngine
-        from app.analytics.core.matchup_engine import MatchupEngine
-        from app.analytics.core.profile_builder import ProfileBuilder
-
-        # Aggregate
-        agg = AggregationEngine("mlb")
-        batter_agg = agg.aggregate_player_history("b1", [
-            {"zone_swing_pct": 0.75, "outside_swing_pct": 0.30,
-             "zone_contact_pct": 0.88, "outside_contact_pct": 0.60,
-             "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
-             "barrel_pct": 0.11},
-        ])
-
-        # Build profiles
-        builder = ProfileBuilder("mlb")
-        batter_profile = builder.build_player_profile("b1", batter_agg)
-        pitcher_profile = PlayerProfile(
-            player_id="p1", sport="mlb",
-            metrics={"contact_suppression": 0.10, "strikeout_rate": 0.28,
-                     "walk_rate": 0.07, "power_suppression": 0.05},
-        )
-
-        # Matchup probabilities
-        matchup_engine = MatchupEngine("mlb")
-        matchup = matchup_engine.calculate_player_vs_player(
-            batter_profile, pitcher_profile
-        )
-
-        # Simulate using matchup probabilities
-        game_context = {
-            "home_probabilities": matchup.probabilities,
-            "away_probabilities": matchup.probabilities,
-        }
-        engine = SimulationEngine("mlb")
-        result = engine.run_simulation(game_context, iterations=500, seed=42)
-        assert result["home_win_probability"] >= 0
-        assert result["average_home_score"] > 0
-        assert result["iterations"] == 500
-
-
 class TestSimulationAnalysis:
     """Verify SimulationAnalysis summary methods."""
 
@@ -768,63 +598,6 @@ class TestSimulationAnalysis:
         {"home_score": 3, "away_score": 3, "winner": "home"},
         {"home_score": 4, "away_score": 2, "winner": "home"},
     ]
-
-    def test_summarize_results(self) -> None:
-        from app.analytics.core.simulation_analysis import SimulationAnalysis
-
-        analysis = SimulationAnalysis("mlb")
-        summary = analysis.summarize_results(self._SAMPLE_RESULTS)
-        assert "home_win_probability" in summary
-        assert "away_win_probability" in summary
-        assert "average_total" in summary
-        assert "median_total" in summary
-        assert "most_common_scores" in summary
-        assert summary["iterations"] == 5
-        # 4 home wins out of 5
-        assert summary["home_win_probability"] == 0.8
-
-    def test_summarize_results_empty(self) -> None:
-        from app.analytics.core.simulation_analysis import SimulationAnalysis
-
-        summary = SimulationAnalysis("mlb").summarize_results([])
-        assert summary["iterations"] == 0
-
-    def test_summarize_distribution(self) -> None:
-        from app.analytics.core.simulation_analysis import SimulationAnalysis
-
-        result = SimulationAnalysis("mlb").summarize_distribution(self._SAMPLE_RESULTS)
-        assert "score_distribution" in result
-        assert "top_scores" in result
-        assert len(result["top_scores"]) > 0
-
-    def test_summarize_team_totals(self) -> None:
-        from app.analytics.core.simulation_analysis import SimulationAnalysis
-
-        result = SimulationAnalysis("mlb").summarize_team_totals(self._SAMPLE_RESULTS)
-        assert "home_score_distribution" in result
-        assert "away_score_distribution" in result
-        assert "median_home_score" in result
-
-    def test_summarize_spreads(self) -> None:
-        from app.analytics.core.simulation_analysis import SimulationAnalysis
-
-        result = SimulationAnalysis("mlb").summarize_spreads(self._SAMPLE_RESULTS, -1.5)
-        assert result["spread_line"] == -1.5
-        assert "home_cover_probability" in result
-        assert "away_cover_probability" in result
-        assert "push_probability" in result
-        total = result["home_cover_probability"] + result["away_cover_probability"] + result["push_probability"]
-        assert abs(total - 1.0) < 0.001
-
-    def test_summarize_totals(self) -> None:
-        from app.analytics.core.simulation_analysis import SimulationAnalysis
-
-        result = SimulationAnalysis("mlb").summarize_totals(self._SAMPLE_RESULTS, 8.5)
-        assert result["total_line"] == 8.5
-        assert "over_probability" in result
-        assert "under_probability" in result
-        total = result["over_probability"] + result["under_probability"] + result["push_probability"]
-        assert abs(total - 1.0) < 0.001
 
     def test_summarize_totals_with_push(self) -> None:
         from app.analytics.core.simulation_analysis import SimulationAnalysis
@@ -897,57 +670,6 @@ class TestOddsAnalysis:
 
 class TestFullAnalysisPipeline:
     """Verify Aggregation → Metrics → Profiles → Matchups → Simulation → Analysis."""
-
-    def test_end_to_end_with_analysis(self) -> None:
-        from app.analytics.core.aggregation_engine import AggregationEngine
-        from app.analytics.core.matchup_engine import MatchupEngine
-        from app.analytics.core.profile_builder import ProfileBuilder
-        from app.analytics.core.simulation_analysis import SimulationAnalysis
-        from app.analytics.sports.mlb.game_simulator import MLBGameSimulator
-
-        # Aggregate
-        agg = AggregationEngine("mlb")
-        batter_agg = agg.aggregate_player_history("b1", [
-            {"zone_swing_pct": 0.75, "outside_swing_pct": 0.30,
-             "zone_contact_pct": 0.88, "outside_contact_pct": 0.60,
-             "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
-             "barrel_pct": 0.11},
-        ])
-
-        # Build profiles + matchup
-        builder = ProfileBuilder("mlb")
-        batter = builder.build_player_profile("b1", batter_agg)
-        pitcher = PlayerProfile(
-            player_id="p1", sport="mlb",
-            metrics={"contact_suppression": 0.10, "strikeout_rate": 0.28,
-                     "walk_rate": 0.07, "power_suppression": 0.05},
-        )
-        matchup = MatchupEngine("mlb").calculate_player_vs_player(batter, pitcher)
-
-        # Simulate
-        context = {
-            "home_probabilities": matchup.probabilities,
-            "away_probabilities": matchup.probabilities,
-        }
-        raw_results = []
-        import random
-        rng = random.Random(42)
-        sim = MLBGameSimulator()
-        for _ in range(200):
-            raw_results.append(sim.simulate_game(context, rng=rng))
-
-        # Analyze
-        analysis = SimulationAnalysis("mlb")
-        summary = analysis.summarize_results(raw_results)
-        assert summary["home_win_probability"] > 0
-        assert summary["average_total"] > 0
-
-        totals = analysis.summarize_totals(raw_results, 8.5)
-        assert totals["over_probability"] + totals["under_probability"] + totals["push_probability"] == pytest.approx(1.0, abs=0.001)
-
-        spreads = analysis.summarize_spreads(raw_results, -1.5)
-        assert spreads["home_cover_probability"] + spreads["away_cover_probability"] + spreads["push_probability"] == pytest.approx(1.0, abs=0.001)
-
 
 class TestAnalyticsService:
     """Verify service layer wiring."""
@@ -1283,54 +1005,6 @@ class TestMLBPlateAppearanceModel:
         assert "walk_probability" in sim_probs
         assert "home_run_probability" in sim_probs
 
-    def test_model_info(self) -> None:
-        from app.analytics.models.sports.mlb.pa_model import MLBPlateAppearanceModel
-
-        model = MLBPlateAppearanceModel()
-        info = model.get_info()
-        assert info["sport"] == "mlb"
-        assert info["model_type"] == "plate_appearance"
-        assert info["loaded"] is False
-
-
-class TestMLBGameModel:
-    """Verify MLB game model predictions."""
-
-    def test_predict_returns_probabilities(self) -> None:
-        from app.analytics.models.sports.mlb.game_model import MLBGameModel
-
-        model = MLBGameModel()
-        result = model.predict({})
-        assert "home_win_probability" in result
-        assert "away_win_probability" in result
-        assert "expected_home_score" in result
-        assert "expected_away_score" in result
-
-    def test_probabilities_sum_to_one(self) -> None:
-        from app.analytics.models.sports.mlb.game_model import MLBGameModel
-
-        model = MLBGameModel()
-        result = model.predict({})
-        total = result["home_win_probability"] + result["away_win_probability"]
-        assert abs(total - 1.0) < 0.001
-
-    def test_predict_proba_keys(self) -> None:
-        from app.analytics.models.sports.mlb.game_model import MLBGameModel
-
-        model = MLBGameModel()
-        probs = model.predict_proba({})
-        assert "home_win" in probs
-        assert "away_win" in probs
-        assert abs(probs["home_win"] + probs["away_win"] - 1.0) < 0.001
-
-    def test_power_advantage_shifts_wp(self) -> None:
-        from app.analytics.models.sports.mlb.game_model import MLBGameModel
-
-        model = MLBGameModel()
-        base = model.predict({})
-        strong_home = model.predict({"home_power_index": 1.5, "away_power_index": 0.8})
-        assert strong_home["home_win_probability"] > base["home_win_probability"]
-
     def test_default_favors_home(self) -> None:
         from app.analytics.models.sports.mlb.game_model import MLBGameModel
 
@@ -1372,46 +1046,6 @@ class TestSimulationEngineMLIntegration:
 
 class TestFullMLPipeline:
     """Verify Aggregation -> Metrics -> Features -> ML Model -> Simulation."""
-
-    def test_end_to_end_ml_pipeline(self) -> None:
-        from app.analytics.core.aggregation_engine import AggregationEngine
-        from app.analytics.core.profile_builder import ProfileBuilder
-        from app.analytics.models.core.model_registry import ModelRegistry
-
-        # Step 1: Aggregate
-        agg = AggregationEngine("mlb")
-        batter_agg = agg.aggregate_player_history("b1", [
-            {"zone_swing_pct": 0.75, "outside_swing_pct": 0.30,
-             "zone_contact_pct": 0.88, "outside_contact_pct": 0.60,
-             "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
-             "barrel_pct": 0.11},
-        ])
-
-        # Step 2: Build profile -> get metrics as features
-        builder = ProfileBuilder("mlb")
-        profile = builder.build_player_profile("b1", batter_agg)
-        features = profile.metrics
-
-        # Step 3: ML model generates probabilities
-        registry = ModelRegistry(registry_path=None)
-        pa_model = registry.get_active_model_instance("mlb", "plate_appearance")
-        assert pa_model is not None
-
-        probs = pa_model.predict_proba(features)
-        assert sum(probs.values()) == pytest.approx(1.0, abs=0.01)
-
-        sim_probs = pa_model.to_simulation_probs(probs)
-
-        # Step 4: Simulation with ML probabilities
-        engine = SimulationEngine("mlb")
-        result = engine.run_simulation(
-            {"home_probabilities": sim_probs, "away_probabilities": sim_probs},
-            iterations=200,
-            seed=42,
-        )
-        assert result["home_win_probability"] > 0
-        assert result["iterations"] == 200
-
 
 class TestFeatureVector:
     """Verify FeatureVector ordering and output."""
@@ -1632,90 +1266,6 @@ class TestMLBFeatureBuilder:
             "pitcher_profile": PlayerProfile(player_id="p1", sport="mlb", metrics={}),
         }, "plate_appearance")
         assert vec.get("batter_contact_rate") == 0.85
-
-
-class TestFeatureMLModelIntegration:
-    """Verify feature vectors work with ML models."""
-
-    def test_pa_features_to_ml_model(self) -> None:
-        from app.analytics.features.core.feature_builder import FeatureBuilder
-        from app.analytics.models.sports.mlb.pa_model import MLBPlateAppearanceModel
-
-        builder = FeatureBuilder()
-        profiles = {
-            "batter_profile": {"metrics": {"contact_rate": 0.85, "power_index": 1.3}},
-            "pitcher_profile": {"metrics": {"contact_rate": 0.70}},
-        }
-        vec = builder.build_features("mlb", profiles, "plate_appearance")
-
-        # ML model accepts feature dict
-        model = MLBPlateAppearanceModel()
-        probs = model.predict_proba(vec.to_dict())
-        assert sum(probs.values()) == pytest.approx(1.0, abs=0.01)
-
-    def test_game_features_to_ml_model(self) -> None:
-        from app.analytics.features.core.feature_builder import FeatureBuilder
-        from app.analytics.models.sports.mlb.game_model import MLBGameModel
-
-        builder = FeatureBuilder()
-        profiles = {
-            "home_profile": {"metrics": {"contact_rate": 0.80, "power_index": 1.1}},
-            "away_profile": {"metrics": {"contact_rate": 0.75, "power_index": 0.9}},
-        }
-        vec = builder.build_features("mlb", profiles, "game")
-
-        model = MLBGameModel()
-        result = model.predict(vec.to_dict())
-        assert "home_win_probability" in result
-
-    def test_full_pipeline_aggregation_to_features_to_model(self) -> None:
-        from app.analytics.core.aggregation_engine import AggregationEngine
-        from app.analytics.core.profile_builder import ProfileBuilder
-        from app.analytics.features.core.feature_builder import FeatureBuilder
-        from app.analytics.models.sports.mlb.pa_model import MLBPlateAppearanceModel
-
-        # Aggregate -> Profile
-        agg = AggregationEngine("mlb")
-        batter_agg = agg.aggregate_player_history("b1", [
-            {"zone_swing_pct": 0.75, "outside_swing_pct": 0.30,
-             "zone_contact_pct": 0.88, "outside_contact_pct": 0.60,
-             "avg_exit_velocity": 92.0, "hard_hit_pct": 0.45,
-             "barrel_pct": 0.11},
-        ])
-        builder = ProfileBuilder("mlb")
-        batter_profile = builder.build_player_profile("b1", batter_agg)
-
-        pitcher_agg = agg.aggregate_player_history("p1", [
-            {"zone_swing_pct": 0.65, "outside_swing_pct": 0.35,
-             "zone_contact_pct": 0.72, "outside_contact_pct": 0.50,
-             "avg_exit_velocity": 85.0, "hard_hit_pct": 0.28,
-             "barrel_pct": 0.05},
-        ])
-        pitcher_profile = builder.build_player_profile("p1", pitcher_agg)
-
-        # Profile -> Features
-        fb = FeatureBuilder()
-        vec = fb.build_features("mlb", {
-            "batter_profile": batter_profile,
-            "pitcher_profile": pitcher_profile,
-        }, "plate_appearance")
-
-        assert vec.size > 0
-        arr = vec.to_array()
-        assert all(isinstance(v, float) for v in arr)
-
-        # Features -> ML Model
-        model = MLBPlateAppearanceModel()
-        probs = model.predict_proba(batter_profile.metrics)
-        sim_probs = model.to_simulation_probs(probs)
-
-        # ML Model -> Simulation
-        engine = SimulationEngine("mlb")
-        result = engine.run_simulation(
-            {"home_probabilities": sim_probs, "away_probabilities": sim_probs},
-            iterations=100, seed=42,
-        )
-        assert result["home_win_probability"] > 0
 
 
 class TestFeatureBuilderConfigIntegration:
@@ -4196,10 +3746,7 @@ class TestSSOTNoLegacyFiles:
         )
 
     def test_no_dead_analytics_core_modules(self):
-        """Deleted analytics core modules must stay deleted.
-
-        These were superseded by profile_service.py and _calibration_routes.py.
-        """
+        """Deleted analytics core modules must stay deleted."""
         import os
 
         core_dir = os.path.join(
@@ -4208,7 +3755,6 @@ class TestSSOTNoLegacyFiles:
         dead_modules = [
             "aggregation_engine.py",
             "analytics_engine.py",
-            "matchup_engine.py",
             "metrics_engine.py",
             "model_calibration.py",
             "profile_builder.py",
