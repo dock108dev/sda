@@ -274,15 +274,19 @@ async def _execute_batch_sim(
         game_context: dict = {
             "home_team": home_name,
             "away_team": away_name,
-            "probability_mode": probability_mode,
         }
 
-        # If we have profiles, attach them as probability inputs
+        # Compute per-team PA probabilities from rolling profiles.
+        # Each team's batting profile → PA outcome distribution.
+        # Set directly as simulator input — the ML resolver is not used
+        # for batch sims because the PA model expects batter/pitcher
+        # matchup features, not team-level aggregate profiles.
         if home_profile and away_profile:
-            game_context["profiles"] = {
-                "home_profile": {"metrics": home_profile},
-                "away_profile": {"metrics": away_profile},
-            }
+            from app.analytics.services.profile_service import profile_to_pa_probabilities
+            home_pa = profile_to_pa_probabilities(home_profile)
+            away_pa = profile_to_pa_probabilities(away_profile)
+            game_context["home_probabilities"] = home_pa
+            game_context["away_probabilities"] = away_pa
 
         try:
             sim = engine.run_simulation(
@@ -312,7 +316,7 @@ async def _execute_batch_sim(
             "away_win_probability": sim.get("away_win_probability"),
             "average_home_score": sim.get("average_home_score"),
             "average_away_score": sim.get("average_away_score"),
-            "probability_source": sim.get("probability_source", probability_mode),
+            "probability_source": sim.get("probability_source", "team_profile"),
             "has_profiles": bool(home_profile and away_profile),
         })
 
