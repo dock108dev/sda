@@ -28,4 +28,13 @@ celery_app.conf.update(
     task_time_limit=3600,  # 1 hour max per task
     task_soft_time_limit=3300,  # 55 minutes soft limit
     result_expires=86400,  # Keep results for 24 hours
+    # Route long-running training tasks to a separate queue so they
+    # don't starve batch sims, flow generation, and other quick tasks.
+    task_routes={
+        "train_analytics_model": {"queue": "training"},
+    },
+    task_default_queue="celery",
+    # Fair scheduling: workers grab one task at a time so quick tasks
+    # (batch sims, flow gen) aren't blocked behind prefetched training jobs.
+    worker_prefetch_multiplier=1,
 )

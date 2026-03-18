@@ -105,7 +105,7 @@ services:
     container_name: sports-api-worker
     profiles: ["dev", "prod"]
     logging: *default-logging
-    command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--autoscale=${CELERY_API_MAX_CONCURRENCY:-4},1"]
+    command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=celery,training", "--autoscale=${CELERY_API_MAX_CONCURRENCY:-4},1", "-O", "fair"]
     volumes:
       - model-artifacts:/app/models
     environment:
