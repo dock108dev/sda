@@ -29,9 +29,6 @@ from app.analytics.models.sports.mlb.pitch_model import (
     PITCH_OUTCOMES,
     MLBPitchOutcomeModel,
 )
-from app.analytics.models.sports.mlb.run_expectancy_model import (
-    MLBRunExpectancyModel,
-)
 
 # Import base runner helpers from the existing game simulator.
 from app.analytics.sports.mlb.game_simulator import (
@@ -53,11 +50,9 @@ class PitchSimulator:
         self,
         pitch_model: MLBPitchOutcomeModel | None = None,
         batted_ball_model: MLBBattedBallModel | None = None,
-        run_expectancy_model: MLBRunExpectancyModel | None = None,
     ) -> None:
         self._pitch = pitch_model or MLBPitchOutcomeModel()
         self._batted_ball = batted_ball_model or MLBBattedBallModel()
-        self._re = run_expectancy_model or MLBRunExpectancyModel()
 
     def simulate_plate_appearance(
         self,
@@ -139,12 +134,8 @@ class PitchLevelGameSimulator:
         self,
         pitch_model: MLBPitchOutcomeModel | None = None,
         batted_ball_model: MLBBattedBallModel | None = None,
-        run_expectancy_model: MLBRunExpectancyModel | None = None,
     ) -> None:
-        self._pa_sim = PitchSimulator(
-            pitch_model, batted_ball_model, run_expectancy_model,
-        )
-        self._re = run_expectancy_model or MLBRunExpectancyModel()
+        self._pa_sim = PitchSimulator(pitch_model, batted_ball_model)
 
     def simulate_game(
         self,
@@ -230,15 +221,6 @@ class PitchLevelGameSimulator:
             "away_events": away_events,
             "innings_played": innings_played,
         }
-
-    def _simulate_half_inning(
-        self,
-        features: dict[str, Any],
-        rng: random.Random,
-    ) -> tuple[int, int]:
-        """Simulate one half-inning. Returns (runs, pitches)."""
-        runs, pitches, _ = self._simulate_half_inning_with_events(features, rng)
-        return runs, pitches
 
     def _simulate_half_inning_with_events(
         self,

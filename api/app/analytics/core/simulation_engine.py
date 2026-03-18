@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import importlib
 import logging
-import random
 from typing import Any
 
 from .simulation_runner import SimulationRunner
@@ -186,20 +185,16 @@ class SimulationEngine:
         result = runner.run_simulations(
             sim, context,
             iterations=iterations, seed=seed,
+            keep_results=True,
         )
         result["probability_source"] = "pitch_level"
 
-        # Add average pitches per game from raw results if available
-        if "raw_results" not in result:
-            # Re-run a quick sample to get pitch count
-            rng = random.Random(seed)
-            pitch_total = 0
-            sample_n = min(iterations, 100)
-            for _ in range(sample_n):
-                r = sim.simulate_game(context, rng=rng)
-                pitch_total += r.get("total_pitches", 0)
+        # Compute average pitches per game from raw results
+        raw = result.pop("raw_results", [])
+        if raw:
+            pitch_total = sum(r.get("total_pitches", 0) for r in raw)
             result["average_pitches_per_game"] = round(
-                pitch_total / max(sample_n, 1), 1,
+                pitch_total / len(raw), 1,
             )
 
         return result

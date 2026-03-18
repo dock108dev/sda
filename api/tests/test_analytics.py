@@ -4086,6 +4086,73 @@ class TestSSOTMLBConstants:
         assert "from app.analytics.sports.mlb.constants import FEATURE_BASELINES" in source
 
 
+class TestSSOTPitchSimulator:
+    """Assert pitch simulator uses SSOT patterns with no dead code."""
+
+    def test_no_run_expectancy_model_import(self):
+        """MLBRunExpectancyModel must not be imported — it was never used."""
+        import inspect
+
+        from app.analytics.simulation.mlb import pitch_simulator
+
+        source = inspect.getsource(pitch_simulator)
+        assert "MLBRunExpectancyModel" not in source, (
+            "pitch_simulator still imports MLBRunExpectancyModel — "
+            "it was never called and is dead code"
+        )
+
+    def test_no_dead_simulate_half_inning_wrapper(self):
+        """The old _simulate_half_inning wrapper must not exist."""
+        from app.analytics.simulation.mlb.pitch_simulator import (
+            PitchLevelGameSimulator,
+        )
+
+        assert not hasattr(PitchLevelGameSimulator, "_simulate_half_inning"), (
+            "_simulate_half_inning is dead code — "
+            "_simulate_half_inning_with_events is the SSOT"
+        )
+
+    def test_simulation_engine_no_rerun_sampling(self):
+        """SimulationEngine must not re-run sims just for pitch counts."""
+        import inspect
+
+        from app.analytics.core import simulation_engine
+
+        source = inspect.getsource(simulation_engine)
+        assert "sample_n = min(iterations" not in source, (
+            "simulation_engine still has the wasteful re-run sampling loop — "
+            "pitch counts should come from keep_results"
+        )
+
+    def test_dataset_builders_use_profile_mixin(self):
+        """New dataset builders must inherit from ProfileMixin."""
+        from app.analytics.datasets._profile_mixin import ProfileMixin
+        from app.analytics.datasets.mlb_batted_ball_dataset import (
+            MLBBattedBallDatasetBuilder,
+        )
+        from app.analytics.datasets.mlb_pitch_dataset import (
+            MLBPitchDatasetBuilder,
+        )
+
+        assert issubclass(MLBPitchDatasetBuilder, ProfileMixin)
+        assert issubclass(MLBBattedBallDatasetBuilder, ProfileMixin)
+
+    def test_pitch_simulator_returns_event_diagnostics(self):
+        """PitchLevelGameSimulator must return home_events/away_events."""
+        import random
+
+        from app.analytics.simulation.mlb.pitch_simulator import (
+            PitchLevelGameSimulator,
+        )
+
+        sim = PitchLevelGameSimulator()
+        result = sim.simulate_game({}, rng=random.Random(42))
+        assert "home_events" in result
+        assert "away_events" in result
+        assert "innings_played" in result
+        assert "pa_total" in result["home_events"]
+
+
 # ---------------------------------------------------------------------------
 # Rolling Profile Aggregation Tests
 # ---------------------------------------------------------------------------

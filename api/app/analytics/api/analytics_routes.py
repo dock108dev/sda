@@ -264,7 +264,7 @@ async def post_simulate(
         response["home_pa_probabilities"] = game_context["home_probabilities"]
         response["away_pa_probabilities"] = game_context.get("away_probabilities")
 
-    # Surface simulation diagnostics (mode, fallback, model info)
+    # Surface simulation diagnostics (mode, model info)
     diagnostics = result.get("_diagnostics")
     if diagnostics is not None:
         response["simulation_info"] = diagnostics.to_dict()
