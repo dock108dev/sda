@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { AdminCard } from "@/components/admin";
 import {
   getAvailableFeatures,
+  listFeatureLoadouts,
   createExperimentSuite,
   type AvailableFeature,
+  type FeatureLoadout,
 } from "@/lib/api/analytics";
 import styles from "../analytics.module.css";
 import { ExperimentHistory } from "./ExperimentHistory";
@@ -72,25 +74,58 @@ function ExperimentBuilder({ onSubmitted }: { onSubmitted: () => void }) {
   const [featureGrid, setFeatureGrid] = useState<FeatureGridEntry[]>([]);
   const [featuresLoading, setFeaturesLoading] = useState(true);
 
+  // Saved loadouts for "Load from loadout" dropdown
+  const [loadouts, setLoadouts] = useState<FeatureLoadout[]>([]);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Load available features on mount
+  // Build a default grid from available features
+  function buildDefaultGrid(features: AvailableFeature[]): FeatureGridEntry[] {
+    return features.map((f) => ({
+      name: f.name,
+      description: f.description,
+      enabled: true,
+      vary_enabled: false,
+      weight_min: 1.0,
+      weight_max: 1.0,
+    }));
+  }
+
+  // Apply a saved loadout to the feature grid, preserving descriptions
+  // and adding vary_enabled / weight range from the loadout's weights
+  function applyLoadout(loadout: FeatureLoadout) {
+    const loadoutMap = new Map(loadout.features.map((f) => [f.name, f]));
+    setFeatureGrid((prev) =>
+      prev.map((entry) => {
+        const saved = loadoutMap.get(entry.name);
+        if (saved) {
+          return {
+            ...entry,
+            enabled: saved.enabled,
+            weight_min: saved.weight,
+            weight_max: saved.weight,
+            vary_enabled: false,
+          };
+        }
+        // Feature not in loadout — disable it
+        return { ...entry, enabled: false, vary_enabled: false, weight_min: 1.0, weight_max: 1.0 };
+      }),
+    );
+  }
+
+  // Load available features and saved loadouts on mount
   useEffect(() => {
-    getAvailableFeatures("mlb")
-      .then((res) => {
-        setAvailableFeatures(res.plate_appearance_features || res.all_features || []);
-        // Initialize grid: all features enabled, weight 1.0, no variation
-        const grid = (res.plate_appearance_features || res.all_features || []).map((f) => ({
-          name: f.name,
-          description: f.description,
-          enabled: true,
-          vary_enabled: false,
-          weight_min: 1.0,
-          weight_max: 1.0,
-        }));
-        setFeatureGrid(grid);
+    Promise.all([
+      getAvailableFeatures("mlb"),
+      listFeatureLoadouts("mlb", "plate_appearance").catch(() => ({ loadouts: [] })),
+    ])
+      .then(([featRes, loadoutRes]) => {
+        const feats = featRes.plate_appearance_features || featRes.all_features || [];
+        setAvailableFeatures(feats);
+        setFeatureGrid(buildDefaultGrid(feats));
+        setLoadouts(loadoutRes.loadouts || []);
       })
       .catch(() => {})
       .finally(() => setFeaturesLoading(false));
@@ -245,7 +280,26 @@ function ExperimentBuilder({ onSubmitted }: { onSubmitted: () => void }) {
           <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)" }}>
             Features ({enabledFeatures.length} enabled, {variableFeatures.length} variable)
           </label>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+            {loadouts.length > 0 && (
+              <select
+                style={{ fontSize: "0.75rem", padding: "2px 4px" }}
+                defaultValue=""
+                onChange={(e) => {
+                  const id = parseInt(e.target.value);
+                  const loadout = loadouts.find((l) => l.id === id);
+                  if (loadout) applyLoadout(loadout);
+                  e.target.value = "";
+                }}
+              >
+                <option value="" disabled>Load from loadout...</option>
+                {loadouts.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} ({l.enabled_count}/{l.total_count} features)
+                  </option>
+                ))}
+              </select>
+            )}
             <label style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Max combos:</label>
             <input
               type="number"
@@ -268,6 +322,13 @@ function ExperimentBuilder({ onSubmitted }: { onSubmitted: () => void }) {
               onClick={() => setFeatureGrid((prev) => prev.map((f) => ({ ...f, enabled: false })))}
             >
               All off
+            </button>
+            <button
+              className={styles.btn}
+              style={{ fontSize: "0.7rem", padding: "2px 6px" }}
+              onClick={() => setFeatureGrid(buildDefaultGrid(availableFeatures))}
+            >
+              Reset
             </button>
           </div>
         </div>
