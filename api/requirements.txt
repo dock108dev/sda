@@ -16,3 +16,4 @@ xgboost>=2.1.0
 PyJWT==2.12.1
 bcrypt>=4.1.0
 aiosmtplib==5.1.0
+python-multipart>=0.0.9
