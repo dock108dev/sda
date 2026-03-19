@@ -65,8 +65,14 @@ The response includes `event_summary` (per-team PA rates and game shape metrics)
 ## Models Page
 
 ### Feature Loadouts
-- `GET/POST/PUT/DELETE /api/analytics/feature-config[s]`
-- `GET /api/analytics/available-features?sport=mlb`
+- `GET /api/analytics/feature-configs` — list loadouts (filter by `sport`, `model_type`)
+- `GET /api/analytics/feature-config/{id}` — single loadout
+- `POST /api/analytics/feature-config` — create loadout
+- `PUT /api/analytics/feature-config/{id}` — update loadout
+- `DELETE /api/analytics/feature-config/{id}` — delete loadout
+- `POST /api/analytics/feature-config/{id}/clone` — clone loadout
+- `POST /api/analytics/feature-configs/bulk-delete` — bulk delete (`{"ids": [1, 2, 3]}`)
+- `GET /api/analytics/available-features?sport=mlb` — list features with descriptions
 
 ### Training
 - `POST /api/analytics/train` — start training job
@@ -86,10 +92,86 @@ The response includes `event_summary` (per-team PA rates and game shape metrics)
 
 ## Batch Sims
 
+### Endpoints
+
 - `POST /api/analytics/batch-simulate` — accepts optional `model_id` to test a specific trained model
-- `GET /api/analytics/batch-simulate-jobs` — results include `batch_summary` (avg runs, PA, home win rate, WP distribution) and `warnings` (sanity alerts)
-- `POST /api/analytics/record-outcomes`
-- `GET /api/analytics/prediction-outcomes`
+- `GET /api/analytics/batch-simulate-jobs` — list jobs
+- `GET /api/analytics/batch-simulate-job/{id}` — detail with `batch_summary` and `warnings`
+- `DELETE /api/analytics/batch-simulate-job/{id}` — delete job (revokes Celery task if running)
+- `POST /api/analytics/record-outcomes` — trigger outcome recording for finalized games
+- `GET /api/analytics/prediction-outcomes` — list prediction outcomes (filter by `sport`, `status`)
+
+### Response: Batch Sim Job
+
+```jsonc
+{
+  "id": 17,
+  "sport": "mlb",
+  "probability_mode": "ml",
+  "iterations": 5000,
+  "rolling_window": 60,
+  "date_start": "2025-08-01",
+  "date_end": "2025-08-01",
+  "status": "completed",           // pending | queued | running | completed | failed
+  "celery_task_id": "abc-123",
+  "game_count": 11,
+  "results": [                     // array of per-game results
+    {
+      "game_id": 125322,
+      "game_date": "2025-08-01",
+      "home_team": "Seattle Mariners",
+      "away_team": "Texas Rangers",
+      "home_win_probability": 0.509,
+      "away_win_probability": 0.491,
+      "average_home_score": 5.5,
+      "average_away_score": 5.6,
+      "probability_source": "ml",
+      "has_profiles": true
+    }
+  ],
+  "error_message": null,
+  "created_at": "2026-03-18T...",
+  "completed_at": "2026-03-18T...",
+  // Detail endpoint only (GET /batch-simulate-job/{id}):
+  "batch_summary": {
+    "avg_home_runs": 5.4,
+    "avg_away_runs": 5.5,
+    "avg_total_runs": 10.8,
+    "home_win_rate": 0.727,
+    "wp_distribution": {"50-55": 5, "55-60": 2, "60-70": 4, "70+": 0}
+  },
+  "warnings": [                    // sanity alerts (may be empty)
+    "Home avg runs (18.3) is unrealistically high (>15)"
+  ]
+}
+```
+
+### Response: Prediction Outcome
+
+```jsonc
+{
+  "id": 1,
+  "game_id": 125322,
+  "sport": "mlb",
+  "batch_sim_job_id": 17,
+  "home_team": "Seattle Mariners",
+  "away_team": "Texas Rangers",
+  "predicted_home_wp": 0.509,
+  "predicted_away_wp": 0.491,
+  "predicted_home_score": 5.5,
+  "predicted_away_score": 5.6,
+  "probability_mode": "ml",
+  "game_date": "2025-08-01",
+  // Populated after game finishes (null while pending):
+  "actual_home_score": 4,
+  "actual_away_score": 6,
+  "home_win_actual": false,
+  "correct_winner": false,
+  "brier_score": 0.245,
+  "outcome_recorded_at": "2026-03-18T...",
+  "created_at": "2026-03-18T..."
+}
+```
 
 ### Model Testing Workflow
 
@@ -122,4 +204,6 @@ Parameter sweep training — combinatorial grid of algorithms, rolling windows, 
 
 ## Types
 
-See `web/src/lib/api/analyticsTypes.ts` for the complete type catalog.
+Types for this repo's admin UI live in `web/src/lib/api/analyticsTypes.ts`.
+
+Downstream consuming apps should define their own types based on the response shapes documented above.
