@@ -196,6 +196,16 @@ See [Timeline Validation](gameflow/timeline-validation.md) for validation rules.
 - `analytics_experiment_variants` - Individual variants within an experiment suite
 - `analytics_replay_jobs` - Historical replay jobs for strategy comparison
 
+### Golf Tables (DataGolf)
+- `golf_players` - Player catalog with DataGolf IDs and DFS site mappings
+- `golf_tournaments` - Tournament definitions (event, course, dates, purse, status)
+- `golf_leaderboard` - Live/final leaderboard (position, scores, SG, probabilities)
+- `golf_rounds`, `golf_player_stats`, `golf_tournament_odds`, `golf_tournament_fields`, `golf_dfs_projections`
+- `golf_pools` - Country club pool definitions (RVCC, Crestmont variants)
+- `golf_pool_entries`, `golf_pool_entry_picks` - Pool entries and golfer selections
+- `golf_pool_entry_scores`, `golf_pool_entry_score_players` - Materialized scoring results
+- `golf_pool_buckets`, `golf_pool_bucket_players`, `golf_pool_score_runs` - Bucket config and audit trail
+
 Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). Reference data (leagues, teams, social handles) is seeded from `seed_data.sql`.
 
 ---
@@ -259,6 +269,18 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 - `POST /api/analytics/batch-simulate` — Batch Monte Carlo simulation
 - `POST /api/analytics/experiments` — Create experiment suite (parameter sweep)
 - `POST /api/analytics/replay` — Start historical replay job
+
+### Golf Endpoints
+- `GET /api/golf/tournaments` — Tournament list (filter by tour, season, status)
+- `GET /api/golf/tournaments/{event_id}` — Tournament detail with field, leaderboard, rounds
+- `GET /api/golf/players` — Player search
+- `GET /api/golf/players/{dg_id}` — Player profile and stats
+- `GET /api/golf/odds/outrights` — Outright odds by tournament/market/book
+- `GET /api/golf/dfs/projections` — DFS salary and projection data
+- `GET/POST /api/golf/pools` — Pool CRUD (RVCC, Crestmont variants)
+- `POST /api/golf/pools/{id}/entries` — Submit pool entry
+- `GET /api/golf/pools/{id}/leaderboard` — Materialized pool standings
+- See [Golf Pools](../golf-pools.md) for full endpoint reference
 
 ### FairBet Endpoints
 - `GET /api/fairbet/odds` — Cross-book odds comparison with EV annotations and display fields (pre-game)

@@ -4,6 +4,24 @@ All notable changes to Sports Data Admin.
 
 ## [2026-03-19] - Current
 
+### Golf Data Layer & Country Club Pools
+
+- **Golf data ingestion:** Full DataGolf API integration — tournaments, players, leaderboard, field, odds (outrights + matchups), DFS projections, skill ratings. 8 golf tables (`golf_tournaments`, `golf_players`, `golf_leaderboard`, `golf_rounds`, `golf_player_stats`, `golf_tournament_odds`, `golf_tournament_fields`, `golf_dfs_projections`). Celery tasks sync leaderboard every 5 min, odds every 30 min, field every 6h, schedule daily.
+- **Golf pool system:** Country club pool feature for Masters and other tournaments. Two variants: RVCC (7 picks, best 5 of those who make cut) and Crestmont (6 picks from buckets, best 4). 8 pool tables. Pure scoring engine with 28 unit tests. Materialized leaderboard refreshed every 5 minutes. CSV bulk import for entries. Admin UI with pool management, leaderboard review, and entry inspection.
+- **Golf API:** 11 data endpoints (`/api/golf/tournaments`, `/players`, `/odds`, `/dfs`) + 15 pool endpoints (`/api/golf/pools/*` — CRUD, entry submission, leaderboard, buckets, CSV upload, rescore, lock). Admin web pages for tournaments, players, pools, and control panel tasks.
+- **Golf admin UI:** Dashboard, tournament browser/detail, player search/detail, pool list/create/detail with leaderboard and entry tabs. 7 golf sync tasks + pool scoring task in control panel.
+
+### NHL PBP Improvements
+
+- **Deduplication:** NHL API returns duplicate events with different sortOrder values. Ingestion now deduplicates on `(period, game_clock, play_type, team, player)` before persisting.
+- **Richer descriptions:** Hits now show hitter/hittee/zone ("Hit (Player A on Player B) in D zone"), blocked shots show blocker/shooter, giveaways/takeaways include zone.
+- **Tier reassignment:** NHL Tier 2 reduced from `[penalty, delayed_penalty, takeaway, giveaway, hit]` to `[penalty, delayed_penalty]`. Hits/giveaways/takeaways demoted to Tier 3 to reduce timeline noise.
+
+### Game Calendar Polling
+
+- **15-minute calendar poll:** New `poll_game_calendars` Celery task fetches schedules from all league APIs every 15 minutes. Creates game stubs for games added after the daily 3:30 AM ingestion (postseason matchups, schedule changes).
+- **7-day lookahead:** Calendar poll looks 7 days ahead so upcoming games are in the DB well before tip-off. NBA/NCAAB loop per-day; NHL/MLB use native range APIs.
+
 ### Simulation Calibration & Infrastructure
 
 - **Baseline anchoring:** `anchor_to_baseline()` in `probability_provider.py` clamps ML model outputs within 25% of league-average baseline probabilities. Prevents poorly-calibrated models from producing absurd simulations (e.g., 60% hit rate → 30 runs/game) while preserving meaningful team differentiation

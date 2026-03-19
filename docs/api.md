@@ -3162,3 +3162,411 @@ Consecutive Tier 3 plays are grouped into collapsed summaries in the `tier3Group
 - `startIndex` / `endIndex`: Bounding play indices
 - `playIndices`: All play indices in the group
 - `summaryLabel`: Human-readable summary (e.g., "4 plays: faceoff, shot, block, stoppage")
+
+---
+
+## Golf API
+
+All golf endpoints live under `/api/golf`. Authentication: API key required (`X-API-Key` header).
+
+Data source: [DataGolf API](https://datagolf.com/api-access) (Scratch PLUS subscription).
+
+---
+
+### Tournaments
+
+#### `GET /api/golf/tournaments`
+
+List tournaments.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `tour` | string | Filter by tour: `pga`, `euro`, `kft`, `alt` |
+| `season` | int | Filter by season year |
+| `status` | string | Filter: `scheduled`, `in_progress`, `completed` |
+| `limit` | int | Max results (1-200, default 50) |
+
+Response:
+```jsonc
+{
+  "tournaments": [
+    {
+      "id": 42,
+      "event_id": "014",
+      "tour": "pga",
+      "event_name": "The Masters",
+      "course": "Augusta National Golf Club",
+      "start_date": "2026-04-09",
+      "end_date": "2026-04-12",
+      "season": 2026,
+      "purse": 20000000.0,
+      "country": "USA",
+      "status": "in_progress",
+      "current_round": 3
+    }
+  ],
+  "count": 1
+}
+```
+
+#### `GET /api/golf/tournaments/{event_id}`
+
+Tournament detail.
+
+#### `GET /api/golf/tournaments/{event_id}/field`
+
+Entry list with tee times and DFS salaries.
+
+#### `GET /api/golf/tournaments/{event_id}/leaderboard`
+
+Live or final leaderboard.
+
+Response:
+```jsonc
+{
+  "event_id": "014",
+  "leaderboard": [
+    {
+      "dg_id": 18417,
+      "player_name": "Scottie Scheffler",
+      "position": 1,
+      "total_score": -12,
+      "today_score": -5,
+      "thru": 14,
+      "r1": -4, "r2": -3, "r3": -5, "r4": null,
+      "status": "active",
+      "sg_total": 3.2,
+      "win_prob": 0.42,
+      "top_5_prob": 0.78,
+      "top_10_prob": 0.91,
+      "make_cut_prob": 0.99
+    }
+  ],
+  "count": 80
+}
+```
+
+#### `GET /api/golf/tournaments/{event_id}/rounds`
+
+Round-by-round scoring and stats. Optional `round_num` query param to filter.
+
+---
+
+### Players
+
+#### `GET /api/golf/players`
+
+Search players by name.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `q` | string | Name search query |
+| `limit` | int | Max results (default 50) |
+
+#### `GET /api/golf/players/{dg_id}`
+
+Player profile.
+
+#### `GET /api/golf/players/{dg_id}/stats`
+
+Player skill ratings by period (current, long-term). Includes SG components, rankings.
+
+---
+
+### Odds
+
+#### `GET /api/golf/odds/outrights`
+
+Outright odds for the current tournament.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `tournament_id` | int | Filter by tournament |
+| `market` | string | Filter: `win`, `top_5`, `top_10`, `make_cut` |
+| `book` | string | Filter by sportsbook |
+
+#### `GET /api/golf/odds/matchups`
+
+Head-to-head and 3-ball matchup odds (placeholder — returns empty for now).
+
+---
+
+### DFS Projections
+
+#### `GET /api/golf/dfs/projections`
+
+DFS salary and projection data.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `tournament_id` | int | Filter by tournament |
+| `site` | string | Filter: `draftkings`, `fanduel`, `yahoo` |
+
+---
+
+## Golf Pools API
+
+Country club pool system for live tournament scoring. See [Golf Pools Guide](golf-pools.md) for full operational documentation.
+
+---
+
+### Pool Management
+
+#### `GET /api/golf/pools`
+
+List pools.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `club_code` | string | Filter: `rvcc`, `crestmont` |
+| `tournament_id` | int | Filter by tournament |
+| `status` | string | Filter: `draft`, `open`, `locked`, `live`, `final`, `archived` |
+| `active_only` | bool | Only pools with status in (open, locked, live) |
+
+Response:
+```jsonc
+{
+  "pools": [
+    {
+      "id": 1,
+      "code": "masters-2026-rvcc",
+      "name": "RVCC Masters Pool 2026",
+      "club_code": "rvcc",
+      "tournament_id": 42,
+      "status": "live",
+      "entry_deadline": "2026-04-10T12:00:00Z",
+      "max_entries_per_email": 3,
+      "scoring_enabled": true,
+      "rules_json": {
+        "variant": "rvcc",
+        "pick_count": 7,
+        "count_best": 5,
+        "min_cuts_to_qualify": 5,
+        "uses_buckets": false
+      }
+    }
+  ],
+  "count": 1
+}
+```
+
+#### `POST /api/golf/pools`
+
+Create a new pool (admin).
+
+```jsonc
+{
+  "code": "masters-2026-rvcc",
+  "name": "RVCC Masters Pool 2026",
+  "club_code": "rvcc",
+  "tournament_id": 42,
+  "rules_json": {
+    "variant": "rvcc",
+    "pick_count": 7,
+    "count_best": 5,
+    "min_cuts_to_qualify": 5,
+    "uses_buckets": false
+  },
+  "entry_deadline": "2026-04-10T12:00:00Z",
+  "max_entries_per_email": 3,
+  "allow_self_service_entry": true,
+  "scoring_enabled": true
+}
+```
+
+#### `GET /api/golf/pools/{pool_id}`
+
+Pool detail with rules, tournament info, and status.
+
+#### `PATCH /api/golf/pools/{pool_id}`
+
+Update pool (admin). Mutable fields: name, status, entry_deadline, max_entries_per_email, scoring_enabled, notes.
+
+#### `DELETE /api/golf/pools/{pool_id}`
+
+Delete pool and all associated data (cascade).
+
+#### `POST /api/golf/pools/{pool_id}/lock`
+
+Lock pool entries. Sets all entries to "locked" status and pool status to "locked".
+
+#### `POST /api/golf/pools/{pool_id}/rescore`
+
+Trigger immediate rescoring (admin). Dispatches `golf_score_pools` Celery task for this pool.
+
+---
+
+### Pool Field & Buckets
+
+#### `GET /api/golf/pools/{pool_id}/field`
+
+Player field available for picks.
+
+- **RVCC**: Flat list of all tournament field players
+- **Crestmont**: Players organized by bucket with bucket labels
+
+Response (Crestmont):
+```jsonc
+{
+  "pool_id": 2,
+  "variant": "crestmont",
+  "buckets": [
+    {
+      "bucket_number": 1,
+      "label": "Tier 1",
+      "players": [
+        {"dg_id": 18417, "player_name": "Scottie Scheffler"},
+        {"dg_id": 16543, "player_name": "Rory McIlroy"}
+      ]
+    }
+  ]
+}
+```
+
+#### `POST /api/golf/pools/{pool_id}/buckets`
+
+Create or replace bucket assignments (admin, Crestmont only).
+
+```jsonc
+{
+  "buckets": [
+    {
+      "bucket_number": 1,
+      "label": "Tier 1",
+      "players": [
+        {"dg_id": 18417, "player_name": "Scottie Scheffler"}
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### Entry Submission
+
+#### `POST /api/golf/pools/{pool_id}/entries`
+
+Submit a pool entry.
+
+```jsonc
+{
+  "email": "player@example.com",
+  "entry_name": "My Masters Picks",
+  "picks": [
+    {"dg_id": 18417, "pick_slot": 1},
+    {"dg_id": 16543, "pick_slot": 2},
+    {"dg_id": 20098, "pick_slot": 3, "bucket_number": 3}
+  ]
+}
+```
+
+Validation:
+- Checks entry deadline hasn't passed
+- Checks max entries per email
+- Validates pick count matches pool rules
+- Validates no duplicate golfers
+- Validates all golfers are in tournament field
+- For Crestmont: validates one pick per bucket, each from correct bucket
+
+Returns `422` with specific error messages on validation failure.
+
+#### `GET /api/golf/pools/{pool_id}/entries/by-email?email=...`
+
+Entries for a specific email in this pool. Includes scoring summary if available.
+
+#### `GET /api/golf/pools/{pool_id}/entries/{entry_id}`
+
+Entry detail with picks and latest scoring breakdown.
+
+#### `GET /api/golf/pools/{pool_id}/entries`
+
+Admin: list all entries with optional email/status filters.
+
+#### `POST /api/golf/pools/{pool_id}/entries/upload`
+
+Admin: bulk CSV import.
+
+```
+Content-Type: multipart/form-data
+file: entries.csv
+```
+
+CSV format:
+```csv
+email,entry_name,pick_1,pick_2,pick_3,pick_4,pick_5,pick_6,pick_7
+mike@example.com,Mike Entry 1,Scottie Scheffler,Rory McIlroy,...
+```
+
+Response includes row-level validation errors:
+```jsonc
+{
+  "total_rows": 25,
+  "entries_created": 23,
+  "errors": [
+    {"row": 5, "email": "bad@x.com", "error": "Player 'Tigre Woods' not found in field"},
+    {"row": 12, "email": "dup@x.com", "error": "Max entries (3) exceeded for this email"}
+  ]
+}
+```
+
+---
+
+### Pool Leaderboard
+
+#### `GET /api/golf/pools/{pool_id}/leaderboard`
+
+Materialized pool standings with per-golfer scoring columns.
+
+Response:
+```jsonc
+{
+  "pool_id": 1,
+  "last_scored_at": "2026-04-11T18:35:00Z",
+  "standings": [
+    {
+      "rank": 1,
+      "is_tied": false,
+      "entry_id": 42,
+      "entry_name": "Mike Entry 1",
+      "email": "mike@example.com",
+      "aggregate_score": -18,
+      "qualification_status": "qualified",
+      "qualified_golfers_count": 6,
+      "counted_golfers_count": 5,
+      "is_complete": false,
+      "picks": [
+        {
+          "dg_id": 18417,
+          "player_name": "Scottie Scheffler",
+          "total_score": -12,
+          "position": 1,
+          "thru": 14,
+          "r1": -4, "r2": -3, "r3": -5, "r4": null,
+          "status": "active",
+          "made_cut": true,
+          "counts_toward_total": true,
+          "is_dropped": false
+        },
+        {
+          "dg_id": 99999,
+          "player_name": "Cut Player",
+          "total_score": 8,
+          "status": "cut",
+          "made_cut": false,
+          "counts_toward_total": false,
+          "is_dropped": true
+        }
+      ]
+    }
+  ],
+  "count": 50
+}
+```
+
+Key fields:
+- `rank`: Shared on ties (T1, T2)
+- `qualification_status`: `"qualified"` | `"pending"` | `"not_qualified"`
+- `counts_toward_total`: Whether this golfer's score is included in the aggregate
+- `is_dropped`: True for golfers not counted (worse score or didn't make cut)
+- `made_cut`: Whether the golfer is still active (not cut/wd/dq)

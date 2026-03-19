@@ -72,6 +72,32 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `sports_game_conflicts` | Duplicate/ambiguous game identity tracking |
 | `sports_missing_pbp` | Flags games missing required play-by-play data |
 
+### Golf (DataGolf)
+
+| Table | Description |
+|-------|-------------|
+| `golf_players` | Player catalog with DataGolf `dg_id`, name, country, DFS site IDs |
+| `golf_tournaments` | Tournament definitions — event_id, tour, course, dates, purse, status |
+| `golf_tournament_fields` | Entry lists per tournament — tee times, DFS salaries, status |
+| `golf_leaderboard` | Live/final leaderboard — position, total score, per-round scores (r1-r4), SG, probabilities |
+| `golf_rounds` | Per-player round data — scoring, SG splits, traditional stats |
+| `golf_player_stats` | Skill ratings and rankings — periodic snapshots (current, long-term) |
+| `golf_tournament_odds` | Outright odds — win/T5/T10/MC per player per sportsbook |
+| `golf_dfs_projections` | DFS salary and projection snapshots per site/slate |
+
+### Golf Pools
+
+| Table | Description |
+|-------|-------------|
+| `golf_pools` | Pool definitions — club code, tournament FK, rules (JSONB), deadlines, status |
+| `golf_pool_buckets` | Bucket definitions for Crestmont-style pools |
+| `golf_pool_bucket_players` | Player assignments per bucket |
+| `golf_pool_entries` | Submitted entries — email, picks, source, status |
+| `golf_pool_entry_picks` | Individual golfer picks per entry |
+| `golf_pool_entry_score_players` | Materialized per-golfer scoring (counted/dropped, round snapshots) |
+| `golf_pool_entry_scores` | Materialized entry totals — aggregate score, rank, qualification status |
+| `golf_pool_score_runs` | Scoring run audit trail |
+
 ### Analytics & ML
 
 | Table | Description |

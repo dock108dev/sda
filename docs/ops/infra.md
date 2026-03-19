@@ -200,6 +200,7 @@ docker exec sports-postgres psql -U sports -d sports -c "SELECT COUNT(*) FROM sp
 | `OPENAI_MODEL_CLASSIFICATION` | No | OpenAI model for play classification (default: `gpt-4o-mini`) |
 | `OPENAI_MODEL_SUMMARY` | No | OpenAI model for narrative rendering (default: `gpt-4o`) |
 | `ODDS_API_KEY` | No | The Odds API key |
+| `DATAGOLF_API_KEY` | No | DataGolf API key for golf tournament/leaderboard data (Scratch PLUS subscription) |
 | `CBB_STATS_API_KEY` | No | CBB Stats API key (NCAAB boxscore ingestion) |
 | `X_AUTH_TOKEN` | No | X/Twitter auth cookie |
 | `X_CT0` | No | X/Twitter CSRF cookie |
