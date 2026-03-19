@@ -120,12 +120,17 @@ class MLBBattedBallDatasetBuilder(ProfileMixin):
         game_map = {g.id: g for g in games}
         game_ids = list(game_map.keys())
 
-        # 2. Load PBP plays
+        # 2. Load PBP plays via date-range join (avoids massive IN clause)
         plays_stmt = (
             select(SportsGamePlay)
-            .where(SportsGamePlay.game_id.in_(game_ids))
+            .join(SportsGame, SportsGame.id == SportsGamePlay.game_id)
+            .where(SportsGame.status.in_(["final", "archived"]))
             .order_by(SportsGamePlay.game_id, SportsGamePlay.play_index)
         )
+        if dt_start:
+            plays_stmt = plays_stmt.where(SportsGame.game_date >= dt_start)
+        if dt_end:
+            plays_stmt = plays_stmt.where(SportsGame.game_date <= dt_end)
         plays_result = await db.execute(plays_stmt)
         all_plays = plays_result.scalars().all()
 

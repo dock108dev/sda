@@ -33,6 +33,7 @@ async def post_record_outcomes(
 async def list_prediction_outcomes(
     sport: str | None = Query(None, description="Filter by sport"),
     status: str | None = Query(None, description="Filter: 'pending' or 'resolved'"),
+    batch_sim_job_id: int | None = Query(None, description="Filter by batch sim job ID"),
     limit: int = Query(100, ge=1, le=500, description="Max results"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
@@ -44,6 +45,8 @@ async def list_prediction_outcomes(
     )
     if sport:
         stmt = stmt.where(AnalyticsPredictionOutcome.sport == sport)
+    if batch_sim_job_id is not None:
+        stmt = stmt.where(AnalyticsPredictionOutcome.batch_sim_job_id == batch_sim_job_id)
     if status == "pending":
         stmt = stmt.where(AnalyticsPredictionOutcome.outcome_recorded_at.is_(None))
     elif status == "resolved":

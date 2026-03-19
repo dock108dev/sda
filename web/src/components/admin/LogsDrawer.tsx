@@ -17,6 +17,10 @@ const DEFAULT_TABS: LogsTab[] = [
   { label: "Training Worker", container: "sports-api-training-worker" },
 ];
 
+const DEFAULT_WIDTH = 50; // percent of viewport
+const MIN_WIDTH = 25;
+const MAX_WIDTH = 85;
+
 type LogsDrawerProps = {
   open: boolean;
   onClose: () => void;
@@ -29,6 +33,11 @@ export function LogsDrawer({ open, onClose, tabs = DEFAULT_TABS }: LogsDrawerPro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const logAreaRef = useRef<HTMLDivElement>(null);
+
+  // Resizable width (persisted in state, percentage of viewport)
+  const [widthPct, setWidthPct] = useState(DEFAULT_WIDTH);
+  const [dragging, setDragging] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const loadLogs = useCallback(async (tabIndex: number) => {
     const tab = tabs[tabIndex];
@@ -59,6 +68,30 @@ export function LogsDrawer({ open, onClose, tabs = DEFAULT_TABS }: LogsDrawerPro
     }
   }, [logs]);
 
+  // Drag-to-resize handling
+  useEffect(() => {
+    if (!dragging) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const pct = ((window.innerWidth - e.clientX) / window.innerWidth) * 100;
+      setWidthPct(Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, pct)));
+    };
+
+    const onMouseUp = () => setDragging(false);
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [dragging]);
+
   const handleTabClick = (index: number) => {
     setActiveTab(index);
   };
@@ -73,7 +106,20 @@ export function LogsDrawer({ open, onClose, tabs = DEFAULT_TABS }: LogsDrawerPro
         className={`${styles.backdrop} ${open ? styles.backdropOpen : ""}`}
         onClick={onClose}
       />
-      <div className={`${styles.panel} ${open ? styles.panelOpen : ""}`}>
+      <div
+        ref={panelRef}
+        className={`${styles.panel} ${open ? styles.panelOpen : ""}`}
+        style={{ width: `${widthPct}vw` }}
+      >
+        {/* Drag handle on left edge */}
+        <div
+          className={`${styles.resizeHandle} ${dragging ? styles.resizeHandleActive : ""}`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+        />
+
         <div className={styles.header}>
           <h2>Container Logs</h2>
           <div className={styles.headerActions}>

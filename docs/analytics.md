@@ -222,6 +222,10 @@ Four probability sources, selected via `probability_mode`:
 
 **No silent fallback.** If the requested provider fails (missing artifact, feature mismatch, inference error), the error propagates directly — there is no automatic degradation to a different provider.
 
+**Baseline anchoring.** ML model outputs are clamped via `anchor_to_baseline()` so each event probability stays within 25% of the league-average baseline. This prevents poorly-calibrated models from producing absurd simulations (e.g., 60% hit rate → 30 runs/game) while preserving meaningful team differentiation. Well-calibrated models pass through nearly unchanged.
+
+**XGBoost compatibility.** XGBoost requires integer-encoded labels. The training pipeline wraps XGBoost models in `_XGBStringClassesWrapper` which handles label encoding during `fit()` and maps classes back to string names at `predict()` / `predict_proba()` time. The wrapper serializes transparently via joblib.
+
 ---
 
 ## Model Registry & Inference
@@ -342,7 +346,7 @@ All three builders use rolling point-in-time profiles (batter + pitcher) to prev
 
 Label functions live in `MLBTrainingPipeline` (`training/sports/mlb_training.py`):
 
-- `pa_label_fn()` — PA outcome (strikeout, walk, single, double, triple, home_run, out)
+- `pa_label_fn()` — PA outcome (strikeout, walk_or_hbp, single, double, triple, home_run, ball_in_play_out)
 - `game_label_fn()` — game outcome (1 = home win, 0 = away win)
 - `pitch_label_fn()` — pitch outcome (ball, called_strike, swinging_strike, foul, in_play)
 - `batted_ball_label_fn()` — batted ball outcome (out, single, double, triple, home_run)

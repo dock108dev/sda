@@ -2,7 +2,25 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-18] - Current
+## [2026-03-19] - Current
+
+### Simulation Calibration & Infrastructure
+
+- **Baseline anchoring:** `anchor_to_baseline()` in `probability_provider.py` clamps ML model outputs within 25% of league-average baseline probabilities. Prevents poorly-calibrated models from producing absurd simulations (e.g., 60% hit rate → 30 runs/game) while preserving meaningful team differentiation
+- **Canonical PA labels:** Unified to a single label set (`strikeout`, `walk_or_hbp`, `ball_in_play_out`, `single`, `double`, `triple`, `home_run`). Removed the V1/V2 dual-label system, the `PA_EVENTS_V2` constant, and the `_V2_TO_V1` translation layer. All consumers now use canonical labels directly
+- **XGBoost label encoding:** `_XGBStringClassesWrapper` in `training_pipeline.py` handles XGBoost's integer-label requirement transparently. Wraps the model after `fit()` so `predict()` / `predict_proba()` / `classes_` return string labels. Serializes correctly via joblib
+- **Prediction outcomes filter:** `GET /prediction-outcomes` now accepts `batch_sim_job_id` query parameter to scope results to a specific batch job
+- **Bulk delete loadouts:** `POST /feature-configs/bulk-delete` endpoint + frontend UI with checkbox selection and "Delete N" button on the LoadoutsPanel
+- **Loadout dropdown in experiments:** Experiments page now loads all MLB loadouts (removed overly restrictive `model_type` filter)
+- **FairBet deadlock fix:** `delete_stale_fairbet_odds()` now uses `pg_try_advisory_xact_lock()` to prevent deadlocks when multiple Celery workers run concurrent stale deletes
+- **Log-relay training worker:** Added `sports-api-training-worker` to allowed containers in both `docker_logs.py` (API) and `log-relay/server.py` (sidecar)
+- **Resizable logs drawer:** Drag handle on left edge allows resizing between 25%–85% of viewport width (default 50%)
+- **Training worker concurrency:** Changed from `--autoscale=4,1` to `--concurrency=2` (fixed). Configurable via `CELERY_TRAINING_CONCURRENCY` env var
+- **Dataset builder query optimization:** Replaced `WHERE game_id IN (N ids)` with date-range `JOIN` in all three dataset builders (PA, pitch, batted ball) to support 7,500+ game training
+- **Docker deploy fix:** Replaced `docker compose pull --ignore-buildable` with `--policy always` in both CI/CD workflows to prevent skipping services with `build:` directives
+- **`parseInt` safety:** All `parseInt` calls in experiments page use explicit radix and `Number.isNaN` guards
+
+## [2026-03-18]
 
 ### Pitch-Level Training & Simulation Overhaul
 

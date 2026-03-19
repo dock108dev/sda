@@ -37,7 +37,7 @@ Both profiles run the same set of services.
 | redis | 6379 | Redis for Celery queue |
 | api | 8000 | FastAPI backend |
 | api-worker | -- | Celery worker for general tasks (batch sims, flow gen, experiments orchestrator) — `celery` queue |
-| api-training-worker | -- | Celery worker for ML model training — `training` queue, autoscales 1–4 (configurable via `CELERY_TRAINING_MAX_CONCURRENCY`) |
+| api-training-worker | -- | Celery worker for ML model training — `training` queue, fixed concurrency (default 2, configurable via `CELERY_TRAINING_CONCURRENCY`) |
 | scraper | -- | Celery worker for data ingestion |
 | scraper-beat | -- | Celery scheduler (see [Data Sources](../ingestion/data-sources.md) for full schedule) |
 | social-scraper | -- | Social media scraper (X/Twitter) -- live tasks only (`social-scraper` queue) |

@@ -193,21 +193,16 @@ class TrainingPipeline:
             sklearn_model = self._default_model()
 
         # XGBoost requires integer-encoded labels, not strings.
-        # Encode them and store the mapping so predict_proba can
-        # return the original class names.
-        y_fit = y_train
-        label_encoder = None
+        # Wrap it so the serialized model still exposes string class names.
         if _needs_label_encoding(sklearn_model):
             from sklearn.preprocessing import LabelEncoder
-            label_encoder = LabelEncoder()
-            y_fit = label_encoder.fit_transform(y_train)
+            le = LabelEncoder()
+            y_encoded = le.fit_transform(y_train)
+            sklearn_model.fit(X_train, y_encoded)
+            sklearn_model = _XGBStringClassesWrapper(sklearn_model, le.classes_)
+        else:
+            sklearn_model.fit(X_train, y_train)
 
-        sklearn_model.fit(X_train, y_fit)
-
-        # Re-map classes_ back to original string labels so downstream
-        # inference returns human-readable probability keys.
-        if label_encoder is not None:
-            sklearn_model.classes_ = label_encoder.classes_
         # Attach feature names so inference can filter to the correct features
         sklearn_model._training_feature_names = list(self._feature_names)
         self._model = sklearn_model
@@ -419,6 +414,45 @@ def _needs_label_encoding(model: Any) -> bool:
     cls_name = type(model).__name__
     module = type(model).__module__ or ""
     return "xgboost" in module.lower() or "XGB" in cls_name
+
+
+class _XGBStringClassesWrapper:
+    """Thin wrapper that makes an integer-label XGBoost model expose string classes.
+
+    XGBoost requires ``y`` as integers during ``fit()``.  This wrapper
+    stores the ``LabelEncoder`` mapping and translates at
+    ``predict`` / ``predict_proba`` / ``classes_`` access time so the
+    serialized artifact behaves identically to a sklearn model trained
+    on string labels.
+    """
+
+    def __init__(self, model: Any, class_names: Any) -> None:
+        self._model = model
+        self._class_names = class_names  # ndarray from LabelEncoder.classes_
+
+    @property
+    def classes_(self) -> Any:
+        return self._class_names
+
+    @property
+    def n_features_in_(self) -> int:
+        return getattr(self._model, "n_features_in_", 0)
+
+    @property
+    def feature_importances_(self) -> Any:
+        return getattr(self._model, "feature_importances_", None)
+
+    def predict(self, X: Any) -> Any:
+        int_preds = self._model.predict(X)
+        return self._class_names[int_preds.astype(int)]
+
+    def predict_proba(self, X: Any) -> Any:
+        return self._model.predict_proba(X)
+
+    def __getattr__(self, name: str) -> Any:
+        # Delegate everything else (e.g., _training_feature_names) to the
+        # underlying model or to attributes set on this wrapper.
+        return getattr(self._model, name)
 
 
 def _extract_feature_importance(
