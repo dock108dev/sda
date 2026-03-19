@@ -12,7 +12,7 @@ on Jan 22 is a "Jan 22 game", regardless of UTC date.
 All datetime fields in responses are UTC (ISO 8601).
 """
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 # Eastern timezone for game date interpretation
@@ -42,6 +42,18 @@ def date_to_utc_datetime(day: date) -> datetime:
 def to_et_date(dt: datetime) -> date:
     """Convert a UTC datetime to its Eastern Time calendar date."""
     return dt.astimezone(ZoneInfo("America/New_York")).date()
+
+
+def start_of_et_day_utc(d: date) -> datetime:
+    """Midnight ET on date *d*, expressed in UTC.  Use as ``>=`` bound."""
+    return datetime.combine(d, datetime.min.time(), tzinfo=EASTERN).astimezone(UTC)
+
+
+def end_of_et_day_utc(d: date) -> datetime:
+    """Midnight ET on date *d+1*, expressed in UTC.  Use as ``<`` upper bound."""
+    return datetime.combine(
+        d + timedelta(days=1), datetime.min.time(), tzinfo=EASTERN,
+    ).astimezone(UTC)
 
 
 def parse_clock_to_seconds(clock: str | None) -> int | None:

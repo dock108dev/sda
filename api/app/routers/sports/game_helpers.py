@@ -17,7 +17,7 @@ from ...db.social import TeamSocialPost
 from ...db.sports import SportsGame, SportsLeague, SportsTeam
 from ...game_metadata.models import GameContext, StandingsEntry, TeamRatings
 from ...services.game_status import compute_status_flags
-from ...utils.datetime_utils import to_et_date
+from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 from .schemas import GameSummary, JobResponse, LiveSnapshot, ScrapeRunConfig, SocialPostEntry
 
 logger = logging.getLogger(__name__)
@@ -77,12 +77,12 @@ def apply_game_filters(
         )
 
     if start_date:
-        start_dt = datetime.combine(start_date, datetime.min.time())
-        stmt = stmt.where(SportsGame.game_date >= start_dt)
+        # Use ET sports-calendar boundaries so late-night ET games
+        # (which are early-morning UTC) appear on the correct day.
+        stmt = stmt.where(SportsGame.game_date >= start_of_et_day_utc(start_date))
 
     if end_date:
-        end_dt = datetime.combine(end_date, datetime.max.time())
-        stmt = stmt.where(SportsGame.game_date <= end_dt)
+        stmt = stmt.where(SportsGame.game_date < end_of_et_day_utc(end_date))
 
     if missing_boxscore:
         stmt = stmt.where(~SportsGame.team_boxscores.any())
