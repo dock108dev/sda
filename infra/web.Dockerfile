@@ -59,34 +59,39 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     PORT=3000
 
+# Create non-root user BEFORE any file operations. All subsequent COPY
+# uses --chown and pnpm install runs as appuser, so no chown -R layer
+# is needed. A separate chown -R layer on pnpm's deeply nested
+# node_modules paths caused overlayfs extraction failures on pull
+# (containerd Lchown "no such file or directory" on long .pnpm paths).
+RUN addgroup -S appgroup \
+    && adduser -S appuser -G appgroup \
+    && mkdir -p /app && chown appuser:appgroup /app
+
 WORKDIR /app
 
 # Copy workspace config (see note above about pnpm-lock.yaml)
-COPY pnpm-workspace.yaml package.json ./
-COPY web/package.json ./web/
-COPY packages/js-core/package.json ./packages/js-core/
-COPY packages/ui/package.json ./packages/ui/
-COPY packages/ui-kit/package.json ./packages/ui-kit/
+COPY --chown=appuser:appgroup pnpm-workspace.yaml package.json ./
+COPY --chown=appuser:appgroup web/package.json ./web/
+COPY --chown=appuser:appgroup packages/js-core/package.json ./packages/js-core/
+COPY --chown=appuser:appgroup packages/ui/package.json ./packages/ui/
+COPY --chown=appuser:appgroup packages/ui-kit/package.json ./packages/ui-kit/
 
-# Install production dependencies only
+# Install production deps as appuser — avoids root-owned node_modules
+# and eliminates the need for a chown -R layer.
+USER appuser
 RUN pnpm install --prod
 
 # Copy built assets
-COPY --from=build /app/web/.next ./web/.next
-COPY --from=build /app/web/public ./web/public
+COPY --chown=appuser:appgroup --from=build /app/web/.next ./web/.next
+COPY --chown=appuser:appgroup --from=build /app/web/public ./web/public
 
 # Copy packages source (needed at runtime for Next.js to resolve workspace imports)
-COPY packages/js-core/src ./packages/js-core/src
-COPY packages/ui/src ./packages/ui/src
-COPY packages/ui-kit/src ./packages/ui-kit/src
+COPY --chown=appuser:appgroup packages/js-core/src ./packages/js-core/src
+COPY --chown=appuser:appgroup packages/ui/src ./packages/ui/src
+COPY --chown=appuser:appgroup packages/ui-kit/src ./packages/ui-kit/src
 
 WORKDIR /app/web
-
-RUN addgroup -S appgroup \
-    && adduser -S appuser -G appgroup \
-    && chown -R appuser:appgroup /app
-
-USER appuser
 
 EXPOSE 3000
 
