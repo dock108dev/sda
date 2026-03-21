@@ -147,6 +147,15 @@ async def _save_prediction_outcomes(
             predicted_away_score=game_result.get("average_away_score"),
             probability_mode=probability_mode,
             game_date=game_result.get("game_date"),
+            # Sim observability columns for fair-odds pipeline
+            sim_wp_std_dev=game_result.get("home_wp_std_dev"),
+            sim_iterations=game_result.get("iterations"),
+            sim_score_std_home=game_result.get("score_std_home"),
+            sim_score_std_away=game_result.get("score_std_away"),
+            profile_games_home=game_result.get("profile_games_home"),
+            profile_games_away=game_result.get("profile_games_away"),
+            sim_probability_source=game_result.get("probability_source"),
+            feature_snapshot=game_result.get("feature_snapshot"),
         )
         db.add(outcome)
 
@@ -353,6 +362,14 @@ async def _execute_batch_sim(
         else:
             prob_source = "league_defaults"
 
+        # Build feature snapshot from profiles for fair-odds pipeline
+        feature_snap = None
+        if home_profile or away_profile:
+            feature_snap = {
+                "home": home_profile,
+                "away": away_profile,
+            }
+
         game_result = {
             "game_id": game.id,
             "game_date": game_date_str,
@@ -364,6 +381,18 @@ async def _execute_batch_sim(
             "average_away_score": sim.get("average_away_score"),
             "probability_source": prob_source,
             "has_profiles": has_profiles,
+            # Sim observability for fair-odds pipeline
+            "home_wp_std_dev": sim.get("home_wp_std_dev"),
+            "iterations": sim.get("iterations"),
+            "score_std_home": sim.get("score_std_home"),
+            "score_std_away": sim.get("score_std_away"),
+            "profile_games_home": len(
+                [s for d, s in team_history.get(game.home_team_id, []) if d < profile_cutoff][-rolling_window:]
+            ) if game.home_team_id in team_history else None,
+            "profile_games_away": len(
+                [s for d, s in team_history.get(game.away_team_id, []) if d < profile_cutoff][-rolling_window:]
+            ) if game.away_team_id in team_history else None,
+            "feature_snapshot": feature_snap,
         }
         if "event_summary" in sim:
             game_result["event_summary"] = sim["event_summary"]

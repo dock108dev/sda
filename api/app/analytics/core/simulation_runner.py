@@ -13,6 +13,7 @@ Usage::
 
 from __future__ import annotations
 
+import math
 import random
 from collections import Counter
 from typing import Any, Protocol
@@ -99,12 +100,31 @@ class SimulationRunner:
                 "average_away_score": 0.0,
                 "score_distribution": {},
                 "iterations": 0,
+                "home_wp_std_dev": 0.0,
+                "score_std_home": 0.0,
+                "score_std_away": 0.0,
             }
 
         n = len(sim_results)
         home_wins = sum(1 for r in sim_results if r.get("winner") == "home")
         total_home = sum(r.get("home_score", 0) for r in sim_results)
         total_away = sum(r.get("away_score", 0) for r in sim_results)
+
+        # Variance computation: WP std dev and score std dev
+        home_wp = home_wins / n
+        # Bernoulli std dev: sqrt(p * (1-p) / n)
+        home_wp_std_dev = math.sqrt(home_wp * (1.0 - home_wp) / n) if n > 1 else 0.0
+
+        avg_home = total_home / n
+        avg_away = total_away / n
+        if n > 1:
+            ss_home = sum((r.get("home_score", 0) - avg_home) ** 2 for r in sim_results)
+            ss_away = sum((r.get("away_score", 0) - avg_away) ** 2 for r in sim_results)
+            score_std_home = math.sqrt(ss_home / (n - 1))
+            score_std_away = math.sqrt(ss_away / (n - 1))
+        else:
+            score_std_home = 0.0
+            score_std_away = 0.0
 
         # Score distribution (top 20 most common)
         score_counts: Counter[str] = Counter()
@@ -118,12 +138,15 @@ class SimulationRunner:
         }
 
         summary = {
-            "home_win_probability": round(home_wins / n, 4),
-            "away_win_probability": round((n - home_wins) / n, 4),
-            "average_home_score": round(total_home / n, 2),
-            "average_away_score": round(total_away / n, 2),
+            "home_win_probability": round(home_wp, 4),
+            "away_win_probability": round(1.0 - home_wp, 4),
+            "average_home_score": round(avg_home, 2),
+            "average_away_score": round(avg_away, 2),
             "score_distribution": distribution,
             "iterations": n,
+            "home_wp_std_dev": round(home_wp_std_dev, 6),
+            "score_std_home": round(score_std_home, 4),
+            "score_std_away": round(score_std_away, 4),
         }
 
         # Add event summary if results contain event data

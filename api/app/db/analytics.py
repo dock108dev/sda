@@ -225,6 +225,16 @@ class AnalyticsPredictionOutcome(Base):
     probability_mode: Mapped[str | None] = mapped_column(String(50), nullable=True)
     game_date: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
+    # Sim observability (filled at sim time for fair-odds downstream)
+    sim_wp_std_dev: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sim_iterations: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sim_score_std_home: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sim_score_std_away: Mapped[float | None] = mapped_column(Float, nullable=True)
+    profile_games_home: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    profile_games_away: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sim_probability_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    feature_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
     # Outcome (filled when game goes final)
     actual_home_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     actual_away_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
