@@ -342,7 +342,8 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       API_KEY: ${API_KEY:-}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - app
     ports:

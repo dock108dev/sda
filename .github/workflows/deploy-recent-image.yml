@@ -84,6 +84,30 @@ jobs:
             echo "Starting services..."
             docker compose --profile prod up -d --remove-orphans
 
+            echo "Verifying API health..."
+            for i in $(seq 1 30); do
+              if docker inspect sports-api --format='{{.State.Health.Status}}' 2>/dev/null | grep -q healthy; then
+                echo "✅ API container healthy"
+                break
+              fi
+              STATUS=$(docker inspect sports-api --format='{{.State.Status}}' 2>/dev/null || echo "missing")
+              if [ "$STATUS" = "exited" ] || [ "$STATUS" = "missing" ]; then
+                echo "❌ API container failed to start (status: $STATUS)"
+                docker logs sports-api --tail=40 2>/dev/null || true
+                exit 1
+              fi
+              echo "  Waiting for API health check ($i/30)..."
+              sleep 5
+            done
+
+            # Final check — if we exhausted retries without healthy
+            FINAL_STATUS=$(docker inspect sports-api --format='{{.State.Health.Status}}' 2>/dev/null || echo "unknown")
+            if [ "$FINAL_STATUS" != "healthy" ]; then
+              echo "❌ API did not become healthy within 150s (status: $FINAL_STATUS)"
+              docker logs sports-api --tail=40 2>/dev/null || true
+              exit 1
+            fi
+
             echo "Post-deploy cleanup..."
             docker image prune -af
             docker builder prune -af
