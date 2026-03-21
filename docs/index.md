@@ -60,7 +60,7 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Analytics Engine](analytics.md) | **Start here:** Feature loadouts, model training, experiment sweeps, simulation, calibration, and ensemble predictions |
+| [Analytics Engine](analytics.md) | **Start here:** Feature loadouts, model training, experiment sweeps, simulation, calibration, ensemble predictions, and model odds pipeline |
 | [Analytics Integration (Downstream)](analytics-downstream.md) | Integration guide for consuming apps — simulation flows, TypeScript types, navigation structure |
 
 ## Operations

@@ -38,7 +38,7 @@ The simulation engine runs Monte Carlo simulations with pluggable probability so
 3. Otherwise: `ProbabilityResolver` selects the provider based on mode (`rule_based`, `ml`, `ensemble`)
 4. When home/away team profiles are both present, PA probabilities are resolved separately for each team — each team's batting profile is paired with the opposing team as the "pitcher" side, producing differentiated probabilities per team
 5. `SimulationRunner` invokes the sport-specific simulator N times (default 5,000–10,000)
-6. Results aggregated: win probabilities, average scores, score distribution, event summary
+6. Results aggregated: win probabilities, average scores, score distribution, event summary, variance metrics (WP std dev, score std dev per team)
 7. `SimulationDiagnostics` attached to result with execution metadata
 
 ### Simulation Diagnostics
@@ -102,7 +102,7 @@ Event data is backward compatible — existing callers that only read `home_scor
 
 **Key files:**
 - `core/simulation_engine.py` — orchestrator
-- `core/simulation_runner.py` — N iterations + aggregation + event summary
+- `core/simulation_runner.py` — N iterations + aggregation + event summary + variance computation
 - `core/simulation_analysis.py` — sanity checks
 - `sports/mlb/game_simulator.py` — PA-level MLB simulator
 
@@ -542,3 +542,199 @@ See [API — Simulator](api.md#simulator) for full request/response documentatio
 | POST | `/backtest` | Start async backtest job (Celery task) |
 | GET | `/backtest-jobs` | List backtest jobs |
 | GET | `/backtest-job/{id}` | Get backtest job details |
+
+### Model Odds (MLB)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/model-odds/mlb` | Full model-odds decision framework per MLB game (see [Model Odds Pipeline](#model-odds-pipeline) below) |
+
+---
+
+## Model Odds Pipeline
+
+Bridges the MLB simulation engine with market data to produce calibrated probabilities, uncertainty scoring, and actionable betting decisions. The sim and market layers remain fully decoupled — the pipeline sits between them.
+
+**Code:** `api/app/analytics/calibration/`, `api/app/services/model_odds.py`, `api/app/routers/model_odds.py`
+
+### Architecture
+
+```
+Sim Layer (unchanged)                  Market Layer (unchanged)
+SimulationRunner                       FairBet / ClosingLine
+  → raw home_wp                          → Pinnacle devig → market_wp
+  → score_std_home/away                  → cross-book prices
+  → home_wp_std_dev
+        │                                      │
+        └──────────────┬───────────────────────┘
+                       │
+              Calibration Layer (NEW)
+              ├── SimCalibrator (isotonic regression)
+              │     raw_wp → calibrated_wp
+              ├── Uncertainty Scorer
+              │     sim_variance + profile_freshness + market_disagreement
+              │     → confidence_tier + penalty
+              ├── Conservative Probability
+              │     calibrated_wp ± penalty → p_conservative
+              └── Decision Engine
+                    p_conservative + market_price → Kelly + classification
+                       │
+                       ▼
+              GET /api/model-odds/mlb
+```
+
+### Sim Observability
+
+`SimulationRunner.aggregate_results()` now emits variance metrics alongside existing fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `home_wp_std_dev` | float | Bernoulli std dev: `sqrt(p*(1-p)/n)` |
+| `score_std_home` | float | Sample std dev of home scores across iterations |
+| `score_std_away` | float | Sample std dev of away scores across iterations |
+
+These are persisted on `analytics_prediction_outcomes` when batch sims run (see [Database](#database-columns) below).
+
+### Calibration
+
+`SimCalibrator` (`calibration/calibrator.py`) maps raw sim win probabilities to historically-accurate probabilities using scikit-learn's `IsotonicRegression`.
+
+**Training data:** Joins `analytics_prediction_outcomes` (resolved predictions with Brier scores) to `closing_lines` (Pinnacle moneyline) via `game_id`. Devigging uses existing `remove_vig()` from the FairBet EV engine.
+
+**Training:** Celery task `train_calibration_model` builds the dataset, fits the calibrator, and saves a joblib artifact to `artifacts/calibration/`.
+
+**Inference:** The calibrator is loaded once per process and cached. Falls back to raw sim WP if no calibrator is available.
+
+**Evaluation metrics:** Brier score before/after calibration, improvement delta, and 10-bin reliability diagram data.
+
+### Uncertainty Scoring
+
+`compute_uncertainty()` (`calibration/uncertainty.py`) produces a confidence tier and probability penalty from four weighted factors:
+
+| Factor | Weight | Signal |
+|--------|--------|--------|
+| Sim variance | 15% | `home_wp_std_dev` from simulation |
+| Profile freshness | 30% | Min games across both teams' rolling profiles |
+| Market disagreement | 35% | `|calibrated_wp - market_wp|` |
+| Pitcher data quality | 20% | Whether Statcast pitcher data is available |
+
+**Confidence tiers and penalties:**
+
+| Tier | Weighted Score | Probability Penalty | Required Edge |
+|------|---------------|--------------------:|-------------:|
+| high | < 0.15 | 1.0% | 2.0% |
+| medium | 0.15–0.35 | 2.0% | 3.5% |
+| low | 0.35–0.55 | 3.5% | 5.0% |
+| very_low | ≥ 0.55 | 5.0% | no play |
+
+A 0.5% tax/friction buffer is added to all required edge thresholds.
+
+### Conservative Probability & Confidence Band
+
+`apply_uncertainty()` produces:
+
+- **`p_conservative`**: `p_true` pulled toward 0.5 by the penalty. Ensures recommended action is more cautious than the raw model.
+- **Confidence band**: `p_true ± (penalty × 1.5)`, clamped to [0.01, 0.99].
+- All values are also converted to American odds (`fair_line_mid`, `fair_line_conservative`, `fair_line_low`, `fair_line_high`).
+
+### Decision Engine
+
+`compute_model_odds()` (`services/model_odds.py`) combines calibrated probability, market price, and uncertainty into a complete decision:
+
+| Output | Description |
+|--------|-------------|
+| `p_true` | Calibrated win probability |
+| `p_conservative` | Probability after uncertainty penalty |
+| `fair_line_mid` / `fair_line_conservative` | American odds conversions |
+| `target_bet_line` | Price where edge exceeds required threshold |
+| `strong_bet_line` | Target + additional 2% edge |
+| `kelly_fraction` / `half_kelly` / `quarter_kelly` | Kelly criterion sizing |
+| `decision` | `no_play`, `lean`, `playable`, or `strong_play` |
+
+**Decision classification:**
+- `very_low` confidence → always `no_play`
+- No market data → `no_play`
+- Edge ≤ 0 → `no_play`
+- Positive edge but price doesn't beat target → `lean`
+- Price beats target + medium/high confidence → `playable`
+- Price beats target + high confidence + edge > 5% → `strong_play`
+
+**Kelly sizing:** `kelly = max(0, (p × b − q) / b)` where `b` is the net decimal payout from the market price. Zero when no market price or no edge.
+
+### API: `GET /api/model-odds/mlb`
+
+Query parameters:
+- `date` (string, YYYY-MM-DD) — game date (default: today)
+- `game_id` (int, optional) — specific game
+
+Response:
+
+```json
+{
+  "games": [
+    {
+      "game_id": 1234,
+      "game_date": "2026-03-21",
+      "home_team": "New York Yankees",
+      "away_team": "Boston Red Sox",
+      "sim_raw_home_wp": 0.549,
+      "calibrated": true,
+      "home": {
+        "p_true": 0.542,
+        "p_conservative": 0.522,
+        "model_line": -118.3,
+        "model_line_conservative": -109.2,
+        "model_range": [-126.1, -111.0],
+        "current_market": {
+          "best_price": 102.0,
+          "best_book": "DraftKings"
+        },
+        "edge_vs_conservative": 0.032,
+        "target_entry": 105.0,
+        "strong_play_at": 115.0,
+        "kelly_half": 0.007,
+        "kelly_quarter": 0.0035,
+        "confidence": "medium",
+        "decision": "playable",
+        "required_edge": 0.04
+      },
+      "away": { }
+    }
+  ],
+  "date": "2026-03-21",
+  "count": 1,
+  "calibrator_loaded": true
+}
+```
+
+### Database Columns
+
+New nullable columns on `analytics_prediction_outcomes` (migration `20260321_add_sim_observability`):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `sim_wp_std_dev` | Float | Bernoulli std dev of home WP |
+| `sim_iterations` | Integer | Number of Monte Carlo iterations |
+| `sim_score_std_home` | Float | Score std dev (home) |
+| `sim_score_std_away` | Float | Score std dev (away) |
+| `profile_games_home` | Integer | Games in home team rolling profile |
+| `profile_games_away` | Integer | Games in away team rolling profile |
+| `sim_probability_source` | String(50) | Probability source (team_profile, league_defaults, ml) |
+| `feature_snapshot` | JSONB | Frozen team profile metrics used in simulation |
+
+### Celery Tasks
+
+| Task Name | Description |
+|-----------|-------------|
+| `train_calibration_model` | Build calibration dataset from historical predictions + closing lines, train isotonic regression, save artifact. Requires ≥ 20 resolved predictions. |
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `analytics/calibration/calibrator.py` | `SimCalibrator` — isotonic regression calibration |
+| `analytics/calibration/dataset.py` | Calibration dataset builder (joins predictions to closing lines) |
+| `analytics/calibration/uncertainty.py` | Uncertainty scoring, conservative probability, confidence bands |
+| `services/model_odds.py` | Decision engine — Kelly sizing, target entry, classification |
+| `routers/model_odds.py` | `GET /api/model-odds/mlb` endpoint |
+| `tasks/calibration_tasks.py` | Celery task for calibration model training |

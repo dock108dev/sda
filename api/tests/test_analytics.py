@@ -19,7 +19,6 @@ from app.analytics.core.types import (
 )
 from app.analytics.services.analytics_service import AnalyticsService
 from app.analytics.sports.mlb.metrics import MLBMetrics
-from app.analytics.sports.mlb.simulator import MLBSimulator
 from app.analytics.sports.mlb.transforms import (
     transform_game_stats,
     transform_matchup_data,
@@ -220,25 +219,6 @@ class TestMLBMetrics:
         assert "contact_probability" in result
         # With baseline pitcher, contact_prob should be close to batter's rate
         assert result["contact_probability"] > 0
-
-
-class TestMLBSimulator:
-    """Verify MLB simulator module."""
-
-    def test_init_sets_sport(self) -> None:
-        sim = MLBSimulator()
-        assert sim.sport == "mlb"
-
-    def test_simulate_plate_appearance_returns_dict(self) -> None:
-        sim = MLBSimulator()
-        result = sim.simulate_plate_appearance({}, {})
-        assert isinstance(result, dict)
-
-    def test_simulate_game_returns_result(self) -> None:
-        sim = MLBSimulator()
-        result = sim.simulate_game({}, iterations=500)
-        assert isinstance(result, SimulationResult)
-        assert result.iterations == 500
 
 
 class TestMLBTransforms:
