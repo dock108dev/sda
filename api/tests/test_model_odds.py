@@ -202,12 +202,15 @@ class TestComputeModelOdds:
         assert result.decision == "no_play"
 
     def test_target_and_strong_lines_present(self):
+        """Target and strong lines should be non-zero. Strong is at least as
+        generous as target (higher American odds = better for bettor).
+        They may be equal when both clamp to the 0.501/0.499 boundary."""
         result = compute_model_odds(
             calibrated_wp=0.55, market_price=100.0, uncertainty=self._make_uncertainty(),
         )
         assert result.target_bet_line != 0.0
         assert result.strong_bet_line != 0.0
-        assert result.strong_bet_line > result.target_bet_line
+        assert result.strong_bet_line >= result.target_bet_line
 
     def test_required_edge_includes_friction(self):
         from app.analytics.calibration.uncertainty import TAX_FRICTION_BUFFER, TIER_REQUIRED_EDGE
@@ -216,3 +219,35 @@ class TestComputeModelOdds:
         )
         expected = TIER_REQUIRED_EDGE["medium"] + TAX_FRICTION_BUFFER
         assert abs(result.required_edge - expected) < 0.001
+
+    def test_underdog_with_market_target_lines_positive(self):
+        """Underdog side (p < 0.5): target and strong lines should be
+        positive American odds. Strong requires more edge → higher
+        probability threshold → LOWER positive American number (closer
+        to even money). The book must offer MORE than the threshold."""
+        result = compute_model_odds(
+            calibrated_wp=0.42, market_price=160.0,
+            uncertainty=self._make_uncertainty("medium"),
+        )
+        # Both lines should be positive (underdog territory)
+        assert result.target_bet_line > 0
+        assert result.strong_bet_line > 0
+        # Strong threshold is tighter (lower American number = higher
+        # implied probability), so the book must offer even more than this
+        assert result.strong_bet_line <= result.target_bet_line
+
+    def test_underdog_higher_uncertainty_widens_target(self):
+        """Higher uncertainty → larger required edge → target probability
+        pushed closer to 0.5 → lower positive American odds (tighter
+        threshold the book must exceed)."""
+        result_high = compute_model_odds(
+            calibrated_wp=0.42, market_price=160.0,
+            uncertainty=self._make_uncertainty("high"),
+        )
+        result_low = compute_model_odds(
+            calibrated_wp=0.42, market_price=160.0,
+            uncertainty=self._make_uncertainty("low"),
+        )
+        # Low confidence → larger edge → target probability closer to 0.5
+        # → lower positive American odds (tighter threshold)
+        assert result_low.target_bet_line <= result_high.target_bet_line

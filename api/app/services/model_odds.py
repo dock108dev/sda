@@ -101,13 +101,24 @@ def compute_model_odds(
     required_edge = base_edge + TAX_FRICTION_BUFFER
 
     # Step 4: Target bet line and strong bet line
-    # Target = conservative probability + required_edge, converted to American
-    target_p = core.p_conservative - required_edge if core.p_conservative > 0.5 else core.p_conservative + required_edge
+    # Target = conservative probability shifted by required_edge toward 0.5.
+    # For favorites (>0.5): subtract edge (lower probability = less negative odds).
+    # For underdogs (<0.5): add edge (higher probability = higher positive odds).
+    # Clamp so the line never crosses 0.5 (an underdog target shouldn't
+    # become a favorite line, and vice versa).
+    is_favorite = core.p_conservative > 0.5
+    if is_favorite:
+        target_p = max(0.501, core.p_conservative - required_edge)
+    else:
+        target_p = min(0.499, core.p_conservative + required_edge)
     target_p = max(0.01, min(0.99, target_p))
     target_bet_line = implied_to_american(target_p) if 0.01 < target_p < 0.99 else 0.0
 
-    # Strong = target + additional 2% edge
-    strong_p = target_p - 0.02 if core.p_conservative > 0.5 else target_p + 0.02
+    # Strong = target + additional 2% edge (same direction, same clamp)
+    if is_favorite:
+        strong_p = max(0.501, target_p - 0.02)
+    else:
+        strong_p = min(0.499, target_p + 0.02)
     strong_p = max(0.01, min(0.99, strong_p))
     strong_bet_line = implied_to_american(strong_p) if 0.01 < strong_p < 0.99 else 0.0
 

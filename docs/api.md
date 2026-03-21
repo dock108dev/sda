@@ -30,9 +30,9 @@
 20. [Simulator](#simulator)
 21. [Model Odds](#model-odds)
 22. [Realtime](#realtime)
-22. [Reading Positions](#reading-positions)
-23. [Golf API](#golf-api)
-24. [Golf Pools API](#golf-pools-api)
+23. [Reading Positions](#reading-positions)
+24. [Golf API](#golf-api)
+25. [Golf Pools API](#golf-pools-api)
 25. [Response Models](#response-models)
 
 ---
