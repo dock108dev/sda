@@ -225,7 +225,7 @@ class AnalyticsPredictionOutcome(Base):
     probability_mode: Mapped[str | None] = mapped_column(String(50), nullable=True)
     game_date: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    # Sim observability (filled at sim time for fair-odds downstream)
+    # Sim observability (filled at sim time for model-odds downstream)
     sim_wp_std_dev: Mapped[float | None] = mapped_column(Float, nullable=True)
     sim_iterations: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sim_score_std_home: Mapped[float | None] = mapped_column(Float, nullable=True)

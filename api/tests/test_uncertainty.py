@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from app.analytics.calibration.uncertainty import (
     TIER_PENALTIES,
-    FairOddsCore,
+    ModelOddsCore,
     UncertaintyResult,
     apply_uncertainty,
     compute_uncertainty,
@@ -179,5 +179,5 @@ class TestApplyUncertainty:
             penalty=0.01, confidence_tier="high", factors={},
         )
         result = apply_uncertainty(0.55, uncertainty)
-        assert isinstance(result, FairOddsCore)
+        assert isinstance(result, ModelOddsCore)
         assert result.uncertainty is uncertainty

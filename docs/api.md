@@ -28,7 +28,8 @@
 18. [FairBet](#fairbet)
 19. [Analytics](#analytics)
 20. [Simulator](#simulator)
-21. [Realtime](#realtime)
+21. [Model Odds](#model-odds)
+22. [Realtime](#realtime)
 22. [Reading Positions](#reading-positions)
 23. [Golf API](#golf-api)
 24. [Golf Pools API](#golf-pools-api)
@@ -2178,6 +2179,29 @@ Only `home_team` and `away_team` are required. Everything else has sensible defa
 |--------|-------|
 | `422` | Missing or invalid `home_team`/`away_team`, `iterations` out of range, etc. |
 | `401` | Missing or invalid API key |
+
+---
+
+## Model Odds
+
+**Base path:** `/api/model-odds`
+
+Decision framework combining sim predictions, market data, and uncertainty scoring into actionable fair lines, Kelly sizing, and play classification. See [Analytics — Model Odds Pipeline](analytics.md#model-odds-pipeline) for full architecture.
+
+### `GET /mlb`
+
+Fair-odds analysis for MLB games on a given date.
+
+**Query parameters:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `date` | string | today | Game date (YYYY-MM-DD) |
+| `game_id` | int | — | Filter to specific game |
+
+**Response:** Per-game object with `home` and `away` decision objects containing `p_true`, `p_conservative`, `fair_line`, `target_entry`, `kelly_half`, `confidence`, and `decision` (no_play / lean / playable / strong_play). See [analytics.md](analytics.md#api-get-apimodel-oddsmlb) for full response shape.
+
+**Auth:** API key required.
 
 ---
 

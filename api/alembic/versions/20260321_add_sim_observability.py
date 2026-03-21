@@ -5,7 +5,7 @@ Revises: pool_001
 Create Date: 2026-03-21
 
 Adds variance, iteration count, profile metadata, and feature snapshot
-columns to support the fair-odds calibration and uncertainty pipeline.
+columns to support the model-odds calibration and uncertainty pipeline.
 """
 
 from alembic import op

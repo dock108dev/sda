@@ -1,13 +1,14 @@
-"""Fair-odds API endpoint.
+"""Model odds API endpoint.
 
-Serves the full fair-odds decision framework for MLB games,
+Serves the sim-derived model odds decision framework for MLB games,
 combining sim predictions, market data, calibration, and uncertainty.
+
+Distinct from FairBet (which derives fair odds from cross-book Pinnacle devig).
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,7 @@ from app.db.session import get_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/fair-odds", tags=["fair-odds"])
+router = APIRouter(prefix="/api/model-odds", tags=["model-odds"])
 
 # Cache for the calibrator (loaded once per process)
 _calibrator_cache: dict[str, Any] = {}
@@ -46,7 +47,7 @@ def _get_calibrator(sport: str = "mlb"):
         cal = SimCalibrator()
         cal.load(artifacts[0])
         _calibrator_cache[sport] = cal
-        logger.info("calibrator_loaded_for_fair_odds", extra={"path": str(artifacts[0])})
+        logger.info("calibrator_loaded_for_model_odds", extra={"path": str(artifacts[0])})
         return cal
     except Exception:
         logger.warning("calibrator_load_failed", exc_info=True)
@@ -54,25 +55,24 @@ def _get_calibrator(sport: str = "mlb"):
 
 
 @router.get("/mlb")
-async def get_fair_odds_mlb(
+async def get_model_odds_mlb(
     date: str = Query(default=None, description="Game date (YYYY-MM-DD)"),
     game_id: int | None = Query(default=None, description="Specific game ID"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Get fair-odds analysis for MLB games.
+    """Get model odds analysis for MLB games.
 
     Returns per-game decision framework with:
-    - True probability and fair line
+    - True probability and model line
     - Conservative probability and target entry
     - Confidence band and uncertainty scoring
     - Kelly sizing and play classification
     """
     from app.analytics.calibration.uncertainty import compute_uncertainty
     from app.db.analytics import AnalyticsPredictionOutcome
-    from app.db.odds import ClosingLine, FairbetGameOddsWork
-    from app.db.sports import SportsGame, SportsLeague
-    from app.services.ev import american_to_implied, implied_to_american, remove_vig
-    from app.services.fair_odds import compute_fair_odds
+    from app.db.odds import FairbetGameOddsWork
+    from app.services.ev import american_to_implied, remove_vig
+    from app.services.model_odds import compute_model_odds
 
     game_date = date or str(__import__("datetime").date.today())
 
@@ -126,7 +126,7 @@ async def get_fair_odds_mlb(
     # 3. Load calibrator
     calibrator = _get_calibrator("mlb")
 
-    # 4. Compute fair-odds for each game
+    # 4. Compute model odds for each game
     games_output: list[dict] = []
     for pred in predictions:
         raw_wp = pred.predicted_home_wp
@@ -179,16 +179,16 @@ async def get_fair_odds_mlb(
             pitcher_data_quality=True,  # TODO: derive from feature_snapshot
         )
 
-        # Compute fair-odds for home side
-        home_decision = compute_fair_odds(
+        # Compute model odds for home side
+        home_decision = compute_model_odds(
             calibrated_wp=calibrated_wp,
             market_price=best_home_price,
             uncertainty=uncertainty,
         )
 
-        # Compute fair-odds for away side
+        # Compute model odds for away side
         away_calibrated = 1.0 - calibrated_wp
-        away_decision = compute_fair_odds(
+        away_decision = compute_model_odds(
             calibrated_wp=away_calibrated,
             market_price=best_away_price,
             uncertainty=uncertainty,
@@ -214,13 +214,13 @@ async def get_fair_odds_mlb(
 
 
 def _decision_to_dict(decision, best_book: str | None) -> dict:
-    """Convert FairOddsDecision to API response dict."""
+    """Convert ModelOddsDecision to API response dict."""
     return {
         "p_true": decision.p_true,
         "p_conservative": decision.p_conservative,
-        "fair_line": decision.fair_line_mid,
-        "fair_line_conservative": decision.fair_line_conservative,
-        "fair_range": [decision.fair_line_low, decision.fair_line_high],
+        "model_line": decision.fair_line_mid,
+        "model_line_conservative": decision.fair_line_conservative,
+        "model_range": [decision.fair_line_low, decision.fair_line_high],
         "current_market": {
             "best_price": decision.p_market and round(
                 __import__("app.services.ev", fromlist=["implied_to_american"]).implied_to_american(decision.p_market), 1

@@ -51,7 +51,7 @@ class UncertaintyResult:
 
 
 @dataclass(frozen=True, slots=True)
-class FairOddsCore:
+class ModelOddsCore:
     """Core fair-odds output: probabilities + confidence band + American lines."""
 
     p_true: float
@@ -179,7 +179,7 @@ def compute_uncertainty(
 def apply_uncertainty(
     p_true: float,
     uncertainty: UncertaintyResult,
-) -> FairOddsCore:
+) -> ModelOddsCore:
     """Apply uncertainty to produce conservative probability and confidence band.
 
     The conservative probability pulls p_true toward 0.5 by the penalty amount.
@@ -190,7 +190,7 @@ def apply_uncertainty(
         uncertainty: Uncertainty assessment from compute_uncertainty().
 
     Returns:
-        FairOddsCore with probabilities and American odds conversions.
+        ModelOddsCore with probabilities and American odds conversions.
     """
     penalty = uncertainty.penalty
 
@@ -211,7 +211,7 @@ def apply_uncertainty(
     fair_line_low = implied_to_american(p_low)
     fair_line_high = implied_to_american(p_high)
 
-    return FairOddsCore(
+    return ModelOddsCore(
         p_true=round(p_true, 4),
         p_conservative=round(p_conservative, 4),
         p_low=round(p_low, 4),

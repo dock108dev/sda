@@ -21,7 +21,7 @@ from app.realtime.poller import db_poller
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
 from app.routers import auth, fairbet, preferences, reading_positions, simulator, social, sports
-from app.routers.fair_odds import router as fair_odds_router
+from app.routers.model_odds import router as model_odds_router
 from app.routers.golf import router as golf_router
 from app.routers.admin import (
     odds_sync,
@@ -130,7 +130,7 @@ app.include_router(simulator.router, dependencies=auth_dependency)
 # filtering (pregame open to guest, full live for user+)
 # ---------------------------------------------------------------------------
 app.include_router(fairbet.router, dependencies=auth_dependency)
-app.include_router(fair_odds_router, dependencies=auth_dependency)
+app.include_router(model_odds_router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
 # Analytics — admin UI endpoints, secured by API key (same as other admin

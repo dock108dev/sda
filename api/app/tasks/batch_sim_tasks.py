@@ -147,7 +147,7 @@ async def _save_prediction_outcomes(
             predicted_away_score=game_result.get("average_away_score"),
             probability_mode=probability_mode,
             game_date=game_result.get("game_date"),
-            # Sim observability columns for fair-odds pipeline
+            # Sim observability columns for model-odds pipeline
             sim_wp_std_dev=game_result.get("home_wp_std_dev"),
             sim_iterations=game_result.get("iterations"),
             sim_score_std_home=game_result.get("score_std_home"),
@@ -362,7 +362,7 @@ async def _execute_batch_sim(
         else:
             prob_source = "league_defaults"
 
-        # Build feature snapshot from profiles for fair-odds pipeline
+        # Build feature snapshot from profiles for model-odds pipeline
         feature_snap = None
         if home_profile or away_profile:
             feature_snap = {
@@ -381,7 +381,7 @@ async def _execute_batch_sim(
             "average_away_score": sim.get("average_away_score"),
             "probability_source": prob_source,
             "has_profiles": has_profiles,
-            # Sim observability for fair-odds pipeline
+            # Sim observability for model-odds pipeline
             "home_wp_std_dev": sim.get("home_wp_std_dev"),
             "iterations": sim.get("iterations"),
             "score_std_home": sim.get("score_std_home"),

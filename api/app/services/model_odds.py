@@ -1,8 +1,11 @@
-"""Fair-odds decision engine.
+"""Model odds decision engine.
 
 Combines calibrated probability, market price, and uncertainty
-to produce the complete decision framework: conservative fair line,
+to produce the complete decision framework: conservative model line,
 target entry, Kelly sizing, and play classification.
+
+This is the sim-derived pricing layer — distinct from FairBet which
+derives fair odds from cross-book Pinnacle devig.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ from dataclasses import dataclass, field
 from app.analytics.calibration.uncertainty import (
     TAX_FRICTION_BUFFER,
     TIER_REQUIRED_EDGE,
-    FairOddsCore,
+    ModelOddsCore,
     UncertaintyResult,
     apply_uncertainty,
 )
@@ -25,8 +28,8 @@ from app.services.ev import american_to_implied, implied_to_american
 
 
 @dataclass(frozen=True, slots=True)
-class FairOddsDecision:
-    """Complete fair-odds output for one side of a game."""
+class ModelOddsDecision:
+    """Complete model-odds output for one side of a game."""
 
     # Core probabilities
     p_true: float
@@ -66,13 +69,13 @@ class FairOddsDecision:
 # ---------------------------------------------------------------------------
 
 
-def compute_fair_odds(
+def compute_model_odds(
     *,
     calibrated_wp: float,
     market_price: float | None = None,
     uncertainty: UncertaintyResult,
-) -> FairOddsDecision:
-    """Compute the full fair-odds decision framework for one side.
+) -> ModelOddsDecision:
+    """Compute the full model-odds decision framework for one side.
 
     Args:
         calibrated_wp: Calibrated true probability for this side (0-1).
@@ -80,7 +83,7 @@ def compute_fair_odds(
         uncertainty: Uncertainty assessment from compute_uncertainty().
 
     Returns:
-        FairOddsDecision with all pricing, sizing, and decision fields.
+        ModelOddsDecision with all pricing, sizing, and decision fields.
     """
     # Step 1: Apply uncertainty → conservative probability + bands
     core = apply_uncertainty(calibrated_wp, uncertainty)
@@ -134,7 +137,7 @@ def compute_fair_odds(
     factors = uncertainty.factors
     uncertainty_score = round(sum(factors.values()) / max(len(factors), 1), 4)
 
-    return FairOddsDecision(
+    return ModelOddsDecision(
         p_true=core.p_true,
         p_market=p_market,
         p_conservative=core.p_conservative,

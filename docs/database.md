@@ -106,7 +106,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `analytics_training_jobs` | ML training job tracking (status, metrics, artifact path, Celery task ID) |
 | `analytics_backtest_jobs` | Model backtest execution and results |
 | `analytics_batch_sim_jobs` | Batch Monte Carlo simulation jobs |
-| `analytics_prediction_outcomes` | Prediction vs actual outcome tracking for calibration |
+| `analytics_prediction_outcomes` | Prediction vs actual outcome tracking for calibration. Includes sim observability columns: `sim_wp_std_dev`, `sim_iterations`, `sim_score_std_home/away`, `profile_games_home/away`, `sim_probability_source`, `feature_snapshot` (JSONB) |
 | `analytics_degradation_alerts` | Model quality degradation alerts |
 | `analytics_experiment_suites` | A/B experiment suites — groups of strategy variants to compare |
 | `analytics_experiment_variants` | Individual variants within an experiment suite (strategy config, metrics) |
