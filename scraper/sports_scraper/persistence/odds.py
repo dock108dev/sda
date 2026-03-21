@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from ..db import db_models
 from ..logging import logger
 from ..models import NormalizedOddsSnapshot
-from ..utils.datetime_utils import now_utc, to_et_date
+from ..utils.datetime_utils import now_utc, start_of_et_day_utc, to_et_date
 from ..utils.db_queries import get_league_id
 
 
@@ -403,6 +403,21 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
         cache_set(cache_key, game_id)
 
     game = session.get(db_models.SportsGame, game_id)
+
+    # Backfill game_date if existing is midnight ET placeholder and odds has real time
+    if game is not None:
+        existing_is_midnight = game.game_date == start_of_et_day_utc(to_et_date(game.game_date))
+        incoming_is_midnight = snapshot.game_date == start_of_et_day_utc(to_et_date(snapshot.game_date))
+        if existing_is_midnight and not incoming_is_midnight:
+            old_date = game.game_date
+            game.game_date = snapshot.game_date
+            game.updated_at = now_utc()
+            logger.info(
+                "odds_backfilled_game_date",
+                game_id=game_id,
+                old_date=str(old_date),
+                new_date=str(snapshot.game_date),
+            )
 
     # Skip live games to preserve pre-game closing lines
     if game and game.status == db_models.GameStatus.live.value:

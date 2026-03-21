@@ -615,6 +615,7 @@ class TestUpsertOddsCacheMiss:
         mock_match_by_ids.return_value = 42  # Match found
 
         mock_game = MagicMock()
+        mock_game.game_date = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         # Mock execute for diagnostic queries
@@ -670,6 +671,7 @@ class TestUpsertOddsCacheMiss:
         mock_match_by_names.return_value = 42  # Match by names
 
         mock_game = MagicMock()
+        mock_game.game_date = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game, "Duke Blue Devils", "North Carolina Tar Heels")
 
         mock_session.execute.return_value.all.return_value = []
@@ -724,6 +726,7 @@ class TestUpsertOddsCacheMiss:
         mock_match_by_names.return_value = 42  # Match by names
 
         mock_game = MagicMock()
+        mock_game.game_date = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         mock_session.execute.return_value.all.return_value = []
@@ -778,6 +781,7 @@ class TestUpsertOddsCacheMiss:
         mock_upsert_stub.return_value = (42, True)  # Created new game
 
         mock_game = MagicMock()
+        mock_game.game_date = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         mock_session.execute.return_value.all.return_value = []
@@ -889,6 +893,7 @@ class TestUpsertOddsDiagnostics:
         mock_match_by_ids.return_value = 42
 
         mock_game = MagicMock()
+        mock_game.game_date = datetime(2024, 1, 15, 19, 0, tzinfo=UTC)
         _setup_session_get(mock_session, mock_game)
 
         # Mock diagnostic query results
