@@ -51,6 +51,15 @@ class LeagueConfig:
     expected_regular_season_games: int | None = None
     expected_teams: int | None = None
 
+    # Season calendar (month, day) — used to pro-rate expected games mid-season
+    # season_start/end are relative to the season start year passed to the audit.
+    # For cross-year seasons (NBA, NHL, NFL): end is in year+1.
+    season_start_month: int | None = None    # Month the season typically starts
+    season_start_day: int | None = None      # Day the season typically starts
+    season_end_month: int | None = None      # Month the season typically ends
+    season_end_day: int | None = None        # Day the season typically ends
+    season_crosses_year: bool = False         # True if season spans two calendar years
+
 
 # Master configuration for all leagues
 LEAGUE_CONFIG: dict[str, LeagueConfig] = {
@@ -65,6 +74,9 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         scheduled_ingestion=True,
         expected_regular_season_games=1230,  # 82 * 30 / 2
         expected_teams=30,
+        season_start_month=10, season_start_day=22,   # Late October
+        season_end_month=4, season_end_day=13,         # Mid April
+        season_crosses_year=True,
     ),
     "NHL": LeagueConfig(
         code="NHL",
@@ -77,6 +89,9 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         scheduled_ingestion=True,
         expected_regular_season_games=1312,  # 82 * 32 / 2
         expected_teams=32,
+        season_start_month=10, season_start_day=8,     # Early October
+        season_end_month=4, season_end_day=17,          # Mid April
+        season_crosses_year=True,
     ),
     "NCAAB": LeagueConfig(
         code="NCAAB",
@@ -86,11 +101,14 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         social_enabled=True,
         pbp_enabled=True,
         timeline_enabled=True,
-        scheduled_ingestion=True,  # Uses api.collegebasketballdata.com
-        live_pbp_enabled=True,  # Handled via NCAAB batch polling
-        estimated_game_duration_hours=2.5,  # Regulation ~2h + OT buffer
+        scheduled_ingestion=True,
+        live_pbp_enabled=True,
+        estimated_game_duration_hours=2.5,
         expected_regular_season_games=5460,  # ~30 * 364 / 2 (approximate)
         expected_teams=364,
+        season_start_month=11, season_start_day=4,     # Early November
+        season_end_month=3, season_end_day=16,          # Mid March (before tourney)
+        season_crosses_year=True,
     ),
     "MLB": LeagueConfig(
         code="MLB",
@@ -106,6 +124,9 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         estimated_game_duration_hours=3.5,
         expected_regular_season_games=2430,  # 162 * 30 / 2
         expected_teams=30,
+        season_start_month=3, season_start_day=27,     # Late March
+        season_end_month=9, season_end_day=28,          # Late September
+        season_crosses_year=False,
     ),
     "NFL": LeagueConfig(
         code="NFL",
@@ -121,6 +142,9 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         estimated_game_duration_hours=3.5,
         expected_regular_season_games=272,  # 17 * 32 / 2
         expected_teams=32,
+        season_start_month=9, season_start_day=5,      # Early September
+        season_end_month=1, season_end_day=4,           # Early January
+        season_crosses_year=True,
     ),
 }
 

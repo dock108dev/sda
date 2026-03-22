@@ -27,6 +27,11 @@ export interface SeasonAuditResponse {
 
   teamsWithGames: number;
   expectedTeams: number | null;
+
+  seasonStart: string | null;
+  seasonEnd: string | null;
+  seasonPctComplete: number | null;
+  expectedGamesToDate: number | null;
 }
 
 export interface SeasonAuditParams {

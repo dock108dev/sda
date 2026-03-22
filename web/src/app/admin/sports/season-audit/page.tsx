@@ -36,6 +36,11 @@ function LeagueCard({ data }: { data: SeasonAuditResponse }) {
     { label: "Adv Stats", count: data.withAdvancedStats, pct: data.advancedStatsPct },
   ];
 
+  // For in-progress seasons, compare against pro-rated expected games
+  const isInProgress = data.seasonPctComplete != null && data.seasonPctComplete > 0 && data.seasonPctComplete < 100;
+  const progressTarget = isInProgress ? data.expectedGamesToDate : data.expectedGames;
+  const progressPct = progressTarget ? Math.round(data.totalGames / progressTarget * 100 * 10) / 10 : data.coveragePct;
+
   return (
     <div className={styles.summaryCard}>
       <div className={styles.summaryHeader}>
@@ -46,6 +51,18 @@ function LeagueCard({ data }: { data: SeasonAuditResponse }) {
         </span>
       </div>
 
+      {/* Season dates */}
+      {data.seasonStart && data.seasonEnd && (
+        <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem" }}>
+          {data.seasonStart} — {data.seasonEnd}
+          {data.seasonPctComplete != null && (
+            <span style={{ marginLeft: "0.5rem", fontWeight: 600 }}>
+              ({data.seasonPctComplete}% of season elapsed)
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Big numbers */}
       <div className={styles.bigNumbers}>
         <div className={styles.bigNumber}>
@@ -54,31 +71,40 @@ function LeagueCard({ data }: { data: SeasonAuditResponse }) {
           </div>
           <div className={styles.bigNumberLabel}>Games</div>
         </div>
-        {data.expectedGames != null && (
+        {isInProgress && data.expectedGamesToDate != null ? (
+          <div className={styles.bigNumber}>
+            <div className={styles.bigNumberValue}>
+              {data.expectedGamesToDate.toLocaleString()}
+            </div>
+            <div className={styles.bigNumberLabel}>Expected to Date</div>
+          </div>
+        ) : data.expectedGames != null ? (
           <div className={styles.bigNumber}>
             <div className={styles.bigNumberValue}>
               {data.expectedGames.toLocaleString()}
             </div>
             <div className={styles.bigNumberLabel}>Expected</div>
           </div>
-        )}
-        {data.coveragePct != null && (
+        ) : null}
+        {progressPct != null && (
           <div className={styles.bigNumber}>
-            <div className={`${styles.bigNumberValue} ${textColor(data.coveragePct)}`}>
-              {data.coveragePct}%
+            <div className={`${styles.bigNumberValue} ${textColor(Math.min(progressPct, 100))}`}>
+              {Math.min(progressPct, 999)}%
             </div>
-            <div className={styles.bigNumberLabel}>Coverage</div>
+            <div className={styles.bigNumberLabel}>
+              {isInProgress ? "vs Expected to Date" : "Coverage"}
+            </div>
           </div>
         )}
       </div>
 
       {/* Season coverage bar */}
-      {data.expectedGames != null && (
+      {progressTarget != null && progressPct != null && (
         <div style={{ marginBottom: "1rem" }}>
           <div className={styles.progressBarOuter}>
             <div
-              className={`${styles.progressBarInner} ${barColor(data.coveragePct ?? 0)}`}
-              style={{ width: `${Math.min(data.coveragePct ?? 0, 100)}%` }}
+              className={`${styles.progressBarInner} ${barColor(Math.min(progressPct, 100))}`}
+              style={{ width: `${Math.min(progressPct, 100)}%` }}
             />
           </div>
         </div>

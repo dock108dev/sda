@@ -31,21 +31,35 @@ def configure_logging() -> None:
     All logs are output as JSON to stdout for easy aggregation.
     """
     resolved_level = _normalize_log_level(settings.log_level, settings.environment)
-    logging.basicConfig(level=resolved_level)
+    logging.basicConfig(level=resolved_level, format="%(message)s")
     structlog.configure(
         processors=[
-            structlog.processors.TimeStamper(fmt="iso"),  # ISO 8601 timestamps
+            structlog.stdlib.filter_by_level,
+            structlog.processors.TimeStamper(fmt="iso"),
             structlog.stdlib.add_log_level,
-            # Note: add_logger_name requires stdlib logger, not PrintLogger
+            structlog.stdlib.add_logger_name,
             structlog.processors.EventRenamer("message"),
             structlog.processors.StackInfoRenderer(),
-            structlog.processors.format_exc_info,  # Exception formatting
-            structlog.processors.JSONRenderer(),  # JSON output
+            structlog.processors.format_exc_info,
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(resolved_level),
+        wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
     )
+
+    # Configure the stdlib formatter to use structlog's JSON renderer
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer(),
+    )
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(resolved_level)
 
 
 # Configure logging at module import time

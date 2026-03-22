@@ -49,6 +49,7 @@ class TestIngestAdvancedStats:
 
     @patch("sports_scraper.services.mlb_advanced_stats_ingestion.ingest_advanced_stats_for_game")
     def test_ingests_mlb_games(self, mock_ingest_fn):
+        mock_ingest_fn.return_value = {"status": "success", "game_id": 42}
         summary = {"advanced_stats": 0}
         mock_session = MagicMock()
         mock_game = MagicMock()

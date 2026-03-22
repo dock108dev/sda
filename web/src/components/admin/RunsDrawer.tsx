@@ -34,13 +34,16 @@ const PHASE_OPTIONS = [
   { value: "analytics_degradation_check", label: "Analytics: Degradation Check" },
 ];
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All statuses" },
-  { value: "success", label: "Success" },
-  { value: "running", label: "Running" },
-  { value: "queued", label: "Queued" },
-  { value: "error", label: "Error" },
-];
+const ALL_STATUSES = ["success", "running", "queued", "error", "skipped", "canceled", "interrupted"] as const;
+const STATUS_LABELS: Record<string, string> = {
+  success: "Success",
+  running: "Running",
+  queued: "Queued",
+  error: "Error",
+  skipped: "Skipped",
+  canceled: "Canceled",
+  interrupted: "Interrupted",
+};
 
 const AUTO_REFRESH_MS = 30_000;
 
@@ -118,7 +121,7 @@ export function RunsDrawer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState("");
-  const [status, setStatus] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
   const [cancelingIds, setCancelingIds] = useState<Set<number>>(new Set());
@@ -128,7 +131,6 @@ export function RunsDrawer() {
       setError(null);
       const data = await listJobRuns({
         phase: phase || undefined,
-        status: status || undefined,
         limit: 100,
       });
       setRuns(data);
@@ -137,7 +139,18 @@ export function RunsDrawer() {
     } finally {
       setLoading(false);
     }
-  }, [phase, status]);
+  }, [phase]);
+
+  const filteredRuns = selectedStatuses.size === 0
+    ? runs
+    : runs.filter((r) => selectedStatuses.has(r.status));
+
+  const toggleStatus = (s: string) =>
+    setSelectedStatuses((prev) => {
+      const next = new Set(prev);
+      next.has(s) ? next.delete(s) : next.add(s);
+      return next;
+    });
 
   // Fetch when opened or filters change
   useEffect(() => {
@@ -254,16 +267,27 @@ export function RunsDrawer() {
                 </option>
               ))}
             </select>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+            <div className={styles.statusChips}>
+              {ALL_STATUSES.map((s) => (
+                <button
+                  key={s}
+                  className={`${styles.statusChip} ${selectedStatuses.has(s) ? styles.statusChipActive : ""}`}
+                  onClick={() => toggleStatus(s)}
+                  type="button"
+                >
+                  {STATUS_LABELS[s]}
+                </button>
               ))}
-            </select>
+              {selectedStatuses.size > 0 && (
+                <button
+                  className={styles.statusChipClear}
+                  onClick={() => setSelectedStatuses(new Set())}
+                  type="button"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <button
               className={styles.refreshBtn}
               onClick={fetchRuns}
@@ -277,11 +301,11 @@ export function RunsDrawer() {
           <div className={styles.body}>
             {error && <div className={styles.error}>{error}</div>}
 
-            {!loading && runs.length === 0 && !error && (
+            {!loading && filteredRuns.length === 0 && !error && (
               <div className={styles.empty}>No task runs found.</div>
             )}
 
-            {runs.length > 0 && (
+            {filteredRuns.length > 0 && (
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -295,7 +319,7 @@ export function RunsDrawer() {
                   </tr>
                 </thead>
                 <tbody>
-                  {groupConsecutiveRuns(runs).map((item, idx) => {
+                  {groupConsecutiveRuns(filteredRuns).map((item, idx) => {
                     if (item.kind === "group") {
                       const isExpanded = expandedGroups.has(idx);
                       const first = item.runs[0];

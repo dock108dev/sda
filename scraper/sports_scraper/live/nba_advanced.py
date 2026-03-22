@@ -32,7 +32,7 @@ class NBAAdvancedStatsFetcher:
             "Origin": "https://www.nba.com",
         }
         self._base_url = "https://stats.nba.com/stats"
-        self._timeout = 30
+        self._timeout = 10  # Short timeout — stats.nba.com blocks cloud IPs
         self._delay = 2.0  # seconds between API calls to be a good citizen
         cache_dir = settings.scraper_config.html_cache_dir
         self._cache = APICache(cache_dir=cache_dir, api_name="nba_advanced")

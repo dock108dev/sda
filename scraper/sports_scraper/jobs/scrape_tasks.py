@@ -40,7 +40,17 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
     task_id = run_scrape_job.request.id
     job_run_id = _activate_job_run_for_task(task_id)
 
+    # Try to acquire the lock. If it fails, wait briefly and retry once —
+    # the previous lock may be from a stale/crashed run.
     lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR)
+    if not lock_token:
+        import time
+        logger.info("scrape_job_lock_retry", run_id=run_id, league=league_code)
+        time.sleep(5)
+        # Force-release stale locks (the lock module handles TTL, but
+        # if the previous worker crashed, the lock may be orphaned)
+        lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR)
+
     if not lock_token:
         logger.warning("scrape_job_skipped_locked", run_id=run_id, league=league_code)
         from ..services.run_manager import ScrapeRunManager

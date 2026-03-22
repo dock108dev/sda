@@ -255,10 +255,9 @@ def _enrich_game_with_boxscore(
         game.venue = payload.venue
         updated = True
 
-    # Set source_game_key if not already set (important for PBP lookup)
-    if payload.identity.source_game_key and not game.source_game_key:
-        game.source_game_key = payload.identity.source_game_key
-        updated = True
+    # source_game_key is set at game creation time (upsert in persist_game_payload).
+    # Do NOT set it here during enrichment — if two rows exist for the same game,
+    # setting it here causes UniqueViolation on uq_sports_game_league_source_key.
 
     # Transition status (scheduled → final) with protection against regression
     normalized_status = _normalize_status(payload.status)
