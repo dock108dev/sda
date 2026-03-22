@@ -20,6 +20,10 @@ from ...db.nba_advanced import (
     NBAGameAdvancedStats,
     NBAPlayerAdvancedStats,
 )
+from ...db.nfl_advanced import (
+    NFLGameAdvancedStats,
+    NFLPlayerAdvancedStats,
+)
 from ...db.nhl_advanced import (
     NHLGameAdvancedStats,
     NHLGoalieAdvancedStats,
@@ -176,6 +180,12 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
             ),
             selectinload(SportsGame.nhl_goalie_advanced_stats).selectinload(
                 NHLGoalieAdvancedStats.team
+            ),
+            selectinload(SportsGame.nfl_advanced_stats).selectinload(
+                NFLGameAdvancedStats.team
+            ),
+            selectinload(SportsGame.nfl_player_advanced_stats).selectinload(
+                NFLPlayerAdvancedStats.team
             ),
         )
         .where(SportsGame.id == game_id)
@@ -643,6 +653,62 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
             for stat in game.nhl_goalie_advanced_stats
         ]
 
+    # NFL advanced stats (nflverse-derived)
+    from .schemas.nfl_advanced import (
+        NFLAdvancedTeamStats as NFLAdvTeamSchema,
+        NFLAdvancedPlayerStats as NFLAdvPlayerSchema,
+    )
+
+    nfl_advanced_stats_list: list[NFLAdvTeamSchema] | None = None
+    is_nfl = league_code == "NFL"
+    if is_nfl and game.nfl_advanced_stats:
+        nfl_advanced_stats_list = [
+            NFLAdvTeamSchema(
+                team=stat.team.name if stat.team else "Unknown",
+                is_home=stat.is_home,
+                total_epa=stat.total_epa,
+                pass_epa=stat.pass_epa,
+                rush_epa=stat.rush_epa,
+                epa_per_play=stat.epa_per_play,
+                total_wpa=stat.total_wpa,
+                success_rate=stat.success_rate,
+                pass_success_rate=stat.pass_success_rate,
+                rush_success_rate=stat.rush_success_rate,
+                explosive_play_rate=stat.explosive_play_rate,
+                avg_cpoe=stat.avg_cpoe,
+                avg_air_yards=stat.avg_air_yards,
+                avg_yac=stat.avg_yac,
+                total_plays=stat.total_plays,
+                pass_plays=stat.pass_plays,
+                rush_plays=stat.rush_plays,
+            )
+            for stat in game.nfl_advanced_stats
+        ]
+
+    nfl_player_advanced_stats_list: list[NFLAdvPlayerSchema] | None = None
+    if is_nfl and game.nfl_player_advanced_stats:
+        nfl_player_advanced_stats_list = [
+            NFLAdvPlayerSchema(
+                team=stat.team.name if stat.team else "Unknown",
+                player_name=stat.player_name,
+                is_home=stat.is_home,
+                player_role=stat.player_role,
+                total_epa=stat.total_epa,
+                epa_per_play=stat.epa_per_play,
+                pass_epa=stat.pass_epa,
+                rush_epa=stat.rush_epa,
+                receiving_epa=stat.receiving_epa,
+                cpoe=stat.cpoe,
+                air_epa=stat.air_epa,
+                yac_epa=stat.yac_epa,
+                air_yards=stat.air_yards,
+                total_wpa=stat.total_wpa,
+                success_rate=stat.success_rate,
+                plays=stat.plays,
+            )
+            for stat in game.nfl_player_advanced_stats
+        ]
+
     from ...services.play_tiers import enrich_play_entries
 
     if plays_entries and league_code:
@@ -668,6 +734,8 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         nhl_advanced_stats=nhl_advanced_stats_list,
         nhl_skater_advanced_stats=nhl_skater_advanced_stats_list,
         nhl_goalie_advanced_stats=nhl_goalie_advanced_stats_list,
+        nfl_advanced_stats=nfl_advanced_stats_list,
+        nfl_player_advanced_stats=nfl_player_advanced_stats_list,
         odds=odds_entries,
         social_posts=social_posts_entries,
         plays=plays_entries,

@@ -345,6 +345,45 @@ export type NHLGoalieAdvancedStats = {
   shotsAgainst: number | null;
 };
 
+export type NFLAdvancedTeamStats = {
+  team: string;
+  isHome: boolean;
+  totalEpa: number | null;
+  passEpa: number | null;
+  rushEpa: number | null;
+  epaPerPlay: number | null;
+  totalWpa: number | null;
+  successRate: number | null;
+  passSuccessRate: number | null;
+  rushSuccessRate: number | null;
+  explosivePlayRate: number | null;
+  avgCpoe: number | null;
+  avgAirYards: number | null;
+  avgYac: number | null;
+  totalPlays: number | null;
+  passPlays: number | null;
+  rushPlays: number | null;
+};
+
+export type NFLAdvancedPlayerStats = {
+  team: string;
+  playerName: string;
+  isHome: boolean;
+  playerRole: string | null;
+  totalEpa: number | null;
+  epaPerPlay: number | null;
+  passEpa: number | null;
+  rushEpa: number | null;
+  receivingEpa: number | null;
+  cpoe: number | null;
+  airEpa: number | null;
+  yacEpa: number | null;
+  airYards: number | null;
+  totalWpa: number | null;
+  successRate: number | null;
+  plays: number | null;
+};
+
 export type OddsEntry = {
   book: string;
   marketType: string;
@@ -441,6 +480,8 @@ export type AdminGameDetail = {
   nhlAdvancedStats?: NHLAdvancedTeamStats[] | null;
   nhlSkaterAdvancedStats?: NHLSkaterAdvancedStats[] | null;
   nhlGoalieAdvancedStats?: NHLGoalieAdvancedStats[] | null;
+  nflAdvancedStats?: NFLAdvancedTeamStats[] | null;
+  nflPlayerAdvancedStats?: NFLAdvancedPlayerStats[] | null;
   odds: OddsEntry[];
   socialPosts: SocialPost[];
   plays: PlayEntry[];

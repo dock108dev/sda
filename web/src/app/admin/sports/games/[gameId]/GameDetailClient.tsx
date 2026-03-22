@@ -15,6 +15,7 @@ import { OddsSection } from "./OddsSection";
 import { MLBAdvancedStatsSection } from "./MLBAdvancedStatsSection";
 import { NBAAdvancedStatsSection } from "./NBAAdvancedStatsSection";
 import { NHLAdvancedStatsSection } from "./NHLAdvancedStatsSection";
+import { NFLAdvancedStatsSection } from "./NFLAdvancedStatsSection";
 import { PlayerStatsSection } from "./PlayerStatsSection";
 import { ComputedFieldsSection } from "./ComputedFieldsSection";
 import { PipelineRunsSection } from "./PipelineRunsSection";
@@ -246,6 +247,14 @@ export default function GameDetailClient() {
           teamStats={game.nhlAdvancedStats}
           skaterStats={game.nhlSkaterAdvancedStats}
           goalieStats={game.nhlGoalieAdvancedStats}
+        />
+      )}
+
+      {((game.nflAdvancedStats && game.nflAdvancedStats.length > 0) ||
+        (game.nflPlayerAdvancedStats && game.nflPlayerAdvancedStats.length > 0)) && (
+        <NFLAdvancedStatsSection
+          teamStats={game.nflAdvancedStats}
+          playerStats={game.nflPlayerAdvancedStats}
         />
       )}
 

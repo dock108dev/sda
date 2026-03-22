@@ -50,6 +50,7 @@ from .mlb_advanced import (
 )
 from .scraper import ScrapeRunConfig, ScrapeRunCreateRequest, ScrapeRunResponse
 from .nba_advanced import NBAAdvancedPlayerStats, NBAAdvancedTeamStats
+from .nfl_advanced import NFLAdvancedPlayerStats, NFLAdvancedTeamStats
 from .nhl_advanced import NHLAdvancedTeamStats, NHLGoalieAdvancedStats, NHLSkaterAdvancedStats
 from .season_audit import SeasonAuditResponse
 from .teams import (
@@ -119,6 +120,9 @@ __all__ = [
     # nba_advanced
     "NBAAdvancedPlayerStats",
     "NBAAdvancedTeamStats",
+    # nfl_advanced
+    "NFLAdvancedPlayerStats",
+    "NFLAdvancedTeamStats",
     # nhl_advanced
     "NHLAdvancedTeamStats",
     "NHLGoalieAdvancedStats",

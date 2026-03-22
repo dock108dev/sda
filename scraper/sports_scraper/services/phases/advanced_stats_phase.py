@@ -22,7 +22,7 @@ def ingest_advanced_stats(
     complete_job_run,
 ) -> None:
     """Phase: advanced stats ingestion (MLB Statcast, NBA stats.nba.com)."""
-    supported_leagues = {"MLB", "NBA", "NHL"}
+    supported_leagues = {"MLB", "NBA", "NHL", "NFL"}
     if config.league_code not in supported_leagues:
         logger.info(
             "advanced_stats_skip_unsupported",
@@ -48,6 +48,8 @@ def ingest_advanced_stats(
             from ..nba_advanced_stats_ingestion import ingest_advanced_stats_for_game
         elif config.league_code == "NHL":
             from ..nhl_advanced_stats_ingestion import ingest_advanced_stats_for_game
+        elif config.league_code == "NFL":
+            from ..nfl_advanced_stats_ingestion import ingest_advanced_stats_for_game
         else:
             logger.warning("advanced_stats_no_ingestion_service", league=config.league_code)
             complete_job_run(adv_run_id, "skipped")
