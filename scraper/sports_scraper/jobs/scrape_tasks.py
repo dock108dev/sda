@@ -296,9 +296,10 @@ def poll_game_calendars() -> dict:
 
     # --- NCAAB (scoreboard is per-day; future dates may have limited data) ---
     try:
+        import httpx
         from ..live.ncaa_scoreboard import NCAAScoreboardClient
 
-        client = NCAAScoreboardClient()
+        client = NCAAScoreboardClient(httpx.Client(timeout=20))
         created = 0
         with get_session() as session:
             for day in days:

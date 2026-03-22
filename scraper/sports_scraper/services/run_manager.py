@@ -265,7 +265,7 @@ class ScrapeRunManager:
         if (
             not scraper
             and config.boxscores
-            and config.league_code not in ("NHL", "NBA", "NCAAB", "MLB")
+            and config.league_code not in ("NHL", "NBA", "NCAAB", "MLB", "NFL")
         ):
             raise RuntimeError(f"No scraper implemented for {config.league_code}")
 
