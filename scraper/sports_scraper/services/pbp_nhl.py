@@ -330,7 +330,10 @@ def ingest_pbp_via_nhl_api(
                     nhl_game_id=nhl_game_id,
                 )
 
+            session.commit()
+
         except Exception as exc:
+            session.rollback()
             logger.warning(
                 "nhl_pbp_fetch_failed",
                 run_id=run_id,

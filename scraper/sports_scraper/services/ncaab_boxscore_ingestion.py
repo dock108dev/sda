@@ -166,6 +166,7 @@ def ingest_boxscores_via_ncaab_api(
                 if result.has_player_stats:
                     games_with_stats += 1
 
+                session.commit()
                 logger.info(
                     "ncaab_boxscore_ingested",
                     run_id=run_id,
@@ -176,6 +177,7 @@ def ingest_boxscores_via_ncaab_api(
                 )
 
         except Exception as exc:
+            session.rollback()
             logger.warning(
                 "ncaab_boxscore_persist_failed",
                 run_id=run_id,
@@ -234,6 +236,7 @@ def ingest_boxscores_via_ncaab_api(
                 if boxscore.player_boxscores:
                     games_with_stats += 1
 
+                session.commit()
                 logger.info(
                     "ncaab_boxscore_ncaa_ingested",
                     run_id=run_id,
@@ -244,6 +247,7 @@ def ingest_boxscores_via_ncaab_api(
                 )
 
             except Exception as exc:
+                session.rollback()
                 logger.warning(
                     "ncaab_boxscore_ncaa_fetch_failed",
                     run_id=run_id,

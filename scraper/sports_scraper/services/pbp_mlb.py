@@ -168,7 +168,10 @@ def ingest_pbp_via_mlb_api(
                     mlb_game_pk=mlb_game_pk,
                 )
 
+            session.commit()
+
         except Exception as exc:
+            session.rollback()
             logger.warning(
                 "mlb_pbp_fetch_failed",
                 run_id=run_id,

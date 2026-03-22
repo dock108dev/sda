@@ -195,7 +195,10 @@ def ingest_pbp_via_ncaab_api(
                     cbb_game_id=cbb_game_id,
                 )
 
+            session.commit()
+
         except Exception as exc:
+            session.rollback()
             logger.warning(
                 "ncaab_pbp_fetch_failed",
                 run_id=run_id,

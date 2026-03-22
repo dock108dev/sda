@@ -89,15 +89,15 @@ def ingest_advanced_stats(
             for game in games:
                 try:
                     ingest_advanced_stats_for_game(session, game.id)
+                    session.commit()
                     count += 1
                 except Exception as exc:
+                    session.rollback()
                     logger.warning(
                         "advanced_stats_game_failed",
                         game_id=game.id,
                         error=str(exc),
                     )
-
-            session.commit()
 
         summary["advanced_stats"] = count
         logger.info(

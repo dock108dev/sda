@@ -289,6 +289,7 @@ def ingest_boxscores_via_nba_api(
             if player_stats and player_stats.inserted > 0:
                 games_with_stats += 1
 
+            session.commit()
             logger.info(
                 "nba_boxscore_ingested",
                 run_id=run_id,
@@ -299,6 +300,7 @@ def ingest_boxscores_via_nba_api(
             )
 
         except Exception as exc:
+            session.rollback()
             logger.warning(
                 "nba_boxscore_fetch_failed",
                 run_id=run_id,

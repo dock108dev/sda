@@ -312,7 +312,10 @@ def ingest_pbp_via_nba_api(
                     nba_game_id=nba_game_id,
                 )
 
+            session.commit()
+
         except Exception as exc:
+            session.rollback()
             logger.warning(
                 "nba_pbp_fetch_failed",
                 run_id=run_id,

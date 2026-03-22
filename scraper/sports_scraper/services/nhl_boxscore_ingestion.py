@@ -202,6 +202,7 @@ def ingest_boxscores_via_nhl_api(
                 if result.has_player_stats:
                     games_with_stats += 1
 
+                session.commit()
                 logger.info(
                     "nhl_boxscore_ingested",
                     run_id=run_id,
@@ -212,6 +213,7 @@ def ingest_boxscores_via_nhl_api(
                 )
 
         except Exception as exc:
+            session.rollback()
             logger.warning(
                 "nhl_boxscore_fetch_failed",
                 run_id=run_id,
