@@ -1,4 +1,4 @@
-"""MLB Statcast advanced stats ingestion phase."""
+"""Advanced stats ingestion phase (all leagues)."""
 
 from __future__ import annotations
 
@@ -42,20 +42,20 @@ def ingest_advanced_stats(
         only_missing=config.only_missing,
     )
     try:
-        if config.league_code == "MLB":
-            from ..mlb_advanced_stats_ingestion import ingest_advanced_stats_for_game
-        elif config.league_code == "NBA":
-            from ..nba_advanced_stats_ingestion import ingest_advanced_stats_for_game
-        elif config.league_code == "NHL":
-            from ..nhl_advanced_stats_ingestion import ingest_advanced_stats_for_game
-        elif config.league_code == "NFL":
-            from ..nfl_advanced_stats_ingestion import ingest_advanced_stats_for_game
-        elif config.league_code == "NCAAB":
-            from ..ncaab_advanced_stats_ingestion import ingest_advanced_stats_for_game
-        else:
-            logger.warning("advanced_stats_no_ingestion_service", league=config.league_code)
-            complete_job_run(adv_run_id, "skipped")
-            return
+        import importlib
+
+        _INGESTION_MODULES = {
+            "MLB": "mlb_advanced_stats_ingestion",
+            "NBA": "nba_advanced_stats_ingestion",
+            "NHL": "nhl_advanced_stats_ingestion",
+            "NFL": "nfl_advanced_stats_ingestion",
+            "NCAAB": "ncaab_advanced_stats_ingestion",
+        }
+        mod = importlib.import_module(
+            f"..{_INGESTION_MODULES[config.league_code]}",
+            package="sports_scraper.services.phases",
+        )
+        ingest_advanced_stats_for_game = mod.ingest_advanced_stats_for_game
 
         with get_session() as session:
             window_start = start_of_et_day_utc(start)

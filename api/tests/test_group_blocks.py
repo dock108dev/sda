@@ -1209,12 +1209,13 @@ class TestMLBLeagueConfig:
         assert cfg["score_noun"] == "run"
         assert cfg["extra_period_label"] == "extra innings"
 
-    def test_unknown_league_falls_back_to_nba(self) -> None:
-        """Unknown league codes fall back to NBA defaults."""
+    def test_unknown_league_raises(self) -> None:
+        """Unknown league codes raise KeyError instead of silently falling back."""
+        import pytest
         from app.services.pipeline.stages.league_config import get_config
 
-        cfg = get_config("WNBA")
-        assert cfg["regulation_periods"] == 4
+        with pytest.raises(KeyError, match="No pipeline config for league 'WNBA'"):
+            get_config("WNBA")
 
     def test_mlb_assign_roles_uses_lower_thresholds(self) -> None:
         """MLB role assignment uses 3-run swing threshold, not 8-point."""

@@ -244,7 +244,7 @@ def track_job_run(
     is activated instead of creating a new one.
 
     Usage:
-        with track_job_run("poll_live_pbp", ["NBA", "NHL"]) as tracker:
+        with track_job_run("poll_live_pbp", ["NBA", "NHL", "MLB", "NFL", "NCAAB"]) as tracker:
             # ... do work ...
             tracker.set("games_polled", 5)
             tracker.set("api_calls", 12)

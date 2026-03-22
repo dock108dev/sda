@@ -71,50 +71,30 @@ def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
     except Exception as exc:
         logger.warning("flow_trigger_dispatch_error", game_id=game_id, error=str(exc))
 
-    if league_code == "MLB":
+    # Dispatch advanced stats ingestion for the league (all use same pattern)
+    _ADVANCED_STATS_TASKS = {
+        "MLB": ("mlb_advanced_stats_tasks", "ingest_mlb_advanced_stats"),
+        "NBA": ("nba_advanced_stats_tasks", "ingest_nba_advanced_stats"),
+        "NHL": ("nhl_advanced_stats_tasks", "ingest_nhl_advanced_stats"),
+        "NFL": ("nfl_advanced_stats_tasks", "ingest_nfl_advanced_stats"),
+        "NCAAB": ("ncaab_advanced_stats_tasks", "ingest_ncaab_advanced_stats"),
+    }
+
+    task_info = _ADVANCED_STATS_TASKS.get(league_code)
+    if task_info:
+        module_name, task_name = task_info
         try:
-            from .mlb_advanced_stats_tasks import ingest_mlb_advanced_stats
-
-            ingest_mlb_advanced_stats.apply_async(args=[game_id], countdown=60)
-            logger.info("mlb_advanced_stats_dispatched", game_id=game_id)
+            import importlib
+            mod = importlib.import_module(f".{module_name}", package="sports_scraper.jobs")
+            task_fn = getattr(mod, task_name)
+            task_fn.apply_async(args=[game_id], countdown=60)
+            logger.info(f"{league_code.lower()}_advanced_stats_dispatched", game_id=game_id)
         except Exception as exc:
-            logger.warning("mlb_advanced_stats_dispatch_error", game_id=game_id, error=str(exc))
-
-    if league_code == "NBA":
-        try:
-            from .nba_advanced_stats_tasks import ingest_nba_advanced_stats
-
-            ingest_nba_advanced_stats.apply_async(args=[game_id], countdown=60)
-            logger.info("nba_advanced_stats_dispatched", game_id=game_id)
-        except Exception as exc:
-            logger.warning("nba_advanced_stats_dispatch_error", game_id=game_id, error=str(exc))
-
-    if league_code == "NHL":
-        try:
-            from .nhl_advanced_stats_tasks import ingest_nhl_advanced_stats
-
-            ingest_nhl_advanced_stats.apply_async(args=[game_id], countdown=60)
-            logger.info("nhl_advanced_stats_dispatched", game_id=game_id)
-        except Exception as exc:
-            logger.warning("nhl_advanced_stats_dispatch_error", game_id=game_id, error=str(exc))
-
-    if league_code == "NFL":
-        try:
-            from .nfl_advanced_stats_tasks import ingest_nfl_advanced_stats
-
-            ingest_nfl_advanced_stats.apply_async(args=[game_id], countdown=60)
-            logger.info("nfl_advanced_stats_dispatched", game_id=game_id)
-        except Exception as exc:
-            logger.warning("nfl_advanced_stats_dispatch_error", game_id=game_id, error=str(exc))
-
-    if league_code == "NCAAB":
-        try:
-            from .ncaab_advanced_stats_tasks import ingest_ncaab_advanced_stats
-
-            ingest_ncaab_advanced_stats.apply_async(args=[game_id], countdown=60)
-            logger.info("ncaab_advanced_stats_dispatched", game_id=game_id)
-        except Exception as exc:
-            logger.warning("ncaab_advanced_stats_dispatch_error", game_id=game_id, error=str(exc))
+            logger.warning(
+                f"{league_code.lower()}_advanced_stats_dispatch_error",
+                game_id=game_id,
+                error=str(exc),
+            )
 
 
 @shared_task(name="update_game_states")

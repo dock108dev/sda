@@ -12,7 +12,7 @@ addopts = [
   "--cov=app",
   "--cov-report=term-missing",
   "--cov-report=html:coverage_html",
-  "--cov-fail-under=80",
+  "--cov-fail-under=90",
 ]
 
 [tool.coverage.run]
@@ -54,6 +54,11 @@ omit = [
   "**/services/pipeline/backfill_embedded_tweets.py",
   # Sports configuration (constants only)
   "**/config_sports.py",
+  # Advanced stats DB models (ORM declarations only, no logic)
+  "**/db/nba_advanced.py",
+  "**/db/nhl_advanced.py",
+  "**/db/nfl_advanced.py",
+  "**/db/ncaab_advanced.py",
 ]
 
 [tool.coverage.report]

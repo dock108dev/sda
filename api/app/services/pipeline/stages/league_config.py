@@ -80,5 +80,11 @@ LEAGUE_CONFIG: dict[str, dict[str, Any]] = {
 
 
 def get_config(league_code: str) -> dict[str, Any]:
-    """Return league config, falling back to NBA defaults for unknown leagues."""
-    return LEAGUE_CONFIG.get(league_code.upper(), LEAGUE_CONFIG["NBA"])
+    """Return league config. Raises KeyError for unconfigured leagues."""
+    code = league_code.upper()
+    if code not in LEAGUE_CONFIG:
+        raise KeyError(
+            f"No pipeline config for league '{code}'. "
+            f"Valid: {', '.join(LEAGUE_CONFIG.keys())}"
+        )
+    return LEAGUE_CONFIG[code]
