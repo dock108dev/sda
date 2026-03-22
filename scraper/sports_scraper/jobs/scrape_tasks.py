@@ -29,16 +29,20 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
     Timeline/flow generation is decoupled — use the per-league flow
     generation tasks or Pipeline API endpoints for manual control.
     """
+    from ..services.job_runs import activate_queued_job_run, complete_job_run
     from ..utils.datetime_utils import now_utc
     from ..utils.redis_lock import LOCK_TIMEOUT_1HOUR, acquire_redis_lock, release_redis_lock
 
     league_code = config_payload.get("league_code", "UNKNOWN")
     lock_name = f"lock:ingest:{league_code}"
 
+    # Find and activate any queued job run for this Celery task
+    task_id = run_scrape_job.request.id
+    job_run_id = _activate_job_run_for_task(task_id)
+
     lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR)
     if not lock_token:
         logger.warning("scrape_job_skipped_locked", run_id=run_id, league=league_code)
-        # Update the run record so UI can surface the skip reason
         from ..services.run_manager import ScrapeRunManager
         mgr = ScrapeRunManager()
         mgr._update_run(
@@ -47,15 +51,50 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
             summary="Skipped: ingestion already in progress for this league",
             finished_at=now_utc(),
         )
+        if job_run_id:
+            complete_job_run(job_run_id, "skipped", "Ingestion already in progress")
         return {"status": "skipped", "reason": "ingestion_in_progress", "run_id": run_id}
 
     try:
         logger.info("scrape_job_started", run_id=run_id)
         result = run_ingestion(run_id, config_payload)
         logger.info("scrape_job_completed", run_id=run_id, result=result)
+        if job_run_id:
+            complete_job_run(job_run_id, "success", summary_data=result)
         return result
+    except Exception as exc:
+        if job_run_id:
+            complete_job_run(job_run_id, "error", str(exc)[:500])
+        raise
     finally:
         release_redis_lock(lock_name, lock_token)
+
+
+def _activate_job_run_for_task(celery_task_id: str | None) -> int | None:
+    """Find a queued SportsJobRun by celery_task_id and activate it."""
+    if not celery_task_id:
+        return None
+    try:
+        from ..db import db_models, get_session
+        from ..services.job_runs import activate_queued_job_run
+
+        with get_session() as session:
+            run = (
+                session.query(db_models.SportsJobRun)
+                .filter(
+                    db_models.SportsJobRun.celery_task_id == celery_task_id,
+                    db_models.SportsJobRun.status == "queued",
+                )
+                .first()
+            )
+            if not run:
+                return None
+            job_run_id = int(run.id)
+
+        return activate_queued_job_run(job_run_id)
+    except Exception as exc:
+        logger.warning("job_run_activation_failed", celery_task_id=celery_task_id, error=str(exc))
+        return None
 
 
 @shared_task(

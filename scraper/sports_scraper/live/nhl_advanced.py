@@ -18,8 +18,8 @@ import httpx
 from ..logging import logger
 from ..utils.cache import APICache
 
-# MoneyPuck CSV download URL pattern
-MONEYPUCK_CSV_URL = "https://peter-tanner.com/moneypuck/downloads/shots_{season}.csv"
+# MoneyPuck shot data download URL (ZIP containing a CSV)
+MONEYPUCK_ZIP_URL = "https://peter-tanner.com/moneypuck/downloads/shots_{season}.zip"
 
 # High danger threshold: shots from <= 20 feet
 HIGH_DANGER_DISTANCE_FT = 20
@@ -148,10 +148,15 @@ class NHLAdvancedStatsFetcher:
         return file_age > CSV_CACHE_TTL_SECONDS
 
     def _download_season_csv(self, season: int) -> str:
-        """Download the MoneyPuck season CSV and cache it.
+        """Download the MoneyPuck season ZIP, extract the CSV, and cache it.
+
+        MoneyPuck publishes shot data as ZIP archives (shots_{season}.zip)
+        containing a single CSV file.
 
         Returns the raw CSV text content.
         """
+        import zipfile
+
         cache_key = f"shots_{season}"
 
         # Check if we have a fresh-enough cached version
@@ -161,23 +166,31 @@ class NHLAdvancedStatsFetcher:
                 logger.info("nhl_moneypuck_cache_hit", season=season)
                 return cached
 
-        url = MONEYPUCK_CSV_URL.format(season=season)
+        url = MONEYPUCK_ZIP_URL.format(season=season)
         logger.info("nhl_moneypuck_download_start", season=season, url=url)
 
         try:
             with httpx.Client(timeout=120.0) as client:
                 response = client.get(url)
                 response.raise_for_status()
-                csv_text = response.text
 
-            # Cache the raw CSV text
+            # Extract CSV from the ZIP archive
+            zip_bytes = io.BytesIO(response.content)
+            with zipfile.ZipFile(zip_bytes) as zf:
+                csv_names = [n for n in zf.namelist() if n.endswith(".csv")]
+                if not csv_names:
+                    raise ValueError(f"No CSV file found in shots_{season}.zip")
+                csv_text = zf.read(csv_names[0]).decode("utf-8")
+
+            # Cache the extracted CSV text (not the ZIP)
             self._cache.put(cache_key, csv_text)
             self._csv_timestamps[season] = time.time()
 
             logger.info(
                 "nhl_moneypuck_download_complete",
                 season=season,
-                size_kb=len(csv_text) // 1024,
+                csv_size_kb=len(csv_text) // 1024,
+                zip_size_kb=len(response.content) // 1024,
             )
             return csv_text
 

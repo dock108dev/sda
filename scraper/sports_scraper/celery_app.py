@@ -94,26 +94,29 @@ app.conf.task_routes = {
 
 # High-frequency polling — all fire every 60s, staggered by countdown offsets.
 # Stats/PBP disabled 3–11 AM EST (hour 08–16 UTC excluded from crontab).
+# High-frequency polling tasks use `expires` so stale tasks are dropped from the
+# queue rather than piling up behind backfill/ingestion jobs. If a task hasn't
+# been picked up within its interval, a fresh one will be dispatched by beat.
 _polling_schedule = {
     "game-state-updater-every-60s": {
         "task": "update_game_states",
         "schedule": crontab(minute="*/1", hour="0-7,16-23"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 0},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 0, "expires": 55},
     },
     "live-pbp-poll-every-60s": {
         "task": "poll_live_pbp",
         "schedule": crontab(minute="*/1", hour="0-7,16-23"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 15},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 15, "expires": 55},
     },
     "mainline-odds-sync-every-60s": {
         "task": "sync_mainline_odds",
         "schedule": crontab(minute="*/1"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 30},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 30, "expires": 55},
     },
     "prop-odds-sync-every-60s": {
         "task": "sync_prop_odds",
         "schedule": crontab(minute="*/1"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45, "expires": 55},
     },
     # Live orchestrator: runs every 5 seconds to dynamically dispatch
     # per-game polling at sport-appropriate cadences (PBP, stats, odds).
@@ -121,7 +124,7 @@ _polling_schedule = {
     "live-orchestrator-every-5s": {
         "task": "live_orchestrator_tick",
         "schedule": 5.0,  # Every 5 seconds (numeric = seconds interval)
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 4},
     },
     # Calendar poll: creates game stubs from league schedule APIs every 15 min.
     # Catches postseason matchups, schedule changes, and late-added games
@@ -129,7 +132,7 @@ _polling_schedule = {
     "calendar-poll-every-15m": {
         "task": "poll_game_calendars",
         "schedule": crontab(minute="*/15"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 840},
     },
 }
 
@@ -189,12 +192,12 @@ _scheduled_tasks = {
     "golf-odds-every-30m": {
         "task": "golf_sync_odds",
         "schedule": crontab(minute="0,30"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 1500},
     },
     "golf-leaderboard-every-5m": {
         "task": "golf_sync_leaderboard",
         "schedule": crontab(minute="*/5"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 270},
     },
     "golf-dfs-every-6h": {
         "task": "golf_sync_dfs",
@@ -209,7 +212,7 @@ _scheduled_tasks = {
     "golf-score-pools-every-5m": {
         "task": "golf_score_pools",
         "schedule": crontab(minute="*/5"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 270},
     },
     # === Daily sweep (status repair, social scrape #2, embedded tweets, archive) ===
     # Lightweight housekeeping — no full pipeline re-runs or flow generation
@@ -225,12 +228,12 @@ _live_polling_schedule = {
     "game-social-every-60-min": {
         "task": "collect_game_social",
         "schedule": crontab(minute="0"),
-        "options": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE},
+        "options": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE, "expires": 3300},
     },
     "map-social-to-games-every-30-min": {
         "task": "map_social_to_games",
         "schedule": crontab(minute="15,45"),
-        "options": {"queue": SOCIAL_BULK_QUEUE, "routing_key": SOCIAL_BULK_QUEUE},
+        "options": {"queue": SOCIAL_BULK_QUEUE, "routing_key": SOCIAL_BULK_QUEUE, "expires": 1500},
     },
 }
 

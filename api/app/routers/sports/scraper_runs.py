@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from ...celery_client import get_celery_app
 from ...db import AsyncSession, get_db
-from ...db.scraper import SportsScrapeRun
+from ...db.scraper import SportsJobRun, SportsScrapeRun
 from ...db.sports import SportsLeague
 from ...utils.datetime_utils import date_to_utc_datetime, now_utc
 from .common import get_league, serialize_run
@@ -71,6 +71,17 @@ async def create_scrape_run(
             routing_key="sports-scraper",
         )
         run.job_id = async_result.id
+
+        # Create a SportsJobRun so the task appears in the Runs Drawer
+        # with status="queued" — visible immediately, cancelable.
+        job_run = SportsJobRun(
+            phase="data_backfill",
+            leagues=[league.code.upper()],
+            status="queued",
+            started_at=now_utc(),  # placeholder — overwritten when worker starts
+            celery_task_id=async_result.id,
+        )
+        session.add(job_run)
     except Exception as exc:  # pragma: no cover
         from ...logging_config import get_logger
 
