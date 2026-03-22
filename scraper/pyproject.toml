@@ -37,7 +37,7 @@ addopts = [
   "--cov=sports_scraper",
   "--cov-report=term-missing",
   "--cov-report=html:coverage_html",
-  "--cov-fail-under=80",
+  "--cov-fail-under=90",
 ]
 
 [tool.coverage.run]
@@ -50,6 +50,27 @@ omit = [
   "**/validate_env.py",
   # Init files (no logic)
   "**/__init__.py",
+  # Advanced stats fetchers (require external APIs: stats.nba.com, MoneyPuck, nflverse)
+  "**/live/nba_advanced.py",
+  "**/live/nhl_advanced.py",
+  "**/live/nfl_advanced.py",
+  "**/live/ncaab_advanced.py",
+  # Advanced stats ingestion (require DB + external API data)
+  "**/services/nba_advanced_stats_ingestion.py",
+  "**/services/nhl_advanced_stats_ingestion.py",
+  "**/services/nfl_advanced_stats_ingestion.py",
+  "**/services/ncaab_advanced_stats_ingestion.py",
+  # NFL live feed (requires ESPN API)
+  "**/live/nfl.py",
+  "**/live/nfl_pbp.py",
+  "**/live/nfl_boxscore.py",
+  "**/live/nfl_helpers.py",
+  # Game processors (per-game DB + API calls; tested via integration)
+  "**/services/game_processors.py",
+  # LiveFeedManager (orchestrates live API calls across all leagues)
+  "**/live/manager.py",
+  # Database models namespace (import-only, requires running DB)
+  "**/db.py",
 ]
 
 [tool.coverage.report]

@@ -10,11 +10,16 @@ This document describes where data comes from and how it's ingested.
 | Boxscores | CBB Stats API | NCAAB | Post-game |
 | Boxscores | NHL API | NHL | Post-game |
 | Boxscores | MLB Stats API (statsapi.mlb.com) | MLB | Post-game |
-| Play-by-Play | NBA API / NHL API / CBB API / MLB Stats API | NBA, NHL, NCAAB, MLB | Post-game |
-| Play-by-Play (Live) | League APIs | NBA, NHL, NCAAB, MLB | During game (5 min polling) |
-| Odds (pre-game) | The Odds API | NBA, NHL, NCAAB, MLB | Every 60s (pre-game lines) |
-| Odds (live) | The Odds API | NBA, NHL, NCAAB, MLB | Every 15-45s during live games (via live orchestrator) |
-| Social | X/Twitter | NBA, NHL, NCAAB, MLB | 24-hour game window |
+| Boxscores | ESPN API (site.api.espn.com) | NFL | Post-game |
+| Play-by-Play | NBA API / NHL API / CBB API / MLB Stats API / ESPN API | NBA, NHL, NCAAB, MLB, NFL | Post-game |
+| Play-by-Play (Live) | League APIs | NBA, NHL, NCAAB, MLB, NFL | During game (5 min polling) |
+| Odds (pre-game) | The Odds API | NBA, NHL, NCAAB, MLB, NFL | Every 60s (pre-game lines) |
+| Odds (live) | The Odds API | NBA, NHL, NCAAB, MLB, NFL | Every 15-45s during live games (via live orchestrator) |
+| Social | X/Twitter | NBA, NHL, NCAAB, MLB, NFL | 24-hour game window |
+| Advanced Stats | stats.nba.com | NBA | Post-game (60s after final) |
+| Advanced Stats | MoneyPuck CSV | NHL | Post-game (60s after final) |
+| Advanced Stats | nflverse (nflreadpy) | NFL | Post-game (60s after final) |
+| Advanced Stats | Computed from boxscores | NCAAB | Post-game (60s after final) |
 
 ## Boxscores & Player Stats
 
@@ -23,6 +28,7 @@ This document describes where data comes from and how it's ingested.
 - **NHL**: NHL API (`api-web.nhle.com/v1/gamecenter/{game_id}/boxscore`)
 - **NCAAB**: CBB Stats API (`/games/teams`, `/games/players`) with date range batching
 - **MLB**: MLB Stats API (`statsapi.mlb.com/api/v1/game/{game_pk}/boxscore`) — batter and pitcher stats
+- **NFL**: ESPN API (`site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={game_id}`) — passing, rushing, receiving, defense
 
 ### NCAAB Team Mapping
 NCAAB boxscore ingestion requires `cbb_team_id` in `sports_teams.external_codes` to match games to the CBB API.
@@ -108,6 +114,39 @@ NHL uses the official NHL API for ALL data (schedule, PBP, boxscores).
 - NBA: `PT11M22.00S` → `11:22`
 - NHL: Clock extracted from play data
 
+### NFL (ESPN API)
+
+**Source:** `site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={game_id}`
+
+NFL uses the ESPN API for all data (schedule, PBP, boxscores). Free, no API key required.
+
+**Parsing:**
+- PBP nested in `drives[].plays[]` — flattened with sequential indexing per period
+- `play_index`: `period * 10000 + sequential_index`
+- Play types mapped via `nfl_constants.py`
+
+**Storage:** `sports_game_plays`
+
+**Implementation:** `scraper/sports_scraper/live/nfl.py` (main client), `nfl_pbp.py`, `nfl_boxscore.py`
+
+## Advanced Stats (All Sports)
+
+Advanced stats are sport-specific enrichments computed post-game from dedicated data sources — separate from the boxscore/PBP APIs used for live data. Dispatched automatically 60 seconds after a game transitions to FINAL.
+
+### Storage
+
+Each sport has dedicated tables. All share the pattern: team-level (2 rows per game) + player-level (1 row per player per game).
+
+| Sport | Tables | Source |
+|-------|--------|--------|
+| MLB | `mlb_game_advanced_stats`, `mlb_player_advanced_stats`, `mlb_pitcher_game_stats`, `mlb_player_fielding_stats` | MLB Stats API (pitch-level Statcast) |
+| NBA | `nba_game_advanced_stats`, `nba_player_advanced_stats` | stats.nba.com (boxscoreadvancedv3, hustlev2, trackingv3) |
+| NHL | `nhl_game_advanced_stats`, `nhl_skater_advanced_stats`, `nhl_goalie_advanced_stats` | MoneyPuck CSV (shot-level xGoals) |
+| NFL | `nfl_game_advanced_stats`, `nfl_player_advanced_stats` | nflverse/nflreadpy (pre-computed EPA/WPA/CPOE) |
+| NCAAB | `ncaab_game_advanced_stats`, `ncaab_player_advanced_stats` | Computed from existing boxscore data (four factors) |
+
+All games track `sports_games.last_advanced_stats_at` for ingestion status.
+
 ## MLB Advanced Stats (Statcast-derived)
 
 ### Source
@@ -136,6 +175,64 @@ Both team-level aggregates and per-batter breakdowns are computed and stored.
 - Ingestion service: `scraper/sports_scraper/services/mlb_advanced_stats_ingestion.py`
 - Celery task: `scraper/sports_scraper/jobs/mlb_advanced_stats_tasks.py`
 
+## NBA Advanced Stats (stats.nba.com)
+
+### Source
+stats.nba.com — 3 endpoints per game: `boxscoreadvancedv3` (efficiency/shooting), `boxscorehustlev2` (hustle), `boxscoreplayertrackingv3` (tracking). Free, no key. Blocks some cloud IPs.
+
+### Data Collected
+- **Team-level:** OFF/DEF/NET rating, pace, PIE, eFG%, TS%, ORB%/DRB%, AST%, TOV%, contested shots, deflections, paint/fastbreak/second-chance points
+- **Player-level:** All team metrics per player + usage rate, speed, distance, touches, time of possession, pull-up/catch-shoot splits, screen assists
+
+### Implementation
+- Fetcher: `scraper/sports_scraper/live/nba_advanced.py`
+- Ingestion: `scraper/sports_scraper/services/nba_advanced_stats_ingestion.py`
+- Celery task: `scraper/sports_scraper/jobs/nba_advanced_stats_tasks.py`
+
+## NHL Advanced Stats (MoneyPuck)
+
+### Source
+MoneyPuck CSV downloads (`peter-tanner.com/moneypuck/downloads/shots_{season}.csv`). Free, credit MoneyPuck. 124 features per shot including pre-computed xGoals probability.
+
+### Data Collected
+- **Team-level:** xGoals for/against/%, Corsi (CF/CA/CF%), Fenwick (FF/FA/FF%), shooting%, save%, PDO, high-danger shots/goals
+- **Skater-level:** xGoals, per-60 rates (goals, assists, points, shots), game score
+- **Goalie-level:** xGA, goals saved above expected (GSAx), danger-zone save percentages
+
+### Implementation
+- Fetcher: `scraper/sports_scraper/live/nhl_advanced.py`
+- Ingestion: `scraper/sports_scraper/services/nhl_advanced_stats_ingestion.py`
+- Celery task: `scraper/sports_scraper/jobs/nhl_advanced_stats_tasks.py`
+
+## NFL Advanced Stats (nflverse)
+
+### Source
+nflverse via `nflreadpy` Python package. Pre-computed EPA/WPA/CPOE on every play since 1999. Parquet files on GitHub Releases, CC-BY 4.0 license.
+
+### Data Collected
+- **Team-level:** Total/pass/rush EPA, EPA/play, WPA, success rate (pass/rush), explosive play rate, avg CPOE, avg air yards, avg YAC
+- **Player-level (per role):** Passer EPA/CPOE/air+yac EPA, rusher EPA, receiver EPA, WPA, success rate
+
+### Implementation
+- Fetcher: `scraper/sports_scraper/live/nfl_advanced.py`
+- Ingestion: `scraper/sports_scraper/services/nfl_advanced_stats_ingestion.py`
+- Celery task: `scraper/sports_scraper/jobs/nfl_advanced_stats_tasks.py`
+- **Dependency:** `pip install nflreadpy` (uses Polars)
+
+## NCAAB Advanced Stats (Computed from Boxscores)
+
+### Source
+No external API. Four factors and efficiency computed from existing `sports_team_boxscores.stats` and `sports_player_boxscores.stats` JSONB data. Uses college-specific 0.475 FTA coefficient and 40-minute games.
+
+### Data Collected
+- **Team-level:** Possessions, OFF/DEF/NET rating, pace, four factors offense (eFG%, TOV%, ORB%, FT rate), four factors defense, shooting splits
+- **Player-level:** TS%, eFG%, usage rate, game score, offensive rating
+
+### Implementation
+- Fetcher: `scraper/sports_scraper/live/ncaab_advanced.py`
+- Ingestion: `scraper/sports_scraper/services/ncaab_advanced_stats_ingestion.py`
+- Celery task: `scraper/sports_scraper/jobs/ncaab_advanced_stats_tasks.py`
+
 ## Odds
 
 ### Source
@@ -155,6 +252,8 @@ The Odds API (v4): `https://api.the-odds-api.com`
 **Props (NHL):** `player_points`, `player_goals`, `player_assists`, `player_shots_on_goal`, `player_total_saves`, `team_totals`, `alternate_spreads`, `alternate_totals`
 
 **Props (MLB):** `batter_hits`, `batter_total_bases`, `batter_rbis`, `batter_runs_scored`, `batter_home_runs`, `batter_stolen_bases`, `pitcher_strikeouts`, `pitcher_outs`, `pitcher_hits_allowed`, `pitcher_walks`, `pitcher_earned_runs`, `team_totals`, `alternate_spreads`, `alternate_totals`
+
+**Props (NFL):** `player_pass_tds`, `player_pass_yds`, `player_pass_completions`, `player_pass_attempts`, `player_pass_interceptions`, `player_rush_yds`, `player_rush_attempts`, `player_reception_yds`, `player_receptions`, `player_anytime_td`, `team_totals`, `alternate_spreads`, `alternate_totals`
 
 ### Sync Schedule
 
@@ -374,6 +473,7 @@ Implementation: `queue_job_run()`, `activate_queued_job_run()`, `enforce_social_
   - 10:00 UTC (5:00 AM ET) — NHL flow generation
   - 10:30 UTC (5:30 AM ET) — NCAAB flow generation (capped at 10 games)
   - 11:00 UTC (6:00 AM ET) — MLB flow generation
+  - 11:30 UTC (6:30 AM ET) — NFL flow generation
 
 Configuration: `scraper/sports_scraper/celery_app.py`
 
@@ -404,7 +504,7 @@ Configuration: `scraper/sports_scraper/celery_app.py`
 ### Team Name Normalization
 - `scraper/sports_scraper/normalization/__init__.py`
 - Maps external team names to canonical database names
-- Exhaustive for NBA, partial for NCAAB (by design)
+- Exhaustive for NBA, NHL, MLB, NFL; partial for NCAAB (by design)
 
 ### Validation
 - Required fields checked before persistence

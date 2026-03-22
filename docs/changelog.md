@@ -2,7 +2,30 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-19] - Current
+## [2026-03-22] - Current
+
+### NFL Support (Full Pipeline)
+
+- **NFL live data:** Full ESPN API integration — schedule, play-by-play, boxscores, live polling. 7 new scraper files (`nfl.py`, `nfl_pbp.py`, `nfl_boxscore.py`, `nfl_constants.py`, `nfl_models.py`, `nfl_helpers.py`). Alembic migration seeds 32 NFL teams. NFL added to scheduled ingestion, calendar polling, flow generation (6:30 AM EST), game processors, polling helpers, diagnostics, and control panel league dropdown.
+- **NFL odds:** Props markets added (`player_pass_tds`, `player_rush_yds`, `player_receptions`, `player_anytime_td`, etc.). NFL already had mainline odds wired via `SPORT_KEY_MAP`.
+- **NFL pipeline config:** Gameflow thresholds (21-point blowout, 7-point close game, 14-point momentum swing). NFL added to `FAIRBET_LEAGUES`.
+
+### Advanced Stats (All 5 Sports)
+
+- **MLB Statcast:** Already implemented (reference pattern). Pitch-level exit velocity, launch angle, barrel rate, plate discipline.
+- **NBA (stats.nba.com):** `boxscoreadvancedv3` (TS%, eFG%, PIE, ratings), `boxscorehustlev2` (deflections, contested shots), `boxscoreplayertrackingv3` (speed, distance, touches, pull-up/catch-shoot splits). 2 new DB tables, frontend section.
+- **NHL (MoneyPuck):** Season CSV with 124-feature shot data. Pre-computed xGoals, Corsi, Fenwick, PDO, danger-zone saves. 3 new DB tables (team, skater, goalie), frontend section.
+- **NFL (nflverse):** Pre-computed EPA/WPA/CPOE via `nflreadpy`. Team and per-role player stats. 2 new DB tables, frontend section. New dependency: `nflreadpy`.
+- **NCAAB (four factors):** Computed from existing boxscore JSONB data — zero external API calls. eFG%, TOV%, ORB%, FT rate, efficiency ratings, pace, game score. 2 new DB tables, frontend section.
+- **Shared infrastructure:** `_dispatch_final_actions()` fires sport-specific Celery tasks 60s after game final. `advanced_stats_phase.py` dispatches per league. All 5 sports have frontend components in game detail view.
+
+### Season Audit
+
+- **Season audit endpoint:** `GET /api/admin/sports/season-audit?league=NBA&season=2025` returns game counts vs expected, coverage percentages for 7 data types (boxscore, PBP, odds, social, flow, advanced stats), and team counts.
+- **Season audit UI:** New page at `/admin/sports/season-audit` with league/season/type selector, progress bars with green/yellow/red thresholds.
+- **Expected game baselines:** Added `expected_regular_season_games` and `expected_teams` to `LeagueConfig` (NBA=1230, NHL=1312, MLB=2430, NCAAB=5460, NFL=272).
+
+## [2026-03-19]
 
 ### Golf Data Layer & Country Club Pools
 

@@ -116,7 +116,14 @@ The system validates league codes at every entry point:
 | `scraper/sports_scraper/services/scheduler.py` | Daily job scheduling |
 | `scraper/sports_scraper/jobs/scrape_tasks.py` | Scrape triggers |
 | `scraper/sports_scraper/jobs/flow_tasks.py` | Flow generation triggers |
+| `scraper/sports_scraper/celery_app.py` | Celery Beat schedule (flow tasks) |
+| `scraper/sports_scraper/services/diagnostics.py` | PBP diagnostics league list |
+| `scraper/sports_scraper/jobs/polling_helpers.py` | Live polling dispatcher |
+| `scraper/sports_scraper/services/game_processors.py` | Per-game processing functions |
+| `scraper/sports_scraper/live/manager.py` | LiveFeedManager sync methods |
+| `api/app/services/pipeline/stages/league_config.py` | Gameflow pipeline thresholds |
 | `web/src/lib/constants/sports.ts` | Frontend league list |
+| `web/src/app/admin/control-panel/taskRegistry.ts` | Control panel league dropdown |
 
 ## Common Mistakes to Avoid
 
@@ -139,7 +146,7 @@ if cfg.some_feature_enabled:
 league_code: str = Field(default="NBA")
 
 # GOOD
-league_code: str = Field(..., description="Required: NBA, NHL, NCAAB, MLB")
+league_code: str = Field(..., description="Required: NBA, NHL, NCAAB, MLB, NFL")
 ```
 
 ---
