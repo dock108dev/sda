@@ -56,6 +56,7 @@ from ._calibration_routes import router as _calibration_router
 from ._experiment_routes import router as _experiment_router
 from ._feature_routes import router as _feature_router
 from ._model_routes import router as _model_router
+from ._game_theory_routes import router as _game_theory_router
 from ._pipeline_routes import _serialize_batch_sim_job  # noqa: F401
 from ._pipeline_routes import router as _pipeline_router
 
@@ -403,3 +404,4 @@ router.include_router(_experiment_router)
 router.include_router(_feature_router)
 router.include_router(_pipeline_router)
 router.include_router(_model_router)
+router.include_router(_game_theory_router)
