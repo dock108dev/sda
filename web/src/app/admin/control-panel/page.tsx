@@ -190,6 +190,7 @@ function DataBackfillCard() {
   const [dataTypes, setDataTypes] = useState<Set<string>>(
     () => new Set(["Boxscores", "Odds", "PBP"])
   );
+  const [forceAll, setForceAll] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [results, setResults] = useState<
     { league: string; jobId?: string; error?: string }[]
@@ -228,7 +229,7 @@ function DataBackfillCard() {
           pbp: dataTypes.has("PBP"),
           social: dataTypes.has("Social"),
           advancedStats: dataTypes.has("Advanced Stats"),
-          onlyMissing: false,
+          onlyMissing: !forceAll,
         });
         newResults.push({ league, jobId: res.job_id ?? `run#${res.id}` });
       } catch (err) {
@@ -290,6 +291,14 @@ function DataBackfillCard() {
       </div>
 
       <div className={styles.taskFooter}>
+        <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#64748b", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={forceAll}
+            onChange={(e) => setForceAll(e.target.checked)}
+          />
+          Force re-upsert all games (skip nothing)
+        </label>
         <button
           className={styles.runButton}
           disabled={!canRun || dispatching}

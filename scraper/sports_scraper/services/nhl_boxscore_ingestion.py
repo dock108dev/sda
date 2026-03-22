@@ -15,7 +15,7 @@ from datetime import date, datetime
 
 from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 
-from sqlalchemy import exists, not_
+from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
@@ -73,10 +73,14 @@ def select_games_for_boxscores_nhl_api(
     )
 
     if only_missing:
-        has_boxscores = exists().where(
+        # Skip only if game has BOTH team boxscores AND player boxscores
+        has_team_box = exists().where(
             db_models.SportsTeamBoxscore.game_id == db_models.SportsGame.id
         )
-        query = query.filter(not_(has_boxscores))
+        has_player_box = exists().where(
+            db_models.SportsPlayerBoxscore.game_id == db_models.SportsGame.id
+        )
+        query = query.filter(not_(and_(has_team_box, has_player_box)))
 
     if updated_before:
         has_fresh = exists().where(

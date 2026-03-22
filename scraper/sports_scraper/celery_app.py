@@ -65,8 +65,10 @@ app = Celery(
     broker=settings.redis_url,
     backend=settings.redis_url,
     include=["sports_scraper.jobs.tasks"],
-    task_cls=_HoldAwareTask,
 )
+# Set the default Task class for ALL tasks including @shared_task.
+# task_cls in the constructor only applies to @app.task, not @shared_task.
+app.Task = _HoldAwareTask
 app.conf.update(**celery_config)
 app.conf.task_routes = {
     "run_scrape_job": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},

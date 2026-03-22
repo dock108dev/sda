@@ -1,11 +1,11 @@
-"""Tests for live/nba_advanced.py and services/nba_advanced_stats_ingestion.py."""
+"""Tests for NBA advanced stats (derived from boxscore data)."""
 
 from __future__ import annotations
 
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRAPER_ROOT = REPO_ROOT / "scraper"
@@ -18,504 +18,131 @@ os.environ.setdefault("ENVIRONMENT", "development")
 
 from sports_scraper.live.nba_advanced import (
     NBAAdvancedStatsFetcher,
-    _parse_result_set,
-    parse_advanced_boxscore,
-    parse_hustle_stats,
-    parse_tracking_stats,
-)
-from sports_scraper.services.nba_advanced_stats_ingestion import (
-    ingest_advanced_stats_for_game,
+    _compute_possessions,
+    _extract_stat,
 )
 
+HOME_BOX = {
+    "fg_made": 40, "fg_attempted": 85,
+    "three_made": 12, "three_attempted": 30,
+    "ft_made": 18, "ft_attempted": 22,
+    "offensive_rebounds": 10, "defensive_rebounds": 32,
+    "turnovers": 14, "assists": 25,
+    "points_in_paint": 48, "fast_break_points": 14,
+    "second_chance_points": 12, "points_off_turnovers": 18,
+    "bench_points": 35,
+}
 
-# ---------------------------------------------------------------------------
-# _parse_result_set
-# ---------------------------------------------------------------------------
-
-
-class TestParseResultSet:
-    def test_valid_data(self):
-        """Parse a resultSet with headers and rowSet into list of dicts."""
-        data = {
-            "resultSets": [
-                {
-                    "name": "PlayerStats",
-                    "headers": ["PLAYER_ID", "PLAYER_NAME", "MIN"],
-                    "rowSet": [
-                        [101, "LeBron James", "36:20"],
-                        [102, "Anthony Davis", "34:15"],
-                    ],
-                }
-            ]
-        }
-        result = _parse_result_set(data, "PlayerStats")
-        assert len(result) == 2
-        assert result[0]["PLAYER_ID"] == 101
-        assert result[1]["PLAYER_NAME"] == "Anthony Davis"
-
-    def test_missing_result_set(self):
-        """Return empty list when the named resultSet does not exist."""
-        data = {"resultSets": [{"name": "OtherStats", "headers": [], "rowSet": []}]}
-        result = _parse_result_set(data, "PlayerStats")
-        assert result == []
-
-    def test_empty_rows(self):
-        """Return empty list when rowSet is present but empty."""
-        data = {
-            "resultSets": [
-                {
-                    "name": "PlayerStats",
-                    "headers": ["PLAYER_ID", "MIN"],
-                    "rowSet": [],
-                }
-            ]
-        }
-        result = _parse_result_set(data, "PlayerStats")
-        assert result == []
+AWAY_BOX = {
+    "fg_made": 38, "fg_attempted": 88,
+    "three_made": 10, "three_attempted": 28,
+    "ft_made": 15, "ft_attempted": 20,
+    "offensive_rebounds": 8, "defensive_rebounds": 30,
+    "turnovers": 16, "assists": 22,
+    "points_in_paint": 42, "fast_break_points": 10,
+}
 
 
-# ---------------------------------------------------------------------------
-# parse_advanced_boxscore
-# ---------------------------------------------------------------------------
+class TestExtractStat:
+    def test_existing_key(self):
+        assert _extract_stat({"fg_made": 40}, "fg_made") == 40
+
+    def test_missing_key(self):
+        assert _extract_stat({}, "fg_made") == 0
+
+    def test_none_value(self):
+        assert _extract_stat({"fg_made": None}, "fg_made") == 0
 
 
-class TestParseAdvancedBoxscore:
-    def test_newer_boxscore_advanced_format(self):
-        """Parse the newer boxScoreAdvanced top-level key format.
-
-        Returns (team_rows, player_rows) tuple.
-        """
-        payload = {
-            "boxScoreAdvanced": {
-                "homeTeam": {
-                    "teamId": 1610612738,
-                    "teamTricode": "BOS",
-                    "statistics": {
-                        "offensiveRating": 115.2,
-                        "defensiveRating": 108.5,
-                        "netRating": 6.7,
-                        "pace": 100.3,
-                        "trueShootingPercentage": 0.585,
-                        "effectiveFieldGoalPercentage": 0.545,
-                        "turnoverPercentage": 12.1,
-                        "offensiveReboundPercentage": 28.5,
-                    },
-                    "players": [],
-                },
-                "awayTeam": {
-                    "teamId": 1610612747,
-                    "teamTricode": "LAL",
-                    "statistics": {
-                        "offensiveRating": 108.5,
-                        "defensiveRating": 115.2,
-                        "netRating": -6.7,
-                        "pace": 100.3,
-                        "trueShootingPercentage": 0.520,
-                        "effectiveFieldGoalPercentage": 0.480,
-                        "turnoverPercentage": 14.3,
-                        "offensiveReboundPercentage": 22.0,
-                    },
-                    "players": [],
-                },
-            }
-        }
-        team_rows, player_rows = parse_advanced_boxscore(payload)
-        assert len(team_rows) == 2
-        # Home team is first
-        assert team_rows[0]["OFF_RATING"] == 115.2
-        assert team_rows[0]["is_home"] is True
-        # Away team second
-        assert team_rows[1]["NET_RATING"] == -6.7
-        assert team_rows[1]["is_home"] is False
-
-    def test_legacy_result_sets_format(self):
-        """Parse legacy resultSets format with headers + rowSet."""
-        payload = {
-            "resultSets": [
-                {
-                    "name": "TeamStats",
-                    "headers": [
-                        "GAME_ID", "TEAM_ID", "OFF_RATING", "DEF_RATING",
-                        "NET_RATING", "PACE", "TS_PCT", "EFG_PCT",
-                    ],
-                    "rowSet": [
-                        ["0022400100", 1610612738, 115.2, 108.5, 6.7, 100.3, 0.585, 0.545],
-                        ["0022400100", 1610612747, 108.5, 115.2, -6.7, 100.3, 0.520, 0.480],
-                    ],
-                }
-            ]
-        }
-        team_rows, player_rows = parse_advanced_boxscore(payload)
-        assert len(team_rows) == 2
-        assert team_rows[0]["OFF_RATING"] == 115.2
+class TestComputePossessions:
+    def test_basic(self):
+        result = _compute_possessions(85, 10, 14, 22)
+        assert abs(result - 98.68) < 0.01
 
 
-# ---------------------------------------------------------------------------
-# parse_hustle_stats
-# ---------------------------------------------------------------------------
-
-
-class TestParseHustleStats:
-    def test_newer_format(self):
-        """Parse hustle stats from the newer nested format.
-
-        Returns a list of player dicts (one per player per team).
-        The newer format uses boxScoreHustle key with homeTeam/awayTeam.players[].
-        """
-        payload = {
-            "boxScoreHustle": {
-                "homeTeam": {
-                    "teamId": 1610612738,
-                    "players": [
-                        {
-                            "personId": 101,
-                            "firstName": "Jayson",
-                            "familyName": "Tatum",
-                            "statistics": {
-                                "contestedShots": 8,
-                                "deflections": 3,
-                                "looseBallsRecovered": 2,
-                                "chargesDrawn": 1,
-                                "screenAssists": 2,
-                            },
-                        },
-                    ],
-                },
-                "awayTeam": {
-                    "teamId": 1610612747,
-                    "players": [
-                        {
-                            "personId": 201,
-                            "firstName": "LeBron",
-                            "familyName": "James",
-                            "statistics": {
-                                "contestedShots": 6,
-                                "deflections": 2,
-                                "looseBallsRecovered": 1,
-                                "chargesDrawn": 0,
-                                "screenAssists": 1,
-                            },
-                        },
-                    ],
-                },
-            }
-        }
-        result = parse_hustle_stats(payload)
-        assert isinstance(result, list)
-        assert len(result) == 2
-        # Home player
-        assert result[0]["DEFLECTIONS"] == 3
-        assert result[0]["is_home"] is True
-        # Away player
-        assert result[1]["CONTESTED_SHOTS"] == 6
-        assert result[1]["is_home"] is False
-
-    def test_legacy_result_sets_format(self):
-        """Parse hustle stats from legacy resultSets format."""
-        payload = {
-            "resultSets": [
-                {
-                    "name": "PlayerStats",
-                    "headers": [
-                        "GAME_ID", "TEAM_ID", "CONTESTED_SHOTS",
-                        "DEFLECTIONS", "LOOSE_BALLS_RECOVERED",
-                    ],
-                    "rowSet": [
-                        ["0022400100", 1610612738, 32, 10, 5],
-                        ["0022400100", 1610612747, 28, 7, 3],
-                    ],
-                }
-            ]
-        }
-        result = parse_hustle_stats(payload)
-        assert isinstance(result, list)
-        assert len(result) == 2
-
-
-# ---------------------------------------------------------------------------
-# parse_tracking_stats
-# ---------------------------------------------------------------------------
-
-
-class TestParseTrackingStats:
-    def test_newer_format(self):
-        """Parse tracking stats from the newer nested format.
-
-        Returns a list of player dicts. Uses boxScorePlayerTrack key.
-        """
-        payload = {
-            "boxScorePlayerTrack": {
-                "homeTeam": {
-                    "teamId": 1610612738,
-                    "players": [
-                        {
-                            "personId": 101,
-                            "firstName": "Jayson",
-                            "familyName": "Tatum",
-                            "statistics": {
-                                "speed": 4.32,
-                                "distance": 2.5,
-                                "touches": 80,
-                                "possessionTime": 5.2,
-                            },
-                        },
-                    ],
-                },
-                "awayTeam": {
-                    "teamId": 1610612747,
-                    "players": [
-                        {
-                            "personId": 201,
-                            "firstName": "LeBron",
-                            "familyName": "James",
-                            "statistics": {
-                                "speed": 4.28,
-                                "distance": 2.4,
-                                "touches": 75,
-                                "possessionTime": 4.8,
-                            },
-                        },
-                    ],
-                },
-            }
-        }
-        result = parse_tracking_stats(payload)
-        assert isinstance(result, list)
-        assert len(result) == 2
-        assert result[0]["SPD"] == 4.32
-        assert result[0]["is_home"] is True
-        assert result[1]["DIST"] == 2.4
-        assert result[1]["is_home"] is False
-
-    def test_legacy_result_sets_format(self):
-        """Parse tracking stats from legacy resultSets format."""
-        payload = {
-            "resultSets": [
-                {
-                    "name": "PlayerStats",
-                    "headers": [
-                        "GAME_ID", "TEAM_ID", "DIST_MILES",
-                        "AVG_SPEED", "TOUCHES", "PASSES",
-                    ],
-                    "rowSet": [
-                        ["0022400100", 1610612738, 250.5, 4.32, 300, 280],
-                        ["0022400100", 1610612747, 245.0, 4.28, 290, 270],
-                    ],
-                }
-            ]
-        }
-        result = parse_tracking_stats(payload)
-        assert isinstance(result, list)
-        assert len(result) == 2
-
-
-# ---------------------------------------------------------------------------
-# NBAAdvancedStatsFetcher
-# ---------------------------------------------------------------------------
-
-
-class TestNBAAdvancedStatsFetcher:
-    @patch("sports_scraper.live.nba_advanced.settings")
-    def test_fetch_advanced_boxscore_success(self, mock_settings):
-        """Fetch advanced boxscore with mocked httpx response."""
-        mock_settings.scraper_config.html_cache_dir = "/tmp/test_cache"
-
-        response_data = {
-            "boxScoreAdvanced": {
-                "homeTeam": {
-                    "teamId": 1,
-                    "statistics": {"offensiveRating": 110.0, "defensiveRating": 105.0},
-                },
-                "awayTeam": {
-                    "teamId": 2,
-                    "statistics": {"offensiveRating": 105.0, "defensiveRating": 110.0},
-                },
-            }
-        }
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = response_data
-
+class TestComputeTeamAdvancedStats:
+    def test_returns_both_teams(self):
         fetcher = NBAAdvancedStatsFetcher()
-        fetcher._client = MagicMock()
-        fetcher._client.get.return_value = mock_response
-        fetcher._cache = MagicMock()
-        fetcher._cache.get.return_value = None
+        result = fetcher.compute_team_advanced_stats(HOME_BOX, AWAY_BOX, 110, 101)
+        assert "home" in result and "away" in result
 
-        result = fetcher.fetch_advanced_boxscore("0022400100")
-
-        assert result is not None
-        fetcher._client.get.assert_called_once()
-
-    @patch("sports_scraper.live.nba_advanced.settings")
-    def test_fetch_advanced_boxscore_cache_hit(self, mock_settings):
-        """Return cached data without making HTTP call."""
-        mock_settings.scraper_config.html_cache_dir = "/tmp/test_cache"
-
-        cached_data = {
-            "boxScoreAdvanced": {
-                "homeTeam": {"teamId": 1, "statistics": {"offensiveRating": 110.0}},
-                "awayTeam": {"teamId": 2, "statistics": {"offensiveRating": 105.0}},
-            }
-        }
-
+    def test_off_rating_reasonable(self):
         fetcher = NBAAdvancedStatsFetcher()
-        fetcher._client = MagicMock()
-        fetcher._cache = MagicMock()
-        fetcher._cache.get.return_value = cached_data
+        result = fetcher.compute_team_advanced_stats(HOME_BOX, AWAY_BOX, 110, 101)
+        assert result["home"]["off_rating"] is not None
+        assert result["home"]["off_rating"] > 100
 
-        result = fetcher.fetch_advanced_boxscore("0022400100")
-
-        assert result is not None
-        fetcher._client.get.assert_not_called()
-
-    @patch("sports_scraper.live.nba_advanced.settings")
-    def test_fetch_advanced_boxscore_403_handling(self, mock_settings):
-        """Handle 403 Forbidden gracefully."""
-        mock_settings.scraper_config.html_cache_dir = "/tmp/test_cache"
-
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-
+    def test_efg_pct(self):
         fetcher = NBAAdvancedStatsFetcher()
-        fetcher._client = MagicMock()
-        fetcher._client.get.return_value = mock_response
-        fetcher._cache = MagicMock()
-        fetcher._cache.get.return_value = None
+        result = fetcher.compute_team_advanced_stats(HOME_BOX, AWAY_BOX, 110, 101)
+        assert abs(result["home"]["efg_pct"] - 0.541) < 0.01
 
-        result = fetcher.fetch_advanced_boxscore("0022400100")
-
-        assert result is None
-
-    @patch("sports_scraper.live.nba_advanced.settings")
-    def test_fetch_advanced_boxscore_429_handling(self, mock_settings):
-        """Handle 429 Too Many Requests gracefully."""
-        mock_settings.scraper_config.html_cache_dir = "/tmp/test_cache"
-
-        mock_response = MagicMock()
-        mock_response.status_code = 429
-
+    def test_paint_points(self):
         fetcher = NBAAdvancedStatsFetcher()
-        fetcher._client = MagicMock()
-        fetcher._client.get.return_value = mock_response
-        fetcher._cache = MagicMock()
-        fetcher._cache.get.return_value = None
+        result = fetcher.compute_team_advanced_stats(HOME_BOX, AWAY_BOX, 110, 101)
+        assert result["home"]["paint_points"] == 48
 
-        result = fetcher.fetch_advanced_boxscore("0022400100")
-
-        assert result is None
-
-
-# ---------------------------------------------------------------------------
-# ingest_advanced_stats_for_game (NBA)
-# ---------------------------------------------------------------------------
+    def test_hustle_is_none(self):
+        fetcher = NBAAdvancedStatsFetcher()
+        result = fetcher.compute_team_advanced_stats(HOME_BOX, AWAY_BOX, 110, 101)
+        assert result["home"]["contested_shots"] is None
+        assert result["home"]["deflections"] is None
 
 
-class TestNBAIngestAdvancedStats:
-    @staticmethod
-    def _make_game(
-        status="final",
-        league_code="NBA",
-        external_ids=None,
-        home_team_id=1,
-        away_team_id=2,
-    ):
-        game = MagicMock()
-        game.status = status
-        game.league_id = 20
-        game.home_team_id = home_team_id
-        game.away_team_id = away_team_id
-        game.external_ids = external_ids if external_ids is not None else {"nba_game_id": "0022400100"}
-        game.last_advanced_stats_at = None
-        return game
+class TestComputePlayerAdvancedStats:
+    def test_basic(self):
+        fetcher = NBAAdvancedStatsFetcher()
+        players = [{
+            "player_id": "123", "player_name": "Test", "is_home": True,
+            "stats": {
+                "minutes": 35.0, "fg_made": 10, "fg_attempted": 20,
+                "three_made": 3, "three_attempted": 8, "ft_made": 5, "ft_attempted": 6,
+                "points": 28, "offensive_rebounds": 2, "defensive_rebounds": 5,
+                "assists": 6, "steals": 2, "blocks": 1, "turnovers": 3, "personal_fouls": 2,
+            },
+        }]
+        result = fetcher.compute_player_advanced_stats(players, 100, 240)
+        assert len(result) == 1
+        assert result[0]["ts_pct"] is not None
+        assert result[0]["usg_pct"] is not None
 
-    @staticmethod
-    def _make_league(code="NBA"):
-        league = MagicMock()
-        league.code = code
-        return league
+    def test_skips_zero_minutes(self):
+        fetcher = NBAAdvancedStatsFetcher()
+        result = fetcher.compute_player_advanced_stats(
+            [{"player_id": "1", "player_name": "DNP", "is_home": True, "stats": {"minutes": 0}}],
+            100, 240,
+        )
+        assert len(result) == 0
 
-    @staticmethod
-    def _make_session(game=None, league=None):
-        session = MagicMock()
 
-        def get_side_effect(model_id):
-            return get_side_effect._results.pop(0)
-
-        results = []
-        if game is not None:
-            results.append(game)
-        if league is not None:
-            results.append(league)
-        get_side_effect._results = results
-
-        session.query.return_value.get = MagicMock(side_effect=get_side_effect)
-        return session
-
-    def test_game_not_found(self):
+class TestNBAIngestSkipConditions:
+    def test_not_found(self):
+        from sports_scraper.services.nba_advanced_stats_ingestion import ingest_advanced_stats_for_game
         session = MagicMock()
         session.query.return_value.get.return_value = None
+        assert ingest_advanced_stats_for_game(session, 999)["status"] == "not_found"
 
-        result = ingest_advanced_stats_for_game(session, 999)
-        assert result["status"] == "not_found"
-
-    def test_game_not_final(self):
-        game = self._make_game(status="live")
+    def test_not_final(self):
+        from sports_scraper.services.nba_advanced_stats_ingestion import ingest_advanced_stats_for_game
         session = MagicMock()
-        session.query.return_value.get.return_value = game
+        game = MagicMock(id=42, status="live", league_id=1)
+        league = MagicMock(code="NBA")
+        session.query.return_value.get.side_effect = [game, league]
+        assert ingest_advanced_stats_for_game(session, 42)["reason"] == "not_final"
 
-        result = ingest_advanced_stats_for_game(session, 1)
-        assert result["status"] == "skipped"
-        assert result["reason"] == "not_final"
+    def test_not_nba(self):
+        from sports_scraper.services.nba_advanced_stats_ingestion import ingest_advanced_stats_for_game
+        session = MagicMock()
+        game = MagicMock(id=42, status="final", league_id=1)
+        league = MagicMock(code="NHL")
+        session.query.return_value.get.side_effect = [game, league]
+        assert ingest_advanced_stats_for_game(session, 42)["reason"] == "not_nba"
 
-    def test_game_not_nba(self):
-        game = self._make_game()
-        league = self._make_league(code="MLB")
-        session = self._make_session(game, league)
-
-        result = ingest_advanced_stats_for_game(session, 1)
-        assert result["status"] == "skipped"
-        assert result["reason"] == "not_nba"
-
-    def test_no_game_id(self):
-        game = self._make_game(external_ids={})
-        league = self._make_league(code="NBA")
-        session = self._make_session(game, league)
-
-        result = ingest_advanced_stats_for_game(session, 1)
-        assert result["status"] == "skipped"
-        assert result["reason"] == "no_nba_game_id"
-
-    @patch("sports_scraper.live.nba_advanced.NBAAdvancedStatsFetcher")
-    @patch("sports_scraper.live.nba_advanced.parse_advanced_boxscore")
-    @patch("sports_scraper.live.nba_advanced.parse_hustle_stats")
-    @patch("sports_scraper.live.nba_advanced.parse_tracking_stats")
-    def test_successful_ingestion(self, mock_parse_tracking, mock_parse_hustle, mock_parse_adv, MockFetcher):
-        game = self._make_game()
-        league = self._make_league(code="NBA")
-        session = self._make_session(game, league)
-
-        mock_fetcher = MagicMock()
-        # The fetcher returns raw API response dicts
-        mock_fetcher.fetch_advanced_boxscore.return_value = {"boxScoreAdvanced": {}}
-        mock_fetcher.fetch_hustle_stats.return_value = {"boxScoreHustle": {}}
-        mock_fetcher.fetch_tracking_stats.return_value = {"boxScorePlayerTrack": {}}
-        MockFetcher.return_value = mock_fetcher
-
-        # The parse functions are called on the raw data
-        mock_parse_adv.return_value = (
-            [
-                {"TEAM_ID": 1, "is_home": True, "OFF_RATING": 115.2},
-                {"TEAM_ID": 2, "is_home": False, "OFF_RATING": 108.5},
-            ],
-            [],  # player_rows
-        )
-        mock_parse_hustle.return_value = []
-        mock_parse_tracking.return_value = []
-
-        result = ingest_advanced_stats_for_game(session, 1)
-
-        assert result["status"] == "success"
-        assert result["rows_upserted"] == 2
-        assert game.last_advanced_stats_at is not None
-        session.flush.assert_called_once()
+    def test_missing_boxscores(self):
+        from sports_scraper.services.nba_advanced_stats_ingestion import ingest_advanced_stats_for_game
+        session = MagicMock()
+        game = MagicMock(id=42, status="final", league_id=1)
+        league = MagicMock(code="NBA")
+        session.query.return_value.get.side_effect = [game, league]
+        session.query.return_value.filter.return_value.all.return_value = []
+        assert ingest_advanced_stats_for_game(session, 42)["reason"] == "missing_boxscores"
