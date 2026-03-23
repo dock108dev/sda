@@ -2,7 +2,17 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-22] - Current
+## [2026-03-23] - Current
+
+### Game Theory Module
+
+- **Kelly Criterion:** Optimal bet sizing (full/half/quarter Kelly) for single bets and batches with total exposure management. 2 endpoints.
+- **Nash Equilibrium:** Two-player zero-sum game solver via fictitious play. Includes lineup optimization (batter-vs-pitcher matchup matrices) and pitch selection optimization. 3 endpoints.
+- **Portfolio Optimization:** Mean-variance bankroll allocation across correlated bets with risk aversion tuning, per-bet caps, and Sharpe ratio output. 1 endpoint.
+- **Minimax + Regret Matching:** Alpha-beta pruned game tree solver for sequential decisions, plus regret minimization for repeated games. 2 endpoints.
+- **Implementation:** 5 new modules in `api/app/analytics/game_theory/`, 8 API endpoints under `/api/analytics/game-theory/*`, 40 unit tests.
+
+## [2026-03-22]
 
 ### NFL Support (Full Pipeline)
 

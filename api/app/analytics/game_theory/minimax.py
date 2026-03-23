@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Any, Callable
 
 from .types import MinimaxResult
 
@@ -168,7 +167,7 @@ def regret_matching(
     cumulative_strategy = [0.0] * m
     regret_table: dict[str, dict[str, float]] = {rl: {} for rl in row_labels}
 
-    for t in range(iterations):
+    for _t in range(iterations):
         # Current strategy from positive regrets
         strategy = _regret_to_strategy(cumulative_regret)
 
@@ -188,10 +187,7 @@ def regret_matching(
 
     # Normalize final strategy
     total = sum(cumulative_strategy)
-    if total > 0:
-        final_strategy = [c / total for c in cumulative_strategy]
-    else:
-        final_strategy = [1.0 / m] * m
+    final_strategy = [c / total for c in cumulative_strategy] if total > 0 else [1.0 / m] * m
 
     # Compute action values (expected payoff of each pure action vs uniform opponent)
     action_values = {}

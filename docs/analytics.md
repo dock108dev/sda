@@ -738,3 +738,62 @@ New nullable columns on `analytics_prediction_outcomes` (migration `20260321_add
 | `services/model_odds.py` | Decision engine — Kelly sizing, target entry, classification |
 | `routers/model_odds.py` | `GET /api/model-odds/mlb` endpoint |
 | `tasks/calibration_tasks.py` | Celery task for calibration model training |
+
+---
+
+## Game Theory Module
+
+Strategic optimization layer that operates on top of the prediction engine. Provides mathematical frameworks for bet sizing, strategy optimization, and portfolio management.
+
+All endpoints are under `/api/analytics/game-theory/*`.
+
+### Kelly Criterion — Optimal Bet Sizing
+
+Given a model probability and sportsbook odds, computes the mathematically optimal fraction of bankroll to wager.
+
+- `POST /game-theory/kelly` — Single bet sizing (full, half, or quarter Kelly)
+- `POST /game-theory/kelly/batch` — Multiple bets with total exposure cap
+
+**Inputs:** `model_prob` (true win probability), `american_odds`, `bankroll`, `variant` (full/half/quarter), `max_fraction` (per-bet cap), `max_total_exposure` (batch only)
+
+**Output:** `KellyResult` with edge, kelly_fraction, recommended_wager, implied_prob, decimal_odds
+
+### Nash Equilibrium — Strategy Optimization
+
+Solves two-player zero-sum games using fictitious play to find mixed-strategy Nash Equilibria.
+
+- `POST /game-theory/nash` — Generic payoff matrix solver
+- `POST /game-theory/nash/lineup` — Batter-vs-pitcher matchup optimization (rows=batters, cols=pitchers, values=expected outcome like wOBA)
+- `POST /game-theory/nash/pitch-selection` — Optimal pitch mix against batter stances
+
+**Output:** `NashEquilibrium` with row_strategy, col_strategy, game_value, iteration count
+
+### Portfolio Optimization — Bet Diversification
+
+Mean-variance optimization across multiple bets, accounting for correlations between outcomes (e.g., same-game bets are correlated).
+
+- `POST /game-theory/portfolio` — Allocate bankroll across N bets
+
+**Inputs:** Array of bets (model_prob, american_odds, optional game_id for correlation), `risk_aversion`, `max_per_bet`, `max_total`, optional `correlation_matrix`
+
+**Output:** `PortfolioResult` with per-bet allocations (weights), expected return, variance, Sharpe ratio
+
+### Minimax — Adversarial Decision Trees
+
+Minimax with alpha-beta pruning for sequential game trees, plus regret minimization for repeated games.
+
+- `POST /game-theory/minimax` — Solve a game tree (recursive JSON structure with maximizer/minimizer nodes)
+- `POST /game-theory/regret-matching` — Find optimal mixed strategy via regret minimization over a payoff matrix
+
+**Output:** `MinimaxResult` with optimal_action, action_values, strategy (mixed), regret_table
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `analytics/game_theory/kelly.py` | Kelly Criterion: `compute_kelly()`, `compute_kelly_batch()` |
+| `analytics/game_theory/nash.py` | Nash Equilibrium: `solve_zero_sum()`, `lineup_nash()`, `pitch_selection_nash()` |
+| `analytics/game_theory/portfolio.py` | Portfolio optimization: `optimize_portfolio()` |
+| `analytics/game_theory/minimax.py` | Minimax + regret matching: `solve_minimax()`, `regret_matching()` |
+| `analytics/game_theory/types.py` | Dataclass output types: `KellyResult`, `NashEquilibrium`, `PortfolioResult`, `MinimaxResult` |
+| `analytics/api/_game_theory_routes.py` | FastAPI routes (8 endpoints) |

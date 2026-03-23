@@ -10,7 +10,6 @@ odds formats used throughout the fairbet system.
 from __future__ import annotations
 
 import logging
-import math
 
 from .types import KellyResult
 

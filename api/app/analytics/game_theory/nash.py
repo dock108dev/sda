@@ -14,7 +14,7 @@ Typical use cases:
 from __future__ import annotations
 
 import logging
-from typing import Sequence
+from collections.abc import Sequence
 
 from .types import NashEquilibrium
 
@@ -59,7 +59,7 @@ def solve_zero_sum(
     row_counts[0] = 1.0
     col_counts[0] = 1.0
 
-    for t in range(1, max_iterations + 1):
+    for _t in range(1, max_iterations + 1):
         # Column player best-responds to row player's empirical strategy
         col_payoffs = [0.0] * n
         for j in range(n):

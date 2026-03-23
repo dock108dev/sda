@@ -72,7 +72,8 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 - **Ensemble:** Weighted probability combination from multiple providers
 - **Training:** Async Celery-based training pipeline — dataset building, label extraction, model evaluation, joblib artifact generation
 - **Experiments:** Parameter sweep training with combinatorial grid of algorithms, rolling windows, test splits, and feature loadouts
-- **API:** `/api/analytics/*` endpoints for team profiles, simulation, model management, feature loadout CRUD, training jobs, experiments, ensemble config
+- **Game Theory:** Kelly Criterion bet sizing, Nash Equilibrium strategy optimization, portfolio optimization, minimax game tree solver
+- **API:** `/api/analytics/*` endpoints for team profiles, simulation, model management, feature loadout CRUD, training jobs, experiments, ensemble config, game theory
 
 See [Analytics](analytics.md) for details.
 

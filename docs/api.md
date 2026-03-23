@@ -2204,6 +2204,21 @@ Fair-odds analysis for MLB games on a given date.
 
 **Auth:** API key required.
 
+### Game Theory
+
+Strategic optimization endpoints. See [Analytics — Game Theory Module](analytics.md#game-theory-module) for architecture.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/analytics/game-theory/kelly` | Kelly Criterion bet sizing (single bet) |
+| `POST` | `/api/analytics/game-theory/kelly/batch` | Kelly sizing for multiple bets with exposure cap |
+| `POST` | `/api/analytics/game-theory/nash` | Nash Equilibrium for a payoff matrix |
+| `POST` | `/api/analytics/game-theory/nash/lineup` | Optimal lineup decisions (batter-vs-pitcher matchups) |
+| `POST` | `/api/analytics/game-theory/nash/pitch-selection` | Optimal pitch mix against batter stances |
+| `POST` | `/api/analytics/game-theory/portfolio` | Portfolio optimization across multiple bets |
+| `POST` | `/api/analytics/game-theory/minimax` | Minimax game tree solver with alpha-beta pruning |
+| `POST` | `/api/analytics/game-theory/regret-matching` | Regret minimization for repeated games |
+
 ---
 
 ## Realtime
