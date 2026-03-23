@@ -211,3 +211,15 @@ class TestValidateDatabaseCredentialsEquivalence:
             api_validate_database_credentials(url)
 
         assert str(scraper_exc.value) == str(api_exc.value)
+
+    def test_sports_default_credentials_raise_same_error(self) -> None:
+        """Both should raise RuntimeError for sports:sports default creds."""
+        url = "postgresql://sports:sports@db.example.com:5432/mydb"
+
+        with pytest.raises(RuntimeError) as scraper_exc:
+            scraper_validate_database_credentials(url)
+
+        with pytest.raises(RuntimeError) as api_exc:
+            api_validate_database_credentials(url)
+
+        assert str(scraper_exc.value) == str(api_exc.value)

@@ -24,6 +24,12 @@ def validate_env() -> None:
         validate_non_local_url("DATABASE_URL", database_url)
         validate_database_credentials(database_url)
 
+        jwt_secret = require_env("JWT_SECRET")
+        if jwt_secret == "dev-jwt-secret-change-in-production":
+            raise RuntimeError(
+                "JWT_SECRET must not use the insecure default in production."
+            )
+
         allowed_cors = require_env("ALLOWED_CORS_ORIGINS")
         if "localhost" in allowed_cors or "127.0.0.1" in allowed_cors:
             raise RuntimeError(

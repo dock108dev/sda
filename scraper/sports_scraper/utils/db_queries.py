@@ -5,12 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import date, datetime
 
-from .datetime_utils import end_of_et_day_utc, start_of_et_day_utc
-
 from sqlalchemy import exists, func, not_, or_, select
 from sqlalchemy.orm import Session
 
 from ..db import db_models
+from .datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 
 def get_league_id(session: Session, league_code: str) -> int:

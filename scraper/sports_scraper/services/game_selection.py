@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-
 from sqlalchemy import exists, not_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
+from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 
 
 def select_games_for_boxscores(

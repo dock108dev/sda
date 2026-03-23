@@ -17,7 +17,6 @@ from .mlb import MLBLiveFeedClient
 from .mlb_constants import MLB_GAME_TYPE_MAP
 from .nba import NBALiveFeedClient
 from .nfl import NFLLiveFeedClient
-from .nfl_constants import NFL_SEASON_TYPE_MAP
 from .nhl import NHLLiveFeedClient
 
 

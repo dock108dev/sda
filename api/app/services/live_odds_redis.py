@@ -34,8 +34,13 @@ def _get_redis():
 
 def read_live_snapshot(
     league: str, game_id: int, market_key: str
-) -> dict | None:
-    """Read latest live odds snapshot from Redis."""
+) -> tuple[dict | None, str | None]:
+    """Read latest live odds snapshot from Redis.
+
+    Returns:
+        (data, error) — data is the snapshot dict or None; error is a
+        human-readable string if Redis was unreachable, else None.
+    """
     try:
         r = _get_redis()
         key = _SNAPSHOT_KEY.format(league=league, game_id=game_id, market_key=market_key)
@@ -43,22 +48,24 @@ def read_live_snapshot(
         if raw:
             data = json.loads(raw)
             data["ttl_seconds_remaining"] = r.ttl(key)
-            return data
-        return None
+            return data, None
+        return None, None
     except Exception as exc:
         logger.warning("live_odds_redis_read_error", extra={
             "game_id": game_id, "market_key": market_key, "error": str(exc)
         })
-        return None
+        return None, f"redis_error: {exc}"
 
 
 def read_all_live_snapshots_for_game(
     league: str, game_id: int
-) -> dict[str, dict]:
+) -> tuple[dict[str, dict], str | None]:
     """Read all live snapshots for a game (all market keys).
 
-    Returns dict mapping market_key -> snapshot dict.
-    Each snapshot contains a 'books' dict: {book_name: [selections]}.
+    Returns:
+        (result, error) — result is a dict mapping market_key -> snapshot
+        dict; error is a human-readable string if Redis was unreachable,
+        else None.
     """
     try:
         r = _get_redis()
@@ -74,28 +81,33 @@ def read_all_live_snapshots_for_game(
                 market_key = key.rsplit(":", 1)[-1]
                 data["ttl_seconds_remaining"] = r.ttl(key)
                 result[market_key] = data
-        return result
+        return result, None
     except Exception as exc:
         logger.warning("live_odds_redis_scan_error", extra={
             "game_id": game_id, "error": str(exc)
         })
-        return {}
+        return {}, f"redis_error: {exc}"
 
 
 def read_live_history(
     game_id: int, market_key: str, count: int = 50
-) -> list[dict]:
-    """Read recent entries from the history ring buffer."""
+) -> tuple[list[dict], str | None]:
+    """Read recent entries from the history ring buffer.
+
+    Returns:
+        (entries, error) — entries is a list of history dicts; error is a
+        human-readable string if Redis was unreachable, else None.
+    """
     try:
         r = _get_redis()
         key = _HISTORY_KEY.format(game_id=game_id, market_key=market_key)
         raw_list = r.lrange(key, 0, count - 1)
-        return [json.loads(item) for item in raw_list]
+        return [json.loads(item) for item in raw_list], None
     except Exception as exc:
         logger.warning("live_odds_redis_history_error", extra={
             "game_id": game_id, "market_key": market_key, "error": str(exc)
         })
-        return []
+        return [], f"redis_error: {exc}"
 
 
 def discover_live_game_ids(league: str | None = None) -> list[tuple[str, int]]:

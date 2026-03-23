@@ -13,9 +13,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-
-from sqlalchemy import exists, not_
+from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
@@ -26,7 +24,12 @@ from ..models import (
 )
 from ..persistence import persist_game_payload
 from ..utils.date_utils import season_ending_year
-from ..utils.datetime_utils import date_to_utc_datetime
+from ..utils.datetime_utils import (
+    date_to_utc_datetime,
+    end_of_et_day_utc,
+    start_of_et_day_utc,
+    to_et_date,
+)
 from .pbp_ingestion import populate_nhl_game_ids
 
 
@@ -73,10 +76,14 @@ def select_games_for_boxscores_nhl_api(
     )
 
     if only_missing:
-        has_boxscores = exists().where(
+        # Skip only if game has BOTH team boxscores AND player boxscores
+        has_team_box = exists().where(
             db_models.SportsTeamBoxscore.game_id == db_models.SportsGame.id
         )
-        query = query.filter(not_(has_boxscores))
+        has_player_box = exists().where(
+            db_models.SportsPlayerBoxscore.game_id == db_models.SportsGame.id
+        )
+        query = query.filter(not_(and_(has_team_box, has_player_box)))
 
     if updated_before:
         has_fresh = exists().where(
@@ -111,7 +118,7 @@ def ingest_boxscores_via_nhl_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     """Ingest NHL boxscores using the official NHL API.
 
     Flow:
@@ -130,7 +137,7 @@ def ingest_boxscores_via_nhl_api(
         updated_before: Only include games with stale boxscore data
 
     Returns:
-        Tuple of (games_processed, games_enriched, games_with_stats)
+        Tuple of (games_processed, games_enriched, games_with_stats, errors)
     """
     from ..live.nhl import NHLLiveFeedClient
 
@@ -160,7 +167,7 @@ def ingest_boxscores_via_nhl_api(
             end_date=str(end_date),
             only_missing=only_missing,
         )
-        return (0, 0, 0)
+        return (0, 0, 0, 0)
 
     logger.info(
         "nhl_boxscore_games_selected",
@@ -175,6 +182,7 @@ def ingest_boxscores_via_nhl_api(
     games_processed = 0
     games_enriched = 0
     games_with_stats = 0
+    errors = 0
 
     for game_id, nhl_game_id, game_date in games:
         try:
@@ -214,6 +222,7 @@ def ingest_boxscores_via_nhl_api(
 
         except Exception as exc:
             session.rollback()
+            errors += 1
             logger.warning(
                 "nhl_boxscore_fetch_failed",
                 run_id=run_id,
@@ -229,9 +238,10 @@ def ingest_boxscores_via_nhl_api(
         games_processed=games_processed,
         games_enriched=games_enriched,
         games_with_stats=games_with_stats,
+        errors=errors,
     )
 
-    return (games_processed, games_enriched, games_with_stats)
+    return (games_processed, games_enriched, games_with_stats, errors)
 
 
 def convert_nhl_boxscore_to_normalized_game(

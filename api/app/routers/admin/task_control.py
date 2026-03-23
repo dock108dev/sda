@@ -64,6 +64,11 @@ TASK_REGISTRY: dict[str, TaskRegistryEntry] = {
             queue="sports-scraper",
             description="Daily truth repair and backfill sweep",
         ),
+        TaskRegistryEntry(
+            name="ingest_nba_historical",
+            queue="sports-scraper",
+            description="Backfill NBA boxscores and PBP from Basketball Reference",
+        ),
         # Polling
         TaskRegistryEntry(
             name="update_game_states",

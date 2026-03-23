@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { RunsDrawer } from "@/components/admin/RunsDrawer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import styles from "./layout.module.css";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -48,7 +49,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminNav onNavigate={() => setSidebarOpen(false)} />
       </aside>
 
-      <main className={styles.main}>{children}</main>
+      <main className={styles.main}>
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </main>
       <RunsDrawer />
     </div>
   );

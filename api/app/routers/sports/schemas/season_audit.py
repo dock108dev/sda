@@ -40,3 +40,9 @@ class SeasonAuditResponse(BaseModel):
     # Team health
     teams_with_games: int = Field(0, alias="teamsWithGames")
     expected_teams: int | None = Field(None, alias="expectedTeams")
+
+    # Season calendar
+    season_start: str | None = Field(None, alias="seasonStart")   # e.g. "Oct 22, 2025"
+    season_end: str | None = Field(None, alias="seasonEnd")       # e.g. "Apr 13, 2026"
+    season_pct_complete: float | None = Field(None, alias="seasonPctComplete")  # 0-100
+    expected_games_to_date: int | None = Field(None, alias="expectedGamesToDate")

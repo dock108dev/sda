@@ -15,7 +15,6 @@ from dataclasses import dataclass, field
 from app.analytics.calibration.uncertainty import (
     TAX_FRICTION_BUFFER,
     TIER_REQUIRED_EDGE,
-    ModelOddsCore,
     UncertaintyResult,
     apply_uncertainty,
 )

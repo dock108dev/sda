@@ -71,6 +71,10 @@ class _LRUSet:
 class DBPoller:
     """Background poller that emits realtime events from DB changes."""
 
+    # Circuit breaker: max consecutive failures before exponential backoff
+    _MAX_CONSECUTIVE_FAILURES = 10
+    _MAX_BACKOFF_SECONDS = 300
+
     def __init__(self) -> None:
         self._last_games_check: datetime = datetime.now(UTC)
         self._last_pbp_check: datetime = datetime.now(UTC)
@@ -82,6 +86,9 @@ class DBPoller:
         # Fairbet: track last publish time to avoid spam
         self._last_fairbet_publish: datetime | None = None
         self._tasks: list[asyncio.Task] = []
+
+        # Circuit breaker state per loop
+        self._consecutive_failures: dict[str, int] = {"games": 0, "pbp": 0, "fairbet": 0}
 
         # Debug stats
         self._poll_count: dict[str, int] = {"games": 0, "pbp": 0, "fairbet": 0}
@@ -119,7 +126,19 @@ class DBPoller:
             "last_fairbet_check": self._last_fairbet_check.isoformat(),
             "tracked_games": len(self._game_updated_at),
             "tracked_pbp_games": len(self._seen_pbp),
+            "consecutive_failures": dict(self._consecutive_failures),
         }
+
+    def _backoff_interval(self, loop_name: str, base_interval: float) -> float:
+        """Calculate sleep interval with exponential backoff on consecutive failures."""
+        failures = self._consecutive_failures.get(loop_name, 0)
+        if failures < self._MAX_CONSECUTIVE_FAILURES:
+            return base_interval
+        extra = min(
+            base_interval * (2 ** (failures - self._MAX_CONSECUTIVE_FAILURES)),
+            self._MAX_BACKOFF_SECONDS,
+        )
+        return min(base_interval + extra, self._MAX_BACKOFF_SECONDS)
 
     # ------------------------------------------------------------------
     # Catch-up: push immediate data when a channel gets its first subscriber
@@ -218,11 +237,16 @@ class DBPoller:
         while True:
             try:
                 await self._poll_games()
+                self._consecutive_failures["games"] = 0
             except asyncio.CancelledError:
                 return
             except Exception:
-                logger.exception("poll_games_error")
-            await asyncio.sleep(POLL_GAMES_INTERVAL_S)
+                self._consecutive_failures["games"] += 1
+                logger.exception(
+                    "poll_games_error",
+                    extra={"consecutive_failures": self._consecutive_failures["games"]},
+                )
+            await asyncio.sleep(self._backoff_interval("games", POLL_GAMES_INTERVAL_S))
 
     async def _poll_games(self) -> None:
         # Only poll if someone is subscribed to any game-related channel
@@ -327,11 +351,16 @@ class DBPoller:
         while True:
             try:
                 await self._poll_pbp()
+                self._consecutive_failures["pbp"] = 0
             except asyncio.CancelledError:
                 return
             except Exception:
-                logger.exception("poll_pbp_error")
-            await asyncio.sleep(POLL_PBP_INTERVAL_S)
+                self._consecutive_failures["pbp"] += 1
+                logger.exception(
+                    "poll_pbp_error",
+                    extra={"consecutive_failures": self._consecutive_failures["pbp"]},
+                )
+            await asyncio.sleep(self._backoff_interval("pbp", POLL_PBP_INTERVAL_S))
 
     async def _poll_pbp(self) -> None:
         active = realtime_manager.active_channels()
@@ -434,11 +463,16 @@ class DBPoller:
         while True:
             try:
                 await self._poll_fairbet()
+                self._consecutive_failures["fairbet"] = 0
             except asyncio.CancelledError:
                 return
             except Exception:
-                logger.exception("poll_fairbet_error")
-            await asyncio.sleep(POLL_FAIRBET_INTERVAL_S)
+                self._consecutive_failures["fairbet"] += 1
+                logger.exception(
+                    "poll_fairbet_error",
+                    extra={"consecutive_failures": self._consecutive_failures["fairbet"]},
+                )
+            await asyncio.sleep(self._backoff_interval("fairbet", POLL_FAIRBET_INTERVAL_S))
 
     async def _poll_fairbet(self) -> None:
         channel = "fairbet:odds"

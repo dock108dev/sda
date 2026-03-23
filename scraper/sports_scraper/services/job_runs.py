@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any
 
 from app.utils.datetime_utils import now_utc as _now_utc
 from sqlalchemy import asc

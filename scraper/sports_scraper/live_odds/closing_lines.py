@@ -14,8 +14,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from ..db import get_session
-from ..db import db_models
+from ..db import db_models, get_session
 from ..logging import logger
 
 
@@ -101,8 +100,8 @@ def capture_closing_lines_from_provider(
     Used when no pregame odds exist in DB at the time game goes LIVE.
     Marks source_type as 'late_capture'.
     """
-    from ..odds.synchronizer import OddsSynchronizer
     from ..models import IngestionConfig
+    from ..odds.synchronizer import OddsSynchronizer
     from ..utils.datetime_utils import today_et
 
     # Fetch current odds from provider

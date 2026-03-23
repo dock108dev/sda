@@ -85,8 +85,6 @@ def detect_game_winning_play(
             continue
 
         # This is the play that produced the final score in the last 15 seconds
-        # Determine the scoring team
-        team_abbrev = (evt.get("team_abbreviation") or "").upper()
         scorer = evt.get("player_name", "")
 
         # Clean up play description for the hint

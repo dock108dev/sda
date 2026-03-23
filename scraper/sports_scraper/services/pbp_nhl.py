@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-
 from sqlalchemy import exists, not_, or_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
 from ..logging import logger
+from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 
 
 def select_games_for_pbp_nhl_api(
@@ -71,7 +70,7 @@ def select_games_for_pbp_nhl_api(
 
     rows = query.all()
     results = []
-    for game_id, nhl_game_pk, status in rows:
+    for game_id, nhl_game_pk, _status in rows:
         if nhl_game_pk:
             try:
                 nhl_game_id = int(nhl_game_pk)

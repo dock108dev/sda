@@ -143,7 +143,7 @@ class TestScrapeRunManagerRun:
         manager = ScrapeRunManager()
         # Use a non-API league (NBA, NHL, NCAAB, MLB all use API paths now)
         config = IngestionConfig(
-            league_code="NFL",
+            league_code="NCAAF",
             boxscores=True,
         )
 
@@ -207,7 +207,7 @@ class TestScrapeRunManagerBoxscores:
         mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        mock_ingest.return_value = (5, 3, 2)  # (games, enriched, with_stats)
+        mock_ingest.return_value = (5, 3, 2, 0)  # (games, enriched, with_stats, errors)
 
         manager = ScrapeRunManager()
         # Use a date in the past to avoid "future dates" skip
@@ -327,7 +327,7 @@ class TestScrapeRunManagerBoxscores:
         mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        mock_ingest.return_value = (10, 8, 5)  # (games, enriched, with_stats)
+        mock_ingest.return_value = (10, 8, 5, 0)  # (games, enriched, with_stats, errors)
 
         manager = ScrapeRunManager()
         past_date = date.today() - timedelta(days=5)
@@ -403,7 +403,8 @@ class TestScrapeRunManagerBoxscores:
         mock_payload = MagicMock()
         mock_scraper.fetch_single_boxscore.return_value = mock_payload
         # Use a non-API league so the SR scraper path is taken
-        mock_scrapers.return_value = {"NFL": mock_scraper}
+        # (NFL now has its own API path, use NCAAF as the SR-only league)
+        mock_scrapers.return_value = {"NCAAF": mock_scraper}
 
         mock_session = MagicMock()
         mock_run = MagicMock()
@@ -424,7 +425,7 @@ class TestScrapeRunManagerBoxscores:
         manager = ScrapeRunManager()
         past_date = date.today() - timedelta(days=5)
         config = IngestionConfig(
-            league_code="NFL",
+            league_code="NCAAF",
             start_date=past_date,
             end_date=past_date,
             boxscores=True,
@@ -549,7 +550,7 @@ class TestScrapeRunManagerBoxscores:
         mock_payload.identity.game_date = date(2024, 1, 15)
         mock_scraper.fetch_date_range.return_value = [mock_payload]
         # Use a non-API league so the SR scraper path is taken
-        mock_scrapers.return_value = {"NFL": mock_scraper}
+        mock_scrapers.return_value = {"NCAAF": mock_scraper}
 
         mock_session = MagicMock()
         mock_run = MagicMock()
@@ -566,7 +567,7 @@ class TestScrapeRunManagerBoxscores:
         manager = ScrapeRunManager()
         past_date = date.today() - timedelta(days=5)
         config = IngestionConfig(
-            league_code="NFL",
+            league_code="NCAAF",
             start_date=past_date,
             end_date=past_date,
             boxscores=True,
@@ -651,7 +652,7 @@ class TestScrapeRunManagerBoxscores:
         manager = ScrapeRunManager()
         past_date = date.today() - timedelta(days=5)
         config = IngestionConfig(
-            league_code="NFL",  # Unsupported league without API fallback
+            league_code="NCAAF",  # Unsupported league without API fallback
             start_date=past_date,
             end_date=past_date,
             boxscores=True,
@@ -1095,7 +1096,7 @@ class TestScrapeRunManagerSocial:
 
         manager = ScrapeRunManager()
         config = IngestionConfig(
-            league_code="NFL",
+            league_code="NCAAF",
             boxscores=False,
             odds=False,
             social=True,
@@ -1169,8 +1170,9 @@ class TestScrapeRunManagerErrorHandling:
         mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        # Make detect_missing_pbp raise to trigger error path
-        mock_detect_missing.side_effect = Exception("DB connection failed")
+        # Make detect_external_id_conflicts raise to trigger error path
+        # (detect_missing_pbp only runs when config.pbp=True)
+        mock_detect_conflicts.side_effect = Exception("DB connection failed")
 
         manager = ScrapeRunManager()
         config = IngestionConfig(
@@ -1220,13 +1222,14 @@ class TestSocialTaskExistsForLeague:
         assert _social_task_exists_for_league("NBA") is False
 
     @patch("sports_scraper.services.run_manager.get_session")
-    def test_returns_false_on_exception(self, mock_get_session):
+    def test_returns_true_on_exception(self, mock_get_session):
+        """On DB failure, assume task exists (fail-closed) to prevent duplicate dispatch."""
         from sports_scraper.services.run_manager import _social_task_exists_for_league
 
         mock_get_session.return_value.__enter__ = MagicMock(side_effect=Exception("db err"))
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        assert _social_task_exists_for_league("NBA") is False
+        assert _social_task_exists_for_league("NBA") is True
 
 
 class TestSyncOdds:

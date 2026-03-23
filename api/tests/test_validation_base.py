@@ -125,8 +125,15 @@ class TestValidateDatabaseCredentials:
         """Default postgres:postgres credentials raise RuntimeError."""
         from app.utils.validation_base import validate_database_credentials
 
-        with pytest.raises(RuntimeError, match="default postgres credentials"):
+        with pytest.raises(RuntimeError, match="default credentials"):
             validate_database_credentials("postgresql://postgres:postgres@db.example.com:5432/mydb")
+
+    def test_sports_default_credentials_raises(self):
+        """Default sports:sports credentials raise RuntimeError."""
+        from app.utils.validation_base import validate_database_credentials
+
+        with pytest.raises(RuntimeError, match="default credentials"):
+            validate_database_credentials("postgresql://sports:sports@db.example.com:5432/mydb")
 
     def test_partial_default_user_valid(self):
         """postgres user with non-default password is valid."""

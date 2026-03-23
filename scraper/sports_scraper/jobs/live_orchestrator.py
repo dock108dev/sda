@@ -18,9 +18,9 @@ import time
 from celery import shared_task
 
 from ..celery_app import DEFAULT_QUEUE
-from ..db import get_session, db_models
+from ..db import db_models, get_session
 from ..logging import logger
-from ..utils.redis_lock import acquire_redis_lock, release_redis_lock, LOCK_TIMEOUT_5MIN
+from ..utils.redis_lock import LOCK_TIMEOUT_5MIN, acquire_redis_lock, release_redis_lock
 
 # ---------------------------------------------------------------------------
 # Cadence configs (seconds) — live odds only.
@@ -67,6 +67,7 @@ def _jitter(cadence: float) -> float:
 def live_orchestrator_tick() -> dict:
     """Discover live games and dispatch per-game tasks at appropriate cadences."""
     import redis as redis_lib
+
     from ..config import settings
 
     lock_token = acquire_redis_lock("lock:live_orchestrator", timeout=LOCK_TIMEOUT_5MIN)
@@ -100,7 +101,7 @@ def live_orchestrator_tick() -> dict:
         dispatched = 0
         games_by_league: dict[str, list[int]] = {}
 
-        for game_id, status, league_code in live_games:
+        for game_id, _status, league_code in live_games:
             games_by_league.setdefault(league_code, []).append(game_id)
 
             # PBP and boxscore polling are handled by the Beat-scheduled

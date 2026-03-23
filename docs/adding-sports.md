@@ -120,6 +120,9 @@ The system validates league codes at every entry point:
 | `scraper/sports_scraper/services/diagnostics.py` | PBP diagnostics league list |
 | `scraper/sports_scraper/jobs/polling_helpers.py` | Live polling dispatcher |
 | `scraper/sports_scraper/services/game_processors.py` | Per-game processing functions |
+| `scraper/sports_scraper/services/run_manager.py` | API-supported leagues guard |
+| `scraper/sports_scraper/services/phases/boxscore_phase.py` | Boxscore ingestion dispatch |
+| `scraper/sports_scraper/services/phases/pbp_phase.py` | PBP ingestion dispatch |
 | `scraper/sports_scraper/live/manager.py` | LiveFeedManager sync methods |
 | `api/app/services/pipeline/stages/league_config.py` | Gameflow pipeline thresholds |
 | `web/src/lib/constants/sports.ts` | Frontend league list |
@@ -178,7 +181,7 @@ Build `NormalizedGame` objects with:
 
 Add to `_SCRAPER_REGISTRY` in `scraper/sports_scraper/scrapers/__init__.py`.
 
-> **Note:** NHL and NCAAB use official APIs instead of the scraper registry. See `scraper/sports_scraper/live/nhl.py` and the league-specific ingestion modules (`nba_boxscore_ingestion.py`, `nhl_boxscore_ingestion.py`, `ncaab_boxscore_ingestion.py`) in `scraper/sports_scraper/services/`.
+> **Note:** NHL, NCAAB, NBA, MLB, and NFL use official APIs instead of the scraper registry. See the league-specific ingestion modules (`nba_boxscore_ingestion.py`, `nhl_boxscore_ingestion.py`, `ncaab_boxscore_ingestion.py`, `mlb_boxscore_ingestion.py`, `nfl_boxscore_ingestion.py`) in `scraper/sports_scraper/services/` and the live feed clients in `scraper/sports_scraper/live/`.
 
 ### 4. Run Through Orchestrator
 

@@ -69,6 +69,7 @@ async def create_scrape_run(
             args=[run.id, worker_payload],
             queue="sports-scraper",
             routing_key="sports-scraper",
+            headers={"manual_trigger": True},
         )
         run.job_id = async_result.id
 

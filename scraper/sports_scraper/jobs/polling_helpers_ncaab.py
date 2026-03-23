@@ -19,7 +19,7 @@ import time
 
 from ..logging import logger
 from ..utils.datetime_utils import to_et_date
-from .polling_helpers import _JITTER_MIN, _JITTER_MAX, _RateLimitError
+from .polling_helpers import _JITTER_MAX, _JITTER_MIN, _RateLimitError
 
 
 def _match_ncaa_scoreboard_to_games(
@@ -367,7 +367,7 @@ def _poll_ncaab_games_batch(session, games: list) -> dict:
                 client=client,
                 team_names_by_game_id=team_names_by_game_id,
             )
-            for game, br in zip(cbb_live_or_final, batch_results):
+            for game, br in zip(cbb_live_or_final, batch_results, strict=False):
                 if br.boxscore_updated:
                     boxscores_updated += 1
                     games_with_boxscore.add(game.id)

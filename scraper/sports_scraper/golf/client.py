@@ -9,10 +9,9 @@ Rate limit: 45 requests/minute with 5-minute suspension on violation.
 
 from __future__ import annotations
 
+import time
 from datetime import date
 from typing import Any
-
-import time
 
 import httpx
 

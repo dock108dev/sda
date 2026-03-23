@@ -982,19 +982,20 @@ class TestEnrichGameWithBoxscore:
            return_value="final")
     @patch("sports_scraper.persistence.boxscore_helpers._normalize_status",
            return_value="final")
-    def test_source_game_key_set_only_when_empty(self, mock_norm, mock_resolve):
+    def test_source_game_key_not_set_during_enrichment(self, mock_norm, mock_resolve):
+        """source_game_key is set at creation time, not during enrichment."""
         from sports_scraper.persistence.boxscore_helpers import _enrich_game_with_boxscore
         game, payload = self._make_game_and_payload(
             game_home_score=100, game_away_score=95,
-            game_source_key=None,  # empty - should be set
+            game_source_key=None,
             payload_source_key="NEW_KEY",
         )
         game.venue = "TD Garden"
         game.status = "final"
         session = MagicMock()
-        result = _enrich_game_with_boxscore(session, game, payload)
-        assert result is True
-        assert game.source_game_key == "NEW_KEY"
+        _enrich_game_with_boxscore(session, game, payload)
+        # source_game_key should NOT be modified during enrichment
+        assert game.source_game_key is None
 
 
 # ===========================================================================
@@ -1081,7 +1082,7 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion._select_ncaa_boxscore_fallback_games")
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
@@ -1168,7 +1169,8 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        # No games selected from main query → early return, fallback path not reached
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion._select_ncaa_boxscore_fallback_games")
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
@@ -1203,7 +1205,7 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion._select_ncaa_boxscore_fallback_games")
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
@@ -1256,7 +1258,7 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 1)
 
 
 class TestSelectNCAABoxscoreFallbackGames:

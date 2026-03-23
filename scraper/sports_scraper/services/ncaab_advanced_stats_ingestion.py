@@ -42,7 +42,8 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         logger.warning("ncaab_adv_stats_game_not_found", game_id=game_id)
         return {"game_id": game_id, "status": "not_found"}
 
-    if game.status != db_models.GameStatus.final.value:
+    _COMPLETED = {db_models.GameStatus.final.value, db_models.GameStatus.archived.value}
+    if game.status not in _COMPLETED:
         logger.info("ncaab_adv_stats_skip_not_final", game_id=game_id, status=game.status)
         return {"game_id": game_id, "status": "skipped", "reason": "not_final"}
 
@@ -87,8 +88,14 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
     home_box = home_box_row.stats or {}
     away_box = away_box_row.stats or {}
 
-    # Validate we have minimum required data
-    if not home_box.get("fieldGoalsAttempted") and not away_box.get("fieldGoalsAttempted"):
+    # Validate we have minimum required data (handle both flat and nested CBB API formats)
+    def _has_fg_data(box: dict) -> bool:
+        if box.get("fieldGoalsAttempted"):
+            return True
+        fg = box.get("fieldGoals")
+        return isinstance(fg, dict) and fg.get("attempted")
+
+    if not _has_fg_data(home_box) and not _has_fg_data(away_box):
         logger.warning("ncaab_adv_stats_empty_boxscores", game_id=game_id)
         return {"game_id": game_id, "status": "skipped", "reason": "empty_boxscores"}
 

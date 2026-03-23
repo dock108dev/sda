@@ -85,7 +85,6 @@ class MLBPitchDatasetBuilder(ProfileMixin):
             return []
 
         game_map = {g.id: g for g in games}
-        game_ids = list(game_map.keys())
 
         # 2. Load PBP plays via date-range join (avoids massive IN clause)
         plays_stmt = (

@@ -247,7 +247,7 @@ class TestIngestBoxscoresViaNbaApi:
             session, run_id=1, start_date=date(2024, 1, 1), end_date=date(2024, 1, 2),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.live.nba.NBALiveFeedClient")
     @patch("sports_scraper.services.nba_boxscore_ingestion.upsert_player_boxscores")
@@ -290,7 +290,7 @@ class TestIngestBoxscoresViaNbaApi:
             only_missing=False, updated_before=None,
         )
 
-        assert result == (1, 1, 1)
+        assert result == (1, 1, 1, 0)
         mock_upsert_team.assert_called_once()
         mock_upsert_player.assert_called_once()
 
@@ -306,7 +306,7 @@ class TestIngestBoxscoresViaNbaApi:
             session, run_id=1, start_date=date(2024, 1, 1), end_date=date(2024, 1, 31),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.live.nba.NBALiveFeedClient")
     @patch("sports_scraper.services.nba_boxscore_ingestion.select_games_for_boxscores_nba_api")
@@ -322,7 +322,7 @@ class TestIngestBoxscoresViaNbaApi:
             session, run_id=1, start_date=date(2024, 1, 1), end_date=date(2024, 1, 31),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.live.nba.NBALiveFeedClient")
     @patch("sports_scraper.services.nba_boxscore_ingestion.select_games_for_boxscores_nba_api")
@@ -336,7 +336,7 @@ class TestIngestBoxscoresViaNbaApi:
             session, run_id=1, start_date=date(2024, 1, 1), end_date=date(2024, 1, 31),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 1)
 
     @patch("sports_scraper.live.nba.NBALiveFeedClient")
     @patch("sports_scraper.services.nba_boxscore_ingestion.upsert_team_boxscores")
@@ -366,4 +366,4 @@ class TestIngestBoxscoresViaNbaApi:
             only_missing=False, updated_before=None,
         )
 
-        assert result == (1, 0, 0)
+        assert result == (1, 0, 0, 0)

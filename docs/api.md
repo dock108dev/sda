@@ -345,13 +345,14 @@ GET /api/golf/tournaments/{event_id}/leaderboard
 
 | League | Code | Base URL | Data Available |
 |--------|------|----------|----------------|
-| NBA | `NBA` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines |
-| NHL | `NHL` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines |
-| NCAAB | `NCAAB` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines |
+| NBA | `NBA` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines, Advanced Stats |
+| NHL | `NHL` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines, Advanced Stats |
+| NCAAB | `NCAAB` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines, Advanced Stats |
 | MLB | `MLB` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines, Advanced Stats |
+| NFL | `NFL` | `/api/admin/sports` | Boxscores, PBP, Social, Odds, Game Flow, Timelines, Advanced Stats |
 | PGA Tour | `PGA` | `/api/golf` | Tournaments, Leaderboards, Player Stats, Odds, DFS, Pools |
 
-> **Note:** Team sports (NBA, NHL, NCAAB, MLB) share the `/api/admin/sports` endpoints and use `league` query params for filtering. Golf uses a dedicated `/api/golf` endpoint namespace with its own data model (tournaments, fields, rounds) — see [Golf API](#golf-api) and [Golf Pools API](#golf-pools-api).
+> **Note:** Team sports (NBA, NHL, NCAAB, MLB, NFL) share the `/api/admin/sports` endpoints and use `league` query params for filtering. Golf uses a dedicated `/api/golf` endpoint namespace with its own data model (tournaments, fields, rounds) — see [Golf API](#golf-api) and [Golf Pools API](#golf-pools-api).
 
 ---
 
@@ -460,7 +461,7 @@ List games with filtering and pagination.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `league` | `string[]` | Filter by league codes (NBA, NHL, NCAAB, MLB) |
+| `league` | `string[]` | Filter by league codes (NBA, NHL, NCAAB, MLB, NFL) |
 | `season` | `int` | Filter by season year |
 | `team` | `string` | Filter by team name (partial match) |
 | `startDate` | `date` | Games on or after (Eastern Time) |
@@ -781,7 +782,7 @@ List teams with game counts.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB, MLB) |
+| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB, MLB, NFL) |
 | `search` | `string` | — | Search by team name, short name, or abbreviation (partial match) |
 | `limit` | `int` | 100 | Max results (1-500) |
 | `offset` | `int` | 0 | Pagination offset |
@@ -1182,7 +1183,7 @@ Get bet-centric odds for cross-book comparison with EV annotations.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB, MLB) |
+| `league` | `string` | — | Filter by league code (NBA, NHL, NCAAB, MLB, NFL) |
 | `market_category` | `string` | — | Filter by market category (see [Market Categories](#market-categories)) |
 | `game_id` | `int` | — | Filter to a specific game |
 | `book` | `string` | — | Filter to a specific sportsbook |

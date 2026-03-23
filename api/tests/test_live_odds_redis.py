@@ -21,8 +21,9 @@ class TestReadLiveSnapshot:
         mock_r.get.return_value = json.dumps(data)
         mock_r.ttl.return_value = 3600
 
-        result = read_live_snapshot("NBA", 42, "spread")
+        result, error = read_live_snapshot("NBA", 42, "spread")
         assert result is not None
+        assert error is None
         assert result["provider"] == "dk"
         assert result["ttl_seconds_remaining"] == 3600
 
@@ -32,12 +33,17 @@ class TestReadLiveSnapshot:
         mock_get_redis.return_value = mock_r
         mock_r.get.return_value = None
 
-        assert read_live_snapshot("NBA", 42, "spread") is None
+        result, error = read_live_snapshot("NBA", 42, "spread")
+        assert result is None
+        assert error is None
 
     @patch("app.services.live_odds_redis._get_redis")
     def test_returns_none_on_error(self, mock_get_redis):
         mock_get_redis.side_effect = Exception("connection refused")
-        assert read_live_snapshot("NBA", 42, "spread") is None
+        result, error = read_live_snapshot("NBA", 42, "spread")
+        assert result is None
+        assert error is not None
+        assert "redis_error" in error
 
 
 class TestReadLiveHistory:
@@ -47,14 +53,17 @@ class TestReadLiveHistory:
         mock_get_redis.return_value = mock_r
         mock_r.lrange.return_value = [json.dumps({"t": 1})]
 
-        result = read_live_history(42, "spread", count=10)
+        result, error = read_live_history(42, "spread", count=10)
         assert len(result) == 1
+        assert error is None
         mock_r.lrange.assert_called_with("live:odds:history:42:spread", 0, 9)
 
     @patch("app.services.live_odds_redis._get_redis")
     def test_returns_empty_on_error(self, mock_get_redis):
         mock_get_redis.side_effect = Exception("err")
-        assert read_live_history(42, "spread") == []
+        result, error = read_live_history(42, "spread")
+        assert result == []
+        assert error is not None
 
 
 class TestReadAllLiveSnapshots:
@@ -67,14 +76,17 @@ class TestReadAllLiveSnapshots:
         mock_r.get.return_value = json.dumps(data)
         mock_r.ttl.return_value = 1800
 
-        result = read_all_live_snapshots_for_game("NBA", 42)
+        result, error = read_all_live_snapshots_for_game("NBA", 42)
+        assert error is None
         assert "spread" in result
         assert result["spread"]["provider"] == "fd"
 
     @patch("app.services.live_odds_redis._get_redis")
     def test_returns_empty_on_error(self, mock_get_redis):
         mock_get_redis.side_effect = Exception("err")
-        assert read_all_live_snapshots_for_game("NBA", 42) == {}
+        result, error = read_all_live_snapshots_for_game("NBA", 42)
+        assert result == {}
+        assert error is not None
 
     @patch("app.services.live_odds_redis._get_redis")
     def test_skips_null_values(self, mock_get_redis):
@@ -83,5 +95,6 @@ class TestReadAllLiveSnapshots:
         mock_r.scan_iter.return_value = iter(["live:odds:NBA:42:total"])
         mock_r.get.return_value = None
 
-        result = read_all_live_snapshots_for_game("NBA", 42)
+        result, error = read_all_live_snapshots_for_game("NBA", 42)
         assert result == {}
+        assert error is None

@@ -37,7 +37,7 @@ def ingest_boxscores_via_ncaab_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     """Ingest NCAAB boxscores using the College Basketball Data API.
 
     Uses batch fetching to minimize API calls.
@@ -57,7 +57,7 @@ def ingest_boxscores_via_ncaab_api(
         updated_before: Only include games with stale boxscore data
 
     Returns:
-        Tuple of (games_processed, games_enriched, games_with_stats)
+        Tuple of (games_processed, games_enriched, games_with_stats, errors)
     """
     from ..live.ncaab import NCAABLiveFeedClient
 
@@ -95,7 +95,7 @@ def ingest_boxscores_via_ncaab_api(
             end_date=str(end_date),
             only_missing=only_missing,
         )
-        return (0, 0, 0)
+        return (0, 0, 0, 0)
 
     logger.info(
         "ncaab_boxscore_games_selected",
@@ -139,8 +139,9 @@ def ingest_boxscores_via_ncaab_api(
     games_processed = 0
     games_enriched = 0
     games_with_stats = 0
+    errors = 0
 
-    for game_id, cbb_game_id, game_date, home_team_name, away_team_name in games:
+    for game_id, cbb_game_id, game_date, _home_team_name, _away_team_name in games:
         boxscore = boxscores.get(cbb_game_id)
 
         if not boxscore:
@@ -178,6 +179,7 @@ def ingest_boxscores_via_ncaab_api(
 
         except Exception as exc:
             session.rollback()
+            errors += 1
             logger.warning(
                 "ncaab_boxscore_persist_failed",
                 run_id=run_id,
@@ -248,6 +250,7 @@ def ingest_boxscores_via_ncaab_api(
 
             except Exception as exc:
                 session.rollback()
+                errors += 1
                 logger.warning(
                     "ncaab_boxscore_ncaa_fetch_failed",
                     run_id=run_id,
@@ -263,9 +266,10 @@ def ingest_boxscores_via_ncaab_api(
         games_processed=games_processed,
         games_enriched=games_enriched,
         games_with_stats=games_with_stats,
+        errors=errors,
     )
 
-    return (games_processed, games_enriched, games_with_stats)
+    return (games_processed, games_enriched, games_with_stats, errors)
 
 
 def _select_ncaa_boxscore_fallback_games(

@@ -85,11 +85,14 @@ def ingest_pbp(
             complete_job_run(pbp_run_id, "success", "skipped_future_dates")
         else:
             # Build dispatch dict inside method so patched module-level names are captured
+            from ..pbp_nfl import ingest_pbp_via_nfl_api
+
             _PBP_DISPATCH: dict[str, tuple] = {
                 "NHL": (ingest_pbp_via_nhl_api, "pbp_nhl_api_failed"),
                 "NCAAB": (ingest_pbp_via_ncaab_api, "pbp_ncaab_api_failed"),
                 "NBA": (ingest_pbp_via_nba_api, "pbp_nba_api_failed"),
                 "MLB": (ingest_pbp_via_mlb_api, "pbp_mlb_api_failed"),
+                "NFL": (ingest_pbp_via_nfl_api, "pbp_nfl_api_failed"),
             }
 
             dispatch = _PBP_DISPATCH.get(config.league_code)

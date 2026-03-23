@@ -48,9 +48,7 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Data Sources](ingestion/data-sources.md) | **Start here:** Where data comes from — NBA, NHL, NCAAB, MLB, NFL (boxscores, PBP, odds, social, advanced stats) |
-| [Advanced Stats Architecture](advanced_stats/architecture.md) | Implementation overview — data flow, files per sport, DB tables |
-| [Advanced Stats Sources](advanced_stats/data_sources.md) | Dedicated data sources per sport (Statcast, stats.nba.com, MoneyPuck, nflverse, boxscores) |
+| [Data Sources](ingestion/data-sources.md) | **Start here:** Where data comes from — NBA, NHL, NCAAB, MLB, NFL (boxscores, PBP, odds, social, advanced stats per sport) |
 
 ## Golf
 

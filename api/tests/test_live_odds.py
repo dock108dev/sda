@@ -56,9 +56,10 @@ class TestLiveOddsRedisReader:
         r.ttl.return_value = 12345
         mock_redis.return_value = r
 
-        result = read_live_snapshot("NBA", 123, "spread")
+        result, error = read_live_snapshot("NBA", 123, "spread")
 
         assert result is not None
+        assert error is None
         assert result["ttl_seconds_remaining"] == 12345
         assert "books" in result
         assert "DraftKings" in result["books"]
@@ -72,16 +73,18 @@ class TestLiveOddsRedisReader:
         r.get.return_value = None
         mock_redis.return_value = r
 
-        result = read_live_snapshot("NBA", 999, "spread")
+        result, error = read_live_snapshot("NBA", 999, "spread")
         assert result is None
+        assert error is None
 
     @patch("app.services.live_odds_redis._get_redis")
     def test_read_live_snapshot_handles_redis_error(self, mock_redis):
         from app.services.live_odds_redis import read_live_snapshot
 
         mock_redis.side_effect = Exception("connection refused")
-        result = read_live_snapshot("NBA", 123, "spread")
+        result, error = read_live_snapshot("NBA", 123, "spread")
         assert result is None
+        assert error is not None
 
     @patch("app.services.live_odds_redis._get_redis")
     def test_read_live_history(self, mock_redis):
@@ -95,8 +98,9 @@ class TestLiveOddsRedisReader:
         r.lrange.return_value = entries
         mock_redis.return_value = r
 
-        result = read_live_history(123, "spread", count=10)
+        result, error = read_live_history(123, "spread", count=10)
         assert len(result) == 2
+        assert error is None
         assert "books" in result[0]
 
     @patch("app.services.live_odds_redis._get_redis")
@@ -119,8 +123,9 @@ class TestLiveOddsRedisReader:
         r.ttl.return_value = 5000
         mock_redis.return_value = r
 
-        result = read_all_live_snapshots_for_game("NBA", 123)
+        result, error = read_all_live_snapshots_for_game("NBA", 123)
         assert len(result) == 2
+        assert error is None
         assert "spread" in result or "total" in result
 
 

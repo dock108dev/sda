@@ -994,19 +994,14 @@ class TestAcquireRedisLock:
                     result = acquire_redis_lock("lock:test")
                     assert result is None
 
-    def test_lock_exception_returns_dummy_token(self):
-        """Exception path returns a dummy UUID to allow proceeding."""
+    def test_lock_exception_returns_none(self):
+        """Exception path returns None (fail-closed) to prevent concurrent execution."""
         from sports_scraper.utils.redis_lock import acquire_redis_lock
 
-        with patch("sports_scraper.utils.redis_lock.uuid") as mock_uuid:
-            mock_uuid.uuid4.return_value = "fallback-token"
-            # The import of redis inside the function will use real redis
-            # which will fail to connect, triggering the exception path
-            with patch.dict("sys.modules", {}):
-                # Force an import error by making redis raise on from_url
-                result = acquire_redis_lock("lock:test")
-                # Should return a token (not None) even on failure
-                assert result is not None
+        # Redis will fail to connect, triggering the exception path
+        result = acquire_redis_lock("lock:test")
+        # Should return None (lock not acquired) — fail-closed
+        assert result is None
 
 
 class TestClearAllLocks:

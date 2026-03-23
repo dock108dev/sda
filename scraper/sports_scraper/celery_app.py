@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import celery as _celery_mod
 import redis as _redis
 from celery import Celery, signals
 from celery.schedules import crontab
@@ -43,13 +44,33 @@ celery_config = {
     },
 }
 
+class _HoldAwareTask(_celery_mod.Task):
+    """Task base class that skips execution when the admin hold is active.
+
+    Beat-scheduled tasks are blocked. Manual triggers (with
+    ``headers={"manual_trigger": True}``) bypass the hold.
+    """
+
+    def __call__(self, *args, **kwargs):
+        if _is_held():
+            headers = getattr(self.request, "headers", None) or {}
+            if headers.get("manual_trigger") not in (True, "True", "true", 1, "1"):
+                logger.info("task_held_skipping", task=self.name, task_id=self.request.id)
+                return {"skipped": True, "reason": "held"}
+        return super().__call__(*args, **kwargs)
+
+
 app = Celery(
     "sports-data-scraper",
     broker=settings.redis_url,
     backend=settings.redis_url,
     include=["sports_scraper.jobs.tasks"],
 )
+# Set the default Task class for ALL tasks including @shared_task.
+# task_cls in the constructor only applies to @app.task, not @shared_task.
+app.Task = _HoldAwareTask
 app.conf.update(**celery_config)
+app.conf.task_acks_late = True
 app.conf.task_routes = {
     "run_scrape_job": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     # All X scraping on one queue — single Playwright session, no parallel X hits

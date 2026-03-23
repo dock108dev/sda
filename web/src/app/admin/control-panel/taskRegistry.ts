@@ -1,6 +1,6 @@
 // ── Task registry (mirrors API whitelist) ──
 
-export type ParamType = "select" | "number";
+export type ParamType = "select" | "number" | "text";
 
 export interface TaskParam {
   name: string;
@@ -38,6 +38,17 @@ export const TASK_REGISTRY: TaskDef[] = [
     category: "Ingestion",
     queue: "sports-scraper",
     params: [],
+  },
+  {
+    name: "ingest_nba_historical",
+    label: "NBA Historical Backfill",
+    description: "Backfill NBA boxscores and PBP from Basketball Reference (polite scraping, ~14h for 3 seasons)",
+    category: "Ingestion",
+    queue: "sports-scraper",
+    params: [
+      { name: "start_date", type: "text", required: true, default: "2024-10-22" },
+      { name: "end_date", type: "text", required: true, default: "2025-04-13" },
+    ],
   },
   // Polling
   {

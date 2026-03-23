@@ -49,7 +49,7 @@ function TaskCard({ task }: { task: TaskDef }) {
       for (const p of task.params) {
         const val = paramValues[p.name]?.trim();
         if (val) {
-          args.push(p.type === "number" ? Number(val) : val);
+          args.push(p.type === "number" ? Number(val) : val);  // "text" and "select" pass as strings
         } else if (p.required) {
           return;
         } else {
@@ -111,7 +111,7 @@ function TaskCard({ task }: { task: TaskDef }) {
                 </select>
               ) : (
                 <input
-                  type="number"
+                  type={p.type === "text" ? "text" : "number"}
                   className={styles.paramInput}
                   placeholder={p.default !== undefined ? String(p.default) : ""}
                   value={paramValues[p.name] ?? ""}
@@ -184,12 +184,9 @@ const DATA_TYPES = ["Boxscores", "Odds", "PBP", "Social", "Advanced Stats"] as c
 function DataBackfillCard() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [leagues, setLeagues] = useState<Set<string>>(
-    () => new Set(LEAGUE_OPTIONS)
-  );
-  const [dataTypes, setDataTypes] = useState<Set<string>>(
-    () => new Set(["Boxscores", "Odds", "PBP"])
-  );
+  const [leagues, setLeagues] = useState<Set<string>>(() => new Set());
+  const [dataTypes, setDataTypes] = useState<Set<string>>(() => new Set());
+  const [forceAll, setForceAll] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [results, setResults] = useState<
     { league: string; jobId?: string; error?: string }[]
@@ -228,7 +225,7 @@ function DataBackfillCard() {
           pbp: dataTypes.has("PBP"),
           social: dataTypes.has("Social"),
           advancedStats: dataTypes.has("Advanced Stats"),
-          onlyMissing: false,
+          onlyMissing: !forceAll,
         });
         newResults.push({ league, jobId: res.job_id ?? `run#${res.id}` });
       } catch (err) {
@@ -290,6 +287,14 @@ function DataBackfillCard() {
       </div>
 
       <div className={styles.taskFooter}>
+        <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#64748b", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={forceAll}
+            onChange={(e) => setForceAll(e.target.checked)}
+          />
+          Force re-upsert all games (skip nothing)
+        </label>
         <button
           className={styles.runButton}
           disabled={!canRun || dispatching}

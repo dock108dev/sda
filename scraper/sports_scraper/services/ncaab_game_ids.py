@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-
 from sqlalchemy import exists, not_, or_
 from sqlalchemy.orm import Session
 
@@ -17,6 +15,7 @@ from ..db import db_models
 from ..logging import logger
 from ..persistence.teams import _normalize_ncaab_name_for_matching  # noqa: F401
 from ..utils.date_utils import season_ending_year
+from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 
 
 def populate_ncaab_game_ids(
@@ -379,7 +378,7 @@ def _populate_ncaa_game_ids_from_scoreboard(
 
     # Match DB games to NCAA scoreboard by team names
     updated = 0
-    for game_id, game_date, home_team_id, away_team_id in games_missing:
+    for game_id, _game_date, home_team_id, away_team_id in games_missing:
         home_canonical = team_id_to_canonical.get(home_team_id, "")
         away_canonical = team_id_to_canonical.get(away_team_id, "")
 

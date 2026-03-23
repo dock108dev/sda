@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-
 from sqlalchemy import exists, not_, or_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
 from ..logging import logger
+from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 
 
 def select_games_for_pbp_nba_api(
@@ -70,11 +69,29 @@ def select_games_for_pbp_nba_api(
 
     rows = query.all()
     results = []
-    for game_id, nba_game_id, status in rows:
+    for game_id, nba_game_id, _status in rows:
         if nba_game_id:
             # NBA game IDs are strings like "0022400123"
             results.append((game_id, nba_game_id))
     return results
+
+
+def _is_current_nba_season(start_date: date, end_date: date) -> bool:
+    """Check if the date range overlaps the current NBA season.
+
+    The NBA CDN schedule API only serves the current season. Calling it
+    for historical dates is wasteful (returns 0 games). The NBA season
+    runs roughly October → June.
+    """
+    from ..utils.date_utils import season_from_date
+    from ..utils.datetime_utils import today_et
+
+    today = today_et()
+    current_season = season_from_date(today, "NBA")
+    range_season_start = season_from_date(start_date, "NBA")
+    range_season_end = season_from_date(end_date, "NBA")
+
+    return range_season_start == current_season or range_season_end == current_season
 
 
 def populate_nba_game_ids(
@@ -89,10 +106,23 @@ def populate_nba_game_ids(
     Fetches the NBA scoreboard and matches games by team abbreviations + date
     to populate the external_ids['nba_game_id'] field needed for PBP fetching.
 
+    Only calls the NBA CDN API for the current season — historical seasons
+    are handled by Basketball Reference (see nba_historical_ingestion.py).
+
     Returns:
         Number of games updated with NBA game IDs
     """
     from ..live.nba import NBALiveFeedClient
+
+    if not _is_current_nba_season(start_date, end_date):
+        logger.info(
+            "nba_game_ids_skip_historical",
+            run_id=run_id,
+            start_date=str(start_date),
+            end_date=str(end_date),
+            reason="NBA CDN only serves current season; use ingest_nba_historical for past seasons",
+        )
+        return 0
 
     league = session.query(db_models.SportsLeague).filter(
         db_models.SportsLeague.code == "NBA"

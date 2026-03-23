@@ -231,6 +231,7 @@ class OddsSynchronizer:
         """Persist odds snapshots to database."""
         inserted = 0
         skipped = 0
+        errors = 0
         skipped_live = 0
         batch_ts = now_utc()
 
@@ -255,7 +256,7 @@ class OddsSynchronizer:
                         away_team=snapshot.away_team.name,
                         exc_info=True,
                     )
-                    skipped += 1
+                    errors += 1
 
                 # Commit in batches to keep transactions short
                 if i % self.PERSIST_BATCH_SIZE == 0:
@@ -278,6 +279,7 @@ class OddsSynchronizer:
             total_snapshots=len(snapshots),
             odds_inserted=inserted,
             odds_skipped=skipped,
+            odds_errors=errors,
             odds_skipped_live=skipped_live,
             success_rate=f"{inserted}/{len(snapshots)}" if snapshots else "N/A",
         )
@@ -289,6 +291,15 @@ class OddsSynchronizer:
                 inserted=inserted,
                 skipped=skipped,
                 message="Some odds could not be matched to games",
+            )
+
+        if errors > 0:
+            logger.warning(
+                "odds_persist_had_errors",
+                league=league_code,
+                inserted=inserted,
+                errors=errors,
+                message="Some odds failed to persist due to exceptions",
             )
 
         return inserted

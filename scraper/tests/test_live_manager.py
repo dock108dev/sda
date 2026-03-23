@@ -779,3 +779,465 @@ class TestModuleImports:
         """Module has _should_skip_pbp helper."""
         from sports_scraper.live import manager
         assert hasattr(manager, '_should_skip_pbp')
+
+
+class TestIngestLiveDataUnsupportedLeague:
+    """Tests for unsupported league code in ingest_live_data."""
+
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_unsupported_league_returns_empty_summary(
+        self, mock_nba, mock_nhl, mock_mlb, mock_nfl
+    ):
+        """ingest_live_data for unknown league returns empty summary."""
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        config = IngestionConfig(
+            league_code="NCAAF",
+            start_date=date(2024, 1, 15),
+            end_date=date(2024, 1, 15),
+        )
+
+        result = manager.ingest_live_data(mock_session, config=config, updated_before=None)
+
+        assert result.games_touched == 0
+        assert result.pbp_games == 0
+        assert result.pbp_events == 0
+
+
+class TestSyncNfl:
+    """Tests for _sync_nfl method."""
+
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_nfl_returns_empty_when_no_dates(self, mock_nba, mock_nhl, mock_mlb, mock_nfl):
+        """_sync_nfl returns empty summary when no dates."""
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        config = IngestionConfig(league_code="NFL", start_date=None, end_date=None)
+
+        result = manager._sync_nfl(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 0
+        assert result.pbp_games == 0
+        assert result.pbp_events == 0
+
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_nfl_skips_preseason_games(
+        self, mock_nba, mock_nhl, mock_mlb, mock_nfl_class, mock_upsert
+    ):
+        """_sync_nfl skips games with season_type='preseason'."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_nfl_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_id = 401547399
+        mock_live_game.game_date = datetime(2024, 8, 10, 19, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="NFL", name="KC", abbreviation="KC")
+        mock_live_game.away_team = TeamIdentity(league_code="NFL", name="CHI", abbreviation="CHI")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 21
+        mock_live_game.away_score = 17
+        mock_live_game.season_type = "preseason"
+        mock_nfl_client.fetch_schedule.return_value = [mock_live_game]
+        mock_nfl_class.return_value = mock_nfl_client
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        config = IngestionConfig(
+            league_code="NFL",
+            start_date=date(2024, 8, 10),
+            end_date=date(2024, 8, 10),
+        )
+
+        result = manager._sync_nfl(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 0
+        mock_upsert.assert_not_called()
+
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_nfl_upserts_regular_season_game(
+        self, mock_nba, mock_nhl, mock_mlb, mock_nfl_class, mock_upsert
+    ):
+        """_sync_nfl upserts regular-season games."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_nfl_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_id = 401547400
+        mock_live_game.game_date = datetime(2024, 9, 8, 13, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="NFL", name="KC", abbreviation="KC")
+        mock_live_game.away_team = TeamIdentity(league_code="NFL", name="BAL", abbreviation="BAL")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 27
+        mock_live_game.away_score = 20
+        mock_live_game.season_type = "regular"
+        mock_nfl_client.fetch_schedule.return_value = [mock_live_game]
+        mock_nfl_class.return_value = mock_nfl_client
+
+        mock_upsert.return_value = (1, True)
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        mock_session.get.return_value = None  # Game not found after upsert
+
+        config = IngestionConfig(
+            league_code="NFL",
+            start_date=date(2024, 9, 8),
+            end_date=date(2024, 9, 8),
+        )
+
+        result = manager._sync_nfl(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 1
+        mock_upsert.assert_called_once()
+
+    @patch("sports_scraper.live.manager.upsert_plays")
+    @patch("sports_scraper.live.manager._filter_new_plays")
+    @patch("sports_scraper.live.manager._max_play_index")
+    @patch("sports_scraper.live.manager._should_skip_pbp")
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_nfl_with_pbp_ingestion(
+        self, mock_nba, mock_nhl, mock_mlb, mock_nfl_class, mock_upsert_stub,
+        mock_skip_pbp, mock_max_index, mock_filter, mock_upsert_plays
+    ):
+        """_sync_nfl ingests PBP for regular-season games."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_nfl_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_id = 401547400
+        mock_live_game.game_date = datetime(2024, 9, 8, 13, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="NFL", name="KC", abbreviation="KC")
+        mock_live_game.away_team = TeamIdentity(league_code="NFL", name="BAL", abbreviation="BAL")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 27
+        mock_live_game.away_score = 20
+        mock_live_game.season_type = "regular"
+        mock_nfl_client.fetch_schedule.return_value = [mock_live_game]
+
+        mock_pbp_payload = MagicMock()
+        mock_pbp_payload.plays = [
+            NormalizedPlay(play_index=1, quarter=1, game_clock="15:00", play_type="rush", description="test"),
+        ]
+        mock_nfl_client.fetch_play_by_play.return_value = mock_pbp_payload
+        mock_nfl_class.return_value = mock_nfl_client
+
+        mock_upsert_stub.return_value = (1, True)
+        mock_skip_pbp.return_value = False
+        mock_max_index.return_value = None
+        mock_filter.return_value = mock_pbp_payload.plays
+        mock_upsert_plays.return_value = 1
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        mock_game = MagicMock(id=1, status="live", home_score=14, away_score=10)
+        mock_session.get.return_value = mock_game
+
+        config = IngestionConfig(
+            league_code="NFL",
+            start_date=date(2024, 9, 8),
+            end_date=date(2024, 9, 8),
+        )
+
+        result = manager._sync_nfl(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 1
+        assert result.pbp_games == 1
+        assert result.pbp_events == 1
+
+    @patch("sports_scraper.live.manager._should_skip_pbp")
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_nfl_skips_pbp_when_flagged(
+        self, mock_nba, mock_nhl, mock_mlb, mock_nfl_class, mock_upsert_stub, mock_skip_pbp
+    ):
+        """_sync_nfl skips PBP when _should_skip_pbp returns True."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_nfl_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_id = 401547400
+        mock_live_game.game_date = datetime(2024, 9, 8, 13, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="NFL", name="KC", abbreviation="KC")
+        mock_live_game.away_team = TeamIdentity(league_code="NFL", name="BAL", abbreviation="BAL")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 27
+        mock_live_game.away_score = 20
+        mock_live_game.season_type = "regular"
+        mock_nfl_client.fetch_schedule.return_value = [mock_live_game]
+        mock_nfl_class.return_value = mock_nfl_client
+
+        mock_upsert_stub.return_value = (1, True)
+        mock_skip_pbp.return_value = True
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        mock_game = MagicMock(id=1)
+        mock_session.get.return_value = mock_game
+
+        config = IngestionConfig(
+            league_code="NFL",
+            start_date=date(2024, 9, 8),
+            end_date=date(2024, 9, 8),
+        )
+
+        result = manager._sync_nfl(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 1
+        assert result.pbp_games == 0
+
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_nfl_uses_default_season_type_when_none(
+        self, mock_nba, mock_nhl, mock_mlb, mock_nfl_class, mock_upsert
+    ):
+        """_sync_nfl defaults to 'regular' when season_type is None."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_nfl_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_id = 401547400
+        mock_live_game.game_date = datetime(2024, 9, 8, 13, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="NFL", name="KC", abbreviation="KC")
+        mock_live_game.away_team = TeamIdentity(league_code="NFL", name="BAL", abbreviation="BAL")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 27
+        mock_live_game.away_score = 20
+        mock_live_game.season_type = None  # None should default to "regular"
+        mock_nfl_client.fetch_schedule.return_value = [mock_live_game]
+        mock_nfl_class.return_value = mock_nfl_client
+
+        mock_upsert.return_value = (1, True)
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        mock_session.get.return_value = None
+
+        config = IngestionConfig(
+            league_code="NFL",
+            start_date=date(2024, 9, 8),
+            end_date=date(2024, 9, 8),
+        )
+
+        result = manager._sync_nfl(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 1
+        # Verify upsert was called with season_type="regular"
+        call_kwargs = mock_upsert.call_args[1]
+        assert call_kwargs["season_type"] == "regular"
+
+
+class TestSyncNflDispatch:
+    """Tests for NFL dispatch from ingest_live_data."""
+
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_ingest_live_data_calls_sync_nfl(self, mock_nba, mock_nhl, mock_mlb, mock_nfl_class):
+        """ingest_live_data dispatches to _sync_nfl for NFL league."""
+        mock_nfl_client = MagicMock()
+        mock_nfl_client.fetch_schedule.return_value = []
+        mock_nfl_class.return_value = mock_nfl_client
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        config = IngestionConfig(
+            league_code="NFL",
+            start_date=date(2024, 9, 8),
+            end_date=date(2024, 9, 8),
+        )
+
+        result = manager.ingest_live_data(mock_session, config=config, updated_before=None)
+
+        mock_nfl_client.fetch_schedule.assert_called()
+        assert isinstance(result, LiveFeedSummary)
+
+
+class TestSyncMlb:
+    """Tests for _sync_mlb method."""
+
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_mlb_returns_empty_when_no_dates(self, mock_nba, mock_nhl, mock_mlb, mock_nfl):
+        """_sync_mlb returns empty summary when no dates."""
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        config = IngestionConfig(league_code="MLB", start_date=None, end_date=None)
+
+        result = manager._sync_mlb(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 0
+        assert result.pbp_games == 0
+        assert result.pbp_events == 0
+
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_mlb_upserts_games(
+        self, mock_nba, mock_nhl, mock_mlb_class, mock_nfl, mock_upsert
+    ):
+        """_sync_mlb upserts games from schedule."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_mlb_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_pk = 717001
+        mock_live_game.game_date = datetime(2024, 4, 1, 18, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="MLB", name="NYY", abbreviation="NYY")
+        mock_live_game.away_team = TeamIdentity(league_code="MLB", name="BOS", abbreviation="BOS")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 5
+        mock_live_game.away_score = 3
+        mock_live_game.game_type = "R"
+        mock_mlb_client.fetch_schedule.return_value = [mock_live_game]
+        mock_mlb_class.return_value = mock_mlb_client
+
+        mock_upsert.return_value = (1, True)
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        mock_session.get.return_value = None
+
+        config = IngestionConfig(
+            league_code="MLB",
+            start_date=date(2024, 4, 1),
+            end_date=date(2024, 4, 1),
+        )
+
+        result = manager._sync_mlb(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 1
+        mock_upsert.assert_called_once()
+
+    @patch("sports_scraper.live.manager.upsert_plays")
+    @patch("sports_scraper.live.manager._filter_new_plays")
+    @patch("sports_scraper.live.manager._max_play_index")
+    @patch("sports_scraper.live.manager._should_skip_pbp")
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_mlb_with_pbp_ingestion(
+        self, mock_nba, mock_nhl, mock_mlb_class, mock_nfl, mock_upsert_stub,
+        mock_skip_pbp, mock_max_index, mock_filter, mock_upsert_plays
+    ):
+        """_sync_mlb ingests PBP for games."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_mlb_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_pk = 717001
+        mock_live_game.game_date = datetime(2024, 4, 1, 18, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="MLB", name="NYY", abbreviation="NYY")
+        mock_live_game.away_team = TeamIdentity(league_code="MLB", name="BOS", abbreviation="BOS")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 5
+        mock_live_game.away_score = 3
+        mock_live_game.game_type = "R"
+        mock_mlb_client.fetch_schedule.return_value = [mock_live_game]
+
+        mock_pbp_payload = MagicMock()
+        mock_pbp_payload.plays = [
+            NormalizedPlay(play_index=1, quarter=1, game_clock="", play_type="atbat", description="test"),
+        ]
+        mock_mlb_client.fetch_play_by_play.return_value = mock_pbp_payload
+        mock_mlb_class.return_value = mock_mlb_client
+
+        mock_upsert_stub.return_value = (1, True)
+        mock_skip_pbp.return_value = False
+        mock_max_index.return_value = None
+        mock_filter.return_value = mock_pbp_payload.plays
+        mock_upsert_plays.return_value = 1
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        mock_game = MagicMock(id=1, status="live", home_score=3, away_score=2)
+        mock_session.get.return_value = mock_game
+
+        config = IngestionConfig(
+            league_code="MLB",
+            start_date=date(2024, 4, 1),
+            end_date=date(2024, 4, 1),
+        )
+
+        result = manager._sync_mlb(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 1
+        assert result.pbp_games == 1
+        assert result.pbp_events == 1
+
+    @patch("sports_scraper.live.manager._should_skip_pbp")
+    @patch("sports_scraper.live.manager.upsert_game_stub")
+    @patch("sports_scraper.live.manager.NFLLiveFeedClient")
+    @patch("sports_scraper.live.manager.MLBLiveFeedClient")
+    @patch("sports_scraper.live.manager.NHLLiveFeedClient")
+    @patch("sports_scraper.live.manager.NBALiveFeedClient")
+    def test_sync_mlb_skips_pbp_when_flagged(
+        self, mock_nba, mock_nhl, mock_mlb_class, mock_nfl, mock_upsert_stub, mock_skip_pbp
+    ):
+        """_sync_mlb skips PBP when _should_skip_pbp returns True."""
+        from sports_scraper.models import TeamIdentity
+
+        mock_mlb_client = MagicMock()
+        mock_live_game = MagicMock()
+        mock_live_game.game_pk = 717001
+        mock_live_game.game_date = datetime(2024, 4, 1, 18, 0, tzinfo=UTC)
+        mock_live_game.home_team = TeamIdentity(league_code="MLB", name="NYY", abbreviation="NYY")
+        mock_live_game.away_team = TeamIdentity(league_code="MLB", name="BOS", abbreviation="BOS")
+        mock_live_game.status = "final"
+        mock_live_game.home_score = 5
+        mock_live_game.away_score = 3
+        mock_live_game.game_type = None  # Test None game_type -> defaults to "regular"
+        mock_mlb_client.fetch_schedule.return_value = [mock_live_game]
+        mock_mlb_class.return_value = mock_mlb_client
+
+        mock_upsert_stub.return_value = (1, True)
+        mock_skip_pbp.return_value = True
+
+        manager = LiveFeedManager()
+        mock_session = MagicMock()
+        mock_game = MagicMock(id=1)
+        mock_session.get.return_value = mock_game
+
+        config = IngestionConfig(
+            league_code="MLB",
+            start_date=date(2024, 4, 1),
+            end_date=date(2024, 4, 1),
+        )
+
+        result = manager._sync_mlb(mock_session, config, updated_before=None)
+
+        assert result.games_touched == 1
+        assert result.pbp_games == 0
+        # Verify season_type defaulted to "regular" when game_type is None
+        call_kwargs = mock_upsert_stub.call_args[1]
+        assert call_kwargs["season_type"] == "regular"

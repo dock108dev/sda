@@ -95,6 +95,45 @@
   background: var(--admin-surface);
 }
 
+.statusChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.statusChip {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.statusChip:hover {
+  border-color: #3b82f6;
+  color: var(--text-primary);
+}
+
+.statusChipActive {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.statusChipClear {
+  padding: 0.15rem 0.4rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .toolbar select {
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-button);

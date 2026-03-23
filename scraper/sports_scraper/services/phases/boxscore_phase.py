@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from ...db import db_models
 from ...logging import logger
-from ...utils.datetime_utils import start_of_et_day_utc, sports_today_et
+from ...utils.datetime_utils import sports_today_et, start_of_et_day_utc
 
 
 def ingest_boxscores(
@@ -98,6 +98,14 @@ def ingest_boxscores(
                 "mlb_api",
                 "mlb_boxscore_ingestion_failed",
             )
+        elif config.league_code == "NFL":
+            from ..nfl_boxscore_ingestion import ingest_boxscores_via_nfl_api
+
+            _LEAGUE_DISPATCH["NFL"] = (
+                ingest_boxscores_via_nfl_api,
+                "espn_nfl_api",
+                "nfl_boxscore_ingestion_failed",
+            )
 
         dispatch = _LEAGUE_DISPATCH.get(config.league_code)
 
@@ -116,7 +124,7 @@ def ingest_boxscores(
             )
             try:
                 with get_session() as session:
-                    games, enriched, with_stats = ingest_fn(
+                    games, enriched, with_stats, box_errors = ingest_fn(
                         session,
                         run_id=run_id,
                         start_date=start,
@@ -128,6 +136,7 @@ def ingest_boxscores(
                 summary["games"] = games
                 summary["games_enriched"] = enriched
                 summary["games_with_stats"] = with_stats
+                summary["boxscore_errors"] = box_errors
             except Exception as exc:
                 logger.exception(
                     error_label,

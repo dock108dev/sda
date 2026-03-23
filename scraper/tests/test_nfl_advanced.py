@@ -272,10 +272,18 @@ class TestNFLIngestAdvancedStats:
         return league
 
     @staticmethod
+    def _make_team(abbr="KC"):
+        team = MagicMock()
+        team.abbreviation = abbr
+        return team
+
+    @staticmethod
     def _make_session(game=None, league=None):
         session = MagicMock()
 
         def get_side_effect(model_id):
+            if not get_side_effect._results:
+                return None
             return get_side_effect._results.pop(0)
 
         results = []
@@ -283,6 +291,12 @@ class TestNFLIngestAdvancedStats:
             results.append(game)
         if league is not None:
             results.append(league)
+        # Add home/away team lookups (called by ingest_advanced_stats_for_game)
+        home_team = MagicMock()
+        home_team.abbreviation = "KC"
+        away_team = MagicMock()
+        away_team.abbreviation = "DET"
+        results.extend([home_team, away_team])
         get_side_effect._results = results
 
         session.query.return_value.get = MagicMock(side_effect=get_side_effect)
@@ -313,11 +327,13 @@ class TestNFLIngestAdvancedStats:
         assert result["status"] == "skipped"
         assert result["reason"] == "not_nfl"
 
-    def test_no_espn_game_id(self):
+    def test_no_espn_game_id_still_attempts_match(self):
+        """Games without ESPN ID still attempt matching by date + teams."""
         game = self._make_game(external_ids={})
         league = self._make_league(code="NFL")
         session = self._make_session(game, league)
 
         result = ingest_advanced_stats_for_game(session, 1)
+        # Without team data in the mock, nflverse matching returns no plays
         assert result["status"] == "skipped"
-        assert result["reason"] == "no_espn_game_id"
+        assert result["reason"] == "no_plays"

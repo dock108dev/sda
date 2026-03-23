@@ -3,20 +3,28 @@
 from __future__ import annotations
 
 from .base import BaseSportsReferenceScraper, ScraperError
+from .nba_bref import NBABasketballReferenceScraper
 from .ncaab_sportsref import NCAABSportsReferenceScraper
 
 __all__ = [
     "BaseSportsReferenceScraper",
     "ScraperError",
+    "NBABasketballReferenceScraper",
     "NCAABSportsReferenceScraper",
     "get_scraper",
     "get_all_scrapers",
 ]
 
 
-# Scraper registry - maps league codes to scraper classes
-# NBA uses NBA CDN API for boxscores and NBA API for PBP (see services/nba_boxscore_ingestion.py)
-# NHL uses the official NHL API for boxscores and PBP (see live/nhl.py)
+# Scraper registry — maps league codes to Sports Reference scraper classes.
+# Used by the daily ingestion pipeline (run_manager → boxscore/pbp phases).
+#
+# NOT registered here (they have dedicated ingestion paths):
+#   NBA: CDN API for current season (live/nba.py), Basketball Reference
+#        for historical backfill (scrapers/nba_bref.py → ingest_nba_historical task)
+#   NHL: Official NHL API (live/nhl.py)
+#   MLB: MLB Stats API (live/mlb.py)
+#   NFL: ESPN API (live/nfl.py)
 _SCRAPER_REGISTRY: dict[str, type[BaseSportsReferenceScraper]] = {
     "NCAAB": NCAABSportsReferenceScraper,
 }

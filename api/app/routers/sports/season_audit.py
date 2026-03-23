@@ -162,6 +162,40 @@ async def season_audit(
     )
     expected_teams = cfg.expected_teams if cfg else None
 
+    # Season calendar + pro-rated expected games
+    season_start_str: str | None = None
+    season_end_str: str | None = None
+    season_pct_complete: float | None = None
+    expected_games_to_date: int | None = None
+
+    if cfg and cfg.season_start_month and cfg.season_end_month and season_type == "regular":
+        from datetime import date as date_cls
+
+        from ...utils.datetime_utils import today_et
+
+        start_year = season
+        end_year = start_year + 1 if cfg.season_crosses_year else start_year
+
+        season_start_date = date_cls(start_year, cfg.season_start_month, cfg.season_start_day)
+        season_end_date = date_cls(end_year, cfg.season_end_month, cfg.season_end_day)
+
+        season_start_str = season_start_date.strftime("%b %d, %Y")
+        season_end_str = season_end_date.strftime("%b %d, %Y")
+
+        today = today_et()
+        total_days = (season_end_date - season_start_date).days
+        if total_days > 0:
+            if today <= season_start_date:
+                season_pct_complete = 0.0
+            elif today >= season_end_date:
+                season_pct_complete = 100.0
+            else:
+                elapsed = (today - season_start_date).days
+                season_pct_complete = round(min(elapsed / total_days * 100, 100), 1)
+
+            if season_pct_complete is not None and expected_games:
+                expected_games_to_date = round(expected_games * season_pct_complete / 100)
+
     coverage_pct = _pct(total_games, expected_games) if expected_games else None
 
     return SeasonAuditResponse(
@@ -187,4 +221,8 @@ async def season_audit(
         advanced_stats_pct=_pct(with_advanced_stats, total_games),
         teams_with_games=teams_with_games,
         expected_teams=expected_teams,
+        season_start=season_start_str,
+        season_end=season_end_str,
+        season_pct_complete=season_pct_complete,
+        expected_games_to_date=expected_games_to_date,
     )

@@ -14,8 +14,8 @@ from ..logging import logger
 from ..models import NormalizedPlay, NormalizedPlayByPlay
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
-from .ncaab_constants import NCAAB_PERIOD_MULTIPLIER
 from .ncaa_constants import NCAA_EVENT_PATTERNS, NCAA_PBP_URL
+from .ncaab_constants import NCAAB_PERIOD_MULTIPLIER
 
 
 class NCAAPbpFetcher:

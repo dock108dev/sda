@@ -52,7 +52,7 @@ def _social_task_exists_for_league(league_code: str) -> bool:
             return existing is not None
     except Exception as exc:
         logger.warning("social_task_exists_check_failed", error=str(exc))
-        return False
+        return True  # Fail-closed: assume task exists to prevent duplicate dispatch
 
 
 class ScrapeRunManager:
@@ -186,14 +186,24 @@ class ScrapeRunManager:
         )
 
     def _run_diagnostics(self, config: IngestionConfig) -> None:
-        """Phase: post-run diagnostics."""
+        """Phase: post-run diagnostics.
+
+        Only checks for missing data types that were part of this run.
+        """
         with get_session() as session:
-            detect_missing_pbp(session, league_code=config.league_code)
+            if config.pbp:
+                detect_missing_pbp(session, league_code=config.league_code)
             detect_external_id_conflicts(
                 session, league_code=config.league_code, source="live_feed"
             )
 
-    def _finalize_run(self, run_id: int, summary: dict) -> None:
+    def _finalize_run(
+        self,
+        run_id: int,
+        summary: dict,
+        phase_errors: list[str] | None = None,
+        phases_requested: int = 0,
+    ) -> None:
         """Phase: build summary string and mark run complete."""
         summary_parts = []
         if summary["games"]:
@@ -213,13 +223,25 @@ class ScrapeRunManager:
         if summary["advanced_stats"]:
             summary_parts.append(f"Advanced Stats: {summary['advanced_stats']}")
 
+        # Determine final status based on how many phases succeeded vs failed
+        phase_errors = phase_errors or []
+        if phase_errors:
+            summary_parts.append(f"Failed phases: {', '.join(phase_errors)}")
+            if len(phase_errors) >= phases_requested and phases_requested > 0:
+                # Every requested phase failed — this is an error, not partial success
+                status = "error"
+            else:
+                status = "partial_success"
+        else:
+            status = "success"
+
         self._update_run(
             run_id,
-            status="success",
+            status=status,
             finished_at=now_utc(),
             summary=", ".join(summary_parts) or "No data processed",
         )
-        logger.info("scrape_run_complete", run_id=run_id, summary=summary)
+        logger.info("scrape_run_complete", run_id=run_id, status=status, summary=summary)
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -265,7 +287,7 @@ class ScrapeRunManager:
         if (
             not scraper
             and config.boxscores
-            and config.league_code not in ("NHL", "NBA", "NCAAB", "MLB")
+            and config.league_code not in ("NHL", "NBA", "NCAAB", "MLB", "NFL")
         ):
             raise RuntimeError(f"No scraper implemented for {config.league_code}")
 
@@ -273,35 +295,64 @@ class ScrapeRunManager:
 
         ingest_run_id: int | None = None
         ingest_run_completed = False
+        phase_errors: list[str] = []
         try:
             # Odds first: creates games from the Odds API so that
             # boxscore enrichment and PBP have games to work with.
             if config.odds:
-                self._sync_odds(run_id, config, summary, start, end)
+                try:
+                    self._sync_odds(run_id, config, summary, start, end)
+                except Exception as exc:
+                    phase_errors.append("odds")
+                    logger.warning("phase_failed_odds", run_id=run_id, error=str(exc))
 
             if config.boxscores:
                 ingest_run_id = start_job_run("ingest", [config.league_code])
 
             if config.boxscores:
-                self._ingest_boxscores(
-                    run_id, config, summary, start, end, updated_before_dt, scraper
-                )
+                try:
+                    self._ingest_boxscores(
+                        run_id, config, summary, start, end, updated_before_dt, scraper
+                    )
+                except Exception as exc:
+                    phase_errors.append("boxscores")
+                    logger.warning("phase_failed_boxscores", run_id=run_id, error=str(exc))
 
             if ingest_run_id is not None:
                 complete_job_run(ingest_run_id, "success")
                 ingest_run_completed = True
 
             if config.pbp:
-                self._ingest_pbp(run_id, config, summary, start, end, updated_before_dt)
+                try:
+                    self._ingest_pbp(run_id, config, summary, start, end, updated_before_dt)
+                except Exception as exc:
+                    phase_errors.append("pbp")
+                    logger.warning("phase_failed_pbp", run_id=run_id, error=str(exc))
 
             if config.social:
-                self._dispatch_social(run_id, config, summary, start, end)
+                try:
+                    self._dispatch_social(run_id, config, summary, start, end)
+                except Exception as exc:
+                    phase_errors.append("social")
+                    logger.warning("phase_failed_social", run_id=run_id, error=str(exc))
 
             if config.advanced_stats:
-                self._ingest_advanced_stats(run_id, config, summary, start, end, updated_before_dt)
+                try:
+                    self._ingest_advanced_stats(run_id, config, summary, start, end, updated_before_dt)
+                except Exception as exc:
+                    phase_errors.append("advanced_stats")
+                    logger.warning("phase_failed_advanced_stats", run_id=run_id, error=str(exc))
 
             self._run_diagnostics(config)
-            self._finalize_run(run_id, summary)
+            phases_requested = sum([
+                config.odds, config.boxscores, config.pbp,
+                config.social, config.advanced_stats,
+            ])
+            self._finalize_run(
+                run_id, summary,
+                phase_errors=phase_errors,
+                phases_requested=phases_requested,
+            )
 
         except Exception as exc:
             if ingest_run_id is not None and not ingest_run_completed:

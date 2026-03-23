@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-
-from sqlalchemy import exists, not_, or_
+from sqlalchemy import and_, exists, not_, or_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
@@ -21,7 +19,12 @@ from ..models import (
 )
 from ..persistence import persist_game_payload
 from ..utils.date_utils import season_ending_year
-from ..utils.datetime_utils import date_to_utc_datetime
+from ..utils.datetime_utils import (
+    date_to_utc_datetime,
+    end_of_et_day_utc,
+    start_of_et_day_utc,
+    to_et_date,
+)
 
 
 def populate_mlb_games_from_schedule(
@@ -272,10 +275,13 @@ def select_games_for_boxscores_mlb_api(
     )
 
     if only_missing:
-        has_boxscores = exists().where(
+        has_team_box = exists().where(
             db_models.SportsTeamBoxscore.game_id == db_models.SportsGame.id
         )
-        query = query.filter(not_(has_boxscores))
+        has_player_box = exists().where(
+            db_models.SportsPlayerBoxscore.game_id == db_models.SportsGame.id
+        )
+        query = query.filter(not_(and_(has_team_box, has_player_box)))
 
     if updated_before:
         has_fresh = exists().where(
@@ -310,7 +316,7 @@ def ingest_boxscores_via_mlb_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     """Ingest MLB boxscores using the official MLB Stats API.
 
     Flow:
@@ -321,7 +327,7 @@ def ingest_boxscores_via_mlb_api(
     5. Persist via existing persist_game_payload()
 
     Returns:
-        Tuple of (games_processed, games_enriched, games_with_stats)
+        Tuple of (games_processed, games_enriched, games_with_stats, errors)
     """
     from ..live.mlb import MLBLiveFeedClient
 
@@ -351,7 +357,7 @@ def ingest_boxscores_via_mlb_api(
             end_date=str(end_date),
             only_missing=only_missing,
         )
-        return (0, 0, 0)
+        return (0, 0, 0, 0)
 
     logger.info(
         "mlb_boxscore_games_selected",
@@ -366,6 +372,7 @@ def ingest_boxscores_via_mlb_api(
     games_processed = 0
     games_enriched = 0
     games_with_stats = 0
+    errors = 0
 
     for game_id, mlb_game_pk, game_date, game_status in games:
         try:
@@ -405,6 +412,7 @@ def ingest_boxscores_via_mlb_api(
 
         except Exception as exc:
             session.rollback()
+            errors += 1
             logger.warning(
                 "mlb_boxscore_fetch_failed",
                 run_id=run_id,
@@ -420,9 +428,10 @@ def ingest_boxscores_via_mlb_api(
         games_processed=games_processed,
         games_enriched=games_enriched,
         games_with_stats=games_with_stats,
+        errors=errors,
     )
 
-    return (games_processed, games_enriched, games_with_stats)
+    return (games_processed, games_enriched, games_with_stats, errors)
 
 
 def convert_mlb_boxscore_to_normalized_game(

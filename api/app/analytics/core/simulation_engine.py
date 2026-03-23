@@ -405,7 +405,7 @@ def _load_pitch_models() -> tuple[Any, Any]:
             bbm.load(bb_entry["artifact_path"])
             bb_model = bbm
     except Exception:
-        logger.debug("pitch_models_load_skipped", exc_info=True)
+        logger.warning("pitch_models_load_skipped", exc_info=True)
 
     return pitch_model, bb_model
 

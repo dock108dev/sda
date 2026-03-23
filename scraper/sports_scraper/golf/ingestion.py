@@ -6,7 +6,6 @@ from the API, persists it, and returns a summary dict.
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import date
 from typing import Any
 
@@ -22,10 +21,8 @@ from .persistence import (
     upsert_odds,
     upsert_player_stats,
     upsert_players,
-    upsert_rounds,
     upsert_tournament,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -97,5 +97,22 @@ async def cancel_job_run(
         0.0 if original_status == "queued" else (now - run.started_at).total_seconds()
     )
     run.error_summary = "Canceled by user via admin UI"
+
+    # Release ingestion locks for canceled backfill jobs so subsequent
+    # runs aren't blocked by an orphaned lock from the killed task.
+    if run.phase == "data_backfill" and run.leagues:
+        try:
+            import redis.asyncio as aioredis
+            from ...config import settings
+
+            r = aioredis.from_url(settings.redis_url, decode_responses=True)
+            for league in run.leagues:
+                lock_key = f"lock:ingest:{league}"
+                await r.delete(lock_key)
+                logger.info("Released ingestion lock on cancel", extra={"lock_key": lock_key})
+            await r.aclose()
+        except Exception as exc:
+            logger.warning("Failed to release ingestion lock", extra={"error": str(exc)})
+
     await session.commit()
     return _serialize_run(run)

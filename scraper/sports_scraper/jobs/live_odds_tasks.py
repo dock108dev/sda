@@ -267,7 +267,7 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
     """
     from ..config import settings
     from ..live_odds.redis_store import write_live_snapshot
-    from ..odds.client import OddsAPIClient, PROP_MARKETS
+    from ..odds.client import PROP_MARKETS, OddsAPIClient
     from ..utils.provider_request import provider_request
 
     lock_key = f"lock:live_odds_props:{league_code}"

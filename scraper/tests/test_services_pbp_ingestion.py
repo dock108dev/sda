@@ -16,6 +16,7 @@ from sports_scraper.services.pbp_ingestion import (
     select_games_for_pbp_ncaab_api,
     select_games_for_pbp_nhl_api,
 )
+from sports_scraper.services.pbp_nba import _is_current_nba_season
 
 
 class TestSelectGamesForPbpNbaApi:
@@ -271,6 +272,37 @@ class TestIngestPbpViaNbaApi:
 
         # Should still process the game
         assert result == (1, 5)
+
+
+class TestIsCurrentNbaSeason:
+    """Tests for _is_current_nba_season guard."""
+
+    @patch("sports_scraper.utils.datetime_utils.today_et", return_value=date(2026, 1, 15))
+    def test_current_season_dates(self, _mock_today):
+        """Mid-season dates for 2025-26 season should return True."""
+        assert _is_current_nba_season(date(2025, 10, 22), date(2026, 4, 13)) is True
+
+    @patch("sports_scraper.utils.datetime_utils.today_et", return_value=date(2026, 1, 15))
+    def test_historical_season_dates(self, _mock_today):
+        """Dates from 2023-24 season should return False when current is 2025-26."""
+        assert _is_current_nba_season(date(2023, 10, 24), date(2024, 4, 14)) is False
+
+    @patch("sports_scraper.utils.datetime_utils.today_et", return_value=date(2026, 1, 15))
+    def test_overlap_partial(self, _mock_today):
+        """A range ending in the current season should return True."""
+        assert _is_current_nba_season(date(2024, 10, 1), date(2025, 12, 1)) is True
+
+    @patch("sports_scraper.utils.datetime_utils.today_et", return_value=date(2026, 1, 15))
+    def test_historical_skips_populate(self, _mock_today):
+        """populate_nba_game_ids should return 0 for historical seasons."""
+        mock_session = MagicMock()
+        result = populate_nba_game_ids(
+            mock_session, run_id=1,
+            start_date=date(2022, 10, 18), end_date=date(2023, 4, 9),
+        )
+        assert result == 0
+        # Should not have queried the DB at all
+        mock_session.query.assert_not_called()
 
 
 class TestPopulateNbaGameIds:

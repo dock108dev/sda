@@ -21,9 +21,9 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
     """Ingest nflverse-derived advanced stats for a single NFL game.
 
     Steps:
-    1. Validate game exists, status=final, league=NFL, has espn_game_id
+    1. Validate game exists, status=final/archived, league=NFL
     2. Determine season from game.season
-    3. Fetch and filter plays via nflreadpy
+    3. Fetch and filter plays via nflreadpy (matches by date + teams)
     4. Aggregate team + player stats
     5. Upsert team rows (2) and player rows
     6. Set game.last_advanced_stats_at
@@ -36,7 +36,8 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         logger.warning("nfl_adv_stats_game_not_found", game_id=game_id)
         return {"game_id": game_id, "status": "not_found"}
 
-    if game.status != db_models.GameStatus.final.value:
+    _COMPLETED = {db_models.GameStatus.final.value, db_models.GameStatus.archived.value}
+    if game.status not in _COMPLETED:
         logger.info("nfl_adv_stats_skip_not_final", game_id=game_id, status=game.status)
         return {"game_id": game_id, "status": "skipped", "reason": "not_final"}
 
@@ -47,20 +48,33 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
 
     external_ids = game.external_ids or {}
     espn_game_id = external_ids.get("espn_game_id")
-    if not espn_game_id:
-        logger.warning("nfl_adv_stats_no_espn_game_id", game_id=game_id)
-        return {"game_id": game_id, "status": "skipped", "reason": "no_espn_game_id"}
-
     season = game.season
 
-    # Fetch plays from nflverse
+    # Resolve team abbreviations for nflverse matching
+    home_team = session.query(db_models.SportsTeam).get(game.home_team_id)
+    away_team = session.query(db_models.SportsTeam).get(game.away_team_id)
+    home_abbr = home_team.abbreviation if home_team else None
+    away_abbr = away_team.abbreviation if away_team else None
+    game_date_str = str(game.game_date.date()) if game.game_date else None
+
+    # Fetch plays from nflverse (matches by date + teams, not ESPN ID)
     from ..live.nfl_advanced import NFLAdvancedStatsFetcher
 
     fetcher = NFLAdvancedStatsFetcher()
-    plays = fetcher.fetch_game_plays(int(espn_game_id), season)
+    plays = fetcher.fetch_game_plays(
+        int(espn_game_id) if espn_game_id else 0,
+        season,
+        home_abbr=home_abbr,
+        away_abbr=away_abbr,
+        game_date=game_date_str,
+    )
 
     if not plays:
-        logger.warning("nfl_adv_stats_no_plays", game_id=game_id, espn_game_id=espn_game_id)
+        logger.warning(
+            "nfl_adv_stats_no_plays",
+            game_id=game_id, espn_game_id=espn_game_id,
+            home_abbr=home_abbr, away_abbr=away_abbr, game_date=game_date_str,
+        )
         return {"game_id": game_id, "status": "skipped", "reason": "no_plays"}
 
     # Aggregate team stats

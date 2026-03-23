@@ -13,8 +13,8 @@ All notable changes to Sports Data Admin.
 ### Advanced Stats (All 5 Sports)
 
 - **MLB Statcast:** Already implemented (reference pattern). Pitch-level exit velocity, launch angle, barrel rate, plate discipline.
-- **NBA (stats.nba.com):** `boxscoreadvancedv3` (TS%, eFG%, PIE, ratings), `boxscorehustlev2` (deflections, contested shots), `boxscoreplayertrackingv3` (speed, distance, touches, pull-up/catch-shoot splits). 2 new DB tables, frontend section.
-- **NHL (MoneyPuck):** Season CSV with 124-feature shot data. Pre-computed xGoals, Corsi, Fenwick, PDO, danger-zone saves. 3 new DB tables (team, skater, goalie), frontend section.
+- **NBA (boxscore-derived):** TS%, eFG%, OFF/DEF/NET rating, pace, four factors, usage rate, game score — all computed from existing boxscore JSONB data. No external API calls (stats.nba.com blocks cloud IPs). Tracking/hustle stats (speed, deflections) deferred as TODO. 2 new DB tables, frontend section.
+- **NHL (MoneyPuck):** Season ZIP (not CSV) with 124-feature shot data. Pre-computed xGoals, Corsi, Fenwick, PDO, danger-zone saves. Game ID matching strips 4-digit season prefix from NHL PK (e.g., `2025020105` → `20105`). 3 new DB tables (team, skater, goalie), frontend section.
 - **NFL (nflverse):** Pre-computed EPA/WPA/CPOE via `nflreadpy`. Team and per-role player stats. 2 new DB tables, frontend section. New dependency: `nflreadpy`.
 - **NCAAB (four factors):** Computed from existing boxscore JSONB data — zero external API calls. eFG%, TOV%, ORB%, FT rate, efficiency ratings, pace, game score. 2 new DB tables, frontend section.
 - **Shared infrastructure:** `_dispatch_final_actions()` fires sport-specific Celery tasks 60s after game final. `advanced_stats_phase.py` dispatches per league. All 5 sports have frontend components in game detail view.
@@ -24,6 +24,66 @@ All notable changes to Sports Data Admin.
 - **Season audit endpoint:** `GET /api/admin/sports/season-audit?league=NBA&season=2025` returns game counts vs expected, coverage percentages for 7 data types (boxscore, PBP, odds, social, flow, advanced stats), and team counts.
 - **Season audit UI:** New page at `/admin/sports/season-audit` with league/season/type selector, progress bars with green/yellow/red thresholds.
 - **Expected game baselines:** Added `expected_regular_season_games` and `expected_teams` to `LeagueConfig` (NBA=1230, NHL=1312, MLB=2430, NCAAB=5460, NFL=272).
+
+### Ingestion Resilience & Backfill Improvements
+
+- **Per-game commit/rollback:** All boxscore, PBP, and advanced stats ingestion loops now commit per-game and rollback on failure. Previously, one `UniqueViolation` poisoned the SQLAlchemy session and killed entire backfills.
+- **`only_missing` filter fix:** Changed from checking only `SportsTeamBoxscore` to requiring BOTH team AND player boxscores before skipping a game. Prevents games with team stats but no player stats from being skipped.
+- **`source_game_key` UniqueViolation fix:** Removed `source_game_key` assignment during enrichment — now only set at game creation time (SSOT). Was causing cascade failures when enrichment tried to set a key owned by another game row.
+- **Advanced stats standalone backfill:** `advanced_stats_phase.py` now calls `_populate_external_ids()` so it can run without boxscore/PBP phases having populated IDs first. Circuit breaker stops after 5 consecutive failures.
+- **NFL game stubs:** Added `populate_nfl_games_from_schedule()` to create game rows from ESPN schedule. NFL had 0 games in DB during offseason (no odds to create stubs).
+- **Shared math utilities:** Extracted `safe_div`, `safe_pct`, `safe_float`, `safe_int`, `parse_minutes` to `scraper/sports_scraper/utils/math.py`, replacing 9+ duplicate definitions across ingestion services.
+
+### Scheduler & Task Queue Fixes
+
+- **`_HoldAwareTask` base class:** Replaced broken `task_prerun` signal with `app.Task = _HoldAwareTask` in `celery_app.py`. The `task_cls` constructor arg only affects `@app.task`, not `@shared_task`. Hold-aware tasks skip execution when Redis `scheduler:hold` flag is set, unless `manual_trigger` header is present.
+- **Backfill bypasses hold:** Added `headers={"manual_trigger": True}` to backfill dispatch so manual triggers are never skipped by the hold mechanism.
+- **Task expiry:** Added `expires` option to all high-frequency Celery Beat tasks (orchestrator, polling, odds sync) to prevent queue piling when workers fall behind.
+- **Cancel releases locks:** Cancel endpoint now deletes `lock:ingest:{league}` Redis keys for `data_backfill` jobs, preventing orphaned locks from blocking subsequent runs.
+- **Backfill pre-dispatch visibility:** Creates `SportsJobRun` with `status="queued"` before Celery dispatch so queued tasks appear immediately in the RunsDrawer.
+- **MLB restored to scheduled ingestion:** MLB was accidentally dropped from the leagues list when NFL was added.
+
+### NBA Historical Backfill (Basketball Reference)
+
+- **New scraper:** `NBABasketballReferenceScraper` for boxscores, player stats, and PBP from basketball-reference.com. Polite scraping (5-9s delays), HTML caching, retry with backoff. Covers 1946–present.
+- **Historical ingestion service:** `ingest_nba_historical_boxscores()` and `ingest_nba_historical_pbp()` with per-game commit/rollback and `only_missing` skip logic.
+- **Celery task:** `ingest_nba_historical` dispatchable from Control Panel with date range params.
+- **NBA CDN season guard:** `_is_current_nba_season()` prevents wasteful NBA CDN API calls for historical seasons. CDN only serves current season data.
+- **SSOT enforcement:** NBA removed from `_SCRAPER_REGISTRY` (Basketball Reference is standalone historical, not a fallback). NBA CDN scoreboard "fallback" log downgraded from WARNING to INFO.
+
+### Advanced Stats Fixes
+
+- **Archived games:** All 5 sports' advanced stats ingestion now processes `archived` games (was skipping ~55 NBA games from Jan 24-31 that had been promoted from `final` to `archived`).
+- **NCAAB nested key fix:** CBB Stats API returns nested JSONB (`{"fieldGoals": {"made": 25}}`) but the fetcher expected flat keys (`fieldGoalsMade`). Fixed `_extract_stat()` to handle both formats. Was causing 1,400+ NCAAB games to report `empty_boxscores`.
+- **NFL game ID matching fix:** nflverse `old_game_id` (GSIS format `2024090500`) doesn't match ESPN event IDs (`401772860`). Changed to match by `game_date` + `home_team` + `away_team`. ESPN game ID no longer required.
+- **`nflreadpy` dependency:** Added to `scraper/pyproject.toml` (was missing — every NFL game hit `nflreadpy_not_installed`).
+
+### Error Handling Hardening (15 items)
+
+- **Redis lock fail-closed:** `acquire_redis_lock()` returns `None` on Redis failure instead of a dummy token. Prevents duplicate concurrent task execution during Redis outages.
+- **JWT validation:** Production startup refuses to start if `JWT_SECRET` equals the insecure default.
+- **Game stub logging:** 5 bare `except: pass` blocks in `poll_game_calendars` now log at DEBUG level.
+- **Social task fail-closed:** `_social_task_exists_for_league()` returns `True` on DB error (prevents duplicate dispatch).
+- **Pitch model log upgrade:** `logger.debug` → `logger.warning` for pitch model load failures in simulation engine.
+- **Error counters:** All per-game boxscore/PBP/advanced stats loops now return `(processed, enriched, with_stats, errors)` 4-tuple. Callers track and log error counts.
+- **Odds error/skip split:** `_persist_snapshots` separates DB errors from match skips in its counters.
+- **Partial success:** `ScrapeRunManager.run()` tracks phase errors and marks runs as `partial_success` when some phases fail but others succeed.
+- **Model registration failure:** Now propagated as `RuntimeError` instead of swallowed — training job reports "error" if model can't be registered.
+- **React ErrorBoundary:** Admin layout wraps children in ErrorBoundary to prevent white-screen crashes.
+- **Celery `task_acks_late`:** Both scraper and API Celery apps now acknowledge tasks only after completion (prevents task loss on worker crash).
+- **DB credential validation:** Production startup rejects `sports:sports` default credentials (was only checking `postgres:postgres`).
+- **Poller circuit breakers:** Realtime polling loops use exponential backoff after 10 consecutive failures.
+- **Ensemble `providers_used`:** ML ensemble tracks which probability providers contributed to predictions.
+- **Redis typed returns:** Live odds Redis reads return `(data, error)` tuples. Frontend sees `redis_status: "error"` when Redis is down.
+
+### Logging & UI Fixes
+
+- **structlog level fix:** Switched from `PrintLoggerFactory` to `stdlib.LoggerFactory` + `ProcessorFormatter`. Celery was showing all structlog messages as WARNING regardless of actual level.
+- **NCAAScoreboardClient fix:** Constructor changed to require `httpx.Client` argument but caller in `scrape_tasks.py` was using no args.
+- **RunsDrawer multi-select filter:** Status filter changed from single-select dropdown to multi-select chips. Added skipped, canceled, interrupted statuses.
+- **Control panel defaults:** All leagues and data types unselected by default. Added "Force re-upsert all games" checkbox.
+- **Season audit pro-rating:** Expected games pro-rated for in-progress seasons based on season calendar dates. Shows all 5 leagues at once (no league picker).
+- **PBP diagnostics gated:** `detect_missing_pbp` only runs when `config.pbp=True` — boxscore-only runs no longer spam PBP missing warnings.
 
 ## [2026-03-19]
 

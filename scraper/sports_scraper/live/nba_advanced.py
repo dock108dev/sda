@@ -1,371 +1,284 @@
-"""NBA advanced stats fetcher (stats.nba.com endpoints).
+"""NBA advanced stats computation (derived from boxscore data).
 
-Fetches boxscoreadvancedv3, boxscorehustlev2, and boxscoreplayertrackingv3
-for a given NBA game and returns raw JSON for downstream ingestion.
+Computes efficiency ratings, four factors, and shooting metrics from
+existing team and player boxscore data already in the database.
+No external API calls needed — all metrics are derived from the NBA CDN
+boxscore data stored in sports_team_boxscores and sports_player_boxscores.
+
+NBA uses 0.44 FTA coefficient (vs 0.475 for college) and 48-minute games.
+
+TODO: Investigate residential proxy or alternative API source for
+stats.nba.com tracking data (speed, distance, touches, contested shots,
+pull-up/catch-shoot splits, hustle stats). These require NBA's optical
+tracking system and cannot be derived from boxscores. The stats.nba.com
+API blocks cloud/datacenter IPs.
 """
 
 from __future__ import annotations
 
-import time
-from typing import Any
+from ..utils.math import safe_div as _safe_div
 
-import httpx
+# NBA-specific constants
+FTA_COEFF = 0.44  # NBA possession coefficient (0.475 for college)
+REGULATION_MINUTES = 48  # 48-minute games (40 for college)
+STANDARD_TEAM_MINUTES = 240  # 5 players * 48 minutes
 
-from ..config import settings
-from ..logging import logger
-from ..utils.cache import APICache, should_cache_final
+
+def _extract_stat(box: dict, key: str, default: int = 0) -> int:
+    """Extract an integer stat from boxscore JSONB."""
+    val = box.get(key, default)
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def _extract_float(box: dict, key: str, default: float = 0.0) -> float:
+    """Extract a float stat from boxscore JSONB."""
+    val = box.get(key, default)
+    if val is None:
+        return default
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def _compute_possessions(fga: int, orb: int, tov: int, fta: int) -> float:
+    """Compute possessions: FGA - ORB + TOV + 0.44 * FTA."""
+    return fga - orb + tov + FTA_COEFF * fta
 
 
 class NBAAdvancedStatsFetcher:
-    """Fetches advanced stats from stats.nba.com endpoints."""
+    """Computes NBA advanced stats from existing boxscore data.
 
-    def __init__(self) -> None:
-        self._headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://www.nba.com/",
-            "x-nba-stats-origin": "stats",
-            "x-nba-stats-token": "true",
-            "Origin": "https://www.nba.com",
-        }
-        self._base_url = "https://stats.nba.com/stats"
-        self._timeout = 30
-        self._delay = 2.0  # seconds between API calls to be a good citizen
-        cache_dir = settings.scraper_config.html_cache_dir
-        self._cache = APICache(cache_dir=cache_dir, api_name="nba_advanced")
-        self._client = httpx.Client(timeout=self._timeout, headers=self._headers)
+    No external API calls — reads from sports_team_boxscores and
+    sports_player_boxscores JSONB columns.
+    """
 
-    # ------------------------------------------------------------------
-    # Public fetch methods
-    # ------------------------------------------------------------------
+    def compute_team_advanced_stats(
+        self, home_box: dict, away_box: dict, home_points: int, away_points: int,
+    ) -> dict[str, dict]:
+        """Compute advanced stats for both teams.
 
-    def fetch_advanced_boxscore(self, nba_game_id: str) -> dict | None:
-        """Fetch boxscoreadvancedv3 for a game.
+        Args:
+            home_box: Home team boxscore stats JSONB dict.
+            away_box: Away team boxscore stats JSONB dict.
+            home_points: Home team final score.
+            away_points: Away team final score.
 
-        Returns raw JSON response or None on failure.
+        Returns:
+            {"home": {...}, "away": {...}} with computed advanced stats.
         """
-        cache_key = f"nba_advanced_{nba_game_id}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.info("nba_advanced_boxscore_cache_hit", game_id=nba_game_id)
-            return cached
+        home_stats = self._compute_single_team(home_box, away_box, home_points, away_points)
+        away_stats = self._compute_single_team(away_box, home_box, away_points, home_points)
+        return {"home": home_stats, "away": away_stats}
 
-        url = f"{self._base_url}/boxscoreadvancedv3"
-        params = {"GameID": nba_game_id}
-        data = self._fetch(url, params, "boxscoreadvancedv3", nba_game_id)
+    def _compute_single_team(
+        self, box: dict, opp_box: dict, pts: int, opp_pts: int,
+    ) -> dict:
+        """Compute advanced stats for one team."""
+        # Extract raw stats — team offense (NBA CDN key names)
+        fgm = _extract_stat(box, "fg_made")
+        fga = _extract_stat(box, "fg_attempted")
+        tpm = _extract_stat(box, "three_made")
+        tpa = _extract_stat(box, "three_attempted")
+        ftm = _extract_stat(box, "ft_made")
+        fta = _extract_stat(box, "ft_attempted")
+        orb = _extract_stat(box, "offensive_rebounds")
+        drb = _extract_stat(box, "defensive_rebounds")
+        tov = _extract_stat(box, "turnovers") or _extract_stat(box, "team_turnovers")
+        ast = _extract_stat(box, "assists")
 
-        if data is not None:
-            has_data = bool(
-                data.get("boxScoreAdvanced")
-                or _find_result_set(data, "PlayerStats")
-                or _find_result_set(data, "TeamStats")
-            )
-            if should_cache_final(has_data, "final"):
-                self._cache.put(cache_key, data)
+        # Opponent stats (for defensive metrics)
+        opp_fga = _extract_stat(opp_box, "fg_attempted")
+        opp_tpm = _extract_stat(opp_box, "three_made")
+        opp_fta = _extract_stat(opp_box, "ft_attempted")
+        opp_orb = _extract_stat(opp_box, "offensive_rebounds")
+        opp_drb = _extract_stat(opp_box, "defensive_rebounds")
+        opp_tov = _extract_stat(opp_box, "turnovers") or _extract_stat(opp_box, "team_turnovers")
 
-        return data
+        # Possessions
+        poss = _compute_possessions(fga, orb, tov, fta)
+        opp_poss = _compute_possessions(opp_fga, opp_orb, opp_tov, opp_fta)
 
-    def fetch_hustle_stats(self, nba_game_id: str) -> dict | None:
-        """Fetch boxscorehustlev2 for a game.
+        # Efficiency ratings
+        off_rating = _safe_div(pts * 100, poss) if poss > 0 else None
+        def_rating = _safe_div(opp_pts * 100, poss) if poss > 0 else None
+        net_rating = (off_rating - def_rating) if off_rating and def_rating else None
 
-        Returns raw JSON response or None on failure.
-        """
-        cache_key = f"nba_hustle_{nba_game_id}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.info("nba_hustle_cache_hit", game_id=nba_game_id)
-            return cached
+        # Pace
+        avg_poss = (poss + opp_poss) / 2 if (poss + opp_poss) > 0 else 0
+        pace = avg_poss * REGULATION_MINUTES / (STANDARD_TEAM_MINUTES / 5) if avg_poss > 0 else None
 
-        time.sleep(self._delay)
-        url = f"{self._base_url}/boxscorehustlev2"
-        params = {"GameID": nba_game_id}
-        data = self._fetch(url, params, "boxscorehustlev2", nba_game_id)
+        # Shooting
+        efg_pct = _safe_div(fgm + 0.5 * tpm, fga)
+        ts_pct = _safe_div(pts, 2 * (fga + FTA_COEFF * fta)) if (fga + FTA_COEFF * fta) > 0 else None
+        fg_pct = _safe_div(fgm, fga)
+        fg3_pct = _safe_div(tpm, tpa) if tpa > 0 else None
+        ft_pct = _safe_div(ftm, fta) if fta > 0 else None
 
-        if data is not None:
-            has_data = bool(
-                data.get("resultSets")
-                or data.get("boxScoreHustle")
-            )
-            if should_cache_final(has_data, "final"):
-                self._cache.put(cache_key, data)
+        # Rebounding
+        orb_pct = _safe_div(orb, orb + opp_drb)
+        drb_pct = _safe_div(drb, drb + opp_orb)
+        reb_pct = _safe_div(orb + drb, orb + drb + opp_orb + opp_drb)
 
-        return data
+        # Ball movement
+        ast_pct = _safe_div(ast, fgm) if fgm > 0 else None
+        tov_pct = _safe_div(tov, fga + FTA_COEFF * fta + tov) if (fga + FTA_COEFF * fta + tov) > 0 else None
+        ast_tov_ratio = _safe_div(ast, tov) if tov > 0 else None
+        ft_rate = _safe_div(fta, fga)
 
-    def fetch_tracking_stats(self, nba_game_id: str) -> dict | None:
-        """Fetch boxscoreplayertrackingv3 for a game.
-
-        Returns raw JSON response or None on failure.
-        """
-        cache_key = f"nba_tracking_{nba_game_id}"
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            logger.info("nba_tracking_cache_hit", game_id=nba_game_id)
-            return cached
-
-        time.sleep(self._delay)
-        url = f"{self._base_url}/boxscoreplayertrackingv3"
-        params = {"GameID": nba_game_id}
-        data = self._fetch(url, params, "boxscoreplayertrackingv3", nba_game_id)
-
-        if data is not None:
-            has_data = bool(
-                data.get("resultSets")
-                or data.get("boxScorePlayerTrack")
-            )
-            if should_cache_final(has_data, "final"):
-                self._cache.put(cache_key, data)
-
-        return data
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _fetch(
-        self,
-        url: str,
-        params: dict[str, str],
-        endpoint_name: str,
-        nba_game_id: str,
-    ) -> dict | None:
-        """Execute an HTTP GET with error handling for stats.nba.com quirks."""
-        logger.info(
-            "nba_advanced_fetch",
-            endpoint=endpoint_name,
-            game_id=nba_game_id,
-            url=url,
+        # Four factors — defense
+        def_efg_pct = _safe_div(
+            _extract_stat(opp_box, "fg_made") + 0.5 * opp_tpm, opp_fga
         )
-        try:
-            response = self._client.get(url, params=params)
-        except httpx.TimeoutException:
-            logger.warning(
-                "nba_advanced_fetch_timeout",
-                endpoint=endpoint_name,
-                game_id=nba_game_id,
-            )
-            return None
-        except httpx.HTTPError as exc:
-            logger.warning(
-                "nba_advanced_fetch_error",
-                endpoint=endpoint_name,
-                game_id=nba_game_id,
-                error=str(exc),
-            )
-            return None
+        def_tov_pct = (
+            _safe_div(opp_tov, opp_fga + FTA_COEFF * opp_fta + opp_tov)
+            if (opp_fga + FTA_COEFF * opp_fta + opp_tov) > 0
+            else None
+        )
+        def_orb_pct = _safe_div(opp_orb, opp_orb + drb)
+        def_ft_rate = _safe_div(opp_fta, opp_fga)
 
-        if response.status_code in (403, 429):
-            logger.warning(
-                "nba_advanced_rate_limited",
-                endpoint=endpoint_name,
-                game_id=nba_game_id,
-                status=response.status_code,
-            )
-            return None
+        # Paint / transition (directly from boxscore)
+        paint_points = _extract_stat(box, "points_in_paint") or None
+        fastbreak_points = _extract_stat(box, "fast_break_points") or None
+        second_chance_points = _extract_stat(box, "second_chance_points") or None
+        points_off_turnovers = _extract_stat(box, "points_off_turnovers") or None
+        bench_points = _extract_stat(box, "bench_points") or None
 
-        if response.status_code >= 500:
-            logger.warning(
-                "nba_advanced_server_error",
-                endpoint=endpoint_name,
-                game_id=nba_game_id,
-                status=response.status_code,
-            )
-            return None
-
-        if response.status_code != 200:
-            logger.warning(
-                "nba_advanced_unexpected_status",
-                endpoint=endpoint_name,
-                game_id=nba_game_id,
-                status=response.status_code,
-            )
-            return None
-
-        try:
-            return response.json()
-        except Exception as exc:
-            logger.warning(
-                "nba_advanced_json_parse_error",
-                endpoint=endpoint_name,
-                game_id=nba_game_id,
-                error=str(exc),
-            )
-            return None
-
-
-# ------------------------------------------------------------------
-# Parsing helpers
-# ------------------------------------------------------------------
-
-
-def _find_result_set(data: dict, set_name: str) -> dict | None:
-    """Find a named resultSet in the stats.nba.com response format."""
-    for rs in data.get("resultSets", []):
-        if rs.get("name") == set_name:
-            return rs
-    return None
-
-
-def _parse_result_set(data: dict, set_name: str) -> list[dict[str, Any]]:
-    """Convert a stats.nba.com resultSet (headers + rowSet) into a list of dicts.
-
-    The stats.nba.com JSON format is:
-    {
-      "resultSets": [
-        {
-          "name": "PlayerStats",
-          "headers": ["GAME_ID", "TEAM_ID", "PLAYER_ID", ...],
-          "rowSet": [[val1, val2, ...], ...]
+        return {
+            "off_rating": round(off_rating, 1) if off_rating else None,
+            "def_rating": round(def_rating, 1) if def_rating else None,
+            "net_rating": round(net_rating, 1) if net_rating else None,
+            "pace": round(pace, 1) if pace else None,
+            "pie": None,  # PIE requires league averages — skip for derived
+            "efg_pct": efg_pct,
+            "ts_pct": ts_pct,
+            "fg_pct": fg_pct,
+            "fg3_pct": fg3_pct,
+            "ft_pct": ft_pct,
+            "orb_pct": orb_pct,
+            "drb_pct": drb_pct,
+            "reb_pct": reb_pct,
+            "ast_pct": ast_pct,
+            "ast_ratio": None,  # Requires play-by-play for true AST ratio
+            "ast_tov_ratio": round(ast_tov_ratio, 2) if ast_tov_ratio else None,
+            "tov_pct": tov_pct,
+            "ft_rate": ft_rate,
+            # Four factors — defense
+            "def_efg_pct": def_efg_pct,
+            "def_tov_pct": def_tov_pct,
+            "def_orb_pct": def_orb_pct,
+            "def_ft_rate": def_ft_rate,
+            # Hustle — not available from boxscore (requires stats.nba.com tracking)
+            "contested_shots": None,
+            "deflections": None,
+            "charges_drawn": None,
+            "loose_balls_recovered": None,
+            # Paint / transition
+            "paint_points": paint_points,
+            "fastbreak_points": fastbreak_points,
+            "second_chance_points": second_chance_points,
+            "points_off_turnovers": points_off_turnovers,
+            "bench_points": bench_points,
         }
-      ]
-    }
 
-    Returns an empty list if the set_name is not found.
-    """
-    rs = _find_result_set(data, set_name)
-    if rs is None:
-        return []
+    def compute_player_advanced_stats(
+        self,
+        player_boxes: list[dict],
+        team_possessions: float,
+        team_minutes: float,
+    ) -> list[dict]:
+        """Compute per-player advanced stats from boxscore data.
 
-    headers = rs.get("headers", [])
-    rows = rs.get("rowSet", [])
-    return [dict(zip(headers, row, strict=False)) for row in rows]
+        Args:
+            player_boxes: List of dicts with player_id, player_name, is_home, stats.
+            team_possessions: Team's total possessions for the game.
+            team_minutes: Total team minutes (usually 240 for regulation).
 
+        Returns:
+            List of dicts with player-level advanced stats.
+        """
+        results = []
+        for pb in player_boxes:
+            stats = pb.get("stats", {})
+            minutes = _extract_float(stats, "minutes", 0)
+            if minutes <= 0:
+                continue
 
-def parse_advanced_boxscore(data: dict) -> tuple[list[dict], list[dict]]:
-    """Parse boxscoreadvancedv3 response into (team_rows, player_rows).
+            fgm = _extract_stat(stats, "fg_made")
+            fga = _extract_stat(stats, "fg_attempted")
+            tpm = _extract_stat(stats, "three_made")
+            ftm = _extract_stat(stats, "ft_made")
+            fta = _extract_stat(stats, "ft_attempted")
+            pts = _extract_stat(stats, "points") or (fgm * 2 + tpm + ftm)
+            orb = _extract_stat(stats, "offensive_rebounds")
+            drb = _extract_stat(stats, "defensive_rebounds")
+            ast = _extract_stat(stats, "assists")
+            stl = _extract_stat(stats, "steals")
+            blk = _extract_stat(stats, "blocks")
+            tov = _extract_stat(stats, "turnovers")
+            pf = _extract_stat(stats, "personal_fouls")
 
-    Handles both the legacy resultSets format and the newer boxScoreAdvanced format.
-    """
-    # Try newer nested format first (boxScoreAdvanced)
-    box = data.get("boxScoreAdvanced")
-    if box:
-        team_rows = []
-        player_rows = []
+            # TS% and eFG%
+            ts_pct = _safe_div(pts, 2 * (fga + FTA_COEFF * fta)) if (fga + FTA_COEFF * fta) > 0 else None
+            efg_pct = _safe_div(fgm + 0.5 * tpm, fga) if fga > 0 else None
 
-        # Team stats from nested format
-        home_team = box.get("homeTeam", {})
-        away_team = box.get("awayTeam", {})
-        for team_data, is_home in [(home_team, True), (away_team, False)]:
-            stats = team_data.get("statistics", {})
-            team_rows.append({
-                "TEAM_ID": team_data.get("teamId"),
-                "TEAM_ABBREVIATION": team_data.get("teamTricode"),
-                "is_home": is_home,
-                "E_OFF_RATING": stats.get("estimatedOffensiveRating"),
-                "OFF_RATING": stats.get("offensiveRating"),
-                "E_DEF_RATING": stats.get("estimatedDefensiveRating"),
-                "DEF_RATING": stats.get("defensiveRating"),
-                "E_NET_RATING": stats.get("estimatedNetRating"),
-                "NET_RATING": stats.get("netRating"),
-                "PACE": stats.get("pace"),
-                "PIE": stats.get("pie"),
-                "EFG_PCT": stats.get("effectiveFieldGoalPercentage"),
-                "TS_PCT": stats.get("trueShootingPercentage"),
-                "AST_PCT": stats.get("assistPercentage"),
-                "AST_RATIO": stats.get("assistRatio"),
-                "AST_TOV": stats.get("assistToTurnover"),
-                "TM_TOV_PCT": stats.get("turnoverPercentage"),
-                "OREB_PCT": stats.get("offensiveReboundPercentage"),
-                "DREB_PCT": stats.get("defensiveReboundPercentage"),
-                "REB_PCT": stats.get("reboundPercentage"),
+            # Usage rate
+            usg_pct = None
+            if team_possessions > 0 and team_minutes > 0 and minutes > 0:
+                usg_numerator = (fga + FTA_COEFF * fta + tov) * (team_minutes / 5)
+                usg_denominator = minutes * team_possessions
+                usg_pct = _safe_div(usg_numerator, usg_denominator)
+
+            # Game Score (John Hollinger)
+            game_score = (
+                pts + 0.4 * fgm - 0.7 * fga - 0.4 * (fta - ftm)
+                + 0.7 * orb + 0.3 * drb + stl + 0.7 * ast + 0.7 * blk
+                - 0.4 * pf - tov
+            )
+
+            results.append({
+                "player_id": pb.get("player_id"),
+                "player_name": pb.get("player_name"),
+                "is_home": pb.get("is_home"),
+                "minutes": round(minutes, 1),
+                "off_rating": None,  # Per-player ratings require on/off court data
+                "def_rating": None,
+                "net_rating": None,
+                "usg_pct": round(usg_pct, 4) if usg_pct else None,
+                "pie": None,
+                "ts_pct": ts_pct,
+                "efg_pct": efg_pct,
+                "game_score": round(game_score, 1),
+                # Tracking — not available from boxscore
+                "speed": None,
+                "distance": None,
+                "touches": None,
+                "time_of_possession": None,
+                # Shot context — not available from boxscore
+                "contested_2pt_fga": None,
+                "contested_2pt_fgm": None,
+                "uncontested_2pt_fga": None,
+                "uncontested_2pt_fgm": None,
+                "contested_3pt_fga": None,
+                "contested_3pt_fgm": None,
+                "uncontested_3pt_fga": None,
+                "uncontested_3pt_fgm": None,
+                "pull_up_fga": None,
+                "pull_up_fgm": None,
+                "catch_shoot_fga": None,
+                "catch_shoot_fgm": None,
+                # Hustle — not available from boxscore
+                "contested_shots": None,
+                "deflections": None,
+                "charges_drawn": None,
+                "loose_balls_recovered": None,
+                "screen_assists": None,
             })
 
-            # Player stats from nested format
-            for player in team_data.get("players", []):
-                p_stats = player.get("statistics", {})
-                player_rows.append({
-                    "TEAM_ID": team_data.get("teamId"),
-                    "PLAYER_ID": player.get("personId"),
-                    "PLAYER_NAME": f"{player.get('firstName', '')} {player.get('familyName', '')}".strip(),
-                    "is_home": is_home,
-                    "MIN": p_stats.get("minutes"),
-                    "OFF_RATING": p_stats.get("offensiveRating"),
-                    "DEF_RATING": p_stats.get("defensiveRating"),
-                    "NET_RATING": p_stats.get("netRating"),
-                    "USG_PCT": p_stats.get("usagePercentage"),
-                    "PIE": p_stats.get("pie"),
-                    "TS_PCT": p_stats.get("trueShootingPercentage"),
-                    "EFG_PCT": p_stats.get("effectiveFieldGoalPercentage"),
-                })
-
-        return team_rows, player_rows
-
-    # Fall back to legacy resultSets format
-    team_rows = _parse_result_set(data, "TeamStats")
-    player_rows = _parse_result_set(data, "PlayerStats")
-    return team_rows, player_rows
-
-
-def parse_hustle_stats(data: dict) -> list[dict]:
-    """Parse boxscorehustlev2 response into player hustle rows.
-
-    Handles both the resultSets format and newer boxScoreHustle format.
-    """
-    # Try newer nested format
-    box = data.get("boxScoreHustle")
-    if box:
-        rows = []
-        home_team = box.get("homeTeam", {})
-        away_team = box.get("awayTeam", {})
-        for team_data, is_home in [(home_team, True), (away_team, False)]:
-            for player in team_data.get("players", []):
-                stats = player.get("statistics", {})
-                rows.append({
-                    "TEAM_ID": team_data.get("teamId"),
-                    "PLAYER_ID": player.get("personId"),
-                    "PLAYER_NAME": f"{player.get('firstName', '')} {player.get('familyName', '')}".strip(),
-                    "is_home": is_home,
-                    "CONTESTED_SHOTS": stats.get("contestedShots"),
-                    "DEFLECTIONS": stats.get("deflections"),
-                    "CHARGES_DRAWN": stats.get("chargesDrawn"),
-                    "LOOSE_BALLS_RECOVERED": stats.get("looseBallsRecovered"),
-                    "SCREEN_ASSISTS": stats.get("screenAssists"),
-                })
-        return rows
-
-    # Fall back to resultSets format
-    return _parse_result_set(data, "PlayerStats")
-
-
-def parse_tracking_stats(data: dict) -> list[dict]:
-    """Parse boxscoreplayertrackingv3 response into player tracking rows.
-
-    Handles both the resultSets format and newer boxScorePlayerTrack format.
-    """
-    # Try newer nested format
-    box = data.get("boxScorePlayerTrack")
-    if box:
-        rows = []
-        home_team = box.get("homeTeam", {})
-        away_team = box.get("awayTeam", {})
-        for team_data, is_home in [(home_team, True), (away_team, False)]:
-            for player in team_data.get("players", []):
-                stats = player.get("statistics", {})
-                rows.append({
-                    "TEAM_ID": team_data.get("teamId"),
-                    "PLAYER_ID": player.get("personId"),
-                    "PLAYER_NAME": f"{player.get('firstName', '')} {player.get('familyName', '')}".strip(),
-                    "is_home": is_home,
-                    "SPD": stats.get("speed"),
-                    "DIST": stats.get("distance"),
-                    "TCHS": stats.get("touches"),
-                    "TIME_OF_POSS": stats.get("possessionTime"),
-                    "CONT_2PT_FGA": stats.get("contested2ptShots"),
-                    "CONT_2PT_FGM": None,  # Not always available
-                    "UCONT_2PT_FGA": stats.get("uncontested2ptShots"),
-                    "UCONT_2PT_FGM": None,
-                    "CONT_3PT_FGA": stats.get("contested3ptShots"),
-                    "CONT_3PT_FGM": None,
-                    "UCONT_3PT_FGA": stats.get("uncontested3ptShots"),
-                    "UCONT_3PT_FGM": None,
-                    "PULL_UP_FGA": stats.get("pullUpFga"),
-                    "PULL_UP_FGM": stats.get("pullUpFgm"),
-                    "CATCH_SHOOT_FGA": stats.get("catchShootFga"),
-                    "CATCH_SHOOT_FGM": stats.get("catchShootFgm"),
-                })
-        return rows
-
-    # Fall back to resultSets format
-    return _parse_result_set(data, "PlayerStats")
+        return results

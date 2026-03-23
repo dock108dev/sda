@@ -215,12 +215,21 @@ class NHLAdvancedStatsFetcher:
         """
         csv_text = self._download_season_csv(season)
 
-        game_pk_str = str(nhl_game_pk)
+        # MoneyPuck uses short game IDs: strip the 4-digit season prefix.
+        # NHL API: 2025020105 → MoneyPuck: 20105 (game_type + game_number)
+        full_pk_str = str(nhl_game_pk)
+        if len(full_pk_str) == 10:
+            mp_game_id = full_pk_str[4:]  # Strip "2025" prefix → "020105"
+            # MoneyPuck also strips leading zero from game type: "020105" → "20105"
+            mp_game_id = mp_game_id.lstrip("0") or "0"
+        else:
+            mp_game_id = full_pk_str
+
         shots: list[dict] = []
 
         reader = csv.DictReader(io.StringIO(csv_text))
         for row in reader:
-            if row.get("game_id") == game_pk_str:
+            if row.get("game_id") == mp_game_id:
                 shots.append(row)
 
         logger.info(

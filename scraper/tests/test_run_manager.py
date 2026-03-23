@@ -106,7 +106,7 @@ class TestScrapeRunManagerRun:
 
         from sports_scraper.models import IngestionConfig
         config = IngestionConfig(
-            league_code="NFL",  # WNBA not in API dispatch (NHL/NBA/NCAAB/MLB)
+            league_code="NCAAF",  # NCAAF not in API dispatch
             start_date=date(2024, 1, 15),
             end_date=date(2024, 1, 15),
             boxscores=True,

@@ -10,8 +10,12 @@ class TestFlowImmutability:
 
     @patch("sports_scraper.services.job_runs.complete_job_run")
     @patch("sports_scraper.services.job_runs.start_job_run", return_value=1)
+    @patch("sports_scraper.utils.redis_lock.acquire_redis_lock", return_value="fake-token")
+    @patch("sports_scraper.utils.redis_lock.release_redis_lock")
     @patch("sports_scraper.jobs.flow_trigger_tasks.get_session")
-    def test_flow_not_regenerated_when_exists(self, mock_get_session, mock_start, mock_complete):
+    def test_flow_not_regenerated_when_exists(
+        self, mock_get_session, mock_release, mock_acquire, mock_start, mock_complete
+    ):
         """Second call to trigger_flow_for_game returns 'immutable'."""
         from sports_scraper.jobs.flow_trigger_tasks import trigger_flow_for_game
 
@@ -35,10 +39,12 @@ class TestFlowImmutability:
 
     @patch("sports_scraper.services.job_runs.complete_job_run")
     @patch("sports_scraper.services.job_runs.start_job_run", return_value=1)
+    @patch("sports_scraper.utils.redis_lock.acquire_redis_lock", return_value="fake-token")
+    @patch("sports_scraper.utils.redis_lock.release_redis_lock")
     @patch("sports_scraper.jobs.flow_trigger_tasks._call_pipeline_api")
     @patch("sports_scraper.jobs.flow_trigger_tasks.get_session")
     def test_flow_generated_when_no_existing_artifacts(
-        self, mock_get_session, mock_call_api, mock_start, mock_complete
+        self, mock_get_session, mock_call_api, mock_release, mock_acquire, mock_start, mock_complete
     ):
         """First call generates the flow."""
         from sports_scraper.jobs.flow_trigger_tasks import trigger_flow_for_game

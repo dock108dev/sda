@@ -37,4 +37,7 @@ celery_app.conf.update(
     # Fair scheduling: workers grab one task at a time so quick tasks
     # (batch sims, flow gen) aren't blocked behind prefetched training jobs.
     worker_prefetch_multiplier=1,
+    # Acknowledge tasks only after completion, not on receipt.
+    # Prevents task loss if a worker crashes mid-execution.
+    task_acks_late=True,
 )

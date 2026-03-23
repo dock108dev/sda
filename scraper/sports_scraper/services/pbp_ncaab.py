@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
-
 from sqlalchemy import exists, not_, or_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
 from ..logging import logger
+from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 
 def select_games_for_pbp_ncaab_api(
@@ -168,7 +167,7 @@ def ingest_pbp_via_ncaab_api(
     pbp_games = 0
     pbp_events = 0
 
-    for game_id, cbb_game_id, game_status in games:
+    for game_id, cbb_game_id, _game_status in games:
         try:
             game = session.query(db_models.SportsGame).get(game_id)
             if not game:

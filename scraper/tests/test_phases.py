@@ -49,6 +49,7 @@ class TestIngestAdvancedStats:
 
     @patch("sports_scraper.services.mlb_advanced_stats_ingestion.ingest_advanced_stats_for_game")
     def test_ingests_mlb_games(self, mock_ingest_fn):
+        mock_ingest_fn.return_value = {"status": "success", "game_id": 42}
         summary = {"advanced_stats": 0}
         mock_session = MagicMock()
         mock_game = MagicMock()
@@ -399,4 +400,360 @@ class TestIngestBoxscores:
             persist_game_payload=MagicMock(),
             select_games_for_boxscores=MagicMock(),
         )
+        assert summary["games"] == 0  # no_source_warning: no scraper, no API dispatch
+
+    def _make_session_ctx(self):
+        """Helper to create a get_session context manager mock."""
+        mock_session = MagicMock()
+        mock_get_session = MagicMock()
+        mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
+        return mock_get_session, mock_session
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.nhl_boxscore_ingestion.ingest_boxscores_via_nhl_api")
+    def test_nhl_api_dispatch(self, mock_ingest, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        mock_ingest.return_value = (5, 4, 3, 0)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 4
+
+        ingest_boxscores(
+            1, self._make_config("NHL"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        mock_ingest.assert_called_once()
+        assert summary["games"] == 5
+        assert summary["games_enriched"] == 4
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.nba_boxscore_ingestion.ingest_boxscores_via_nba_api")
+    def test_nba_api_dispatch(self, mock_ingest, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        mock_ingest.return_value = (3, 2, 1, 0)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 2
+
+        ingest_boxscores(
+            1, self._make_config("NBA"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        mock_ingest.assert_called_once()
+        assert summary["games"] == 3
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.ncaab_boxscore_ingestion.ingest_boxscores_via_ncaab_api")
+    def test_ncaab_api_dispatch(self, mock_ingest, mock_today):
+        mock_today.return_value = date(2025, 3, 20)
+        mock_ingest.return_value = (8, 7, 6, 0)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 7
+
+        ingest_boxscores(
+            1, self._make_config("NCAAB"), summary,
+            date(2025, 3, 15), date(2025, 3, 19), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        mock_ingest.assert_called_once()
+        assert summary["games"] == 8
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.mlb_boxscore_ingestion.ingest_boxscores_via_mlb_api")
+    @patch("sports_scraper.services.mlb_boxscore_ingestion.populate_mlb_games_from_schedule")
+    def test_mlb_api_dispatch_with_schedule_populate(self, mock_populate, mock_ingest, mock_today):
+        mock_today.return_value = date(2025, 6, 20)
+        mock_populate.return_value = 3
+        mock_ingest.return_value = (10, 8, 5, 0)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 8
+
+        ingest_boxscores(
+            1, self._make_config("MLB"), summary,
+            date(2025, 6, 15), date(2025, 6, 19), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        mock_populate.assert_called_once()
+        mock_ingest.assert_called_once()
+        assert summary["games"] == 10
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.mlb_boxscore_ingestion.ingest_boxscores_via_mlb_api")
+    @patch("sports_scraper.services.mlb_boxscore_ingestion.populate_mlb_games_from_schedule")
+    def test_mlb_schedule_populate_failure(self, mock_populate, mock_ingest, mock_today):
+        mock_today.return_value = date(2025, 6, 20)
+        mock_populate.side_effect = Exception("schedule api down")
+        mock_ingest.return_value = (5, 4, 3, 0)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 4
+
+        ingest_boxscores(
+            1, self._make_config("MLB"), summary,
+            date(2025, 6, 15), date(2025, 6, 19), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        mock_ingest.assert_called_once()
+        assert summary["games"] == 5
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.nfl_boxscore_ingestion.ingest_boxscores_via_nfl_api")
+    def test_nfl_api_dispatch(self, mock_ingest, mock_today):
+        mock_today.return_value = date(2025, 9, 10)
+        mock_ingest.return_value = (4, 3, 2, 0)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 3
+
+        ingest_boxscores(
+            1, self._make_config("NFL"), summary,
+            date(2025, 9, 7), date(2025, 9, 9), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        mock_ingest.assert_called_once()
+        assert summary["games"] == 4
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.nhl_boxscore_ingestion.ingest_boxscores_via_nhl_api")
+    def test_api_dispatch_failure(self, mock_ingest, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        mock_ingest.side_effect = Exception("api fail")
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        ingest_boxscores(
+            1, self._make_config("NHL"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
         assert summary["games"] == 0
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_scraper_fallback_full_range(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_payload = MagicMock()
+        mock_payload.identity.source_game_key = "game123"
+        mock_scraper.fetch_date_range.return_value = [mock_payload]
+
+        mock_persist = MagicMock()
+        mock_persist.return_value.game_id = 42
+        mock_persist.return_value.enriched = True
+        mock_persist.return_value.has_player_stats = True
+
+        ingest_boxscores(
+            1, self._make_config("WNBA"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=mock_persist,
+            select_games_for_boxscores=MagicMock(),
+        )
+        assert summary["games"] == 1
+        assert summary["games_enriched"] == 1
+        assert summary["games_with_stats"] == 1
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_scraper_fallback_only_missing(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_scraper.fetch_single_boxscore.return_value = MagicMock()
+
+        mock_persist = MagicMock()
+        mock_persist.return_value.game_id = 42
+        mock_persist.return_value.enriched = True
+        mock_persist.return_value.has_player_stats = False
+
+        mock_select = MagicMock(return_value=[(1, "game_key", date(2025, 3, 2))])
+
+        ingest_boxscores(
+            1, self._make_config("WNBA", only_missing=True), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=mock_persist,
+            select_games_for_boxscores=mock_select,
+        )
+        mock_select.assert_called_once()
+        assert summary["games"] == 1
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_scraper_fallback_skips_missing_source_key(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_select = MagicMock(return_value=[(1, None, date(2025, 3, 2))])
+
+        ingest_boxscores(
+            1, self._make_config("WNBA", only_missing=True), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=mock_select,
+        )
+        mock_scraper.fetch_single_boxscore.assert_not_called()
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_scraper_full_range_missing_external_id(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_payload = MagicMock()
+        mock_payload.identity.source_game_key = None
+        mock_payload.identity.game_date = date(2025, 3, 2)
+        mock_scraper.fetch_date_range.return_value = [mock_payload]
+
+        ingest_boxscores(
+            1, self._make_config("WNBA"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        assert summary["games"] == 0
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_scraper_full_range_game_not_found(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_payload = MagicMock()
+        mock_payload.identity.source_game_key = "game123"
+        mock_scraper.fetch_date_range.return_value = [mock_payload]
+
+        mock_persist = MagicMock()
+        mock_persist.return_value.game_id = None
+
+        ingest_boxscores(
+            1, self._make_config("WNBA"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=mock_persist,
+            select_games_for_boxscores=MagicMock(),
+        )
+        assert summary["games"] == 0
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    @patch("sports_scraper.services.phases.boxscore_phase.start_of_et_day_utc")
+    def test_gap_detection_logs_warning(self, mock_start_utc, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        mock_start_utc.return_value = datetime(2025, 3, 1, 5, 0, 0, tzinfo=UTC)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 10
+
+        ingest_boxscores(
+            1, self._make_config("WNBA"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, None,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=MagicMock(),
+        )
+        assert summary["games_enriched"] == 0
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_scraper_only_missing_single_boxscore_failure(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_scraper.fetch_single_boxscore.side_effect = Exception("fetch failed")
+
+        mock_select = MagicMock(return_value=[(1, "game_key", date(2025, 3, 2))])
+
+        ingest_boxscores(
+            1, self._make_config("WNBA", only_missing=True), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=MagicMock(),
+            select_games_for_boxscores=mock_select,
+        )
+        assert summary["games"] == 0
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_scraper_full_range_persist_failure(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_payload = MagicMock()
+        mock_payload.identity.source_game_key = "game123"
+        mock_scraper.fetch_date_range.return_value = [mock_payload]
+
+        mock_persist = MagicMock(side_effect=Exception("persist error"))
+
+        ingest_boxscores(
+            1, self._make_config("WNBA"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), None, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=mock_persist,
+            select_games_for_boxscores=MagicMock(),
+        )
+        assert summary["games"] == 0
+
+    @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
+    def test_updated_before_uses_select_games(self, mock_today):
+        mock_today.return_value = date(2025, 3, 5)
+        summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
+        mock_get_session, mock_session = self._make_session_ctx()
+        mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 0
+
+        mock_scraper = MagicMock()
+        mock_scraper.fetch_single_boxscore.return_value = MagicMock()
+
+        mock_persist = MagicMock()
+        mock_persist.return_value.game_id = 42
+        mock_persist.return_value.enriched = False
+        mock_persist.return_value.has_player_stats = False
+
+        mock_select = MagicMock(return_value=[(1, "game_key", date(2025, 3, 2))])
+        updated_before = datetime(2025, 1, 1, tzinfo=UTC)
+
+        ingest_boxscores(
+            1, self._make_config("WNBA"), summary,
+            date(2025, 3, 1), date(2025, 3, 4), updated_before, mock_scraper,
+            get_session=mock_get_session,
+            persist_game_payload=mock_persist,
+            select_games_for_boxscores=mock_select,
+        )
+        mock_select.assert_called_once()
+        assert summary["games"] == 1

@@ -1,12 +1,12 @@
-"""NBA boxscore ingestion via official NBA CDN API.
+"""NBA boxscore ingestion via official NBA CDN API (current season only).
 
 This module handles boxscore data ingestion for NBA games using
-the NBA CDN API (cdn.nba.com).
+the NBA CDN API (cdn.nba.com). The CDN only serves the current
+season's data.
 
-Benefits:
-- Data available immediately after games end (unlike Basketball Reference)
-- Single data source (scoreboard, PBP, and boxscores from same API)
-- More reliable — official API less likely to break than HTML scraping
+For historical seasons, use Basketball Reference backfill instead:
+  scraper/sports_scraper/services/nba_historical_ingestion.py
+  (triggered via the `ingest_nba_historical` Celery task)
 
 Matching strategy: Uses direct game_id from the DB (populated via
 nba_game_id in external_ids). No team+date re-lookup needed — we
@@ -17,9 +17,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-
-from sqlalchemy import exists, not_
+from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session
 
 from ..db import db_models
@@ -31,7 +29,7 @@ from ..persistence.boxscores import (
     upsert_team_boxscores,
 )
 from ..persistence.games import _normalize_status, resolve_status_transition
-from ..utils.datetime_utils import now_utc
+from ..utils.datetime_utils import end_of_et_day_utc, now_utc, start_of_et_day_utc, to_et_date
 from .pbp_nba import populate_nba_game_ids
 
 
@@ -78,10 +76,13 @@ def select_games_for_boxscores_nba_api(
     )
 
     if only_missing:
-        has_boxscores = exists().where(
+        has_team_box = exists().where(
             db_models.SportsTeamBoxscore.game_id == db_models.SportsGame.id
         )
-        query = query.filter(not_(has_boxscores))
+        has_player_box = exists().where(
+            db_models.SportsPlayerBoxscore.game_id == db_models.SportsGame.id
+        )
+        query = query.filter(not_(and_(has_team_box, has_player_box)))
 
     if updated_before:
         has_fresh = exists().where(
@@ -161,7 +162,7 @@ def ingest_boxscores_via_nba_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     """Ingest NBA boxscores using the NBA CDN API.
 
     Uses direct game_id matching — the selection query already identifies
@@ -182,7 +183,7 @@ def ingest_boxscores_via_nba_api(
         updated_before: Only include games with stale boxscore data
 
     Returns:
-        Tuple of (games_processed, games_enriched, games_with_stats)
+        Tuple of (games_processed, games_enriched, games_with_stats, errors)
     """
     from ..live.nba import NBALiveFeedClient
 
@@ -212,7 +213,7 @@ def ingest_boxscores_via_nba_api(
             end_date=str(end_date),
             only_missing=only_missing,
         )
-        return (0, 0, 0)
+        return (0, 0, 0, 0)
 
     logger.info(
         "nba_boxscore_games_selected",
@@ -231,8 +232,9 @@ def ingest_boxscores_via_nba_api(
     games_processed = 0
     games_enriched = 0
     games_with_stats = 0
+    errors = 0
 
-    for game_id, nba_game_id, game_date in games:
+    for game_id, nba_game_id, _game_date in games:
         try:
             boxscore = client.fetch_boxscore(nba_game_id)
 
@@ -301,6 +303,7 @@ def ingest_boxscores_via_nba_api(
 
         except Exception as exc:
             session.rollback()
+            errors += 1
             logger.warning(
                 "nba_boxscore_fetch_failed",
                 run_id=run_id,
@@ -316,6 +319,7 @@ def ingest_boxscores_via_nba_api(
         games_processed=games_processed,
         games_enriched=games_enriched,
         games_with_stats=games_with_stats,
+        errors=errors,
     )
 
-    return (games_processed, games_enriched, games_with_stats)
+    return (games_processed, games_enriched, games_with_stats, errors)
