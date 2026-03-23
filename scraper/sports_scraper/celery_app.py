@@ -70,6 +70,7 @@ app = Celery(
 # task_cls in the constructor only applies to @app.task, not @shared_task.
 app.Task = _HoldAwareTask
 app.conf.update(**celery_config)
+app.conf.task_acks_late = True
 app.conf.task_routes = {
     "run_scrape_job": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     # All X scraping on one queue — single Playwright session, no parallel X hits

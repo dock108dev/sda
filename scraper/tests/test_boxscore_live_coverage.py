@@ -1082,7 +1082,7 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion._select_ncaa_boxscore_fallback_games")
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
@@ -1169,7 +1169,8 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        # No games selected from main query → early return, fallback path not reached
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion._select_ncaa_boxscore_fallback_games")
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
@@ -1204,7 +1205,7 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion._select_ncaa_boxscore_fallback_games")
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
@@ -1257,7 +1258,7 @@ class TestNCAABIngestionFlow:
             only_missing=False,
             updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 1)
 
 
 class TestSelectNCAABoxscoreFallbackGames:

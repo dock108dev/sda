@@ -256,8 +256,8 @@ def poll_game_calendars() -> dict:
                         )
                         if was_created:
                             created += 1
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("game_stub_error", error=str(exc))
             session.commit()
         results["NBA"] = {"created": created, "status": "ok"}
     except Exception as exc:
@@ -286,8 +286,8 @@ def poll_game_calendars() -> dict:
                     )
                     if was_created:
                         created += 1
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("game_stub_error", error=str(exc))
             session.commit()
         results["NHL"] = {"created": created, "status": "ok"}
     except Exception as exc:
@@ -350,8 +350,8 @@ def poll_game_calendars() -> dict:
                         )
                         if was_created:
                             created += 1
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("game_stub_error", error=str(exc))
             session.commit()
         results["NCAAB"] = {"created": created, "status": "ok"}
     except Exception as exc:
@@ -383,8 +383,8 @@ def poll_game_calendars() -> dict:
                     )
                     if was_created:
                         created += 1
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("game_stub_error", error=str(exc))
             session.commit()
         results["NFL"] = {"created": created, "status": "ok"}
     except Exception as exc:

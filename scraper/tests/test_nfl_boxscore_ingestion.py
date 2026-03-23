@@ -297,7 +297,7 @@ class TestIngestBoxscoresViaNflApi:
             session, run_id=1, start_date=date(2024, 11, 10), end_date=date(2024, 11, 11),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch(f"{_MOD}.persist_game_payload")
     @patch("sports_scraper.live.nfl.NFLLiveFeedClient")
@@ -346,7 +346,7 @@ class TestIngestBoxscoresViaNflApi:
             only_missing=False, updated_before=None,
         )
 
-        assert result == (1, 1, 1)
+        assert result == (1, 1, 1, 0)
         mock_persist.assert_called_once()
         session.commit.assert_called()
 
@@ -366,7 +366,7 @@ class TestIngestBoxscoresViaNflApi:
             session, run_id=1, start_date=date(2024, 11, 10), end_date=date(2024, 11, 11),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.live.nfl.NFLLiveFeedClient")
     @patch(f"{_MOD}.select_games_for_boxscores_nfl_api")
@@ -385,7 +385,7 @@ class TestIngestBoxscoresViaNflApi:
             only_missing=False, updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 1)
         session.rollback.assert_called()
 
     @patch(f"{_MOD}.persist_game_payload")
@@ -427,7 +427,7 @@ class TestIngestBoxscoresViaNflApi:
             only_missing=False, updated_before=None,
         )
 
-        assert result == (1, 0, 0)
+        assert result == (1, 0, 0, 0)
 
     @patch(f"{_MOD}.persist_game_payload")
     @patch("sports_scraper.live.nfl.NFLLiveFeedClient")
@@ -466,4 +466,4 @@ class TestIngestBoxscoresViaNflApi:
             only_missing=False, updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)

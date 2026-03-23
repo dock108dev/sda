@@ -124,7 +124,7 @@ def ingest_boxscores(
             )
             try:
                 with get_session() as session:
-                    games, enriched, with_stats = ingest_fn(
+                    games, enriched, with_stats, box_errors = ingest_fn(
                         session,
                         run_id=run_id,
                         start_date=start,
@@ -136,6 +136,7 @@ def ingest_boxscores(
                 summary["games"] = games
                 summary["games_enriched"] = enriched
                 summary["games_with_stats"] = with_stats
+                summary["boxscore_errors"] = box_errors
             except Exception as exc:
                 logger.exception(
                     error_label,

@@ -1222,13 +1222,14 @@ class TestSocialTaskExistsForLeague:
         assert _social_task_exists_for_league("NBA") is False
 
     @patch("sports_scraper.services.run_manager.get_session")
-    def test_returns_false_on_exception(self, mock_get_session):
+    def test_returns_true_on_exception(self, mock_get_session):
+        """On DB failure, assume task exists (fail-closed) to prevent duplicate dispatch."""
         from sports_scraper.services.run_manager import _social_task_exists_for_league
 
         mock_get_session.return_value.__enter__ = MagicMock(side_effect=Exception("db err"))
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        assert _social_task_exists_for_league("NBA") is False
+        assert _social_task_exists_for_league("NBA") is True
 
 
 class TestSyncOdds:

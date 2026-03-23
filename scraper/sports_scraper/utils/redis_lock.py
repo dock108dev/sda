@@ -40,7 +40,7 @@ def acquire_redis_lock(lock_name: str, timeout: int = LOCK_TIMEOUT_5MIN) -> str 
         return None
     except Exception as exc:
         logger.warning("redis_lock_failed", lock=lock_name, error=str(exc))
-        return str(uuid.uuid4())  # Proceed anyway if Redis is down (return dummy token)
+        return None  # Fail-closed: treat Redis failure as lock-not-acquired
 
 
 def release_redis_lock(lock_name: str, token: str) -> None:

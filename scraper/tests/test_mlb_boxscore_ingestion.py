@@ -264,7 +264,7 @@ class TestIngestBoxscoresViaMlbApi:
             session, run_id=1, start_date=date(2024, 7, 1), end_date=date(2024, 7, 2),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
     @patch("sports_scraper.services.mlb_boxscore_ingestion.persist_game_payload")
@@ -293,7 +293,7 @@ class TestIngestBoxscoresViaMlbApi:
             only_missing=False, updated_before=None,
         )
 
-        assert result == (1, 1, 1)
+        assert result == (1, 1, 1, 0)
 
     @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
     @patch("sports_scraper.services.mlb_boxscore_ingestion.select_games_for_boxscores_mlb_api")
@@ -307,7 +307,7 @@ class TestIngestBoxscoresViaMlbApi:
             session, run_id=1, start_date=date(2024, 7, 1), end_date=date(2024, 7, 31),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
     @patch("sports_scraper.services.mlb_boxscore_ingestion.select_games_for_boxscores_mlb_api")
@@ -321,7 +321,7 @@ class TestIngestBoxscoresViaMlbApi:
             session, run_id=1, start_date=date(2024, 7, 1), end_date=date(2024, 7, 31),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 1)
 
     @patch("sports_scraper.live.mlb.MLBLiveFeedClient")
     @patch("sports_scraper.services.mlb_boxscore_ingestion.persist_game_payload")
@@ -342,7 +342,7 @@ class TestIngestBoxscoresViaMlbApi:
             session, run_id=1, start_date=date(2024, 7, 1), end_date=date(2024, 7, 31),
             only_missing=False, updated_before=None,
         )
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
 
 # ---------------------------------------------------------------------------

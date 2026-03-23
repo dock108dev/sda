@@ -203,6 +203,7 @@ class FairbetLiveResponse(BaseModel):
     market_categories_available: list[str]
     last_updated_at: str | None
     ev_diagnostics: dict[str, int] = {}
+    redis_status: str = "ok"
 
 
 @router.get("/live")
@@ -251,7 +252,8 @@ async def fairbet_live(
         away_team_name = away_team_name or "Unknown"
 
     # Read all live snapshots from Redis
-    snapshots = read_all_live_snapshots_for_game(league_code, game_id)
+    snapshots, redis_error = read_all_live_snapshots_for_game(league_code, game_id)
+    redis_status = "error" if redis_error else "ok"
 
     if not snapshots:
         return FairbetLiveResponse(
@@ -264,6 +266,7 @@ async def fairbet_live(
             books_available=[],
             market_categories_available=[],
             last_updated_at=None,
+            redis_status=redis_status,
         )
 
     # Build bets_map from Redis snapshots (same format as pre-game odds.py)
@@ -512,4 +515,5 @@ async def fairbet_live(
             if latest_update else None
         ),
         ev_diagnostics=ev_diagnostics,
+        redis_status=redis_status,
     )

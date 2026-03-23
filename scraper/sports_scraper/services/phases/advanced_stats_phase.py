@@ -128,6 +128,7 @@ def ingest_advanced_stats(
 
             games = query.all()
             count = 0
+            errors = 0
             consecutive_failures = 0
             max_consecutive_failures = 5  # Stop if 5 games in a row fail (API likely blocked)
 
@@ -154,6 +155,7 @@ def ingest_advanced_stats(
                     # "skipped" doesn't count as failure (missing data, not API issue)
                 except Exception as exc:
                     session.rollback()
+                    errors += 1
                     consecutive_failures += 1
                     logger.warning(
                         "advanced_stats_game_failed",
@@ -162,10 +164,12 @@ def ingest_advanced_stats(
                     )
 
         summary["advanced_stats"] = count
+        summary["advanced_stats_errors"] = errors
         logger.info(
             "advanced_stats_complete",
             run_id=run_id,
             count=count,
+            errors=errors,
             total_games=len(games),
         )
         complete_job_run(adv_run_id, "success")

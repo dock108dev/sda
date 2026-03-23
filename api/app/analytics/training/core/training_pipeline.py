@@ -364,6 +364,7 @@ class TrainingPipeline:
                 "model_registration_failed",
                 extra={"model_id": self.model_id, "error": str(exc)},
             )
+            raise RuntimeError(f"Model trained but registration failed: {exc}") from exc
 
     def _default_model(self) -> Any:
         """Return a default sklearn model for the model type."""

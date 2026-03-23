@@ -297,6 +297,9 @@ class EnsembleProvider(ProbabilityProvider):
         self._model_type = model_type
         self._rule = RuleBasedProvider()
         self._ml = MLProvider(model_type=model_type)
+        # After each call to get_event_probabilities, this attribute
+        # holds the list of provider names that succeeded.
+        self.last_providers_used: list[str] = []
 
     @property
     def provider_name(self) -> str:
@@ -311,6 +314,9 @@ class EnsembleProvider(ProbabilityProvider):
 
         Collects from rule-based and ML providers, combines with
         configured weights, and normalizes.
+
+        After this method returns, ``self.last_providers_used`` contains
+        the list of provider names that contributed to the blend.
         """
         from app.analytics.ensemble.ensemble_config import get_ensemble_config
         from app.analytics.ensemble.ensemble_engine import EnsembleEngine
@@ -334,7 +340,10 @@ class EnsembleProvider(ProbabilityProvider):
             except Exception as exc:
                 logger.warning("ensemble_ml_failed", extra={"error": str(exc)})
 
+        self.last_providers_used = sorted(predictions.keys())
+
         if not predictions:
+            logger.info("ensemble_all_providers_failed", extra={"sport": sport})
             valid_events = MLB_PA_EVENTS if sport.lower() == "mlb" else None
             return normalize_probabilities(_MLB_DEFAULTS, valid_events)
 

@@ -162,7 +162,7 @@ def ingest_boxscores_via_nba_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     """Ingest NBA boxscores using the NBA CDN API.
 
     Uses direct game_id matching — the selection query already identifies
@@ -183,7 +183,7 @@ def ingest_boxscores_via_nba_api(
         updated_before: Only include games with stale boxscore data
 
     Returns:
-        Tuple of (games_processed, games_enriched, games_with_stats)
+        Tuple of (games_processed, games_enriched, games_with_stats, errors)
     """
     from ..live.nba import NBALiveFeedClient
 
@@ -213,7 +213,7 @@ def ingest_boxscores_via_nba_api(
             end_date=str(end_date),
             only_missing=only_missing,
         )
-        return (0, 0, 0)
+        return (0, 0, 0, 0)
 
     logger.info(
         "nba_boxscore_games_selected",
@@ -232,6 +232,7 @@ def ingest_boxscores_via_nba_api(
     games_processed = 0
     games_enriched = 0
     games_with_stats = 0
+    errors = 0
 
     for game_id, nba_game_id, _game_date in games:
         try:
@@ -302,6 +303,7 @@ def ingest_boxscores_via_nba_api(
 
         except Exception as exc:
             session.rollback()
+            errors += 1
             logger.warning(
                 "nba_boxscore_fetch_failed",
                 run_id=run_id,
@@ -317,6 +319,7 @@ def ingest_boxscores_via_nba_api(
         games_processed=games_processed,
         games_enriched=games_enriched,
         games_with_stats=games_with_stats,
+        errors=errors,
     )
 
-    return (games_processed, games_enriched, games_with_stats)
+    return (games_processed, games_enriched, games_with_stats, errors)

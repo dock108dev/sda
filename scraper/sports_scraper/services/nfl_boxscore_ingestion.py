@@ -211,10 +211,10 @@ def ingest_boxscores_via_nfl_api(
     end_date: date,
     only_missing: bool,
     updated_before: datetime | None,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     """Ingest NFL boxscores using the ESPN API.
 
-    Returns (games_processed, games_enriched, games_with_stats).
+    Returns (games_processed, games_enriched, games_with_stats, errors).
     """
     from ..live.nfl import NFLLiveFeedClient
     from ..models import (
@@ -241,7 +241,7 @@ def ingest_boxscores_via_nfl_api(
 
     if not games:
         logger.info("nfl_boxscore_no_games", run_id=run_id)
-        return (0, 0, 0)
+        return (0, 0, 0, 0)
 
     logger.info("nfl_boxscore_games_selected", run_id=run_id, count=len(games))
 
@@ -250,6 +250,7 @@ def ingest_boxscores_via_nfl_api(
     processed = 0
     enriched = 0
     with_stats = 0
+    errors = 0
 
     for game_id, espn_game_id, game_date, game_status in games:
         try:
@@ -313,6 +314,7 @@ def ingest_boxscores_via_nfl_api(
 
         except Exception as exc:
             session.rollback()
+            errors += 1
             logger.warning(
                 "nfl_boxscore_failed", run_id=run_id,
                 game_id=game_id, espn_game_id=espn_game_id,
@@ -320,4 +322,4 @@ def ingest_boxscores_via_nfl_api(
             )
             continue
 
-    return (processed, enriched, with_stats)
+    return (processed, enriched, with_stats, errors)

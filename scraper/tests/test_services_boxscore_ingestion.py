@@ -222,7 +222,7 @@ class TestIngestBoxscoresViaNhlApi:
             updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.nhl_boxscore_ingestion.persist_game_payload")
     @patch("sports_scraper.live.nhl.NHLLiveFeedClient")
@@ -288,7 +288,7 @@ class TestIngestBoxscoresViaNhlApi:
             updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.live.nhl.NHLLiveFeedClient")
     @patch("sports_scraper.services.nhl_boxscore_ingestion.populate_nhl_game_ids")
@@ -311,7 +311,7 @@ class TestIngestBoxscoresViaNhlApi:
             updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 1)
 
 
 class TestIngestBoxscoresViaNcaabApi:
@@ -333,7 +333,7 @@ class TestIngestBoxscoresViaNcaabApi:
             updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
     @patch("sports_scraper.live.ncaab.NCAABLiveFeedClient")
@@ -401,7 +401,7 @@ class TestIngestBoxscoresViaNcaabApi:
             updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 0)
 
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.persist_game_payload")
     @patch("sports_scraper.live.ncaab.NCAABLiveFeedClient")
@@ -443,7 +443,7 @@ class TestIngestBoxscoresViaNcaabApi:
             updated_before=None,
         )
 
-        assert result == (0, 0, 0)
+        assert result == (0, 0, 0, 1)
 
 
 class TestPopulateNcaabGameIds:
