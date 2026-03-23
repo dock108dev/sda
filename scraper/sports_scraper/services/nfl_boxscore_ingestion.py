@@ -18,6 +18,59 @@ from ..persistence import persist_game_payload
 from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 
 
+def populate_nfl_games_from_schedule(
+    session: Session,
+    *,
+    run_id: int = 0,
+    start_date: date,
+    end_date: date,
+) -> int:
+    """Create NFL game stubs from the ESPN schedule API.
+
+    This is the NFL equivalent of MLB's populate_mlb_games_from_schedule.
+    Creates game rows for any games found on ESPN that don't exist in the DB yet.
+    """
+    from ..live.nfl import NFLLiveFeedClient
+    from ..persistence.games import upsert_game_stub
+
+    client = NFLLiveFeedClient()
+    schedule_games = client.fetch_schedule(start_date, end_date)
+
+    created = 0
+    for game in schedule_games:
+        # Skip preseason
+        if game.season_type == "preseason":
+            continue
+
+        try:
+            _game_id, was_created = upsert_game_stub(
+                session,
+                league_code="NFL",
+                game_date=game.game_date,
+                home_team=game.home_team,
+                away_team=game.away_team,
+                status=game.status,
+                home_score=game.home_score,
+                away_score=game.away_score,
+                external_ids={"espn_game_id": game.game_id},
+                season_type=game.season_type or "regular",
+            )
+            if was_created:
+                created += 1
+        except Exception as exc:
+            logger.warning(
+                "nfl_schedule_stub_failed",
+                espn_game_id=game.game_id,
+                error=str(exc),
+            )
+            continue
+
+    if created:
+        session.commit()
+    logger.info("nfl_games_from_schedule", run_id=run_id, created=created, total=len(schedule_games))
+    return created
+
+
 def populate_nfl_game_ids(
     session: Session,
     *,
@@ -172,7 +225,11 @@ def ingest_boxscores_via_nfl_api(
         TeamIdentity,
     )
 
-    # Step 1: Populate missing ESPN game IDs
+    # Step 0: Create game stubs from ESPN schedule (like MLB)
+    populate_nfl_games_from_schedule(session, run_id=run_id, start_date=start_date, end_date=end_date)
+    session.expire_all()
+
+    # Step 1: Populate missing ESPN game IDs (for games created by other paths)
     populate_nfl_game_ids(session, run_id=run_id, start_date=start_date, end_date=end_date)
     session.expire_all()
 
