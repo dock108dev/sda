@@ -2,7 +2,7 @@
 
 **Centralized sports data hub for all Dock108 apps.**
 
-Automated ingestion, normalization, and serving of sports data. Provides play-by-play, box scores, odds, and social media for NBA, NHL, NCAAB, and MLB.
+Automated ingestion, normalization, and serving of sports data. Provides play-by-play, box scores, odds, and social media for NBA, NHL, NCAAB, MLB, and NFL.
 
 ## Quick Start
 

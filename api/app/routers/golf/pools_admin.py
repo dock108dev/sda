@@ -229,7 +229,7 @@ async def trigger_rescore(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Trigger manual rescoring for a pool via Celery."""
-    pool = await get_pool_or_404(pool_id, db)
+    await get_pool_or_404(pool_id, db)  # validates pool exists
 
     from app.celery_client import get_celery_app
 

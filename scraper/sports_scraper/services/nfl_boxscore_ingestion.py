@@ -139,8 +139,12 @@ def populate_nfl_game_ids(
             continue
 
         for sg in schedule_games:
+            # Match on teams AND date to avoid wrong assignment when
+            # the same matchup appears multiple times in the date range
+            sg_day = to_et_date(sg.game_date) if sg.game_date else None
             if (sg.home_team.abbreviation.upper() == home_abbr
-                    and sg.away_team.abbreviation.upper() == away_abbr):
+                    and sg.away_team.abbreviation.upper() == away_abbr
+                    and sg_day == game_day):
                 game = session.get(db_models.SportsGame, game_id)
                 if game:
                     ext = dict(game.external_ids or {})
@@ -222,7 +226,6 @@ def ingest_boxscores_via_nfl_api(
         NormalizedGame,
         NormalizedPlayerBoxscore,
         NormalizedTeamBoxscore,
-        TeamIdentity,
     )
 
     # Step 0: Create game stubs from ESPN schedule (like MLB)
@@ -259,7 +262,6 @@ def ingest_boxscores_via_nfl_api(
                 continue
 
             # Build NormalizedGame from ESPN boxscore
-            game_day = to_et_date(game_date) if game_date else None
             identity = GameIdentification(
                 league_code="NFL",
                 season=game_date.year if game_date else 2025,

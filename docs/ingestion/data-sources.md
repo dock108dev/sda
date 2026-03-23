@@ -219,16 +219,19 @@ nflverse via `nflreadpy` Python package. Pre-computed EPA/WPA/CPOE on every play
 - **Team-level:** Total/pass/rush EPA, EPA/play, WPA, success rate (pass/rush), explosive play rate, avg CPOE, avg air yards, avg YAC
 - **Player-level (per role):** Passer EPA/CPOE/air+yac EPA, rusher EPA, receiver EPA, WPA, success rate
 
+### Game Matching
+nflverse has no ESPN event ID field. Games are matched by `game_date` + `home_team` + `away_team` from the nflverse play data (not by `old_game_id`, which is GSIS format and doesn't correspond to ESPN IDs).
+
 ### Implementation
 - Fetcher: `scraper/sports_scraper/live/nfl_advanced.py`
 - Ingestion: `scraper/sports_scraper/services/nfl_advanced_stats_ingestion.py`
 - Celery task: `scraper/sports_scraper/jobs/nfl_advanced_stats_tasks.py`
-- **Dependency:** `pip install nflreadpy` (uses Polars)
+- **Dependency:** `nflreadpy` (uses Polars for Parquet I/O)
 
 ## NCAAB Advanced Stats (Computed from Boxscores)
 
 ### Source
-No external API. Four factors and efficiency computed from existing `sports_team_boxscores.stats` and `sports_player_boxscores.stats` JSONB data. Uses college-specific 0.475 FTA coefficient and 40-minute games.
+No external API. Four factors and efficiency computed from existing `sports_team_boxscores.stats` JSONB data. Uses college-specific 0.475 FTA coefficient and 40-minute games. Handles both flat keys (legacy) and nested CBB API format (`{"fieldGoals": {"made": 25, "attempted": 60}}`).
 
 ### Data Collected
 - **Team-level:** Possessions, OFF/DEF/NET rating, pace, four factors offense (eFG%, TOV%, ORB%, FT rate), four factors defense, shooting splits

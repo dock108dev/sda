@@ -56,6 +56,27 @@ def release_redis_lock(lock_name: str, token: str) -> None:
         logger.warning("redis_unlock_failed", lock=lock_name, error=str(exc))
 
 
+def force_release_lock(lock_name: str) -> bool:
+    """Unconditionally delete a lock key, regardless of who owns it.
+
+    Use only when a lock is known to be orphaned (e.g., the owning
+    worker crashed and the TTL hasn't expired yet).
+    """
+    try:
+        import redis as redis_lib
+
+        from ..config import settings
+
+        r = redis_lib.from_url(settings.redis_url)
+        deleted = r.delete(lock_name)
+        if deleted:
+            logger.info("force_released_lock", lock=lock_name)
+        return bool(deleted)
+    except Exception as exc:
+        logger.warning("force_release_lock_failed", lock=lock_name, error=str(exc))
+        return False
+
+
 def clear_all_locks() -> int:
     """Delete all ``lock:*`` keys in Redis. Call on worker startup to clear stale locks
     left behind by a crashed/restarted container."""

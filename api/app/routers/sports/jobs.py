@@ -102,14 +102,15 @@ async def cancel_job_run(
     # runs aren't blocked by an orphaned lock from the killed task.
     if run.phase == "data_backfill" and run.leagues:
         try:
-            import redis
+            import redis.asyncio as aioredis
             from ...config import settings
 
-            r = redis.from_url(settings.redis_url, decode_responses=True)
+            r = aioredis.from_url(settings.redis_url, decode_responses=True)
             for league in run.leagues:
                 lock_key = f"lock:ingest:{league}"
-                r.delete(lock_key)
+                await r.delete(lock_key)
                 logger.info("Released ingestion lock on cancel", extra={"lock_key": lock_key})
+            await r.aclose()
         except Exception as exc:
             logger.warning("Failed to release ingestion lock", extra={"error": str(exc)})
 

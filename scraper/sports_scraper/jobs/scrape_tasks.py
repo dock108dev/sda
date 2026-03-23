@@ -33,7 +33,12 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
     """
     from ..services.job_runs import complete_job_run
     from ..utils.datetime_utils import now_utc
-    from ..utils.redis_lock import LOCK_TIMEOUT_1HOUR, acquire_redis_lock, release_redis_lock
+    from ..utils.redis_lock import (
+        LOCK_TIMEOUT_1HOUR,
+        acquire_redis_lock,
+        force_release_lock,
+        release_redis_lock,
+    )
 
     league_code = config_payload.get("league_code", "UNKNOWN")
     lock_name = f"lock:ingest:{league_code}"
@@ -42,15 +47,14 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
     task_id = run_scrape_job.request.id
     job_run_id = _activate_job_run_for_task(task_id)
 
-    # Try to acquire the lock. If it fails, wait briefly and retry once —
-    # the previous lock may be from a stale/crashed run.
+    # Try to acquire the lock. If it fails, force-release and retry —
+    # the previous lock may be orphaned from a crashed worker.
     lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR)
     if not lock_token:
         import time
         logger.info("scrape_job_lock_retry", run_id=run_id, league=league_code)
         time.sleep(5)
-        # Force-release stale locks (the lock module handles TTL, but
-        # if the previous worker crashed, the lock may be orphaned)
+        force_release_lock(lock_name)
         lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR)
 
     if not lock_token:

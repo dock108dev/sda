@@ -165,11 +165,12 @@ class TestPopulateNflGameIds:
         ]
         session.get.return_value = db_game
 
-        # ESPN schedule game
+        # ESPN schedule game — must include game_date for date+team matching
         schedule_game = MagicMock()
         schedule_game.home_team.abbreviation.upper.return_value = "KC"
         schedule_game.away_team.abbreviation.upper.return_value = "DEN"
         schedule_game.game_id = "401671234"
+        schedule_game.game_date = datetime(2024, 11, 10, 18, 0, tzinfo=UTC)
         mock_client_cls.return_value.fetch_schedule.return_value = [schedule_game]
 
         result = populate_nfl_game_ids(

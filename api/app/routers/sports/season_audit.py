@@ -171,6 +171,8 @@ async def season_audit(
     if cfg and cfg.season_start_month and cfg.season_end_month and season_type == "regular":
         from datetime import date as date_cls
 
+        from ...utils.datetime_utils import today_et
+
         start_year = season
         end_year = start_year + 1 if cfg.season_crosses_year else start_year
 
@@ -180,7 +182,7 @@ async def season_audit(
         season_start_str = season_start_date.strftime("%b %d, %Y")
         season_end_str = season_end_date.strftime("%b %d, %Y")
 
-        today = date_cls.today()
+        today = today_et()
         total_days = (season_end_date - season_start_date).days
         if total_days > 0:
             if today <= season_start_date:

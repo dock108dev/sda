@@ -198,7 +198,11 @@ class ScrapeRunManager:
             )
 
     def _finalize_run(
-        self, run_id: int, summary: dict, phase_errors: list[str] | None = None,
+        self,
+        run_id: int,
+        summary: dict,
+        phase_errors: list[str] | None = None,
+        phases_requested: int = 0,
     ) -> None:
         """Phase: build summary string and mark run complete."""
         summary_parts = []
@@ -219,11 +223,15 @@ class ScrapeRunManager:
         if summary["advanced_stats"]:
             summary_parts.append(f"Advanced Stats: {summary['advanced_stats']}")
 
-        # Determine final status: partial_success if some phases failed but others succeeded
+        # Determine final status based on how many phases succeeded vs failed
         phase_errors = phase_errors or []
         if phase_errors:
-            status = "partial_success"
             summary_parts.append(f"Failed phases: {', '.join(phase_errors)}")
+            if len(phase_errors) >= phases_requested and phases_requested > 0:
+                # Every requested phase failed — this is an error, not partial success
+                status = "error"
+            else:
+                status = "partial_success"
         else:
             status = "success"
 
@@ -336,7 +344,15 @@ class ScrapeRunManager:
                     logger.warning("phase_failed_advanced_stats", run_id=run_id, error=str(exc))
 
             self._run_diagnostics(config)
-            self._finalize_run(run_id, summary, phase_errors=phase_errors)
+            phases_requested = sum([
+                config.odds, config.boxscores, config.pbp,
+                config.social, config.advanced_stats,
+            ])
+            self._finalize_run(
+                run_id, summary,
+                phase_errors=phase_errors,
+                phases_requested=phases_requested,
+            )
 
         except Exception as exc:
             if ingest_run_id is not None and not ingest_run_completed:
