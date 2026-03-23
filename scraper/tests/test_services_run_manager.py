@@ -207,7 +207,7 @@ class TestScrapeRunManagerBoxscores:
         mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        mock_ingest.return_value = (5, 3, 2)  # (games, enriched, with_stats)
+        mock_ingest.return_value = (5, 3, 2, 0)  # (games, enriched, with_stats, errors)
 
         manager = ScrapeRunManager()
         # Use a date in the past to avoid "future dates" skip
@@ -327,7 +327,7 @@ class TestScrapeRunManagerBoxscores:
         mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        mock_ingest.return_value = (10, 8, 5)  # (games, enriched, with_stats)
+        mock_ingest.return_value = (10, 8, 5, 0)  # (games, enriched, with_stats, errors)
 
         manager = ScrapeRunManager()
         past_date = date.today() - timedelta(days=5)

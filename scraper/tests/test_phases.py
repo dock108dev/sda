@@ -414,7 +414,7 @@ class TestIngestBoxscores:
     @patch("sports_scraper.services.nhl_boxscore_ingestion.ingest_boxscores_via_nhl_api")
     def test_nhl_api_dispatch(self, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 3, 5)
-        mock_ingest.return_value = (5, 4, 3)
+        mock_ingest.return_value = (5, 4, 3, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
         mock_get_session, mock_session = self._make_session_ctx()
         mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 4
@@ -434,7 +434,7 @@ class TestIngestBoxscores:
     @patch("sports_scraper.services.nba_boxscore_ingestion.ingest_boxscores_via_nba_api")
     def test_nba_api_dispatch(self, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 3, 5)
-        mock_ingest.return_value = (3, 2, 1)
+        mock_ingest.return_value = (3, 2, 1, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
         mock_get_session, mock_session = self._make_session_ctx()
         mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 2
@@ -453,7 +453,7 @@ class TestIngestBoxscores:
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.ingest_boxscores_via_ncaab_api")
     def test_ncaab_api_dispatch(self, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 3, 20)
-        mock_ingest.return_value = (8, 7, 6)
+        mock_ingest.return_value = (8, 7, 6, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
         mock_get_session, mock_session = self._make_session_ctx()
         mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 7
@@ -474,7 +474,7 @@ class TestIngestBoxscores:
     def test_mlb_api_dispatch_with_schedule_populate(self, mock_populate, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 6, 20)
         mock_populate.return_value = 3
-        mock_ingest.return_value = (10, 8, 5)
+        mock_ingest.return_value = (10, 8, 5, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
         mock_get_session, mock_session = self._make_session_ctx()
         mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 8
@@ -496,7 +496,7 @@ class TestIngestBoxscores:
     def test_mlb_schedule_populate_failure(self, mock_populate, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 6, 20)
         mock_populate.side_effect = Exception("schedule api down")
-        mock_ingest.return_value = (5, 4, 3)
+        mock_ingest.return_value = (5, 4, 3, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
         mock_get_session, mock_session = self._make_session_ctx()
         mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 4
@@ -515,7 +515,7 @@ class TestIngestBoxscores:
     @patch("sports_scraper.services.nfl_boxscore_ingestion.ingest_boxscores_via_nfl_api")
     def test_nfl_api_dispatch(self, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 9, 10)
-        mock_ingest.return_value = (4, 3, 2)
+        mock_ingest.return_value = (4, 3, 2, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
         mock_get_session, mock_session = self._make_session_ctx()
         mock_session.query.return_value.join.return_value.filter.return_value.count.return_value = 3
