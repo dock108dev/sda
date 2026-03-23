@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime
 
 from ...db import db_models
 from ...logging import logger
+from ...utils.commit_loop import commit_loop
 from ...utils.datetime_utils import start_of_et_day_utc
 
 
@@ -127,75 +128,27 @@ def ingest_advanced_stats(
                 )
 
             games = query.all()
-            count = 0
-            skipped = 0
-            errors = 0
-            consecutive_failures = 0
-            max_consecutive_failures = 10  # Stop if 10 games in a row fail (API likely blocked)
-            skipped_reasons: dict[str, int] = {}
 
-            for game in games:
-                if consecutive_failures >= max_consecutive_failures:
-                    logger.warning(
-                        "advanced_stats_circuit_breaker",
-                        run_id=run_id,
-                        league=config.league_code,
-                        consecutive_failures=consecutive_failures,
-                        remaining_games=len(games) - count - skipped - errors,
-                        message="Stopping: too many consecutive failures (API may be blocked)",
-                    )
-                    break
+            def _process_game(sess, game):
+                result = ingest_advanced_stats_for_game(sess, game.id)
+                status = result.get("status", "skipped")
+                if status == "skipped":
+                    reason = result.get("reason", "unknown")
+                    return f"skipped:{reason}"
+                return status
 
-                try:
-                    result = ingest_advanced_stats_for_game(session, game.id)
-                    session.commit()
-                    status = result.get("status")
-                    if status == "success":
-                        count += 1
-                        consecutive_failures = 0  # Reset on success
-                    elif status == "skipped":
-                        skipped += 1
-                        consecutive_failures = 0  # Skips aren't API failures
-                        reason = result.get("reason", "unknown")
-                        skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
-                    elif status == "error":
-                        errors += 1
-                        consecutive_failures += 1
-                        logger.warning(
-                            "advanced_stats_game_error_status",
-                            game_id=game.id,
-                            result=result,
-                        )
-                    else:
-                        # Unexpected status — treat as skip, log for visibility
-                        skipped += 1
-                        logger.warning(
-                            "advanced_stats_unexpected_status",
-                            game_id=game.id,
-                            result=result,
-                        )
-                except Exception as exc:
-                    session.rollback()
-                    errors += 1
-                    consecutive_failures += 1
-                    logger.warning(
-                        "advanced_stats_game_failed",
-                        game_id=game.id,
-                        error=str(exc),
-                    )
+            loop = commit_loop(
+                session,
+                games,
+                _process_game,
+                batch_size=1,
+                label=f"advanced_stats_{config.league_code.lower()}",
+                max_consecutive_errors=10,
+            )
 
-        summary["advanced_stats"] = count
-        summary["advanced_stats_errors"] = errors
-        summary["advanced_stats_skipped"] = skipped
-        logger.info(
-            "advanced_stats_complete",
-            run_id=run_id,
-            count=count,
-            skipped=skipped,
-            errors=errors,
-            total_games=len(games),
-            skipped_reasons=skipped_reasons,
-        )
+        summary["advanced_stats"] = loop.success
+        summary["advanced_stats_errors"] = loop.errors
+        summary["advanced_stats_skipped"] = loop.skipped
         complete_job_run(adv_run_id, "success")
     except Exception as exc:
         logger.exception(
