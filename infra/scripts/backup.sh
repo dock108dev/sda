@@ -30,9 +30,9 @@ if [ -f "$BACKUP_FILE" ]; then
     # and on the host filesystem (infra/backups/...).
     ln -sf "$(basename "$BACKUP_FILE")" "${BACKUP_DIR}/latest.sql.gz"
     
-    # Keep only last 7 days of backups
-    find "$BACKUP_DIR" -name "sports_*.sql.gz" -mtime +7 -delete
-    echo "Cleaned up backups older than 7 days"
+    # Keep only last 3 days of backups (~1.2GB each, ~3.6GB total)
+    find "$BACKUP_DIR" -name "sports_*.sql.gz" -mtime +3 -delete
+    echo "Cleaned up backups older than 3 days"
 else
     echo "ERROR: Backup failed - file not created"
     exit 1
