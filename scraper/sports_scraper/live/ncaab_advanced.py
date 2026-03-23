@@ -28,14 +28,45 @@ from ..utils.math import safe_div as _safe_div  # noqa: E402
 
 
 def _extract_stat(box: dict, key: str, default: int = 0) -> int:
-    """Extract an integer stat from boxscore JSONB, defaulting to 0."""
-    val = box.get(key, default)
-    if val is None:
-        return default
-    try:
-        return int(val)
-    except (ValueError, TypeError):
-        return default
+    """Extract an integer stat from boxscore JSONB, defaulting to 0.
+
+    Handles both flat keys (e.g., "fieldGoalsMade") and nested
+    CBB API format (e.g., {"fieldGoals": {"made": 25}}).
+    """
+    # Try flat key first (legacy / some sources)
+    val = box.get(key)
+    if val is not None:
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+
+    # Map common flat keys → nested CBB API paths
+    nested_map = {
+        "fieldGoalsMade": ("fieldGoals", "made"),
+        "fieldGoalsAttempted": ("fieldGoals", "attempted"),
+        "threePointsMade": ("threePointFieldGoals", "made"),
+        "threePointsAttempted": ("threePointFieldGoals", "attempted"),
+        "freeThrowsMade": ("freeThrows", "made"),
+        "freeThrowsAttempted": ("freeThrows", "attempted"),
+        "offensiveRebounds": ("rebounds", "offensive"),
+        "defensiveRebounds": ("rebounds", "defensive"),
+        "turnovers": ("turnovers", "total"),
+        "points": ("points", "total"),
+    }
+
+    path = nested_map.get(key)
+    if path:
+        parent = box.get(path[0])
+        if isinstance(parent, dict):
+            val = parent.get(path[1])
+            if val is not None:
+                try:
+                    return int(val)
+                except (ValueError, TypeError):
+                    return default
+
+    return default
 
 
 def _extract_float_stat(box: dict, key: str, default: float = 0.0) -> float:

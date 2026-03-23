@@ -22,22 +22,61 @@ class NFLAdvancedStatsFetcher:
             api_name="nfl_advanced",
         )
 
-    def fetch_game_plays(self, espn_game_id: int, season: int) -> list[dict]:
+    def fetch_game_plays(
+        self,
+        espn_game_id: int,
+        season: int,
+        *,
+        home_abbr: str | None = None,
+        away_abbr: str | None = None,
+        game_date: str | None = None,
+    ) -> list[dict]:
         """Load season PBP from nflverse, filter to this game's plays.
 
-        nflverse game IDs use format "2025_01_KC_DET" but also has old_game_id
-        which matches ESPN format. We match on old_game_id = str(espn_game_id).
+        Matching strategy: nflverse has no ESPN event ID field. We match
+        by game_date + home_team + away_team from the play data. Each
+        play has home_team, away_team, and game_date fields.
+
+        Falls back to old_game_id matching if team info is not provided.
 
         Returns list of play dicts or empty list on failure.
         """
+        all_plays = self._load_season_plays(season)
+        if not all_plays:
+            return []
+
+        # Primary match: date + teams (most reliable)
+        if home_abbr and away_abbr and game_date:
+            matched = [
+                p for p in all_plays
+                if (p.get("home_team") == home_abbr
+                    and p.get("away_team") == away_abbr
+                    and str(p.get("game_date")) == game_date)
+            ]
+            if matched:
+                return matched
+            # Try swapped teams (some nflverse data may swap home/away)
+            matched = [
+                p for p in all_plays
+                if (p.get("away_team") == home_abbr
+                    and p.get("home_team") == away_abbr
+                    and str(p.get("game_date")) == game_date)
+            ]
+            if matched:
+                return matched
+
+        # Fallback: old_game_id (GSIS format, not ESPN — unlikely to match)
+        return [
+            p for p in all_plays
+            if str(p.get("old_game_id")) == str(espn_game_id)
+        ]
+
+    def _load_season_plays(self, season: int) -> list[dict]:
+        """Load and cache all plays for a season from nflverse."""
         cache_key = f"nflverse_pbp_{season}"
         cached = self._cache.get(cache_key)
         if cached is not None:
-            # Filter cached plays by game
-            return [
-                p for p in cached
-                if str(p.get("old_game_id")) == str(espn_game_id)
-            ]
+            return cached
 
         try:
             import nflreadpy as nfl
@@ -47,15 +86,10 @@ class NFLAdvancedStatsFetcher:
 
         try:
             pbp = nfl.load_pbp([season])
-            # Convert Polars DataFrame to list of dicts
             all_plays = pbp.to_dicts()
-            # Only cache if we got data
             if all_plays:
                 self._cache.put(cache_key, all_plays)
-            return [
-                p for p in all_plays
-                if str(p.get("old_game_id")) == str(espn_game_id)
-            ]
+            return all_plays
         except Exception as exc:
             logger.warning("nflverse_fetch_error", error=str(exc))
             return []
