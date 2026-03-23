@@ -1170,8 +1170,9 @@ class TestScrapeRunManagerErrorHandling:
         mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_get_session.return_value.__exit__ = MagicMock(return_value=False)
 
-        # Make detect_missing_pbp raise to trigger error path
-        mock_detect_missing.side_effect = Exception("DB connection failed")
+        # Make detect_external_id_conflicts raise to trigger error path
+        # (detect_missing_pbp only runs when config.pbp=True)
+        mock_detect_conflicts.side_effect = Exception("DB connection failed")
 
         manager = ScrapeRunManager()
         config = IngestionConfig(

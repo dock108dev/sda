@@ -186,9 +186,13 @@ class ScrapeRunManager:
         )
 
     def _run_diagnostics(self, config: IngestionConfig) -> None:
-        """Phase: post-run diagnostics."""
+        """Phase: post-run diagnostics.
+
+        Only checks for missing data types that were part of this run.
+        """
         with get_session() as session:
-            detect_missing_pbp(session, league_code=config.league_code)
+            if config.pbp:
+                detect_missing_pbp(session, league_code=config.league_code)
             detect_external_id_conflicts(
                 session, league_code=config.league_code, source="live_feed"
             )

@@ -84,11 +84,10 @@ class NBALiveFeedClient:
             if live_games:
                 return live_games
 
-        # Fallback to schedule API (no live status — all games report "scheduled")
-        logger.warning(
-            "nba_scoreboard_fallback_to_schedule",
+        # Schedule API for past dates (live scoreboard only has today's games)
+        logger.info(
+            "nba_scoreboard_using_schedule",
             date=str(day),
-            reason="live_scoreboard_skipped_or_empty",
         )
         return self._fetch_games_from_schedule(day)
 

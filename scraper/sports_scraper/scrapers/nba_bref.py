@@ -19,9 +19,7 @@ from ..logging import logger
 from ..models import (
     GameIdentification,
     NormalizedGame,
-    NormalizedPlay,
     NormalizedPlayByPlay,
-    NormalizedPlayerBoxscore,
     NormalizedTeamBoxscore,
     TeamIdentity,
 )

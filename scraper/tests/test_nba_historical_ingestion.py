@@ -219,3 +219,131 @@ class TestIngestNbaHistoricalPbp:
             session, start_date=date(2024, 10, 22), end_date=date(2024, 10, 22),
         )
         assert count == 0
+
+    @patch(f"{_MOD}.NBABasketballReferenceScraper")
+    def test_league_not_found_returns_zero(self, mock_scraper_cls):
+        from sports_scraper.services.nba_historical_ingestion import ingest_nba_historical_pbp
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.first.return_value = None
+
+        count = ingest_nba_historical_pbp(
+            session, start_date=date(2024, 10, 22), end_date=date(2024, 10, 22),
+        )
+        assert count == 0
+
+    @patch(f"{_MOD}.NBABasketballReferenceScraper")
+    @patch(f"{_MOD}.upsert_plays")
+    def test_pbp_fetch_exception_rolls_back(self, mock_upsert_plays, mock_scraper_cls):
+        """Covers lines 190-200: exception path during PBP fetch."""
+        from sports_scraper.services.nba_historical_ingestion import ingest_nba_historical_pbp
+
+        mock_scraper = MagicMock()
+        mock_scraper_cls.return_value = mock_scraper
+        mock_scraper.fetch_play_by_play.side_effect = Exception("scrape error")
+
+        session = MagicMock()
+        league = MagicMock()
+        league.id = 1
+        session.query.return_value.filter.return_value.first.return_value = league
+
+        game_rows = [(100, "202410220BOS", datetime(2024, 10, 22, tzinfo=UTC))]
+        session.query.return_value.filter.return_value.all.return_value = game_rows
+
+        # No existing plays (only_missing check)
+        session.query.return_value.filter.return_value.first.side_effect = [
+            league,  # league query
+            None,    # has_plays check returns None (no existing plays)
+        ]
+
+        count = ingest_nba_historical_pbp(
+            session, start_date=date(2024, 10, 22), end_date=date(2024, 10, 22),
+        )
+
+        assert count == 0
+        session.rollback.assert_called()
+
+    @patch(f"{_MOD}.NBABasketballReferenceScraper")
+    def test_pbp_not_implemented_skips(self, mock_scraper_cls):
+        """Covers line 190: NotImplementedError path."""
+        from sports_scraper.services.nba_historical_ingestion import ingest_nba_historical_pbp
+
+        mock_scraper = MagicMock()
+        mock_scraper_cls.return_value = mock_scraper
+        mock_scraper.fetch_play_by_play.side_effect = NotImplementedError
+
+        session = MagicMock()
+        league = MagicMock()
+        league.id = 1
+        session.query.return_value.filter.return_value.first.return_value = league
+
+        game_rows = [(100, "202410220BOS", datetime(2024, 10, 22, tzinfo=UTC))]
+        session.query.return_value.filter.return_value.all.return_value = game_rows
+
+        session.query.return_value.filter.return_value.first.side_effect = [
+            league,
+            None,  # has_plays
+        ]
+
+        count = ingest_nba_historical_pbp(
+            session, start_date=date(2024, 10, 22), end_date=date(2024, 10, 22),
+        )
+
+        assert count == 0
+        session.rollback.assert_not_called()
+
+    @patch(f"{_MOD}.NBABasketballReferenceScraper")
+    @patch(f"{_MOD}.upsert_plays", return_value=5)
+    def test_pbp_skips_existing_plays(self, mock_upsert_plays, mock_scraper_cls):
+        """Covers line 173: skips game that already has plays when only_missing=True."""
+        from sports_scraper.services.nba_historical_ingestion import ingest_nba_historical_pbp
+
+        mock_scraper = MagicMock()
+        mock_scraper_cls.return_value = mock_scraper
+
+        session = MagicMock()
+        league = MagicMock()
+        league.id = 1
+        session.query.return_value.filter.return_value.first.return_value = league
+
+        game_rows = [(100, "202410220BOS", datetime(2024, 10, 22, tzinfo=UTC))]
+        session.query.return_value.filter.return_value.all.return_value = game_rows
+
+        # has_plays returns existing play
+        existing_play = MagicMock()
+        session.query.return_value.filter.return_value.first.side_effect = [
+            league,
+            existing_play,  # has_plays check returns truthy
+        ]
+
+        count = ingest_nba_historical_pbp(
+            session, start_date=date(2024, 10, 22), end_date=date(2024, 10, 22),
+            only_missing=True,
+        )
+
+        assert count == 0
+        mock_upsert_plays.assert_not_called()
+
+
+class TestIngestNbaHistoricalBoxscoresDateFailure:
+    @patch(f"{_MOD}.NBABasketballReferenceScraper")
+    def test_date_fetch_exception_continues(self, mock_scraper_cls):
+        """Covers lines 54-56: exception when fetching games for a date."""
+        from sports_scraper.services.nba_historical_ingestion import ingest_nba_historical_boxscores
+
+        mock_scraper = MagicMock()
+        mock_scraper_cls.return_value = mock_scraper
+        mock_scraper.iter_dates.return_value = [date(2024, 10, 22), date(2024, 10, 23)]
+        mock_scraper.fetch_games_for_date.side_effect = Exception("network error")
+
+        session = MagicMock()
+        league = MagicMock()
+        session.query.return_value.filter.return_value.first.return_value = league
+
+        processed, enriched, with_stats = ingest_nba_historical_boxscores(
+            session, start_date=date(2024, 10, 22), end_date=date(2024, 10, 23),
+        )
+
+        assert processed == 0
+        assert enriched == 0
+        assert with_stats == 0

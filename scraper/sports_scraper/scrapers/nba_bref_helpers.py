@@ -17,7 +17,6 @@ from ..models import NormalizedPlay, NormalizedPlayerBoxscore, TeamIdentity
 from ..utils import extract_all_stats_from_row, get_stat_from_row, parse_float, parse_int
 from ..utils.html_parsing import extract_team_stats_from_table
 
-
 # Basketball Reference stat column → our raw_stats key mapping.
 # Most BR columns use data-stat attributes that we store directly.
 # The shared extract_all_stats_from_row() captures them all.
@@ -192,10 +191,7 @@ def parse_pbp_table(soup: BeautifulSoup) -> list[NormalizedPlay]:
     """
     # Find the PBP table — it may be in a div#all_pbp or directly as table#pbp
     pbp_div = soup.find("div", id="all_pbp")
-    if pbp_div:
-        table = pbp_div.find("table")
-    else:
-        table = soup.find("table", id="pbp")
+    table = pbp_div.find("table") if pbp_div else soup.find("table", id="pbp")
 
     if not table:
         # Try finding any table with pbp-like content

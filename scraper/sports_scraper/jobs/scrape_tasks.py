@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 from celery import shared_task
 
 from ..logging import logger
@@ -29,7 +31,7 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
     Timeline/flow generation is decoupled — use the per-league flow
     generation tasks or Pipeline API endpoints for manual control.
     """
-    from ..services.job_runs import activate_queued_job_run, complete_job_run
+    from ..services.job_runs import complete_job_run
     from ..utils.datetime_utils import now_utc
     from ..utils.redis_lock import LOCK_TIMEOUT_1HOUR, acquire_redis_lock, release_redis_lock
 
@@ -218,7 +220,7 @@ def poll_game_calendars() -> dict:
     before tip-off.  Runs every 15 minutes.  Idempotent — existing
     games are not duplicated.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from ..db import get_session
     from ..logging import logger
@@ -309,6 +311,7 @@ def poll_game_calendars() -> dict:
     # --- NCAAB (scoreboard is per-day; future dates may have limited data) ---
     try:
         import httpx
+
         from ..live.ncaa_scoreboard import NCAAScoreboardClient
 
         client = NCAAScoreboardClient(httpx.Client(timeout=20))
@@ -323,12 +326,12 @@ def poll_game_calendars() -> dict:
                     try:
                         if game.start_time_epoch:
                             game_date = datetime.fromtimestamp(
-                                game.start_time_epoch / 1000, tz=timezone.utc,
+                                game.start_time_epoch / 1000, tz=UTC,
                             )
                         else:
                             game_date = datetime.combine(
                                 day, datetime.min.time(),
-                            ).replace(hour=12, tzinfo=timezone.utc)
+                            ).replace(hour=12, tzinfo=UTC)
 
                         _gid, was_created = upsert_game_stub(
                             session,
@@ -415,7 +418,7 @@ def ingest_nba_historical(start_date: str, end_date: str, boxscores: bool = True
     from datetime import date as date_type
 
     from ..db import get_session
-    from ..services.job_runs import start_job_run, complete_job_run
+    from ..services.job_runs import complete_job_run, start_job_run
     from ..services.nba_historical_ingestion import (
         ingest_nba_historical_boxscores,
         ingest_nba_historical_pbp,

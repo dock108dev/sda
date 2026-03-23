@@ -6,7 +6,8 @@ This document describes where data comes from and how it's ingested.
 
 | Data Type | Source | Leagues | Update Frequency |
 |-----------|--------|---------|------------------|
-| Boxscores | NBA API (cdn.nba.com) | NBA | Post-game |
+| Boxscores | NBA API (cdn.nba.com) — current season | NBA | Post-game |
+| Boxscores | Basketball Reference — historical seasons | NBA | One-time backfill |
 | Boxscores | CBB Stats API | NCAAB | Post-game |
 | Boxscores | NHL API | NHL | Post-game |
 | Boxscores | MLB Stats API (statsapi.mlb.com) | MLB | Post-game |
@@ -24,7 +25,8 @@ This document describes where data comes from and how it's ingested.
 ## Boxscores & Player Stats
 
 ### Source
-- **NBA**: NBA API (`cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json`)
+- **NBA (current season)**: NBA CDN API (`cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json`). Only serves the current NBA season.
+- **NBA (historical)**: Basketball Reference (`basketball-reference.com/boxscores/{YYYYMMDD0TEAM}.html`). Polite scraping with 5-9s delays, HTML caching. Triggered via `ingest_nba_historical` Celery task.
 - **NHL**: NHL API (`api-web.nhle.com/v1/gamecenter/{game_id}/boxscore`)
 - **NCAAB**: CBB Stats API (`/games/teams`, `/games/players`) with date range batching
 - **MLB**: MLB Stats API (`statsapi.mlb.com/api/v1/game/{game_pk}/boxscore`) — batter and pitcher stats

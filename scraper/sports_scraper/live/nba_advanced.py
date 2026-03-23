@@ -169,6 +169,11 @@ class NBAAdvancedStatsFetcher:
             "ast_tov_ratio": round(ast_tov_ratio, 2) if ast_tov_ratio else None,
             "tov_pct": tov_pct,
             "ft_rate": ft_rate,
+            # Four factors — defense
+            "def_efg_pct": def_efg_pct,
+            "def_tov_pct": def_tov_pct,
+            "def_orb_pct": def_orb_pct,
+            "def_ft_rate": def_ft_rate,
             # Hustle — not available from boxscore (requires stats.nba.com tracking)
             "contested_shots": None,
             "deflections": None,

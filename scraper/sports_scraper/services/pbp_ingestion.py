@@ -18,6 +18,11 @@ from sqlalchemy.orm import Session
 from ..logging import logger
 from ..persistence.plays import upsert_plays
 from .game_selection import select_games_for_pbp_sportsref
+from .mlb_boxscore_ingestion import populate_mlb_game_ids
+from .pbp_mlb import (
+    ingest_pbp_via_mlb_api,
+    select_games_for_pbp_mlb_api,
+)
 
 # Re-export sport-specific functions
 from .pbp_nba import (
@@ -29,16 +34,11 @@ from .pbp_ncaab import (
     ingest_pbp_via_ncaab_api,
     select_games_for_pbp_ncaab_api,
 )
-from .pbp_mlb import (
-    ingest_pbp_via_mlb_api,
-    select_games_for_pbp_mlb_api,
-)
 from .pbp_nhl import (
     ingest_pbp_via_nhl_api,
     populate_nhl_game_ids,
     select_games_for_pbp_nhl_api,
 )
-from .mlb_boxscore_ingestion import populate_mlb_game_ids
 
 __all__ = [
     # Main ingestion functions
