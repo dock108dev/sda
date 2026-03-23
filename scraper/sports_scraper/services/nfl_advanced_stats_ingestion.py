@@ -73,7 +73,9 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         logger.warning(
             "nfl_adv_stats_no_plays",
             game_id=game_id, espn_game_id=espn_game_id,
+            season=season,
             home_abbr=home_abbr, away_abbr=away_abbr, game_date=game_date_str,
+            message=f"No nflverse plays matched for {away_abbr}@{home_abbr} on {game_date_str} (season={season})",
         )
         return {"game_id": game_id, "status": "skipped", "reason": "no_plays"}
 

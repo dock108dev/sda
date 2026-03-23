@@ -16,8 +16,10 @@ from __future__ import annotations
 
 from .flow_tasks import (
     run_scheduled_flow_generation,
+    run_scheduled_mlb_flow_generation,
     run_scheduled_nba_flow_generation,
     run_scheduled_ncaab_flow_generation,
+    run_scheduled_nfl_flow_generation,
     run_scheduled_nhl_flow_generation,
 )
 from .flow_trigger_tasks import (
@@ -86,6 +88,8 @@ __all__ = [
     "run_scheduled_nba_flow_generation",
     "run_scheduled_nhl_flow_generation",
     "run_scheduled_ncaab_flow_generation",
+    "run_scheduled_mlb_flow_generation",
+    "run_scheduled_nfl_flow_generation",
     "run_scheduled_flow_generation",
     "collect_game_social",
     "collect_social_for_league",

@@ -175,6 +175,9 @@ engine = create_engine(
     settings.database_url,
     future=True,
     pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=1800,  # Recycle connections after 30 min to avoid stale PG backends
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
 

@@ -20,7 +20,11 @@ HOLD_KEY = "sports:tasks_held"
 
 
 def _redis() -> redis.Redis:
-    return redis.from_url(settings.redis_url, decode_responses=True)
+    # Use the Celery broker URL (Redis db 2) so the hold key lands in the same
+    # database the scraper worker checks.  settings.redis_url may point to a
+    # different database (db 0 in production).
+    url = settings.celery_broker_url or settings.redis_url
+    return redis.from_url(url, decode_responses=True)
 
 
 class TaskRegistryEntry(BaseModel):

@@ -220,8 +220,15 @@ class ScrapeRunManager:
                 summary_parts.append(f"Social: {social_val}")
         if summary["pbp_games"]:
             summary_parts.append(f"PBP: {summary['pbp_games']}")
-        if summary["advanced_stats"]:
-            summary_parts.append(f"Advanced Stats: {summary['advanced_stats']}")
+        if summary["advanced_stats"] or summary.get("advanced_stats_skipped") or summary.get("advanced_stats_errors"):
+            adv_parts = []
+            if summary["advanced_stats"]:
+                adv_parts.append(f"{summary['advanced_stats']} ingested")
+            if summary.get("advanced_stats_skipped"):
+                adv_parts.append(f"{summary['advanced_stats_skipped']} skipped")
+            if summary.get("advanced_stats_errors"):
+                adv_parts.append(f"{summary['advanced_stats_errors']} errors")
+            summary_parts.append(f"Advanced Stats: {', '.join(adv_parts)}")
 
         # Determine final status based on how many phases succeeded vs failed
         phase_errors = phase_errors or []
