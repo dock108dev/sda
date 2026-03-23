@@ -43,7 +43,7 @@ EXTERNAL_ID_KEYS = {
     "NBA": "nba_game_id",
     "NHL": "nhl_game_pk",
     "MLB": "mlb_game_pk",
-    "NCAAB": "ncaab_game_id",
+    "NCAAB": "cbb_game_id",
     "NFL": "espn_game_id",
 }
 
