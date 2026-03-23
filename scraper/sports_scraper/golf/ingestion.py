@@ -98,6 +98,7 @@ def sync_schedule(tour: str = "pga", season: int | None = None) -> dict:
                 "status": t.status,
             })
             count += 1
+        session.commit()
 
     summary = {"tour": tour, "tournaments_upserted": count}
     logger.info("golf_sync_schedule_complete", **summary)
@@ -129,6 +130,7 @@ def sync_players() -> dict:
 
     with get_session() as session:
         count = upsert_players(session, player_dicts)
+        session.commit()
 
     summary = {"players_upserted": count}
     logger.info("golf_sync_players_complete", **summary)
@@ -169,6 +171,7 @@ def sync_field(tour: str = "pga") -> dict:
         ]
 
         count = upsert_field(session, tournament_id, field_dicts)
+        session.commit()
 
     summary = {"tour": tour, "field_entries_upserted": count, "tournament_id": tournament_id}
     logger.info("golf_sync_field_complete", **summary)
@@ -241,6 +244,7 @@ def sync_leaderboard() -> dict:
             })
 
         count = upsert_leaderboard(session, tournament_id, lb_dicts)
+        session.commit()
 
     summary = {"leaderboard_entries_upserted": count, "tournament_id": tournament_id}
     logger.info("golf_sync_leaderboard_complete", **summary)
@@ -280,6 +284,7 @@ def sync_odds(tour: str = "pga", market: str = "win") -> dict:
         ]
 
         count = upsert_odds(session, tournament_id, odds_dicts)
+        session.commit()
 
     summary = {"tour": tour, "market": market, "odds_upserted": count, "tournament_id": tournament_id}
     logger.info("golf_sync_odds_complete", **summary)
@@ -318,6 +323,7 @@ def sync_dfs_projections(site: str = "draftkings", tour: str = "pga") -> dict:
         ]
 
         count = upsert_dfs_projections(session, tournament_id, proj_dicts)
+        session.commit()
 
     summary = {"site": site, "tour": tour, "projections_upserted": count, "tournament_id": tournament_id}
     logger.info("golf_sync_dfs_complete", **summary)
@@ -355,6 +361,7 @@ def sync_stats(tour: str = "pga") -> dict:
 
     with get_session() as session:
         count = upsert_player_stats(session, stats_dicts)
+        session.commit()
 
     summary = {"tour": tour, "stats_upserted": count}
     logger.info("golf_sync_stats_complete", **summary)

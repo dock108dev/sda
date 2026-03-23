@@ -123,6 +123,10 @@ def ingest_boxscores(
                 source=source_label,
             )
             try:
+                # Each league ingestion function commits per-game internally,
+                # so we open a session here but don't add an outer commit —
+                # that would hold the connection checked-out for the full run
+                # with no benefit (everything is already committed per-game).
                 with get_session() as session:
                     games, enriched, with_stats, box_errors = ingest_fn(
                         session,
@@ -132,7 +136,6 @@ def ingest_boxscores(
                         only_missing=config.only_missing,
                         updated_before=updated_before_dt,
                     )
-                    session.commit()
                 summary["games"] = games
                 summary["games_enriched"] = enriched
                 summary["games_with_stats"] = with_stats

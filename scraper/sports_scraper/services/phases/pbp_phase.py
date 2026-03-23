@@ -57,7 +57,6 @@ def ingest_pbp(
                         config=config,
                         updated_before=updated_before_dt,
                     )
-                    session.commit()
                 summary["pbp_games"] += live_summary.pbp_games
                 complete_job_run(pbp_run_id, "success")
             except Exception as exc:
@@ -100,6 +99,9 @@ def ingest_pbp(
             if dispatch:
                 pbp_fn, error_label = dispatch
                 try:
+                    # Each PBP ingestion function commits per-game internally,
+                    # so no outer commit needed — avoids holding the connection
+                    # checked-out for the full run.
                     with get_session() as session:
                         pbp_games, pbp_events = pbp_fn(
                             session,
@@ -109,7 +111,6 @@ def ingest_pbp(
                             only_missing=config.only_missing,
                             updated_before=updated_before_dt,
                         )
-                        session.commit()
                     summary["pbp_games"] += pbp_games
                     complete_job_run(pbp_run_id, "success")
                 except Exception as exc:
@@ -134,7 +135,6 @@ def ingest_pbp(
                             only_missing=config.only_missing,
                             updated_before=updated_before_dt,
                         )
-                        session.commit()
                     summary["pbp_games"] += pbp_games
                     complete_job_run(pbp_run_id, "success")
                 except Exception as exc:
