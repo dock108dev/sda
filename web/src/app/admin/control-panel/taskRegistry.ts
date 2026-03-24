@@ -39,17 +39,9 @@ export const TASK_REGISTRY: TaskDef[] = [
     queue: "sports-scraper",
     params: [],
   },
-  {
-    name: "ingest_nba_historical",
-    label: "NBA Historical Backfill",
-    description: "Backfill NBA boxscores and PBP from Basketball Reference (polite scraping, ~14h for 3 seasons)",
-    category: "Ingestion",
-    queue: "sports-scraper",
-    params: [
-      { name: "start_date", type: "text", required: true, default: "2024-10-22" },
-      { name: "end_date", type: "text", required: true, default: "2025-04-13" },
-    ],
-  },
+  // NBA historical backfill is now handled automatically by the regular
+  // Data Backfill card — it falls back to Basketball Reference scraping
+  // for seasons where the NBA CDN API has no data.
   // Polling
   {
     name: "update_game_states",

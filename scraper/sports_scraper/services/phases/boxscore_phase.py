@@ -147,6 +147,49 @@ def ingest_boxscores(
                     league=config.league_code,
                     error=str(exc),
                 )
+
+            # NBA fallback: the CDN API only serves the current season.
+            # For historical seasons, use Basketball Reference scraping to
+            # pick up any games the API missed.
+            if config.league_code == "NBA" and config.boxscores:
+                try:
+                    from ..nba_historical_ingestion import (
+                        ingest_nba_historical_boxscores,
+                    )
+
+                    logger.info(
+                        "nba_bref_fallback_start",
+                        run_id=run_id,
+                        start_date=str(start),
+                        end_date=str(boxscore_end),
+                    )
+                    with get_session() as session:
+                        bref_games, bref_enriched, bref_stats = (
+                            ingest_nba_historical_boxscores(
+                                session,
+                                run_id=run_id,
+                                start_date=start,
+                                end_date=boxscore_end,
+                                only_missing=True,  # only games the API didn't cover
+                            )
+                        )
+                    if bref_games:
+                        summary["games"] += bref_games
+                        summary["games_enriched"] += bref_enriched
+                        summary["games_with_stats"] += bref_stats
+                        logger.info(
+                            "nba_bref_fallback_complete",
+                            run_id=run_id,
+                            games=bref_games,
+                            enriched=bref_enriched,
+                            with_stats=bref_stats,
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "nba_bref_fallback_failed",
+                        run_id=run_id,
+                        error=str(exc),
+                    )
         elif scraper:
             # Other leagues: Continue using Sports Reference scraper
             logger.info(
