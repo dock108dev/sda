@@ -380,96 +380,71 @@ async def create_bulk_backfill(
     body: BulkBackfillRequest,
     session: AsyncSession = Depends(get_db),
 ) -> BulkBackfillResponse:
-    """Create season-aware chunked backfill runs.
+    """Create a season-aware bulk backfill as a single sequential task.
 
     Splits a wide date range into monthly chunks per league, skipping
-    off-season months.  Each chunk is enqueued as a separate Celery task
-    so progress is visible per-chunk in the Runs Drawer.
+    off-season months.  Dispatches ONE Celery task that processes chunks
+    sequentially — no queue flooding.  Each chunk creates its own
+    SportsScrapeRun for per-chunk visibility in the Runs Drawer.
     """
     raw_chunks = compute_backfill_chunks(
         body.leagues, body.start_date, body.end_date,
     )
 
-    celery_app = get_celery_app()
-    result_chunks: list[BulkBackfillChunk] = []
-    dispatched = 0
-
-    for chunk in raw_chunks:
-        lc = chunk["league_code"]
-        try:
-            league = await get_league(session, lc)
-        except HTTPException:
-            result_chunks.append(BulkBackfillChunk(
-                league_code=lc,
-                start_date=chunk["start_date"],
-                end_date=chunk["end_date"],
-                error=f"Unknown league: {lc}",
-            ))
-            continue
-
-        worker_payload = {
-            "league_code": lc,
-            "start_date": chunk["start_date"],
-            "end_date": chunk["end_date"],
-            "boxscores": body.boxscores,
-            "odds": body.odds,
-            "pbp": body.pbp,
-            "social": body.social,
-            "advanced_stats": body.advanced_stats,
-            "only_missing": body.only_missing,
-        }
-
-        run = SportsScrapeRun(
-            scraper_type="bulk_backfill",
-            league_id=league.id,
-            start_date=_coerce_date_to_datetime(date.fromisoformat(chunk["start_date"])),
-            end_date=_coerce_date_to_datetime(date.fromisoformat(chunk["end_date"])),
-            status="pending",
-            requested_by="admin-bulk-backfill",
-            config=worker_payload,
+    if not raw_chunks:
+        return BulkBackfillResponse(
+            total_chunks=0, chunks_dispatched=0, chunks=[],
         )
-        session.add(run)
-        await session.flush()
 
-        try:
-            async_result = celery_app.send_task(
-                "run_scrape_job",
-                args=[run.id, worker_payload],
-                queue="sports-scraper",
-                routing_key="sports-scraper",
-                headers={"manual_trigger": True},
+    data_toggles = {
+        "boxscores": body.boxscores,
+        "odds": body.odds,
+        "pbp": body.pbp,
+        "social": body.social,
+        "advanced_stats": body.advanced_stats,
+        "only_missing": body.only_missing,
+    }
+
+    celery_app = get_celery_app()
+    try:
+        async_result = celery_app.send_task(
+            "run_bulk_backfill",
+            args=[raw_chunks, data_toggles],
+            queue="sports-scraper",
+            routing_key="sports-scraper",
+            headers={"manual_trigger": True},
+        )
+
+        # Create a single job run for the entire bulk operation
+        all_leagues = sorted(set(c["league_code"] for c in raw_chunks))
+        job_run = SportsJobRun(
+            phase="data_backfill",
+            leagues=all_leagues,
+            status="queued",
+            started_at=now_utc(),
+            celery_task_id=async_result.id,
+        )
+        session.add(job_run)
+
+        result_chunks = [
+            BulkBackfillChunk(
+                league_code=c["league_code"],
+                start_date=c["start_date"],
+                end_date=c["end_date"],
             )
-            run.job_id = async_result.id
+            for c in raw_chunks
+        ]
 
-            job_run = SportsJobRun(
-                phase="data_backfill",
-                leagues=[lc],
-                status="queued",
-                started_at=now_utc(),
-                celery_task_id=async_result.id,
-            )
-            session.add(job_run)
-            dispatched += 1
+        return BulkBackfillResponse(
+            total_chunks=len(raw_chunks),
+            chunks_dispatched=1,  # single orchestrator task
+            chunks=result_chunks,
+        )
 
-            result_chunks.append(BulkBackfillChunk(
-                league_code=lc,
-                start_date=chunk["start_date"],
-                end_date=chunk["end_date"],
-                run_id=run.id,
-                job_id=async_result.id,
-            ))
-        except Exception as exc:
-            run.status = "error"
-            run.error_details = str(exc)
-            result_chunks.append(BulkBackfillChunk(
-                league_code=lc,
-                start_date=chunk["start_date"],
-                end_date=chunk["end_date"],
-                error=str(exc),
-            ))
-
-    return BulkBackfillResponse(
-        total_chunks=len(raw_chunks),
-        chunks_dispatched=dispatched,
-        chunks=result_chunks,
-    )
+    except Exception as exc:
+        from ...logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error("bulk_backfill_dispatch_failed", extra={"error": str(exc)})
+        raise HTTPException(
+            status_code=500, detail=f"Failed to dispatch bulk backfill: {exc}"
+        ) from exc

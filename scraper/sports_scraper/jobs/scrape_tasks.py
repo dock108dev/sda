@@ -86,6 +86,104 @@ def run_scrape_job(run_id: int, config_payload: dict) -> dict:
         release_redis_lock(lock_name, lock_token)
 
 
+@shared_task(name="run_bulk_backfill")
+def run_bulk_backfill(chunks: list[dict], data_toggles: dict) -> dict:
+    """Process backfill chunks sequentially — one at a time per league.
+
+    Instead of flooding the queue with N separate tasks, this single task
+    iterates through chunks and calls run_scrape_job synchronously for each.
+    Progress is visible in the Runs Drawer via per-chunk SportsScrapeRun records.
+    """
+    from ..db import db_models, get_session
+    from ..services.ingestion import run_ingestion
+    from ..services.job_runs import complete_job_run, start_job_run
+    from ..utils.datetime_utils import now_utc
+
+    total = len(chunks)
+    completed = 0
+    errors = 0
+    skipped = 0
+
+    logger.info("bulk_backfill_start", total_chunks=total)
+
+    for i, chunk in enumerate(chunks, 1):
+        lc = chunk["league_code"]
+        config_payload = {
+            **data_toggles,
+            "league_code": lc,
+            "start_date": chunk["start_date"],
+            "end_date": chunk["end_date"],
+        }
+
+        # Create a scrape run record for this chunk
+        try:
+            with get_session() as session:
+                league = (
+                    session.query(db_models.SportsLeague)
+                    .filter(db_models.SportsLeague.code == lc)
+                    .first()
+                )
+                if not league:
+                    logger.warning("bulk_backfill_unknown_league", league=lc)
+                    skipped += 1
+                    continue
+
+                run = db_models.SportsScrapeRun(
+                    scraper_type="bulk_backfill",
+                    league_id=league.id,
+                    start_date=now_utc(),
+                    end_date=now_utc(),
+                    status="running",
+                    started_at=now_utc(),
+                    requested_by="admin-bulk-backfill",
+                    config=config_payload,
+                )
+                session.add(run)
+                session.flush()
+                run_id = run.id
+
+            logger.info(
+                "bulk_backfill_chunk_start",
+                chunk=i,
+                total=total,
+                league=lc,
+                start_date=chunk["start_date"],
+                end_date=chunk["end_date"],
+                run_id=run_id,
+            )
+
+            result = run_ingestion(run_id, config_payload)
+            completed += 1
+
+            logger.info(
+                "bulk_backfill_chunk_done",
+                chunk=i,
+                total=total,
+                league=lc,
+                result=result,
+            )
+
+        except Exception as exc:
+            errors += 1
+            logger.warning(
+                "bulk_backfill_chunk_failed",
+                chunk=i,
+                total=total,
+                league=lc,
+                error=str(exc),
+            )
+            continue
+
+    summary = {
+        "total_chunks": total,
+        "completed": completed,
+        "errors": errors,
+        "skipped": skipped,
+    }
+    logger.info("bulk_backfill_complete", **summary)
+    return summary
+
+
 def _activate_job_run_for_task(celery_task_id: str | None) -> int | None:
     """Find a queued SportsJobRun by celery_task_id and activate it."""
     if not celery_task_id:
