@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..db import db_models
 from ..logging import logger
+from ..utils.datetime_utils import to_et_date
 from ..utils.math import safe_float as _safe_float
 
 
@@ -55,7 +56,7 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
     away_team = session.query(db_models.SportsTeam).get(game.away_team_id)
     home_abbr = home_team.abbreviation if home_team else None
     away_abbr = away_team.abbreviation if away_team else None
-    game_date_str = str(game.game_date.date()) if game.game_date else None
+    game_date_str = str(to_et_date(game.game_date)) if game.game_date else None
 
     # Fetch plays from nflverse (matches by date + teams, not ESPN ID)
     from ..live.nfl_advanced import NFLAdvancedStatsFetcher

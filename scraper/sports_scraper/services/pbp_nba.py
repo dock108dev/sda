@@ -140,7 +140,9 @@ def _probe_historical_game_ids(
             game_dt = game.get("gameTimeUTC", "")
             if not game_dt:
                 continue
-            game_day = date.fromisoformat(game_dt[:10])
+            # Convert UTC tipoff time to ET date (games after midnight UTC
+            # are still the previous day's game in Eastern Time).
+            game_day = to_et_date(datetime.fromisoformat(game_dt.replace("Z", "+00:00")))
             home = game.get("homeTeam", {}).get("teamTricode", "").upper()
             away = game.get("awayTeam", {}).get("teamTricode", "").upper()
             if home and away:

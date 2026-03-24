@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from ...db import db_models
 from ...logging import logger
-from ...utils.datetime_utils import sports_today_et, start_of_et_day_utc
+from ...utils.datetime_utils import end_of_et_day_utc, sports_today_et, start_of_et_day_utc
 
 
 def ingest_boxscores(
@@ -274,7 +274,7 @@ def ingest_boxscores(
     try:
         bs_end = min(end, boxscore_cutoff)
         window_start = start_of_et_day_utc(start)
-        window_end = datetime.combine(bs_end, datetime.max.time(), tzinfo=UTC)
+        window_end = end_of_et_day_utc(bs_end)
         with get_session() as session:
             total_final_games = (
                 session.query(db_models.SportsGame)

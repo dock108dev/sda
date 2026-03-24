@@ -102,7 +102,7 @@ def match_game_by_team_ids(
         .where(db_models.SportsGame.home_team_id == home_team_id)
         .where(db_models.SportsGame.away_team_id == away_team_id)
         .where(db_models.SportsGame.game_date >= day_start)
-        .where(db_models.SportsGame.game_date <= day_end)
+        .where(db_models.SportsGame.game_date < day_end)
     )
     game_id = session.execute(stmt).scalar()
 
@@ -113,7 +113,7 @@ def match_game_by_team_ids(
             .where(db_models.SportsGame.home_team_id == away_team_id)
             .where(db_models.SportsGame.away_team_id == home_team_id)
             .where(db_models.SportsGame.game_date >= day_start)
-            .where(db_models.SportsGame.game_date <= day_end)
+            .where(db_models.SportsGame.game_date < day_end)
         )
         game_id = session.execute(swap_stmt).scalar()
 
@@ -155,7 +155,7 @@ def match_game_by_names_ncaab(
         )
         .where(db_models.SportsGame.league_id == league_id)
         .where(db_models.SportsGame.game_date >= day_start)
-        .where(db_models.SportsGame.game_date <= day_end)
+        .where(db_models.SportsGame.game_date < day_end)
     )
     games_in_range = session.execute(all_games_in_range).all()
 
@@ -288,7 +288,7 @@ def match_game_by_names_non_ncaab(
             )
         )
         .where(db_models.SportsGame.game_date >= day_start)
-        .where(db_models.SportsGame.game_date <= day_end)
+        .where(db_models.SportsGame.game_date < day_end)
     )
     name_match_id = session.execute(name_match_stmt).scalar()
 
@@ -311,7 +311,7 @@ def match_game_by_names_non_ncaab(
                 )
             )
             .where(db_models.SportsGame.game_date >= day_start)
-            .where(db_models.SportsGame.game_date <= day_end)
+            .where(db_models.SportsGame.game_date < day_end)
         )
         name_match_id = session.execute(swapped_name_match_stmt).scalar()
 

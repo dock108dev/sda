@@ -11,7 +11,7 @@ from datetime import UTC, date, datetime
 from ...db import db_models
 from ...logging import logger
 from ...utils.commit_loop import commit_loop
-from ...utils.datetime_utils import start_of_et_day_utc
+from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 
 def _populate_external_ids(session, league_code: str, start: date, end: date) -> None:
@@ -99,7 +99,7 @@ def ingest_advanced_stats(
             session.commit()
 
             window_start = start_of_et_day_utc(start)
-            window_end = datetime.combine(end, datetime.max.time(), tzinfo=UTC)
+            window_end = end_of_et_day_utc(end)
 
             query = (
                 session.query(db_models.SportsGame)

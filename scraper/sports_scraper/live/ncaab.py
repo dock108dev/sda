@@ -11,7 +11,7 @@ This module provides the main NCAABLiveFeedClient which composes:
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -196,11 +196,11 @@ class NCAABLiveFeedClient:
         date_str = game.get("startDate")
         if date_str:
             try:
-                game_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                game_date = datetime.fromisoformat(date_str.replace("Z", "+00:00")).astimezone(UTC)
             except ValueError:
-                game_date = datetime.now()
+                game_date = datetime.now(UTC)
         else:
-            game_date = datetime.now()
+            game_date = datetime.now(UTC)
 
         # Team IDs are at root level, not nested
         home_team_id = game.get("homeTeamId") or 0

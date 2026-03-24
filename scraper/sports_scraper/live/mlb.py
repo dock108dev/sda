@@ -17,7 +17,7 @@ from ..config import settings
 from ..logging import logger
 from ..models import NormalizedPlayByPlay
 from ..utils.cache import APICache
-from ..utils.datetime_utils import date_to_utc_datetime
+from ..utils.datetime_utils import date_to_utc_datetime, start_of_et_day_utc
 from ..utils.parsing import parse_int
 from .mlb_boxscore import MLBBoxscoreFetcher
 from .mlb_constants import MLB_SCHEDULE_URL
@@ -129,7 +129,7 @@ class MLBLiveFeedClient:
                 if game_date_str:
                     game_date = parse_datetime(game_date_str)
                 else:
-                    game_date = date_to_utc_datetime(target_date)
+                    game_date = start_of_et_day_utc(target_date)
 
                 # Extract team info
                 teams = game_data.get("teams", {})
