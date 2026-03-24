@@ -219,8 +219,18 @@ def _upsert_team(session: Session, league_id: int, identity: TeamIdentity) -> in
     league = session.get(db_models.SportsLeague, league_id)
     league_code = league.code if league else None
 
-    abbreviation = identity.abbreviation or _derive_abbreviation(team_name)
-    if identity.abbreviation is None and _should_log("team_abbreviation_derived", sample=25):
+    # Normalize team name to canonical form so that all sources converge to
+    # the same row (e.g., "Los Angeles Clippers" → "LA Clippers").
+    feed_abbreviation = identity.abbreviation
+    if league_code and league_code != "NCAAB":
+        canonical_name, canonical_abbr = normalize_team_name(league_code, team_name)
+        if canonical_name != team_name:
+            team_name = canonical_name
+        if canonical_abbr and feed_abbreviation is None:
+            feed_abbreviation = canonical_abbr
+
+    abbreviation = feed_abbreviation or _derive_abbreviation(team_name)
+    if feed_abbreviation is None and _should_log("team_abbreviation_derived", sample=25):
         logger.warning(
             "team_abbreviation_derived",
             league_code=league_code,
@@ -230,7 +240,7 @@ def _upsert_team(session: Session, league_id: int, identity: TeamIdentity) -> in
 
     # If the feed didn't provide an abbreviation, never overwrite a pre-existing one.
     abbreviation_update_value = (
-        abbreviation if identity.abbreviation is not None else db_models.SportsTeam.abbreviation
+        abbreviation if feed_abbreviation is not None else db_models.SportsTeam.abbreviation
     )
 
     stmt = (

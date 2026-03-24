@@ -70,3 +70,6 @@ coverage_html/
 
 # Generated build files
 web/next-env.d.ts
+
+# Game data
+game_data/*

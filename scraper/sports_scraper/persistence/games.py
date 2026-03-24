@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import case, func, literal_column, or_
+from sqlalchemy import case, func, literal_column, or_, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..db import db_models
@@ -307,7 +308,45 @@ def upsert_game(session: Session, normalized: NormalizedGame) -> tuple[int, bool
         db_models.SportsGame.id,
         (literal_column("xmax") == 0).label("inserted"),
     )
-    result = session.execute(stmt).first()
+
+    try:
+        result = session.execute(stmt).first()
+    except IntegrityError as exc:
+        # The INSERT … ON CONFLICT targets uq_game_identity, but the row may
+        # already exist under the same source_game_key with a slightly
+        # different identity (team-ID mapping drift, timezone edge, etc.).
+        # Fall back to an update-by-source_game_key so we don't lose the row.
+        if "uq_sports_game_league_source_key" not in str(exc.orig):
+            raise
+        session.rollback()
+        upd = (
+            update(db_models.SportsGame)
+            .where(
+                db_models.SportsGame.league_id == league_id,
+                db_models.SportsGame.source_game_key == normalized.identity.source_game_key,
+            )
+            .values(
+                home_score=normalized.home_score,
+                away_score=normalized.away_score,
+                status=normalized_status,
+                venue=normalized.venue,
+                scrape_version=db_models.SportsGame.scrape_version + 1,
+                last_scraped_at=now_utc(),
+                updated_at=now_utc(),
+            )
+            .returning(db_models.SportsGame.id)
+        )
+        row = session.execute(upd).first()
+        if not row:
+            raise RuntimeError("Failed to upsert game via source_game_key fallback") from exc
+        logger.info(
+            "game_resolution_source_key_fallback",
+            league=normalized.identity.league_code,
+            game_id=int(row[0]),
+            external_id=normalized.identity.source_game_key,
+        )
+        return int(row[0]), False
+
     if not result:
         raise RuntimeError("Failed to upsert game")
     game_id, inserted = result

@@ -6,11 +6,27 @@ aggregates into team-level and player-level stats for a single game.
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from ..config import settings
 from ..logging import logger
 from ..utils.cache import APICache
 from ..utils.math import safe_div as _safe_div
 from ..utils.math import safe_float as _safe_float
+
+# Our DB stores Pro-Football-Reference abbreviations; nflverse uses its own.
+# Map DB abbreviation → nflverse abbreviation where they differ.
+_TO_NFLVERSE_ABBR: dict[str, str] = {
+    "LAR": "LA",     # Rams
+    "OAK": "LV",     # Raiders (historical PFR → current nflverse)
+    "SDG": "LAC",    # Chargers (historical PFR → current nflverse)
+    "STL": "LA",     # Rams (historical PFR → current nflverse)
+}
+
+
+def _to_nflverse(abbr: str) -> str:
+    """Convert a DB team abbreviation to the nflverse equivalent."""
+    return _TO_NFLVERSE_ABBR.get(abbr, abbr)
 
 
 class NFLAdvancedStatsFetcher:
@@ -45,25 +61,43 @@ class NFLAdvancedStatsFetcher:
         if not all_plays:
             return []
 
-        # Primary match: date + teams (most reliable)
-        if home_abbr and away_abbr and game_date:
-            matched = [
-                p for p in all_plays
-                if (p.get("home_team") == home_abbr
-                    and p.get("away_team") == away_abbr
-                    and str(p.get("game_date")) == game_date)
-            ]
-            if matched:
-                return matched
-            # Try swapped teams (some nflverse data may swap home/away)
-            matched = [
-                p for p in all_plays
-                if (p.get("away_team") == home_abbr
-                    and p.get("home_team") == away_abbr
-                    and str(p.get("game_date")) == game_date)
-            ]
-            if matched:
-                return matched
+        # Translate DB abbreviations to nflverse format
+        nfl_home = _to_nflverse(home_abbr) if home_abbr else None
+        nfl_away = _to_nflverse(away_abbr) if away_abbr else None
+
+        # Build candidate dates: the given date plus +/- 1 day to handle
+        # UTC midnight crossover (primetime games stored in UTC can land
+        # on the next calendar day vs nflverse's local-date convention).
+        candidate_dates: list[str] = []
+        if game_date:
+            candidate_dates.append(game_date)
+            try:
+                gd = date.fromisoformat(game_date)
+                candidate_dates.append(str(gd - timedelta(days=1)))
+                candidate_dates.append(str(gd + timedelta(days=1)))
+            except ValueError:
+                pass
+
+        # Primary match: date + teams
+        if nfl_home and nfl_away and candidate_dates:
+            for dt in candidate_dates:
+                matched = [
+                    p for p in all_plays
+                    if (p.get("home_team") == nfl_home
+                        and p.get("away_team") == nfl_away
+                        and str(p.get("game_date")) == dt)
+                ]
+                if matched:
+                    return matched
+                # Try swapped teams (some nflverse data may swap home/away)
+                matched = [
+                    p for p in all_plays
+                    if (p.get("away_team") == nfl_home
+                        and p.get("home_team") == nfl_away
+                        and str(p.get("game_date")) == dt)
+                ]
+                if matched:
+                    return matched
 
         # Fallback: old_game_id (GSIS format, not ESPN — unlikely to match)
         return [
