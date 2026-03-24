@@ -54,6 +54,7 @@ from .polling_tasks import (
 # Re-export all tasks for Celery discovery
 from .scrape_tasks import (
     poll_game_calendars,
+    run_bulk_backfill,
     run_scheduled_ingestion,
     run_scrape_job,
 )
