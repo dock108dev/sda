@@ -37,44 +37,25 @@ def ingest_boxscores(
             reason="All dates are today or in the future - no completed games to scrape",
         )
     else:
-        # Dispatch table for API-based boxscore ingestion
-        _LEAGUE_DISPATCH: dict[str, tuple] = {}
+        # Step 1: Pre-populate game stubs from each league's schedule API
+        # so every game exists regardless of Odds API coverage.
+        _SCHEDULE_POPULATE = {
+            "NHL": ("nhl_boxscore_ingestion", "populate_nhl_games_from_schedule"),
+            "NBA": ("nba_boxscore_ingestion", "populate_nba_games_from_schedule"),
+            "NCAAB": ("ncaab_boxscore_ingestion", "populate_ncaab_games_from_schedule"),
+            "MLB": ("mlb_boxscore_ingestion", "populate_mlb_games_from_schedule"),
+            # NFL pre-populates inside its own ingest_boxscores_via_nfl_api
+        }
 
-        if config.league_code == "NHL":
-            from ..nhl_boxscore_ingestion import ingest_boxscores_via_nhl_api
-
-            _LEAGUE_DISPATCH["NHL"] = (
-                ingest_boxscores_via_nhl_api,
-                "nhl_api",
-                "nhl_boxscore_ingestion_failed",
-            )
-        elif config.league_code == "NCAAB":
-            from ..ncaab_boxscore_ingestion import ingest_boxscores_via_ncaab_api
-
-            _LEAGUE_DISPATCH["NCAAB"] = (
-                ingest_boxscores_via_ncaab_api,
-                "cbb_api",
-                "ncaab_boxscore_ingestion_failed",
-            )
-        elif config.league_code == "NBA":
-            from ..nba_boxscore_ingestion import ingest_boxscores_via_nba_api
-
-            _LEAGUE_DISPATCH["NBA"] = (
-                ingest_boxscores_via_nba_api,
-                "nba_api",
-                "nba_boxscore_ingestion_failed",
-            )
-        elif config.league_code == "MLB":
-            from ..mlb_boxscore_ingestion import (
-                ingest_boxscores_via_mlb_api,
-                populate_mlb_games_from_schedule,
-            )
-
-            # Pre-populate game stubs from MLB Schedule API so every game
-            # exists regardless of Odds API coverage.
+        schedule_entry = _SCHEDULE_POPULATE.get(config.league_code)
+        if schedule_entry:
+            mod_name, fn_name = schedule_entry
             try:
+                import importlib
+                mod = importlib.import_module(f"..{mod_name}", package="sports_scraper.services.phases")
+                populate_fn = getattr(mod, fn_name)
                 with get_session() as session:
-                    schedule_created = populate_mlb_games_from_schedule(
+                    schedule_created = populate_fn(
                         session,
                         run_id=run_id,
                         start_date=start,
@@ -82,30 +63,37 @@ def ingest_boxscores(
                     )
                     session.commit()
                 logger.info(
-                    "mlb_schedule_pre_populate_done",
+                    "schedule_pre_populate_done",
                     run_id=run_id,
+                    league=config.league_code,
                     created=schedule_created,
                 )
             except Exception as exc:
-                logger.exception(
-                    "mlb_schedule_pre_populate_failed",
+                logger.warning(
+                    "schedule_pre_populate_failed",
                     run_id=run_id,
+                    league=config.league_code,
                     error=str(exc),
                 )
 
-            _LEAGUE_DISPATCH["MLB"] = (
-                ingest_boxscores_via_mlb_api,
-                "mlb_api",
-                "mlb_boxscore_ingestion_failed",
-            )
+        # Step 2: Dispatch to league-specific boxscore ingestion
+        _LEAGUE_DISPATCH: dict[str, tuple] = {}
+
+        if config.league_code == "NHL":
+            from ..nhl_boxscore_ingestion import ingest_boxscores_via_nhl_api
+            _LEAGUE_DISPATCH["NHL"] = (ingest_boxscores_via_nhl_api, "nhl_api", "nhl_boxscore_ingestion_failed")
+        elif config.league_code == "NCAAB":
+            from ..ncaab_boxscore_ingestion import ingest_boxscores_via_ncaab_api
+            _LEAGUE_DISPATCH["NCAAB"] = (ingest_boxscores_via_ncaab_api, "cbb_api", "ncaab_boxscore_ingestion_failed")
+        elif config.league_code == "NBA":
+            from ..nba_boxscore_ingestion import ingest_boxscores_via_nba_api
+            _LEAGUE_DISPATCH["NBA"] = (ingest_boxscores_via_nba_api, "nba_api", "nba_boxscore_ingestion_failed")
+        elif config.league_code == "MLB":
+            from ..mlb_boxscore_ingestion import ingest_boxscores_via_mlb_api
+            _LEAGUE_DISPATCH["MLB"] = (ingest_boxscores_via_mlb_api, "mlb_api", "mlb_boxscore_ingestion_failed")
         elif config.league_code == "NFL":
             from ..nfl_boxscore_ingestion import ingest_boxscores_via_nfl_api
-
-            _LEAGUE_DISPATCH["NFL"] = (
-                ingest_boxscores_via_nfl_api,
-                "espn_nfl_api",
-                "nfl_boxscore_ingestion_failed",
-            )
+            _LEAGUE_DISPATCH["NFL"] = (ingest_boxscores_via_nfl_api, "espn_nfl_api", "nfl_boxscore_ingestion_failed")
 
         dispatch = _LEAGUE_DISPATCH.get(config.league_code)
 

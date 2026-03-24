@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from ..db import db_models
 from ..logging import logger
 from ..models import TeamIdentity
+from ..persistence.games import upsert_game_stub
 from ..persistence.boxscores import (
     PlayerBoxscoreStats,
     upsert_player_boxscores,
@@ -31,6 +32,59 @@ from ..persistence.boxscores import (
 from ..persistence.games import _normalize_status, resolve_status_transition
 from ..utils.datetime_utils import end_of_et_day_utc, now_utc, start_of_et_day_utc, to_et_date
 from .pbp_nba import populate_nba_game_ids
+
+
+def populate_nba_games_from_schedule(
+    session: Session,
+    *,
+    run_id: int = 0,
+    start_date: date,
+    end_date: date,
+) -> int:
+    """Pre-populate NBA game stubs from the NBA Schedule API.
+
+    The NBA CDN schedule endpoint returns the full current season.
+    For each date in the range, fetches games and upserts stubs so
+    every game exists regardless of Odds API coverage.
+
+    Returns number of new games created.
+    """
+    from ..live.nba import NBALiveFeedClient
+
+    client = NBALiveFeedClient()
+    created = 0
+    total_found = 0
+    current = start_date
+
+    while current <= end_date:
+        try:
+            games = client.fetch_scoreboard(current)
+            total_found += len(games)
+            for g in games:
+                try:
+                    _game_id, was_created = upsert_game_stub(
+                        session,
+                        league_code="NBA",
+                        game_date=g.game_date,
+                        home_team=TeamIdentity(league_code="NBA", name=g.home_abbr, abbreviation=g.home_abbr),
+                        away_team=TeamIdentity(league_code="NBA", name=g.away_abbr, abbreviation=g.away_abbr),
+                        status=g.status,
+                        home_score=g.home_score,
+                        away_score=g.away_score,
+                        external_ids={"nba_game_id": g.game_id},
+                    )
+                    if was_created:
+                        created += 1
+                except Exception as exc:
+                    logger.warning("nba_schedule_stub_failed", run_id=run_id, game_id=g.game_id, error=str(exc))
+        except Exception as exc:
+            logger.warning("nba_schedule_date_failed", run_id=run_id, date=str(current), error=str(exc))
+
+        current += __import__("datetime").timedelta(days=1)
+
+    session.flush()
+    logger.info("nba_schedule_pre_populate_complete", run_id=run_id, total_found=total_found, created=created)
+    return created
 
 
 def select_games_for_boxscores_nba_api(

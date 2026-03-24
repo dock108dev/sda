@@ -33,6 +33,56 @@ from ..utils.datetime_utils import (
 from .pbp_ingestion import populate_nhl_game_ids
 
 
+def populate_nhl_games_from_schedule(
+    session: Session,
+    *,
+    run_id: int = 0,
+    start_date: date,
+    end_date: date,
+) -> int:
+    """Pre-populate NHL game stubs from the official NHL Schedule API.
+
+    Ensures every NHL game exists in the database regardless of Odds API
+    coverage.  Uses upsert_game_stub which is idempotent.
+
+    Returns number of new games created.
+    """
+    from ..live.nhl import NHLLiveFeedClient
+    from ..persistence.games import upsert_game_stub
+
+    client = NHLLiveFeedClient()
+    nhl_games = client.fetch_schedule(start_date, end_date)
+
+    if not nhl_games:
+        logger.info("nhl_schedule_no_games", run_id=run_id, start_date=str(start_date), end_date=str(end_date))
+        return 0
+
+    logger.info("nhl_schedule_pre_populate_start", run_id=run_id, schedule_games=len(nhl_games))
+
+    created = 0
+    for g in nhl_games:
+        try:
+            _game_id, was_created = upsert_game_stub(
+                session,
+                league_code="NHL",
+                game_date=g.game_date,
+                home_team=g.home_team,
+                away_team=g.away_team,
+                status=g.status,
+                home_score=g.home_score,
+                away_score=g.away_score,
+                external_ids={"nhl_game_pk": str(g.game_id)},
+            )
+            if was_created:
+                created += 1
+        except Exception as exc:
+            logger.warning("nhl_schedule_stub_failed", run_id=run_id, game_id=g.game_id, error=str(exc))
+
+    session.flush()
+    logger.info("nhl_schedule_pre_populate_complete", run_id=run_id, schedule_games=len(nhl_games), created=created)
+    return created
+
+
 def select_games_for_boxscores_nhl_api(
     session: Session,
     *,

@@ -29,6 +29,58 @@ from .ncaab_game_ids import (
 )
 
 
+def populate_ncaab_games_from_schedule(
+    session: Session,
+    *,
+    run_id: int = 0,
+    start_date: date,
+    end_date: date,
+) -> int:
+    """Pre-populate NCAAB game stubs from the CBB API.
+
+    Ensures every NCAAB game exists in the database regardless of Odds API
+    coverage.  Uses upsert_game_stub which is idempotent.
+
+    Returns number of new games created.
+    """
+    from ..db import db_models
+    from ..live.ncaab import NCAABLiveFeedClient
+    from ..models import TeamIdentity
+    from ..persistence.games import upsert_game_stub
+
+    client = NCAABLiveFeedClient()
+    ncaab_games = client.fetch_games(start_date, end_date)
+
+    if not ncaab_games:
+        logger.info("ncaab_schedule_no_games", run_id=run_id, start_date=str(start_date), end_date=str(end_date))
+        return 0
+
+    logger.info("ncaab_schedule_pre_populate_start", run_id=run_id, schedule_games=len(ncaab_games))
+
+    created = 0
+    for g in ncaab_games:
+        try:
+            _game_id, was_created = upsert_game_stub(
+                session,
+                league_code="NCAAB",
+                game_date=g.game_date,
+                home_team=TeamIdentity(league_code="NCAAB", name=g.home_team_name, abbreviation=None),
+                away_team=TeamIdentity(league_code="NCAAB", name=g.away_team_name, abbreviation=None),
+                status=g.status,
+                home_score=g.home_score,
+                away_score=g.away_score,
+                external_ids={"cbb_game_id": str(g.game_id)},
+            )
+            if was_created:
+                created += 1
+        except Exception as exc:
+            logger.warning("ncaab_schedule_stub_failed", run_id=run_id, game_id=g.game_id, error=str(exc))
+
+    session.flush()
+    logger.info("ncaab_schedule_pre_populate_complete", run_id=run_id, schedule_games=len(ncaab_games), created=created)
+    return created
+
+
 def ingest_boxscores_via_ncaab_api(
     session: Session,
     *,
