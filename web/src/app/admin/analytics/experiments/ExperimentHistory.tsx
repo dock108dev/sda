@@ -69,7 +69,7 @@ export function ExperimentHistory({ refreshKey, sportCode = "mlb" }: { refreshKe
       } catch { /* ignore poll errors */ }
     }, 5000);
     return () => clearInterval(interval);
-  }, [suites, expanded]);
+  }, [suites, expanded, sportCode]);
 
   async function handleExpand(suiteId: number) {
     if (expanded?.id === suiteId) { setExpanded(null); return; }
