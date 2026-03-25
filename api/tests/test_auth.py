@@ -339,6 +339,7 @@ class TestConfigurationValidation:
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("API_KEY", valid_key)
         monkeypatch.setenv("ALLOWED_CORS_ORIGINS", "https://example.com")
+        monkeypatch.setenv("JWT_SECRET", "x" * 32)
 
         settings = Settings(_env_file=None)
 
@@ -355,6 +356,7 @@ class TestConfigurationValidation:
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("API_KEY", valid_key)
         monkeypatch.setenv("ALLOWED_CORS_ORIGINS", "https://example.com")
+        monkeypatch.setenv("JWT_SECRET", "x" * 32)
 
         settings = Settings(_env_file=None)
 

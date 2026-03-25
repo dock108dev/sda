@@ -14,6 +14,11 @@ from app.analytics.services.profile_service import ProfileResult
 from app.db import get_db
 from app.routers.simulator import router
 
+# The MLB endpoints now live in simulator_mlb but are included into the main
+# router via include_router.  Patches must target the module where the name
+# is looked up at runtime.
+_MLB_MOD = "app.routers.simulator_mlb"
+
 
 def _make_client(mock_db=None):
     """Create a TestClient with mocked DB dependency."""
@@ -68,9 +73,9 @@ class TestListSimulatorTeams:
 class TestSimulateMLBGame:
     """POST /api/simulator/mlb"""
 
-    @patch("app.routers.simulator._predict_with_game_model", new_callable=AsyncMock)
-    @patch("app.routers.simulator.get_team_rolling_profile", new_callable=AsyncMock)
-    @patch("app.routers.simulator._service")
+    @patch(f"{_MLB_MOD}._predict_with_game_model", new_callable=AsyncMock)
+    @patch(f"{_MLB_MOD}.get_team_rolling_profile", new_callable=AsyncMock)
+    @patch(f"{_MLB_MOD}._service")
     def test_runs_simulation_no_profiles(
         self, mock_service, mock_profile, mock_model_predict,
     ) -> None:
@@ -103,9 +108,9 @@ class TestSimulateMLBGame:
         assert data["profiles_loaded"] is False
         assert data["iterations"] == 100
 
-    @patch("app.routers.simulator._predict_with_game_model", new_callable=AsyncMock)
-    @patch("app.routers.simulator.get_team_rolling_profile", new_callable=AsyncMock)
-    @patch("app.routers.simulator._service")
+    @patch(f"{_MLB_MOD}._predict_with_game_model", new_callable=AsyncMock)
+    @patch(f"{_MLB_MOD}.get_team_rolling_profile", new_callable=AsyncMock)
+    @patch(f"{_MLB_MOD}._service")
     def test_runs_simulation_with_profiles(
         self, mock_service, mock_profile, mock_model_predict,
     ) -> None:

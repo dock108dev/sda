@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { listMLBTeams, type MLBTeam } from "@/lib/api/analytics";
+import { listTeams, type MLBTeam } from "@/lib/api/analytics";
+import { SportSelector } from "@/components/admin/SportSelector";
+import { type AnalyticsSport } from "@/lib/constants/analytics";
 import { TeamProfileComparison } from "../simulator/TeamProfileComparison";
 import styles from "../analytics.module.css";
 
 export default function ProfilesPage() {
+  const [sport, setSport] = useState<AnalyticsSport>("MLB");
+  const sportCode = sport.toLowerCase();
   const [teams, setTeams] = useState<MLBTeam[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [homeTeam, setHomeTeam] = useState("");
@@ -13,15 +17,19 @@ export default function ProfilesPage() {
   const [rollingWindow, setRollingWindow] = useState(30);
 
   useEffect(() => {
+    setTeams([]);
+    setTeamsLoading(true);
+    setHomeTeam("");
+    setAwayTeam("");
     (async () => {
       try {
-        const res = await listMLBTeams();
+        const res = await listTeams(sportCode);
         setTeams(res.teams);
       } finally {
         setTeamsLoading(false);
       }
     })();
-  }, []);
+  }, [sportCode]);
 
   const teamsWithStats = teams.filter((t) => t.games_with_stats > 0);
 
@@ -33,6 +41,8 @@ export default function ProfilesPage() {
           Compare team rolling profiles and scouting metrics
         </p>
       </header>
+
+      <SportSelector value={sport} onChange={setSport} />
 
       <div className={styles.formRow}>
         <div className={styles.formGroup}>
@@ -83,6 +93,7 @@ export default function ProfilesPage() {
           homeTeam={homeTeam}
           awayTeam={awayTeam}
           rollingWindow={rollingWindow}
+          sport={sportCode}
         />
       )}
     </div>

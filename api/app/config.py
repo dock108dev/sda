@@ -141,6 +141,12 @@ class Settings(BaseSettings):
                 raise ValueError("API_KEY must be set for production or staging.")
             if len(self.api_key) < 32:
                 raise ValueError("API_KEY must be at least 32 characters long.")
+            if self.jwt_secret == "dev-jwt-secret-change-in-production":
+                raise ValueError(
+                    "JWT_SECRET must be changed from the default for production or staging."
+                )
+            if len(self.jwt_secret) < 32:
+                raise ValueError("JWT_SECRET must be at least 32 characters long.")
         if self.rate_limit_requests <= 0 or self.rate_limit_window_seconds <= 0:
             raise ValueError("Rate limit settings must be positive integers.")
         return self

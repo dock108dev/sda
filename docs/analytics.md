@@ -18,10 +18,16 @@ Predictive modeling, simulation, and matchup analysis for sports data.
 | `inference/` | Model inference engine with in-memory artifact caching |
 | `models/core/` | BaseModel interface, ModelRegistry (JSON-backed), ModelLoader |
 | `models/sports/mlb/` | MLB models — plate appearance, pitch, batted ball, run expectancy, game |
+| `models/sports/nba/` | NBA models — possession, game (rule-based defaults until trained) |
+| `models/sports/nhl/` | NHL models — shot, game (rule-based defaults until trained) |
+| `models/sports/ncaab/` | NCAAB models — possession, game (rule-based defaults until trained) |
 | `probabilities/` | Provider abstraction — rule-based, ML, ensemble; ProbabilityResolver for routing |
 | `services/` | AnalyticsService (API adapter), ModelService (model management) |
 | `simulation/` | Pitch-level simulators (PitchSimulator, PitchLevelGameSimulator) |
-| `sports/mlb/` | MLB PA-level game simulator, transforms, metrics, matchup logic; `constants.py` is the SSOT for all MLB baselines, event probabilities, and feature defaults |
+| `sports/mlb/` | MLB PA-level game simulator, metrics, matchup logic; `constants.py` is the SSOT for all MLB baselines and canonical team abbreviations |
+| `sports/nba/` | NBA possession-based game simulator, metrics; `constants.py` for NBA baselines |
+| `sports/nhl/` | NHL shot-based game simulator (with shootout), metrics; `constants.py` for NHL baselines |
+| `sports/ncaab/` | NCAAB four-factor possession simulator (with ORB mechanic), metrics; `constants.py` for NCAAB baselines |
 | `training/core/` | TrainingPipeline, DatasetBuilder, ModelEvaluator |
 | `training/sports/` | Sport-specific training (MLBTrainingPipeline — label extraction, record builders; stubs only for data loading) |
 
@@ -65,7 +71,7 @@ The diagnostics are surfaced in the API response as `simulation_info` and in the
 
 ### Profile Freshness
 
-`get_team_rolling_profile()` returns a `ProfileResult` dataclass (`services/profile_service.py`) with freshness metadata:
+`get_team_rolling_profile()` returns a `ProfileResult` dataclass (`services/profile_service.py`) with freshness metadata. This function supports all sports (MLB, NBA, NHL, NCAAB), using sport-specific advanced stats tables to build each team's rolling profile:
 
 ```python
 @dataclass
@@ -105,6 +111,41 @@ Event data is backward compatible — existing callers that only read `home_scor
 - `core/simulation_runner.py` — N iterations + aggregation + event summary + variance computation
 - `core/simulation_analysis.py` — sanity checks
 - `sports/mlb/game_simulator.py` — PA-level MLB simulator
+
+### NBA Game Simulation (Possession-Level)
+
+Each game simulates ~100 possessions per team across 4 quarters + overtime:
+
+1. Sample possession event (two_pt_make, two_pt_miss, three_pt_make, three_pt_miss, free_throw_trip, turnover)
+2. Score points based on event type (2PT=2, 3PT=3, FT trip=~1.5 avg)
+3. Free throw trips simulate 2 individual FTs at the team's FT%
+4. If tied after 4 quarters, play 5-minute OT periods (max 5)
+
+**Key files:** `sports/nba/game_simulator.py`, `sports/nba/constants.py`
+
+### NHL Game Simulation (Shot-Level)
+
+Each game simulates ~30 shot attempts per team across 3 periods:
+
+1. Sample shot event (goal, save, blocked_shot, missed_shot)
+2. Goals increment score; other events are tracked
+3. If tied after 3 periods: sudden-death 5-minute OT
+4. If still tied: shootout (alternating rounds, max 5 + sudden death)
+
+**Key files:** `sports/nhl/game_simulator.py`, `sports/nhl/constants.py`
+
+### NCAAB Game Simulation (Four-Factor Possession)
+
+Each game simulates ~68 possessions per team across 2 halves:
+
+1. Sample possession event (same as NBA events)
+2. On missed shots: offensive rebound chance (ORB%) grants extra possession (max 3 consecutive)
+3. Free throw trips simulate 2 FTs at team's FT%
+4. If tied after 2 halves: 5-minute OT periods (max 5)
+
+The four-factor model (eFG%, TOV%, ORB%, FT rate) directly maps to possession probabilities.
+
+**Key files:** `sports/ncaab/game_simulator.py`, `sports/ncaab/constants.py`
 
 ### Lineup-Aware Simulation
 

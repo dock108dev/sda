@@ -8,7 +8,7 @@
 
 | Nav Item | Route | Purpose |
 |----------|-------|---------|
-| **Simulator** | `/analytics/simulator` | MLB pregame Monte Carlo simulations using pitch-level data |
+| **Simulator** | `/analytics/simulator` | Multi-sport pregame Monte Carlo simulations (MLB, NBA, NHL, NCAAB) |
 | **Models** | `/analytics/models` | Feature loadouts, training, model registry, performance |
 | **Batch Sims** | `/analytics/batch` | Bulk simulation jobs + prediction outcome tracking |
 | **Experiments** | `/analytics/experiments` | Parameter sweep training + variant comparison |
@@ -23,14 +23,15 @@ Monte Carlo simulations using pitch-level data and team profiles.
 ### Teams & Rosters
 
 ```
-GET /api/analytics/mlb-teams
-GET /api/analytics/mlb-roster?team=NYY
+GET /api/analytics/{sport}/teams    (sport = mlb, nba, nhl, ncaab)
+GET /api/analytics/mlb-teams        (MLB backward compat)
+GET /api/analytics/mlb-roster?team=NYY (MLB only — lineup support)
 ```
 
 ### Team Profiles
 
 ```
-GET /api/analytics/team-profile?team=NYY&rolling_window=30
+GET /api/analytics/team-profile?team=NYY&sport=mlb&rolling_window=30
 ```
 
 Returns team metrics with league baselines for comparison.
@@ -59,6 +60,28 @@ POST /api/analytics/simulate
 The backend uses the active trained model (or the model specified by `model_id`). Falls back to rule-based if no model is trained.
 
 The response includes `event_summary` (per-team PA rates and game shape metrics) and `simulation_info.sanity_warnings` when anomalous results are detected.
+
+**Multi-sport:** The same endpoint works for any sport:
+```json
+{
+  "sport": "nba",
+  "home_team": "BOS",
+  "away_team": "LAL",
+  "iterations": 5000
+}
+```
+Lineup-related fields (`home_lineup`, `away_lineup`, `home_starter`, `away_starter`, `starter_innings`) are MLB-only.
+
+### Public Simulator API (for downstream apps)
+
+Simplified endpoints at `/api/simulator/{sport}` — no configuration needed:
+
+```
+GET  /api/simulator/{sport}/teams
+POST /api/simulator/{sport}  {"home_team": "BOS", "away_team": "LAL"}
+```
+
+See [API Reference](api.md#simulator) for full documentation.
 
 ---
 

@@ -37,7 +37,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function TrainingPanel() {
+export function TrainingPanel({ sportCode = "mlb" }: { sportCode?: string }) {
   const [loadouts, setLoadouts] = useState<FeatureLoadout[]>([]);
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
@@ -55,15 +55,15 @@ export function TrainingPanel() {
   const refresh = useCallback(async () => {
     try {
       const [loadoutRes, jobsRes] = await Promise.all([
-        listFeatureLoadouts("mlb"),
-        listTrainingJobs("mlb"),
+        listFeatureLoadouts(sportCode),
+        listTrainingJobs(sportCode),
       ]);
       setLoadouts(loadoutRes.loadouts);
       setJobs(jobsRes.jobs);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, []);
+  }, [sportCode]);
 
   useEffect(() => {
     refresh();
@@ -78,7 +78,7 @@ export function TrainingPanel() {
 
     const interval = setInterval(async () => {
       try {
-        const jobsRes = await listTrainingJobs("mlb");
+        const jobsRes = await listTrainingJobs(sportCode);
         setJobs(jobsRes.jobs);
       } catch (err) {
         console.warn("Training job poll failed:", err);
@@ -86,7 +86,7 @@ export function TrainingPanel() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [jobs]);
+  }, [jobs, sportCode]);
 
   const [cancelingIds, setCancelingIds] = useState<Set<number>>(new Set());
 
@@ -113,7 +113,7 @@ export function TrainingPanel() {
     try {
       const res = await startTraining({
         feature_config_id: selectedLoadout,
-        sport: "mlb",
+        sport: sportCode,
         model_type: modelType,
         algorithm,
         date_start: dateStart || undefined,

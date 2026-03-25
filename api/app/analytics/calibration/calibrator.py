@@ -114,6 +114,11 @@ class SimCalibrator:
         if not self._trained:
             raise RuntimeError("Cannot save untrained calibrator.")
         joblib.dump(self._model, str(path))
+        try:
+            from app.analytics.models.core.artifact_signing import sign_artifact
+            sign_artifact(path)
+        except (RuntimeError, Exception):
+            logger.warning("calibrator_signing_skipped", extra={"path": str(path)})
         logger.info("calibrator_saved", extra={"path": str(path)})
 
     def load(self, path: str | Path) -> None:

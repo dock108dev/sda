@@ -13,11 +13,15 @@ import {
   type BatchSimGameResult,
   type PredictionOutcome,
 } from "@/lib/api/analytics";
+import { SportSelector } from "@/components/admin/SportSelector";
+import { SPORT_CONFIGS, type AnalyticsSport } from "@/lib/constants/analytics";
 import { ROUTES } from "@/lib/constants/routes";
 import styles from "../analytics.module.css";
 
 export default function BatchSimsPage() {
-  const sport = "mlb";
+  const [sport, setSport] = useState<AnalyticsSport>("MLB");
+  const sportCode = sport.toLowerCase();
+  const sportConfig = SPORT_CONFIGS[sport] || SPORT_CONFIGS.MLB;
   const [iterations, setIterations] = useState(5000);
   const [rollingWindow, setRollingWindow] = useState(30);
   const [dateStart, setDateStart] = useState("");
@@ -95,13 +99,13 @@ export default function BatchSimsPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await listBatchSimJobs(sport);
+      const res = await listBatchSimJobs(sportCode);
       setJobs(res.jobs);
       setJobsError(null);
     } catch {
       setJobsError("Failed to load batch sim jobs");
     }
-  }, [sport]);
+  }, [sportCode]);
 
   useEffect(() => {
     refresh();
@@ -123,8 +127,8 @@ export default function BatchSimsPage() {
     setMessage(null);
     try {
       const res = await startBatchSimulation({
-        sport,
-        probability_mode: "ml",
+        sport: sportCode,
+        probability_mode: sportConfig.defaultProbMode,
         iterations,
         rolling_window: rollingWindow,
         date_start: dateStart || undefined,
@@ -163,6 +167,8 @@ export default function BatchSimsPage() {
           Run simulations for upcoming games and track prediction outcomes
         </p>
       </header>
+
+      <SportSelector value={sport} onChange={setSport} />
 
       <AdminCard title="Run New Batch" subtitle="Uses the active ML model — falls back to rule-based if none trained">
         <div className={styles.formRow}>

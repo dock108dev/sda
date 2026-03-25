@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/analytics";
 import styles from "../analytics.module.css";
 
-export function LoadoutsPanel() {
+export function LoadoutsPanel({ sportCode = "mlb" }: { sportCode?: string }) {
   const [loadouts, setLoadouts] = useState<FeatureLoadout[]>([]);
   const [selected, setSelected] = useState<FeatureLoadout | null>(null);
   const [availableFeatures, setAvailableFeatures] = useState<AvailableFeature[]>([]);
@@ -35,8 +35,8 @@ export function LoadoutsPanel() {
     setError(null);
     try {
       const [loadoutRes, featRes] = await Promise.all([
-        listFeatureLoadouts("mlb"),
-        getAvailableFeatures("mlb"),
+        listFeatureLoadouts(sportCode),
+        getAvailableFeatures(sportCode),
       ]);
       setLoadouts(loadoutRes.loadouts);
       setAvailableFeatures(featRes.all_features);
@@ -46,7 +46,7 @@ export function LoadoutsPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sportCode]);
 
   useEffect(() => {
     refresh();
@@ -62,7 +62,7 @@ export function LoadoutsPanel() {
 
       const res = await createFeatureLoadout({
         name: newName.trim(),
-        sport: "mlb",
+        sport: sportCode,
         model_type: newModelType,
         features,
       });

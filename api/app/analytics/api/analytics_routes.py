@@ -26,6 +26,7 @@ from app.analytics.services.profile_service import (
     get_team_rolling_profile,
     get_team_roster,
     profile_to_pa_probabilities,
+    profile_to_probabilities,
 )
 from app.db import get_db
 
@@ -36,13 +37,7 @@ from ._simulation_helpers import (  # noqa: F401
 )
 from ._simulation_helpers import _build_lineup_context, _predict_with_game_model
 
-# Canonical 30 MLB team abbreviations — excludes All-Star, minor league,
-# and spring training teams that may exist in the DB under the MLB league.
-_MLB_TEAM_ABBRS = frozenset({
-    "ARI", "ATL", "BAL", "BOS", "CHC", "CWS", "CIN", "CLE", "COL", "DET",
-    "HOU", "KC", "LAA", "LAD", "MIA", "MIL", "MIN", "NYM", "NYY", "OAK",
-    "PHI", "PIT", "SD", "SF", "SEA", "STL", "TB", "TEX", "TOR", "WSH",
-})
+from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS
 
 logger = logging.getLogger(__name__)
 
@@ -150,8 +145,8 @@ async def post_simulate(
 
             # Always compute profile-derived PA probs (for display),
             # but only use them as simulator input for rule_based / unspecified modes.
-            profile_home_pa = profile_to_pa_probabilities(home_profile)
-            profile_away_pa = profile_to_pa_probabilities(away_profile)
+            profile_home_pa = profile_to_probabilities(req.sport, home_profile)
+            profile_away_pa = profile_to_probabilities(req.sport, away_profile)
             profile_meta["profile_pa_probabilities"] = {
                 "home": profile_home_pa,
                 "away": profile_away_pa,
@@ -248,10 +243,13 @@ async def post_simulate(
 
     # Thread raw profiles and baselines into profile_meta for edge analysis
     if home_profile and away_profile:
-        from app.analytics.sports.mlb.constants import FEATURE_BASELINES
+        import importlib as _importlib
+        baselines_config = _SPORT_BASELINES.get(req.sport.lower(), _SPORT_BASELINES["mlb"])
+        baselines_mod = _importlib.import_module(baselines_config[0])
+        sport_baselines = getattr(baselines_mod, baselines_config[1])
         profile_meta["home_profile"] = home_profile
         profile_meta["away_profile"] = away_profile
-        profile_meta["baselines"] = {k: v for k, v in FEATURE_BASELINES.items() if k in home_profile}
+        profile_meta["baselines"] = {k: v for k, v in sport_baselines.items() if k in home_profile}
 
     # Merge profile metadata into response
     if profile_meta:
@@ -306,21 +304,27 @@ async def post_simulate(
 @router.get("/team-profile")
 async def get_team_profile(
     team: str = Query(..., description="Team abbreviation (e.g., NYY)"),
+    sport: str = Query("mlb", description="Sport code (e.g., mlb, nba, nhl, ncaab)"),
     rolling_window: int = Query(30, ge=5, le=162, description="Rolling window for profile building"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Get a team's rolling profile with league baselines for comparison."""
-    from app.analytics.sports.mlb.constants import FEATURE_BASELINES
+    import importlib
+
+    sport_lower = sport.lower()
+    baselines_config = _SPORT_BASELINES.get(sport_lower, _SPORT_BASELINES["mlb"])
+    baselines_mod = importlib.import_module(baselines_config[0])
+    sport_baselines = getattr(baselines_mod, baselines_config[1])
 
     profile_result = await get_team_rolling_profile(
-        team, "mlb", rolling_window=rolling_window, db=db,
+        team, sport_lower, rolling_window=rolling_window, db=db,
     )
     if profile_result is None:
         return {"error": f"No profile data found for {team}", "team": team, "games_used": 0,
                 "date_range": [None, None], "season_breakdown": {}, "metrics": {}, "baselines": {}}
 
     metrics = profile_result.metrics
-    baselines = {k: v for k, v in FEATURE_BASELINES.items() if k in metrics}
+    baselines = {k: v for k, v in sport_baselines.items() if k in metrics}
 
     return {
         "team": team,
@@ -330,6 +334,88 @@ async def get_team_profile(
         "metrics": metrics,
         "baselines": baselines,
     }
+
+
+# ---------------------------------------------------------------------------
+# Sport-aware lookup tables (multi-sport support)
+# ---------------------------------------------------------------------------
+
+_SPORT_ADVANCED_STATS: dict[str, tuple[str, str, str]] = {
+    "mlb": ("MLB", "app.db.mlb_advanced", "MLBGameAdvancedStats"),
+    "nba": ("NBA", "app.db.nba_advanced", "NBAGameAdvancedStats"),
+    "nhl": ("NHL", "app.db.nhl_advanced", "NHLGameAdvancedStats"),
+    "ncaab": ("NCAAB", "app.db.ncaab_advanced", "NCAABGameAdvancedStats"),
+}
+
+_SPORT_BASELINES: dict[str, tuple[str, str]] = {
+    "mlb": ("app.analytics.sports.mlb.constants", "FEATURE_BASELINES"),
+    "nba": ("app.analytics.sports.nba.constants", "FEATURE_BASELINES"),
+    "nhl": ("app.analytics.sports.nhl.constants", "FEATURE_BASELINES"),
+    "ncaab": ("app.analytics.sports.ncaab.constants", "FEATURE_BASELINES"),
+}
+
+
+@router.get("/{sport}/teams")
+async def get_sport_teams(
+    sport: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List teams for any sport with count of games that have advanced stats."""
+    import importlib
+
+    from sqlalchemy import func as sa_func
+    from sqlalchemy import select as sa_select
+
+    from app.db.sports import SportsLeague, SportsTeam
+
+    sport_lower = sport.lower()
+    config = _SPORT_ADVANCED_STATS.get(sport_lower)
+    if config is None:
+        return {"error": f"Unsupported sport: {sport}", "teams": [], "count": 0}
+
+    league_code, model_module, model_class_name = config
+
+    mod = importlib.import_module(model_module)
+    StatsModel = getattr(mod, model_class_name)
+
+    league_sq = sa_select(SportsLeague.id).where(SportsLeague.code == league_code).scalar_subquery()
+
+    stmt = (
+        sa_select(
+            SportsTeam.id,
+            SportsTeam.name,
+            SportsTeam.short_name,
+            SportsTeam.abbreviation,
+            sa_func.count(StatsModel.id).label("games_with_stats"),
+        )
+        .outerjoin(StatsModel, StatsModel.team_id == SportsTeam.id)
+        .where(
+            SportsTeam.league_id == league_sq,
+            SportsTeam.abbreviation.isnot(None),
+            SportsTeam.abbreviation != "",
+        )
+        .group_by(SportsTeam.id)
+        .having(sa_func.count(StatsModel.id) > 0)
+        .order_by(SportsTeam.name)
+    )
+
+    # For MLB, also filter by canonical team abbrs
+    if sport_lower == "mlb":
+        stmt = stmt.where(SportsTeam.abbreviation.in_(_MLB_TEAM_ABBRS))
+
+    result = await db.execute(stmt)
+    rows = result.all()
+    teams = [
+        {
+            "id": r.id,
+            "name": r.name,
+            "short_name": r.short_name,
+            "abbreviation": r.abbreviation,
+            "games_with_stats": r.games_with_stats,
+        }
+        for r in rows
+    ]
+    return {"teams": teams, "count": len(teams)}
 
 
 @router.get("/mlb-teams")

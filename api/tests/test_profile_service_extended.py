@@ -453,10 +453,10 @@ class TestSeasonWeightsAndWeightedMean:
 
 class TestGetTeamRollingProfile:
     @pytest.mark.asyncio
-    async def test_returns_none_for_non_mlb_sport(self):
-        """Line 75: non-MLB sport returns None immediately."""
+    async def test_returns_none_for_unsupported_sport(self):
+        """Unsupported sport returns None immediately."""
         db = AsyncMock()
-        result = await get_team_rolling_profile("NYY", "nba", db=db)
+        result = await get_team_rolling_profile("NYY", "cricket", db=db)
         assert result is None
         db.execute.assert_not_called()
 

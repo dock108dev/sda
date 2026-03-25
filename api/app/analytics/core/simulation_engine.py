@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 # Registry mapping sport codes to (module_path, class_name).
 _SPORT_SIMULATORS: dict[str, tuple[str, str]] = {
     "mlb": ("app.analytics.sports.mlb.game_simulator", "MLBGameSimulator"),
+    "nba": ("app.analytics.sports.nba.game_simulator", "NBAGameSimulator"),
+    "nhl": ("app.analytics.sports.nhl.game_simulator", "NHLGameSimulator"),
+    "ncaab": ("app.analytics.sports.ncaab.game_simulator", "NCAABGameSimulator"),
 }
 
 

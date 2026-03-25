@@ -9,6 +9,8 @@ import {
   type AvailableFeature,
   type FeatureLoadout,
 } from "@/lib/api/analytics";
+import { SportSelector } from "@/components/admin/SportSelector";
+import { type AnalyticsSport } from "@/lib/constants/analytics";
 import styles from "../analytics.module.css";
 import { ExperimentHistory } from "./ExperimentHistory";
 
@@ -24,6 +26,8 @@ const TEST_SPLITS = [0.1, 0.15, 0.2, 0.25, 0.3];
 export default function ExperimentsPage() {
   // Bump to trigger history refresh after a new experiment is submitted
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sport, setSport] = useState<AnalyticsSport>("MLB");
+  const sportCode = sport.toLowerCase();
 
   return (
     <div className={styles.container}>
@@ -34,9 +38,11 @@ export default function ExperimentsPage() {
         </p>
       </header>
 
-      <ExperimentBuilder onSubmitted={() => setRefreshKey((k) => k + 1)} />
+      <SportSelector value={sport} onChange={setSport} />
+
+      <ExperimentBuilder sportCode={sportCode} onSubmitted={() => setRefreshKey((k) => k + 1)} />
       <div style={{ marginTop: "1.5rem" }}>
-        <ExperimentHistory refreshKey={refreshKey} />
+        <ExperimentHistory refreshKey={refreshKey} sportCode={sportCode} />
       </div>
     </div>
   );
@@ -59,7 +65,7 @@ interface FeatureGridEntry {
 /*  Experiment Builder                                                 */
 /* ------------------------------------------------------------------ */
 
-function ExperimentBuilder({ onSubmitted }: { onSubmitted: () => void }) {
+function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSubmitted: () => void }) {
   const [name, setName] = useState("");
   const [selectedAlgorithms, setSelectedAlgorithms] = useState<Set<string>>(new Set(["gradient_boosting"]));
   const [selectedWindows, setSelectedWindows] = useState<Set<number>>(new Set([30]));
@@ -115,11 +121,13 @@ function ExperimentBuilder({ onSubmitted }: { onSubmitted: () => void }) {
     );
   }
 
-  // Load available features and saved loadouts on mount
+  // Load available features and saved loadouts when sport changes
   useEffect(() => {
+    setFeaturesLoading(true);
+    setFeatureGrid([]);
     Promise.all([
-      getAvailableFeatures("mlb"),
-      listFeatureLoadouts("mlb").catch(() => ({ loadouts: [] })),
+      getAvailableFeatures(sportCode),
+      listFeatureLoadouts(sportCode).catch(() => ({ loadouts: [] })),
     ])
       .then(([featRes, loadoutRes]) => {
         const feats = featRes.plate_appearance_features || featRes.all_features || [];
@@ -129,7 +137,7 @@ function ExperimentBuilder({ onSubmitted }: { onSubmitted: () => void }) {
       })
       .catch(() => {})
       .finally(() => setFeaturesLoading(false));
-  }, []);
+  }, [sportCode]);
 
   const enabledFeatures = featureGrid.filter((f) => f.enabled);
   const variableFeatures = featureGrid.filter((f) => f.enabled && (f.vary_enabled || f.weight_min !== f.weight_max));
@@ -166,7 +174,7 @@ function ExperimentBuilder({ onSubmitted }: { onSubmitted: () => void }) {
     try {
       const res = await createExperimentSuite({
         name: name.trim(),
-        sport: "mlb",
+        sport: sportCode,
         model_type: "plate_appearance",
         parameter_grid: {
           algorithms: Array.from(selectedAlgorithms),

@@ -20,7 +20,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <div className={styles.adminShell}>
+    <>
+      <head>
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
+      <div className={styles.adminShell}>
       <header className={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button
@@ -54,5 +58,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </main>
       <RunsDrawer />
     </div>
+    </>
   );
 }

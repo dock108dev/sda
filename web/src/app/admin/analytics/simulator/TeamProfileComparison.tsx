@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AdminCard } from "@/components/admin";
-import { getTeamProfile, type TeamProfileResponse } from "@/lib/api/analytics";
+import { getTeamProfile, getTeamProfileMultiSport, type TeamProfileResponse } from "@/lib/api/analytics";
 import styles from "../analytics.module.css";
 
 interface MetricGroup {
@@ -63,10 +63,12 @@ export function TeamProfileComparison({
   homeTeam,
   awayTeam,
   rollingWindow = 30,
+  sport,
 }: {
   homeTeam: string;
   awayTeam: string;
   rollingWindow?: number;
+  sport?: string;
 }) {
   const [homeProfile, setHomeProfile] = useState<TeamProfileResponse | null>(null);
   const [awayProfile, setAwayProfile] = useState<TeamProfileResponse | null>(null);
@@ -77,9 +79,12 @@ export function TeamProfileComparison({
     setLoading(true);
     setError(null);
     try {
+      const fetchFn = sport
+        ? (team: string, w: number) => getTeamProfileMultiSport(team, sport, w)
+        : getTeamProfile;
       const [homeRes, awayRes] = await Promise.all([
-        getTeamProfile(home, window),
-        getTeamProfile(away, window),
+        fetchFn(home, window),
+        fetchFn(away, window),
       ]);
       setHomeProfile(homeRes);
       setAwayProfile(awayRes);
@@ -88,15 +93,15 @@ export function TeamProfileComparison({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sport]);
 
   const prevKey = useRef("");
   useEffect(() => {
-    const key = `${homeTeam}|${awayTeam}|${rollingWindow}`;
+    const key = `${homeTeam}|${awayTeam}|${rollingWindow}|${sport || ""}`;
     if (!homeTeam || !awayTeam || key === prevKey.current) return;
     prevKey.current = key;
     fetchProfiles(homeTeam, awayTeam, rollingWindow);
-  }, [homeTeam, awayTeam, rollingWindow, fetchProfiles]);
+  }, [homeTeam, awayTeam, rollingWindow, sport, fetchProfiles]);
 
   if (!homeTeam || !awayTeam) return null;
   if (loading) return <p style={{ color: "var(--text-muted)" }}>Loading team profiles...</p>;

@@ -30,7 +30,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
+export function ExperimentHistory({ refreshKey, sportCode = "mlb" }: { refreshKey: number; sportCode?: string }) {
   const [suites, setSuites] = useState<ExperimentSuite[]>([]);
   const [expanded, setExpanded] = useState<ExperimentSuite | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,14 +41,14 @@ export function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await listExperimentSuites("mlb");
+      const res = await listExperimentSuites(sportCode);
       setSuites(res.suites);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sportCode]);
 
   useEffect(() => {
     refresh();
@@ -60,7 +60,7 @@ export function ExperimentHistory({ refreshKey }: { refreshKey: number }) {
     if (active.length === 0) return;
     const interval = setInterval(async () => {
       try {
-        const res = await listExperimentSuites("mlb");
+        const res = await listExperimentSuites(sportCode);
         setSuites(res.suites);
         if (expanded && active.some((s) => s.id === expanded.id)) {
           const detail = await getExperimentSuite(expanded.id);

@@ -45,7 +45,7 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 **Purpose:** Automated ingestion from external sources
 
 - **Sports:** NBA, NHL, NCAAB, MLB, NFL
-- **Sources:** NBA API (boxscores + PBP via cdn.nba.com), NHL API (boxscores + PBP), CBB Stats API (NCAAB boxscores + PBP), MLB Stats API (boxscores + PBP), ESPN API (NFL boxscores + PBP), The Odds API, X/Twitter
+- **Sources:** NBA CDN API (cdn.nba.com — boxscores + PBP, current season), Basketball Reference (NBA historical), NHL API (api-web.nhle.com — boxscores + PBP), CBB API (collegebasketballdata.com — NCAAB historical + boxscores + PBP), NCAA API (ncaa-api.henrygd.me — NCAAB live only), MLB Stats API (boxscores + PBP + Statcast), ESPN API (NFL boxscores + PBP), nflverse (NFL advanced stats), MoneyPuck (NHL advanced stats), DataGolf API (golf), The Odds API (all leagues), X/Twitter
 - **Data Types:** Play-by-play, box scores, odds, social media
 - **Scheduling:** Celery task queue with Redis
 - **Output:** Normalized data to PostgreSQL
@@ -65,9 +65,9 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 ### 3. Analytics Engine (`api/app/analytics/`)
 **Purpose:** Predictive modeling, simulation, and matchup analysis
 
-- **Simulation:** Monte Carlo game simulation using pitch-level data and team profiles; supports both team-level and lineup-aware modes with per-batter probability distributions
-- **Models:** ML models trained on pitch-level data (plate appearance outcomes, pitch outcomes, batted ball outcomes, run expectancy)
-- **Features:** Feature extraction pipeline with DB-backed configurable loadouts
+- **Simulation:** Multi-sport Monte Carlo game simulation (MLB, NBA, NHL, NCAAB). Each sport has a dedicated simulator: MLB (plate-appearance level), NBA/NCAAB (possession-based), NHL (shot-based with shootout). Supports team-level and lineup-aware modes (MLB) with per-batter probability distributions.
+- **Models:** ML models per sport — MLB (plate appearance, pitch, batted ball, run expectancy), NBA/NCAAB (possession, game), NHL (shot, game). Rule-based defaults when no trained model is loaded.
+- **Features:** Feature extraction pipeline with DB-backed configurable loadouts (MLB, NBA, NHL, NCAAB feature builders registered in `FeatureBuilder`)
 - **Inference:** Model registry, activation controls, inference caching, auto-reload on model changes
 - **Ensemble:** Weighted probability combination from multiple providers
 - **Training:** Async Celery-based training pipeline — dataset building, label extraction, model evaluation, joblib artifact generation
@@ -86,7 +86,7 @@ See [Analytics](analytics.md) for details.
   - Control Panel for on-demand Celery task dispatch (ingestion, odds, social, flows, timelines, utility)
   - Job run monitoring via RunsDrawer (IDE-style bottom panel, available on all admin pages)
   - Cross-book odds comparison: pre-game (`/admin/fairbet/odds`) and dedicated live odds page (`/admin/fairbet/live`) with auto-refresh, multi-game view, and game scoreboard strips
-  - Analytics section (5 pages): Simulator (MLB Monte Carlo), Models (registry, loadouts, training, performance), Batch Sims, Experiments (parameter sweeps), Profiles (team scouting)
+  - Analytics section (5 pages): Simulator (multi-sport Monte Carlo with sport selector — MLB/NBA/NHL/NCAAB), Models (registry, loadouts, training, performance), Batch Sims (multi-sport), Experiments (parameter sweeps, multi-sport), Profiles (team scouting, multi-sport)
   - Container log viewer
   - Game detail with boxscores, player stats, odds, social, PBP, flow, and pipeline runs
 
@@ -351,6 +351,51 @@ All date/time conversions go through shared utility functions. Exists in both `a
 | `date_to_utc_datetime(d)` | Date → UTC midnight datetime |
 
 **Critical rule:** Never call `.date()` on a `game_date` field. Use `to_et_date(game_date)` instead. A game at 4 AM UTC is 11 PM ET the previous day — `.date()` returns the wrong calendar date.
+
+### Date/Time Convention
+
+All game dates are stored as UTC timestamps with timezone (`TIMESTAMPTZ`) in PostgreSQL. The system uses Eastern Time (ET) as the canonical sports day boundary for all date matching and queries.
+
+**Core rules:**
+- **Storage:** UTC timestamps with timezone in the database (`game_date TIMESTAMPTZ`)
+- **Date matching:** Always use `start_of_et_day_utc(d)` and `end_of_et_day_utc(d)` for date range queries
+- **Sports day boundary:** 4 AM ET via `sports_today_et()`. Games before 4 AM ET belong to the previous calendar day (e.g., a game at 1 AM ET on Jan 2 is a "Jan 1 game")
+- **External API dates:** Always convert with `to_et_date()`, never `.date()`. A UTC midnight date can be off by one calendar day in ET
+- **Query pattern:** `WHERE game_date >= start_of_et_day_utc(d) AND game_date < end_of_et_day_utc(d)`
+
+**Why ET?** All major US sports leagues (NBA, NFL, MLB, NHL, NCAAB) operate on Eastern Time schedules. ET is the natural boundary for "today's games."
+
+### Caching
+
+**CBB API (NCAAB):** Responses from the CBB Stats API are cached in a Docker volume (`scraper-cache`) to preserve API quota. Cache behavior:
+- Only past-date responses are cached (live data always fetched fresh)
+- PBP responses cached per-game after the game is final
+- Team/player boxscore responses cached per date range
+- Cache is keyed by endpoint + parameters
+- Implementation: `scraper/sports_scraper/utils/cache.py` (`APICache`)
+
+**OpenAI responses:** Game flow pipeline caches OpenAI API responses in the `openai_response_cache` database table to avoid redundant calls for the same game.
+
+**HTML cache (Basketball Reference):** NBA historical scraper caches raw HTML pages locally in `./game_data/` to support polite re-scraping.
+
+**Odds cache:** Per-league, per-date JSON files under the scraper cache directory.
+
+### Team Name Normalization
+
+External data sources use inconsistent team names. The system normalizes names before upserting to prevent duplicates.
+
+**Non-NCAAB leagues (NBA, NHL, MLB, NFL):** `normalize_team_name()` maps known variants to canonical names (e.g., "PHX" -> "PHO", "LA Clippers" -> "Los Angeles Clippers") before team lookup. Implemented in `scraper/sports_scraper/normalization/__init__.py`.
+
+**NCAAB:** `_find_team_by_name()` uses fuzzy matching (Levenshtein distance) during upsert because NCAAB has 350+ teams with names that vary across data sources (e.g., "Illinois State Redbirds" vs "Illinois St" vs "Illinois State"). Implemented in `scraper/sports_scraper/persistence/teams.py`.
+
+### Game Population Strategy
+
+All leagues populate game rows from league schedules *before* boxscore ingestion runs. This ensures:
+- Games exist in the DB for odds matching (no orphaned odds)
+- Boxscore ingestion can match by `source_game_key` instead of fuzzy name matching
+- Live polling has game rows to update
+
+Each league has a `populate_*_games_from_schedule()` function that creates game stubs from the league API's schedule endpoint. Additionally, `poll_game_calendars` runs every 15 minutes to catch postseason matchups and schedule changes.
 
 ---
 

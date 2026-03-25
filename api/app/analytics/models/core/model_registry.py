@@ -58,6 +58,33 @@ _BUILTIN_MODELS: dict[tuple[str, str], tuple[str, str]] = {
         "app.analytics.models.sports.mlb.run_expectancy_model",
         "MLBRunExpectancyModel",
     ),
+    # NBA models
+    ("nba", "possession"): (
+        "app.analytics.models.sports.nba.possession_model",
+        "NBAPossessionModel",
+    ),
+    ("nba", "game"): (
+        "app.analytics.models.sports.nba.game_model",
+        "NBAGameModel",
+    ),
+    # NHL models
+    ("nhl", "shot"): (
+        "app.analytics.models.sports.nhl.shot_model",
+        "NHLShotModel",
+    ),
+    ("nhl", "game"): (
+        "app.analytics.models.sports.nhl.game_model",
+        "NHLGameModel",
+    ),
+    # NCAAB models
+    ("ncaab", "possession"): (
+        "app.analytics.models.sports.ncaab.possession_model",
+        "NCAABPossessionModel",
+    ),
+    ("ncaab", "game"): (
+        "app.analytics.models.sports.ncaab.game_model",
+        "NCAABGameModel",
+    ),
 }
 
 

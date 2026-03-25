@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.routers.simulator import MLBSimulationRequest
+from app.routers.simulator_mlb import MLBSimulationRequest
 
 
 class TestLineupRequest:
@@ -50,10 +50,10 @@ class TestBuildLineupContext:
     """Tests for the _build_lineup_context helper."""
 
     @pytest.mark.asyncio
-    @patch("app.routers.simulator.get_pitcher_rolling_profile")
-    @patch("app.routers.simulator.get_player_rolling_profile")
+    @patch("app.routers.simulator_mlb.get_pitcher_rolling_profile")
+    @patch("app.routers.simulator_mlb.get_player_rolling_profile")
     async def test_builds_weight_arrays(self, mock_batter, mock_pitcher):
-        from app.routers.simulator import _build_lineup_context
+        from app.routers.simulator_mlb import _build_lineup_context
 
         mock_batter.return_value = {
             "contact_rate": 0.80,
@@ -93,7 +93,7 @@ class TestBuildLineupContext:
 
     @pytest.mark.asyncio
     async def test_returns_none_without_team_ids(self):
-        from app.routers.simulator import _build_lineup_context
+        from app.routers.simulator_mlb import _build_lineup_context
 
         db = AsyncMock()
         result = await _build_lineup_context(
@@ -110,12 +110,12 @@ class TestBuildLineupContext:
         assert result is None
 
     @pytest.mark.asyncio
-    @patch("app.routers.simulator.get_pitcher_rolling_profile")
-    @patch("app.routers.simulator.get_player_rolling_profile")
+    @patch("app.routers.simulator_mlb.get_pitcher_rolling_profile")
+    @patch("app.routers.simulator_mlb.get_player_rolling_profile")
     async def test_falls_back_to_defaults_for_missing_profiles(
         self, mock_batter, mock_pitcher,
     ):
-        from app.routers.simulator import _build_lineup_context
+        from app.routers.simulator_mlb import _build_lineup_context
 
         mock_batter.return_value = None  # No batter data
         mock_pitcher.return_value = None  # No pitcher data

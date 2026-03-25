@@ -189,6 +189,51 @@ Add to `_SCRAPER_REGISTRY` in `scraper/sports_scraper/scrapers/__init__.py`.
 
 ---
 
+## Adding Analytics & Simulation Support
+
+To enable simulation and analytics features for a new sport:
+
+### 1. Create Sport Module
+
+Create `api/app/analytics/sports/{sport}/` with:
+- `__init__.py` — package docstring
+- `constants.py` — league-average baselines, event types, default probabilities, simulation parameters
+- `game_simulator.py` — `{Sport}GameSimulator` implementing the `GameSimulator` protocol
+- `metrics.py` — `{Sport}Metrics` class for player/team metric computation
+
+### 2. Register in Engines
+
+Add entries to:
+- `core/simulation_engine.py` → `_SPORT_SIMULATORS` dict
+- `features/core/feature_builder.py` → `_SPORT_FEATURE_BUILDERS` dict
+- `models/core/model_registry.py` → `_BUILTIN_MODELS` dict
+
+### 3. Extend Profile Service
+
+In `services/profile_service.py`:
+- Add entry to `_SPORT_CONFIG` with league code, advanced stats model, and stats_to_metrics function
+- Add `profile_to_{sport}_probabilities()` function
+- Register in `profile_to_probabilities()` dispatcher
+
+### 4. Create Feature Builder and Model Stubs
+
+- `features/sports/{sport}_features.py` — feature specs for ML models
+- `models/sports/{sport}/` — model stubs with rule-based defaults
+
+### Files That Reference Sport Config (Analytics)
+
+| File | Purpose |
+|------|---------|
+| `api/app/analytics/core/simulation_engine.py` | `_SPORT_SIMULATORS` registry |
+| `api/app/analytics/features/core/feature_builder.py` | `_SPORT_FEATURE_BUILDERS` registry |
+| `api/app/analytics/models/core/model_registry.py` | `_BUILTIN_MODELS` registry |
+| `api/app/analytics/services/profile_service.py` | `_SPORT_CONFIG` and probability converters |
+| `api/app/analytics/sports/mlb/constants.py` | `MLB_TEAM_ABBRS` (canonical team abbreviation set) |
+| `api/app/routers/simulator.py` | Public simulator `_SPORT_ADVANCED_STATS` registry |
+| `api/app/analytics/api/analytics_routes.py` | Internal analytics `_SPORT_ADVANCED_STATS` and `_SPORT_BASELINES` |
+
+---
+
 ## Stubbed/Incomplete Data
 
 When scrapers operate with incomplete data (pre-game, partial ingestion):

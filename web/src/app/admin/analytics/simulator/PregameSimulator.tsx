@@ -4,13 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import { AdminCard } from "@/components/admin";
 import {
   runSimulation,
-  listMLBTeams,
+  listTeams,
   getMLBRoster,
+  type SimulationRequest,
   type SimulationResult,
   type MLBTeam,
   type RosterBatter,
   type RosterPitcher,
 } from "@/lib/api/analytics";
+import { SportSelector } from "@/components/admin/SportSelector";
+import { SPORT_CONFIGS, type AnalyticsSport } from "@/lib/constants/analytics";
 import styles from "../analytics.module.css";
 import { LineupEditor, type LineupSlot } from "./LineupEditor";
 import { TeamProfileComparison } from "./TeamProfileComparison";
@@ -23,7 +26,9 @@ interface StarterSlot {
 }
 
 export function PregameSimulator() {
-  const sport = "mlb";
+  const [sport, setSport] = useState<AnalyticsSport>("MLB");
+  const sportCode = sport.toLowerCase();
+  const sportConfig = SPORT_CONFIGS[sport] || SPORT_CONFIGS.MLB;
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
   const [iterations, setIterations] = useState(5000);
@@ -57,11 +62,18 @@ export function PregameSimulator() {
   const [awayPitchers, setAwayPitchers] = useState<RosterPitcher[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
 
-  // Load teams on mount
+  // Load teams when sport changes
   useEffect(() => {
+    setTeams([]);
+    setTeamsLoading(true);
+    setHomeTeam("");
+    setAwayTeam("");
+    setResult(null);
+    setError(null);
+    setUseLineup(false);
     (async () => {
       try {
-        const res = await listMLBTeams();
+        const res = await listTeams(sportCode);
         setTeams(res.teams);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load teams");
@@ -69,7 +81,7 @@ export function PregameSimulator() {
         setTeamsLoading(false);
       }
     })();
-  }, []);
+  }, [sportCode]);
 
   // Load roster when teams change and lineup mode is on
   const loadRoster = useCallback(async (team: string, side: "home" | "away") => {
@@ -138,11 +150,11 @@ export function PregameSimulator() {
     setError(null);
     try {
       const req: Parameters<typeof runSimulation>[0] = {
-        sport,
+        sport: sportCode,
         home_team: homeTeam,
         away_team: awayTeam,
         iterations,
-        probability_mode: "ml",
+        probability_mode: sportConfig.defaultProbMode as SimulationRequest["probability_mode"],
         exclude_playoffs: excludePlayoffs || undefined,
       };
       // Sportsbook lines
@@ -195,6 +207,7 @@ export function PregameSimulator() {
 
   return (
     <>
+      <SportSelector value={sport} onChange={setSport} />
       <AdminCard title="Pregame Setup">
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
@@ -233,20 +246,22 @@ export function PregameSimulator() {
           </div>
         </div>
 
-        {/* Lineup Mode Toggle */}
-        <div className={styles.formRow} style={{ marginTop: "0.75rem" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={useLineup}
-              onChange={(e) => setUseLineup(e.target.checked)}
-            />
-            <span style={{ fontWeight: 500 }}>Lineup Mode</span>
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-              — per-batter probabilities using Statcast profiles
-            </span>
-          </label>
-        </div>
+        {/* Lineup Mode Toggle (MLB only) */}
+        {sportConfig.hasLineupMode && (
+          <div className={styles.formRow} style={{ marginTop: "0.75rem" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={useLineup}
+                onChange={(e) => setUseLineup(e.target.checked)}
+              />
+              <span style={{ fontWeight: 500 }}>Lineup Mode</span>
+              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                — per-batter probabilities using Statcast profiles
+              </span>
+            </label>
+          </div>
+        )}
 
         {/* Exclude Playoffs Toggle */}
         <div className={styles.formRow} style={{ marginTop: "0.5rem" }}>
@@ -302,8 +317,8 @@ export function PregameSimulator() {
         </div>
       </AdminCard>
 
-      {/* Lineup Configuration */}
-      {useLineup && homeTeam && awayTeam && (
+      {/* Lineup Configuration (MLB only) */}
+      {sportConfig.hasLineupMode && useLineup && homeTeam && awayTeam && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
           <AdminCard title={`${homeTeam} Lineup`} subtitle="Home batting order">
             <LineupEditor
@@ -358,7 +373,7 @@ export function PregameSimulator() {
         </div>
       )}
 
-      {useLineup && homeTeam && awayTeam && (
+      {sportConfig.hasLineupMode && useLineup && homeTeam && awayTeam && (
         <AdminCard title="Bullpen Transition">
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
@@ -381,7 +396,7 @@ export function PregameSimulator() {
 
       {/* Team Profile Comparison (shows when both teams selected) */}
       {homeTeam && awayTeam && homeTeam !== awayTeam && (
-        <TeamProfileComparison homeTeam={homeTeam} awayTeam={awayTeam} />
+        <TeamProfileComparison homeTeam={homeTeam} awayTeam={awayTeam} sport={sportCode} />
       )}
 
       {error && <div className={styles.error}>{error}</div>}
@@ -391,6 +406,7 @@ export function PregameSimulator() {
           result={result}
           homeMoneyline={homeMoneyline}
           awayMoneyline={awayMoneyline}
+          sport={sportCode}
         />
       )}
     </>

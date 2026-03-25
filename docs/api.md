@@ -2181,6 +2181,83 @@ Only `home_team` and `away_team` are required. Everything else has sensible defa
 | `422` | Missing or invalid `home_team`/`away_team`, `iterations` out of range, etc. |
 | `401` | Missing or invalid API key |
 
+### Multi-Sport Simulator
+
+The simulator supports all sports with advanced stats data: MLB, NBA, NHL, NCAAB.
+
+> The MLB-specific endpoints above (`POST /mlb`, `GET /mlb/teams`) remain available with full lineup support. The generic endpoints below work for any sport but do not support lineup-level simulation.
+
+#### `GET /{sport}/teams`
+
+List teams available for simulation for any sport. `{sport}` is one of: `mlb`, `nba`, `nhl`, `ncaab`.
+
+**Example:**
+```bash
+curl -H "X-API-Key: $API_KEY" \
+  https://sports-data-admin.dock108.ai/api/simulator/nba/teams
+```
+
+**Response:** Same shape as MLB teams endpoint.
+
+```json
+{
+  "sport": "nba",
+  "teams": [
+    { "abbreviation": "BOS", "name": "Boston Celtics", "short_name": "Celtics", "games_with_stats": 82 }
+  ],
+  "count": 30
+}
+```
+
+#### `POST /{sport}`
+
+Run a Monte Carlo game simulation for any sport.
+
+**Example:**
+```bash
+curl -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
+  https://sports-data-admin.dock108.ai/api/simulator/nba \
+  -d '{"home_team": "BOS", "away_team": "LAL"}'
+```
+
+**Request body:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `home_team` | `string` | — | **Required.** Home team abbreviation |
+| `away_team` | `string` | — | **Required.** Away team abbreviation |
+| `iterations` | `int` | `5000` | Monte Carlo iterations (100–50,000) |
+| `rolling_window` | `int` | `30` | Recent games for team profiles (5–162) |
+| `seed` | `int?` | `null` | Random seed for reproducibility |
+
+**Response:**
+
+```json
+{
+  "sport": "nba",
+  "home_team": "BOS",
+  "away_team": "LAL",
+  "home_win_probability": 0.6234,
+  "away_win_probability": 0.3766,
+  "average_home_score": 114.2,
+  "average_away_score": 108.7,
+  "average_total": 222.9,
+  "most_common_scores": [
+    { "score": "112-108", "probability": 0.008 }
+  ],
+  "iterations": 5000,
+  "rolling_window": 30,
+  "profiles_loaded": true,
+  "model_home_win_probability": null
+}
+```
+
+**Sport-specific notes:**
+- **NBA**: Possession-based simulation (~100 possessions/team/game). Scores typically 90–130 per team.
+- **NHL**: Shot-based simulation with overtime and shootout. Scores typically 1–6 goals per team.
+- **NCAAB**: Four-factor possession model with offensive rebounds. Scores typically 55–90 per team.
+- **MLB**: Use the dedicated `POST /mlb` endpoint for full lineup support.
+
 ---
 
 ## Model Odds

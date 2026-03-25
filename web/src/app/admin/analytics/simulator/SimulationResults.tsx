@@ -18,10 +18,12 @@ export function SimulationResults({
   result,
   homeMoneyline,
   awayMoneyline,
+  sport = "mlb",
 }: {
   result: SimulationResult;
   homeMoneyline: string;
   awayMoneyline: string;
+  sport?: string;
 }) {
   return (
     <div className={styles.resultsSection}>
@@ -101,7 +103,7 @@ export function SimulationResults({
         );
       })()}
 
-      {result.home_pa_probabilities && result.away_pa_probabilities && (
+      {sport === "mlb" && result.home_pa_probabilities && result.away_pa_probabilities && (
         <AdminCard title="Pitch-Level Probabilities" subtitle="From rolling 30-game profiles">
           <PAProbabilitiesChart
             homeProbs={result.home_pa_probabilities}
@@ -119,7 +121,7 @@ export function SimulationResults({
         </AdminCard>
       )}
 
-      {result.profile_meta?.home_pitcher && result.profile_meta?.away_pitcher && (
+      {sport === "mlb" && result.profile_meta?.home_pitcher && result.profile_meta?.away_pitcher && (
         <AdminCard title="Pitching Analytics" subtitle="Starter profiles used in simulation">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
             <PitcherProfileCard

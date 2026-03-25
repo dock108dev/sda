@@ -165,3 +165,15 @@ FEATURE_BASELINES: dict[str, float] = {
 # ---------------------------------------------------------------------------
 
 MAX_EXTRA_INNINGS = 10
+
+# ---------------------------------------------------------------------------
+# Canonical MLB team abbreviations
+# ---------------------------------------------------------------------------
+
+# Excludes All-Star, minor league, and spring training teams that may
+# exist in the DB under the MLB league.
+MLB_TEAM_ABBRS: frozenset[str] = frozenset({
+    "ARI", "ATL", "BAL", "BOS", "CHC", "CWS", "CIN", "CLE", "COL", "DET",
+    "HOU", "KC", "LAA", "LAD", "MIA", "MIL", "MIN", "NYM", "NYY", "OAK",
+    "PHI", "PIT", "SD", "SF", "SEA", "STL", "TB", "TEX", "TOR", "WSH",
+})

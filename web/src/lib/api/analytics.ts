@@ -448,6 +448,15 @@ export async function listMLBTeams(): Promise<{ teams: MLBTeam[]; count: number 
   return fetchJson<{ teams: MLBTeam[]; count: number }>(`${base()}/api/analytics/mlb-teams`);
 }
 
+// Generic Teams API (multi-sport)
+export async function listTeams(
+  sport: string,
+): Promise<{ teams: MLBTeam[]; count: number }> {
+  return fetchJson<{ teams: MLBTeam[]; count: number }>(
+    `${base()}/api/analytics/${sport.toLowerCase()}/teams`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // MLB Roster (for lineup simulator)
 // ---------------------------------------------------------------------------
@@ -480,6 +489,20 @@ export async function getTeamProfile(
   rollingWindow: number = 30,
 ): Promise<TeamProfileResponse> {
   const params = new URLSearchParams({ team, rolling_window: String(rollingWindow) });
+  return fetchJson<TeamProfileResponse>(`${base()}/api/analytics/team-profile?${params}`);
+}
+
+// Generic Team Profile (multi-sport)
+export async function getTeamProfileMultiSport(
+  team: string,
+  sport: string,
+  rollingWindow: number = 30,
+): Promise<TeamProfileResponse> {
+  const params = new URLSearchParams({
+    team,
+    sport: sport.toLowerCase(),
+    rolling_window: String(rollingWindow),
+  });
   return fetchJson<TeamProfileResponse>(`${base()}/api/analytics/team-profile?${params}`);
 }
 
