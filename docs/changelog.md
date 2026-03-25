@@ -2,7 +2,22 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-23] - Current
+## [2026-03-24] - Current
+
+### Ingestion Pipeline Hardening
+
+- **Schedule-based game population:** All leagues (NBA, NHL, NCAAB, MLB, NFL) now populate game rows from league schedules *before* boxscore ingestion. Ensures games exist in the DB for odds matching and prevents orphaned boxscores. Each league's `populate_*_games_from_schedule()` runs as the first step of the boxscore phase.
+- **Sequential bulk backfill:** Bulk backfill tasks now process date chunks one at a time within a single Celery task (instead of fanning out parallel subtasks). Prevents worker starvation and ensures proper job run status tracking. Monthly chunking with season awareness.
+- **NBA historical fallback:** `ingest_nba_historical` auto-falls back to Basketball Reference when CDN returns empty data for historical seasons. CDN probe path used for game ID discovery before attempting full boxscore fetch.
+- **CBB API caching:** NCAAB data fetchers (team boxscores, player boxscores, PBP) now cache responses for past date ranges in a Docker volume (`scraper-cache`). Only past-date responses are cached; live data is always fetched fresh. PBP cached per-game after game is final. Team/player boxscores cached per date range.
+- **NCAAB fuzzy team matching:** `_find_team_by_name()` in the persistence layer uses fuzzy matching with Levenshtein distance to match CBB API team names to canonical DB team records during upsert. Prevents duplicate teams when API names vary slightly across seasons.
+- **ET date standardization:** Six timezone fixes applied across the scraper. All date matching now uses `to_et_date()` / `start_of_et_day_utc()` / `end_of_et_day_utc()` instead of naive `.date()` calls. Fixes games near midnight UTC being assigned to the wrong calendar day.
+- **NFL abbreviation mapping:** NFL advanced stats ingestion now maps nflverse team abbreviations (e.g., `LA` -> `LAR`) to canonical DB abbreviations before game matching. Date matching uses ET conversion.
+- **Golf tournament status:** Tournament status now derived from tournament dates when DataGolf API has no explicit status field. Live prediction fields populated.
+- **Game upsert `source_game_key` fallback:** Constraint violation on `source_game_key` during enrichment gracefully handled — key is only set at creation time (SSOT).
+- **Held task job runs:** When the admin hold is active and a Beat-scheduled task is skipped, the corresponding `SportsJobRun` record (if any) is marked `skipped` instead of remaining stuck in `queued`.
+
+## [2026-03-23]
 
 ### Game Theory Module
 

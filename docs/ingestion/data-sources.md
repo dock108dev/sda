@@ -6,21 +6,24 @@ This document describes where data comes from and how it's ingested.
 
 | Data Type | Source | Leagues | Update Frequency |
 |-----------|--------|---------|------------------|
-| Boxscores | NBA API (cdn.nba.com) — current season | NBA | Post-game |
+| Boxscores | NBA CDN API (cdn.nba.com) — current season | NBA | Post-game |
 | Boxscores | Basketball Reference — historical seasons | NBA | One-time backfill |
-| Boxscores | CBB Stats API | NCAAB | Post-game |
-| Boxscores | NHL API | NHL | Post-game |
+| Boxscores | CBB API (collegebasketballdata.com) — historical + boxscores | NCAAB | Post-game |
+| Boxscores | NCAA API (ncaa-api.henrygd.me) — live only | NCAAB | During game |
+| Boxscores | NHL API (api-web.nhle.com) | NHL | Post-game |
 | Boxscores | MLB Stats API (statsapi.mlb.com) | MLB | Post-game |
 | Boxscores | ESPN API (site.api.espn.com) | NFL | Post-game |
-| Play-by-Play | NBA API / NHL API / CBB API / MLB Stats API / ESPN API | NBA, NHL, NCAAB, MLB, NFL | Post-game |
+| Play-by-Play | NBA CDN / NHL API / CBB API / MLB Stats API / ESPN API | NBA, NHL, NCAAB, MLB, NFL | Post-game |
 | Play-by-Play (Live) | League APIs | NBA, NHL, NCAAB, MLB, NFL | During game (5 min polling) |
 | Odds (pre-game) | The Odds API | NBA, NHL, NCAAB, MLB, NFL | Every 60s (pre-game lines) |
 | Odds (live) | The Odds API | NBA, NHL, NCAAB, MLB, NFL | Every 15-45s during live games (via live orchestrator) |
 | Social | X/Twitter | NBA, NHL, NCAAB, MLB, NFL | 24-hour game window |
+| Advanced Stats | MLB Stats API (Statcast pitch-level) | MLB | Post-game (60s after final) |
 | Advanced Stats | Computed from boxscores | NBA | Post-game (60s after final) |
-| Advanced Stats | MoneyPuck CSV | NHL | Post-game (60s after final) |
+| Advanced Stats | MoneyPuck ZIP (shot-level) | NHL | Post-game (60s after final) |
 | Advanced Stats | nflverse (nflreadpy) | NFL | Post-game (60s after final) |
 | Advanced Stats | Computed from boxscores | NCAAB | Post-game (60s after final) |
+| Golf | DataGolf API (feeds.datagolf.com) | PGA/DP World | Leaderboard 5m, odds 30m, field 6h |
 
 ## Boxscores & Player Stats
 
@@ -28,7 +31,9 @@ This document describes where data comes from and how it's ingested.
 - **NBA (current season)**: NBA CDN API (`cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json`). Only serves the current NBA season.
 - **NBA (historical)**: Basketball Reference (`basketball-reference.com/boxscores/{YYYYMMDD0TEAM}.html`). Polite scraping with 5-9s delays, HTML caching. Triggered via `ingest_nba_historical` Celery task.
 - **NHL**: NHL API (`api-web.nhle.com/v1/gamecenter/{game_id}/boxscore`)
-- **NCAAB**: CBB Stats API (`/games/teams`, `/games/players`) with date range batching
+- **NCAAB**: Two complementary sources:
+  - **CBB API** (`api.collegebasketballdata.com`): Historical data, batch boxscores (`/games/teams`, `/games/players`), PBP (`/plays/game/{id}`). **Sole source for historical data.** Responses for past dates are cached in a Docker volume to preserve API quota.
+  - **NCAA API** (`ncaa-api.henrygd.me`): Live scoreboard and per-game boxscores only. Used for real-time game status during live games.
 - **MLB**: MLB Stats API (`statsapi.mlb.com/api/v1/game/{game_pk}/boxscore`) — batter and pitcher stats
 - **NFL**: ESPN API (`site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={game_id}`) — passing, rushing, receiving, defense
 
@@ -58,6 +63,18 @@ NCAAB boxscore ingestion requires `cbb_team_id` in `sports_teams.external_codes`
 - Scraped after game status changes to `final`
 - Automatic ingestion runs daily at 08:30 UTC (3:30 AM EST)
 - Manual scraping available via Admin UI
+
+### Response Caching
+
+**CBB API (NCAAB):** Responses are cached in a Docker volume (`scraper-cache`) to preserve API quota:
+- Team boxscores and player boxscores cached per date range (only for past dates)
+- PBP cached per-game after the game is final
+- Live data (current day) is always fetched fresh
+- Implementation: `scraper/sports_scraper/utils/cache.py` (`APICache`)
+
+**Basketball Reference (NBA historical):** Raw HTML pages cached locally in `./game_data/` to support polite re-scraping without redundant HTTP requests.
+
+**Odds:** Per-league, per-date JSON files cached under the scraper cache directory.
 
 ## Play-by-Play
 
@@ -220,7 +237,9 @@ nflverse via `nflreadpy` Python package. Pre-computed EPA/WPA/CPOE on every play
 - **Player-level (per role):** Passer EPA/CPOE/air+yac EPA, rusher EPA, receiver EPA, WPA, success rate
 
 ### Game Matching
-nflverse has no ESPN event ID field. Games are matched by `game_date` + `home_team` + `away_team` from the nflverse play data (not by `old_game_id`, which is GSIS format and doesn't correspond to ESPN IDs).
+nflverse has no ESPN event ID field. Games are matched by `game_date` (converted to ET via `to_et_date()`) + `home_team` + `away_team` from the nflverse play data (not by `old_game_id`, which is GSIS format and doesn't correspond to ESPN IDs).
+
+**Abbreviation mapping:** nflverse uses different team abbreviations than the DB (e.g., `LA` instead of `LAR` for the Rams). The fetcher maps nflverse abbreviations to canonical DB abbreviations before game matching.
 
 ### Implementation
 - Fetcher: `scraper/sports_scraper/live/nfl_advanced.py`
@@ -508,12 +527,47 @@ Configuration: `scraper/sports_scraper/celery_app.py`
 - Fatal errors: Job marked failed, error_summary recorded
 - Partial success: Some games may succeed even if others fail
 
+## Game Population
+
+All leagues populate game rows from league schedules *before* boxscore ingestion. This ensures games exist in the DB for odds matching and live polling.
+
+### Schedule-Based Population
+
+The boxscore phase calls a league-specific `populate_*_games_from_schedule()` function as its first step:
+
+| League | Schedule Source | Function |
+|--------|---------------|----------|
+| NBA | NBA CDN scoreboard API | `populate_nba_games_from_schedule()` |
+| NHL | NHL API schedule endpoint | `populate_nhl_games_from_schedule()` |
+| NCAAB | CBB API `/games` endpoint | `populate_ncaab_games_from_schedule()` |
+| MLB | MLB Stats API schedule endpoint | `populate_mlb_games_from_schedule()` |
+| NFL | ESPN API scoreboard | `populate_nfl_games_from_schedule()` |
+
+### Calendar Polling
+
+`poll_game_calendars` runs every 15 minutes to catch games added after the daily 3:30 AM ingestion (postseason matchups, schedule changes). Looks 7 days ahead.
+
+### NBA Historical Game Discovery
+
+For historical seasons, the NBA CDN API does not serve data. The historical backfill uses a CDN boxscore probe path (`cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json`) to discover valid game IDs, then falls back to Basketball Reference for the actual boxscore data.
+
 ## Data Quality
 
 ### Team Name Normalization
-- `scraper/sports_scraper/normalization/__init__.py`
-- Maps external team names to canonical database names
-- Exhaustive for NBA, NHL, MLB, NFL; partial for NCAAB (by design)
+
+Team names from external APIs must be normalized to canonical DB names to prevent duplicate team records.
+
+**Non-NCAAB leagues (NBA, NHL, MLB, NFL):**
+- `normalize_team_name()` in `scraper/sports_scraper/normalization/__init__.py`
+- Exhaustive lookup table mapping all known variants to canonical names
+- Called in `_upsert_team()` before every team lookup/insert
+- Examples: "PHX" -> "PHO", "LA Clippers" -> "Los Angeles Clippers"
+
+**NCAAB:**
+- `_find_team_by_name()` in `scraper/sports_scraper/persistence/teams.py`
+- Uses fuzzy matching (Levenshtein distance) because NCAAB has 350+ teams with names that vary across data sources
+- Falls back to substring matching when exact and fuzzy matches fail
+- Examples: "Illinois State Redbirds" matches "Illinois State", "St. John's Red Storm" matches "St. John's (NY)"
 
 ### Validation
 - Required fields checked before persistence
