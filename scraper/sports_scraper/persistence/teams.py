@@ -228,6 +228,15 @@ def _upsert_team(session: Session, league_id: int, identity: TeamIdentity) -> in
             team_name = canonical_name
         if canonical_abbr and feed_abbreviation is None:
             feed_abbreviation = canonical_abbr
+    elif league_code == "NCAAB":
+        # NCAAB has hundreds of teams with wildly different naming across
+        # sources (CBB API: "Yale", ESPN: "Yale Bulldogs").  Before creating
+        # a new team row, check if an existing team matches via fuzzy lookup.
+        existing_id = _find_team_by_name(
+            session, league_id, team_name, team_abbr=feed_abbreviation,
+        )
+        if existing_id is not None:
+            return existing_id
 
     abbreviation = feed_abbreviation or _derive_abbreviation(team_name)
     if feed_abbreviation is None and _should_log("team_abbreviation_derived", sample=25):

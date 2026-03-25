@@ -316,17 +316,21 @@ class TestUpsertTeamAdvanced:
     """Advanced tests for _upsert_team function."""
 
     def test_handles_missing_abbreviation(self):
-        """Handles identity without abbreviation."""
+        """Handles identity without abbreviation — NCAAB fuzzy-matches first."""
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one.return_value = 42
         mock_league = MagicMock(code="NCAAB")
         mock_session.get.return_value = mock_league
 
+        # For NCAAB, _find_team_by_name runs first. Mock its query chain
+        # to return no existing match so the upsert INSERT proceeds.
+        mock_session.execute.return_value.all.return_value = []
+        mock_session.execute.return_value.scalar.return_value = None
+
         identity = TeamIdentity(league_code="NCAAB", name="Some University", abbreviation=None)
         result = _upsert_team(mock_session, league_id=9, identity=identity)
 
         assert result == 42
-        mock_session.execute.assert_called_once()
 
     def test_uses_short_name_from_identity(self):
         """Uses short_name from identity when provided."""
@@ -860,11 +864,14 @@ class TestUpsertTeamWithDerivedAbbreviation:
     """Tests for _upsert_team with abbreviation derivation."""
 
     def test_derives_abbreviation_when_missing(self):
-        """Derives abbreviation when identity has none."""
+        """Derives abbreviation when identity has none — NCAAB fuzzy lookup first."""
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one.return_value = 42
         mock_league = MagicMock(code="NCAAB")
         mock_session.get.return_value = mock_league
+        # No existing match from fuzzy lookup
+        mock_session.execute.return_value.all.return_value = []
+        mock_session.execute.return_value.scalar.return_value = None
 
         identity = TeamIdentity(
             league_code="NCAAB",
@@ -874,7 +881,6 @@ class TestUpsertTeamWithDerivedAbbreviation:
         result = _upsert_team(mock_session, league_id=9, identity=identity)
 
         assert result == 42
-        mock_session.execute.assert_called_once()
 
     def test_preserves_existing_abbreviation(self):
         """Preserves existing abbreviation in DB when identity has none."""
@@ -882,6 +888,9 @@ class TestUpsertTeamWithDerivedAbbreviation:
         mock_session.execute.return_value.scalar_one.return_value = 42
         mock_league = MagicMock(code="NCAAB")
         mock_session.get.return_value = mock_league
+        # No existing match from fuzzy lookup
+        mock_session.execute.return_value.all.return_value = []
+        mock_session.execute.return_value.scalar.return_value = None
 
         identity = TeamIdentity(
             league_code="NCAAB",
@@ -889,10 +898,8 @@ class TestUpsertTeamWithDerivedAbbreviation:
             abbreviation=None,
         )
 
-        _upsert_team(mock_session, league_id=9, identity=identity)
-
-        # Check that the statement uses the existing abbreviation on conflict
-        mock_session.execute.assert_called_once()
+        result = _upsert_team(mock_session, league_id=9, identity=identity)
+        assert result == 42
 
 
 class TestNcaabNormalizedMatchingAdvanced:
