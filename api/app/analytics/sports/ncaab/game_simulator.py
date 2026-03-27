@@ -5,6 +5,14 @@ four-factor probability model with offensive rebound mechanics.
 Designed for high-volume use -- all calculations are stateless with
 no database calls.
 
+Supports two modes:
+
+1. **Team-level** (``simulate_game``): single probability distribution
+   per team for all possessions.
+2. **Rotation-aware** (``simulate_game_with_lineups``): separate
+   starter/bench unit weights with per-unit ORB% and FT%.  Each
+   possession is randomly assigned to a unit based on ``starter_share``.
+
 Game flow:
     2 halves (or more for ties), each with ~34 possessions per team.
     Each possession samples an event from the probability distribution.
@@ -146,6 +154,88 @@ class NCAABGameSimulator:
             "periods_played": periods_played,
         }
 
+    def simulate_game_with_lineups(
+        self,
+        game_context: dict[str, Any],
+        rng: random.Random | None = None,
+    ) -> dict[str, Any]:
+        """Rotation-aware NCAAB simulation with starter/bench units.
+
+        Each possession is randomly assigned to either the starter or
+        bench unit.  Each unit has its own probability weights, FT%,
+        and ORB%.
+
+        Falls back to ``simulate_game`` if rotation keys are absent.
+        """
+        if "home_starter_weights" not in game_context:
+            return self.simulate_game(game_context, rng)
+
+        if rng is None:
+            rng = random.Random()
+
+        h_starter_w = game_context["home_starter_weights"]
+        h_bench_w = game_context["home_bench_weights"]
+        a_starter_w = game_context["away_starter_weights"]
+        a_bench_w = game_context["away_bench_weights"]
+
+        h_share = float(game_context.get("home_starter_share", 0.70))
+        a_share = float(game_context.get("away_starter_share", 0.70))
+
+        h_ft_s = float(game_context.get("home_ft_pct_starter", _BASELINE_FT_PCT))
+        h_ft_b = float(game_context.get("home_ft_pct_bench", _BASELINE_FT_PCT))
+        a_ft_s = float(game_context.get("away_ft_pct_starter", _BASELINE_FT_PCT))
+        a_ft_b = float(game_context.get("away_ft_pct_bench", _BASELINE_FT_PCT))
+
+        h_orb_s = float(game_context.get("home_orb_pct_starter", _ORB_CHANCE))
+        h_orb_b = float(game_context.get("home_orb_pct_bench", _ORB_CHANCE))
+        a_orb_s = float(game_context.get("away_orb_pct_starter", _ORB_CHANCE))
+        a_orb_b = float(game_context.get("away_orb_pct_bench", _ORB_CHANCE))
+
+        home_score = 0
+        away_score = 0
+        home_events = _new_event_counts()
+        away_events = _new_event_counts()
+        periods_played = 0
+
+        for _half in range(_HALVES):
+            h, a = _simulate_half_rotation(
+                h_starter_w, h_bench_w, h_share,
+                a_starter_w, a_bench_w, a_share,
+                rng, home_events, away_events,
+                h_ft_s, h_ft_b, a_ft_s, a_ft_b,
+                h_orb_s, h_orb_b, a_orb_s, a_orb_b,
+                _HALF_POSSESSIONS,
+            )
+            home_score += h
+            away_score += a
+            periods_played += 1
+
+        # OT — starters play all OT minutes
+        ot = 0
+        while home_score == away_score and ot < _MAX_OVERTIMES:
+            h, a = _simulate_half(
+                h_starter_w, a_starter_w, rng,
+                home_events, away_events,
+                h_orb_s, a_orb_s,
+                h_ft_s, a_ft_s,
+                _OT_POSSESSIONS,
+            )
+            home_score += h
+            away_score += a
+            ot += 1
+            periods_played += 1
+
+        winner = "home" if home_score > away_score else "away"
+
+        return {
+            "home_score": home_score,
+            "away_score": away_score,
+            "winner": winner,
+            "home_events": home_events,
+            "away_events": away_events,
+            "periods_played": periods_played,
+        }
+
 
 # ---------------------------------------------------------------------------
 # Half / period simulation
@@ -171,6 +261,55 @@ def _simulate_half(
     away_pts = _simulate_possessions(
         away_weights, rng, away_events, orb_away, ft_pct_away, possessions_per_team,
     )
+    return home_pts, away_pts
+
+
+def _simulate_half_rotation(
+    h_starter_w: list[float],
+    h_bench_w: list[float],
+    h_share: float,
+    a_starter_w: list[float],
+    a_bench_w: list[float],
+    a_share: float,
+    rng: random.Random,
+    home_events: dict[str, int],
+    away_events: dict[str, int],
+    h_ft_s: float,
+    h_ft_b: float,
+    a_ft_s: float,
+    a_ft_b: float,
+    h_orb_s: float,
+    h_orb_b: float,
+    a_orb_s: float,
+    a_orb_b: float,
+    possessions_per_team: int,
+) -> tuple[int, int]:
+    """Simulate one half with rotation — each possession randomly
+    assigned to starter or bench unit."""
+    home_pts = 0
+    away_pts = 0
+
+    for _ in range(possessions_per_team):
+        # Home possession
+        if rng.random() < h_share:
+            home_pts += _resolve_possession(
+                h_starter_w, rng, home_events, h_orb_s, h_ft_s, 0,
+            )
+        else:
+            home_pts += _resolve_possession(
+                h_bench_w, rng, home_events, h_orb_b, h_ft_b, 0,
+            )
+
+        # Away possession
+        if rng.random() < a_share:
+            away_pts += _resolve_possession(
+                a_starter_w, rng, away_events, a_orb_s, a_ft_s, 0,
+            )
+        else:
+            away_pts += _resolve_possession(
+                a_bench_w, rng, away_events, a_orb_b, a_ft_b, 0,
+            )
+
     return home_pts, away_pts
 
 

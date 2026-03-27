@@ -167,6 +167,9 @@ def _get_advanced_stats_model(sport: str):
     if sport == "nba":
         from app.db.nba_advanced import NBAGameAdvancedStats
         return NBAGameAdvancedStats
+    if sport == "ncaab":
+        from app.db.ncaab_advanced import NCAABGameAdvancedStats
+        return NCAABGameAdvancedStats
     from app.db.mlb_advanced import MLBGameAdvancedStats
     return MLBGameAdvancedStats
 
@@ -241,6 +244,74 @@ async def _try_build_nba_rotation_weights(
             "away_resolved": away_weights["players_resolved"],
             "home_starter_share": home_weights["starter_share"],
             "away_starter_share": away_weights["starter_share"],
+        },
+    )
+    return True
+
+
+async def _try_build_ncaab_rotation_weights(
+    db: AsyncSession,
+    game,
+    game_context: dict,
+    home_profile: dict | None,
+    away_profile: dict | None,
+    rolling_window: int,
+) -> bool:
+    """Attempt to build starter/bench rotation weights for an NCAAB game."""
+    from app.analytics.services.ncaab_rotation_service import (
+        get_recent_rotation,
+        reconstruct_rotation_from_stats,
+    )
+    from app.analytics.services.ncaab_rotation_weights import build_rotation_weights
+
+    is_final = game.status in ("final", "archived")
+
+    if is_final:
+        home_rotation = await reconstruct_rotation_from_stats(db, game.id, game.home_team_id)
+        away_rotation = await reconstruct_rotation_from_stats(db, game.id, game.away_team_id)
+    else:
+        home_rotation = await get_recent_rotation(db, game.home_team_id, exclude_game_id=game.id)
+        away_rotation = await get_recent_rotation(db, game.away_team_id, exclude_game_id=game.id)
+
+    if not home_rotation or not away_rotation:
+        return False
+
+    away_def = (away_profile or {}).get("def_rating")
+    home_def = (home_profile or {}).get("def_rating")
+
+    home_weights = await build_rotation_weights(
+        db, home_rotation, game.home_team_id,
+        opposing_def_rating=away_def,
+        rolling_window=rolling_window,
+    )
+    away_weights = await build_rotation_weights(
+        db, away_rotation, game.away_team_id,
+        opposing_def_rating=home_def,
+        rolling_window=rolling_window,
+    )
+
+    game_context["home_starter_weights"] = home_weights["starter_weights"]
+    game_context["home_bench_weights"] = home_weights["bench_weights"]
+    game_context["home_starter_share"] = home_weights["starter_share"]
+    game_context["home_ft_pct_starter"] = home_weights["ft_pct_starter"]
+    game_context["home_ft_pct_bench"] = home_weights["ft_pct_bench"]
+    game_context["home_orb_pct_starter"] = home_weights["orb_pct_starter"]
+    game_context["home_orb_pct_bench"] = home_weights["orb_pct_bench"]
+
+    game_context["away_starter_weights"] = away_weights["starter_weights"]
+    game_context["away_bench_weights"] = away_weights["bench_weights"]
+    game_context["away_starter_share"] = away_weights["starter_share"]
+    game_context["away_ft_pct_starter"] = away_weights["ft_pct_starter"]
+    game_context["away_ft_pct_bench"] = away_weights["ft_pct_bench"]
+    game_context["away_orb_pct_starter"] = away_weights["orb_pct_starter"]
+    game_context["away_orb_pct_bench"] = away_weights["orb_pct_bench"]
+
+    logger.info(
+        "batch_sim_ncaab_rotation_built",
+        extra={
+            "game_id": game.id,
+            "home_resolved": home_weights["players_resolved"],
+            "away_resolved": away_weights["players_resolved"],
         },
     )
     return True
@@ -418,8 +489,8 @@ async def _execute_batch_sim(
     from app.db.sports import SportsGame, SportsLeague, SportsTeam
 
     sport_lower = sport.lower()
-    if sport_lower not in ("mlb", "nba"):
-        return {"error": "sport_not_supported", "supported": ["mlb", "nba"]}
+    if sport_lower not in ("mlb", "nba", "ncaab"):
+        return {"error": "sport_not_supported", "supported": ["mlb", "nba", "ncaab"]}
 
     async with sf() as db:
         # 1. Find games to simulate
@@ -545,6 +616,12 @@ async def _execute_batch_sim(
         try:
             if sport_lower == "nba":
                 lineup_mode = await _try_build_nba_rotation_weights(
+                    db, game, game_context,
+                    home_profile, away_profile,
+                    rolling_window,
+                )
+            elif sport_lower == "ncaab":
+                lineup_mode = await _try_build_ncaab_rotation_weights(
                     db, game, game_context,
                     home_profile, away_profile,
                     rolling_window,
@@ -818,6 +895,26 @@ def _nba_stats_to_metrics(stats) -> dict:
     }
 
 
+def _ncaab_stats_to_metrics(stats) -> dict:
+    """Convert NCAABGameAdvancedStats row to a flat metrics dict."""
+    return {
+        "off_rating": float(stats.off_rating or 105.0),
+        "def_rating": float(stats.def_rating or 105.0),
+        "net_rating": float(stats.net_rating or 0.0),
+        "pace": float(stats.pace or 68.0),
+        "off_efg_pct": float(stats.off_efg_pct or 0.50),
+        "off_tov_pct": float(stats.off_tov_pct or 0.17),
+        "off_orb_pct": float(stats.off_orb_pct or 0.28),
+        "off_ft_rate": float(stats.off_ft_rate or 0.30),
+        "def_efg_pct": float(stats.def_efg_pct or 0.50),
+        "def_tov_pct": float(stats.def_tov_pct or 0.17),
+        "def_orb_pct": float(stats.def_orb_pct or 0.28),
+        "fg_pct": float(stats.fg_pct or 0.44),
+        "three_pt_pct": float(stats.three_pt_pct or 0.34),
+        "ft_pct": float(stats.ft_pct or 0.70),
+    }
+
+
 def _build_rolling_profile(
     team_games: list[tuple[str, object]],
     *,
@@ -827,12 +924,13 @@ def _build_rolling_profile(
     sport: str = "mlb",
 ) -> dict | None:
     """Sport-aware rolling profile builder."""
-    if sport == "nba":
+    if sport in ("nba", "ncaab"):
+        converter = _nba_stats_to_metrics if sport == "nba" else _ncaab_stats_to_metrics
         prior = [stats for date_str, stats in team_games if date_str < before_date]
         if len(prior) < min_games:
             return None
         recent = prior[-window:]
-        all_metrics = [_nba_stats_to_metrics(s) for s in recent]
+        all_metrics = [converter(s) for s in recent]
         aggregated: dict[str, float] = {}
         for key in all_metrics[0]:
             values = [m[key] for m in all_metrics if key in m]
