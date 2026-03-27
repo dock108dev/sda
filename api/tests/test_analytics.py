@@ -2614,13 +2614,14 @@ class TestModelRegistryCore:
         assert models[0]["artifact_path"] == "/tmp/v1_new.pkl"
         assert models[0]["metrics"]["accuracy"] == 0.7
 
-    def test_get_active_model_none_by_default(self, tmp_path):
+    def test_first_model_auto_activated(self, tmp_path):
         from app.analytics.models.core.model_registry import ModelRegistry
 
         registry = ModelRegistry(registry_path=tmp_path / "reg.json")
         registry.register_model("mlb", "pa", "v1", "/tmp/v1.pkl")
         active = registry.get_active_model("mlb", "pa")
-        assert active is None
+        assert active is not None
+        assert active["model_id"] == "v1"
 
     def test_activate_model(self, tmp_path):
         from app.analytics.models.core.model_registry import ModelRegistry
@@ -2785,12 +2786,14 @@ class TestModelRegistryInferenceIntegration:
         assert info["sport"] == "mlb"
         assert info["model_type"] == "pa"
 
-    def test_get_active_model_info_none_when_inactive(self, tmp_path):
+    def test_get_active_model_info_auto_activated(self, tmp_path):
         from app.analytics.models.core.model_registry import ModelRegistry
 
         registry = ModelRegistry(registry_path=tmp_path / "reg.json")
         registry.register_model("mlb", "pa", "v1", "/tmp/v1.pkl")
-        assert registry.get_active_model_info("mlb", "pa") is None
+        info = registry.get_active_model_info("mlb", "pa")
+        assert info is not None
+        assert info["model_id"] == "v1"
 
     def test_inference_engine_uses_registry(self, tmp_path):
         from app.analytics.inference.model_inference_engine import ModelInferenceEngine
@@ -3115,8 +3118,11 @@ class TestModelServiceListModels:
     def test_active_only(self, tmp_path):
         svc = self._make_service(tmp_path)
         result = svc.list_models(active_only=True)
-        assert result["count"] == 1
-        assert result["models"][0]["model_id"] == "mlb_pa_v2"
+        # mlb_pa_v2 (explicitly activated) + nba_game_v1 (auto-activated as first in its bucket)
+        assert result["count"] == 2
+        active_ids = {m["model_id"] for m in result["models"]}
+        assert "mlb_pa_v2" in active_ids
+        assert "nba_game_v1" in active_ids
 
     def test_sort_by_accuracy_desc(self, tmp_path):
         svc = self._make_service(tmp_path)
