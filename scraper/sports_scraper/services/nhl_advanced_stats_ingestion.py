@@ -155,11 +155,30 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
     # ---- Skater-level aggregation ----
     skater_aggregates = fetcher.aggregate_skater_stats(shots)
 
+    # Cross-reference boxscore data for TOI and assists (MoneyPuck CSV lacks these)
+    boxscore_lookup = _build_boxscore_lookup(session, game_id)
+
     skater_upserted = 0
     for sa in skater_aggregates:
         # Determine team_id from the team abbreviation
         is_home = sa.is_home
         team_id = game.home_team_id if is_home else game.away_team_id
+
+        # Enrich with TOI + assists from boxscore
+        box = boxscore_lookup.get(sa.player_id, {})
+        toi = box.get("toi_minutes")
+        assists = box.get("assists", 0)
+        points = (sa.goals or 0) + assists
+
+        # Compute per-60 rates when TOI is available
+        goals_per_60 = _per_60(sa.goals, toi)
+        assists_per_60 = _per_60(assists, toi)
+        points_per_60 = _per_60(points, toi)
+        shots_per_60 = _per_60(sa.shots, toi)
+        game_score = _compute_game_score(
+            sa.goals, assists, sa.shots,
+            box.get("blocked_shots", 0),
+        )
 
         row = {
             "game_id": game_id,
@@ -167,6 +186,8 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
             "is_home": is_home,
             "player_external_ref": sa.player_id,
             "player_name": sa.player_name,
+            # TOI
+            "toi_minutes": toi,
             # xGoals
             "xgoals_for": round(sa.xgoals_for, 3),
             "xgoals_against": round(sa.xgoals_against, 3),
@@ -175,13 +196,12 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
             "shots": sa.shots,
             "goals": sa.goals,
             "shooting_pct": _safe_pct(sa.goals, sa.shots),
-            # Per-60 rates are left null when TOI is not available from CSV
-            "goals_per_60": None,
-            "assists_per_60": None,
-            "points_per_60": None,
-            "shots_per_60": None,
-            # Game score not available from raw shot CSV
-            "game_score": None,
+            # Per-60 rates (enriched from boxscore TOI)
+            "goals_per_60": goals_per_60,
+            "assists_per_60": assists_per_60,
+            "points_per_60": points_per_60,
+            "shots_per_60": shots_per_60,
+            "game_score": game_score,
             "source": "moneypuck_csv",
             "updated_at": datetime.now(UTC),
         }
@@ -281,3 +301,95 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         "skater_rows_upserted": skater_upserted,
         "goalie_rows_upserted": goalie_upserted,
     }
+
+
+# ---------------------------------------------------------------------------
+# Boxscore cross-reference helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_boxscore_lookup(session: Session, game_id: int) -> dict[str, dict]:
+    """Build a player_external_ref → stats dict from boxscore JSONB.
+
+    Returns a dict keyed by player_external_ref with TOI, assists, etc.
+    """
+    rows = (
+        session.query(db_models.SportsPlayerBoxscore)
+        .filter(db_models.SportsPlayerBoxscore.game_id == game_id)
+        .all()
+    )
+    lookup: dict[str, dict] = {}
+    for row in rows:
+        ref = row.player_external_ref
+        stats = row.stats or {}
+
+        # Parse TOI — may be stored as float minutes or "MM:SS" string
+        toi = _parse_toi(stats)
+
+        lookup[ref] = {
+            "toi_minutes": toi,
+            "assists": int(stats.get("assists", 0) or 0),
+            "points": int(stats.get("points", 0) or 0),
+            "blocked_shots": int(stats.get("blocked_shots", 0) or 0),
+            "hits": int(stats.get("hits", 0) or 0),
+            "position": stats.get("position", ""),
+        }
+    return lookup
+
+
+def _parse_toi(stats: dict) -> float | None:
+    """Extract TOI in decimal minutes from boxscore stats dict.
+
+    Handles both float format (``"minutes": 18.45``) and string
+    format (``"time_on_ice": "18:27"``).
+    """
+    # Try numeric minutes first
+    minutes = stats.get("minutes")
+    if minutes is not None:
+        try:
+            val = float(minutes)
+            if val > 0:
+                return round(val, 2)
+        except (ValueError, TypeError):
+            pass
+
+    # Try MM:SS string format
+    toi_str = stats.get("time_on_ice", "")
+    if toi_str and ":" in str(toi_str):
+        try:
+            parts = str(toi_str).split(":")
+            mins = int(parts[0])
+            secs = int(parts[1])
+            return round(mins + secs / 60, 2)
+        except (ValueError, IndexError):
+            pass
+
+    return None
+
+
+def _per_60(stat: int | None, toi_minutes: float | None) -> float | None:
+    """Compute per-60-minute rate. Returns None if TOI unavailable."""
+    if stat is None or toi_minutes is None or toi_minutes <= 0:
+        return None
+    return round((stat / toi_minutes) * 60, 2)
+
+
+def _compute_game_score(
+    goals: int | None,
+    assists: int | None,
+    shots: int | None,
+    blocked_shots: int | None,
+) -> float | None:
+    """Simplified DOM game score formula for NHL skaters.
+
+    game_score = G*0.75 + A*0.7 + SOG*0.075 + BLK*0.05
+    """
+    g = goals or 0
+    a = assists or 0
+    s = shots or 0
+    blk = blocked_shots or 0
+
+    if g == 0 and a == 0 and s == 0:
+        return None
+
+    return round(g * 0.75 + a * 0.7 + s * 0.075 + blk * 0.05, 2)

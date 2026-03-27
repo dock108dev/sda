@@ -30,6 +30,7 @@ _SPORT_SIMULATORS: dict[str, tuple[str, str]] = {
     "nba": ("app.analytics.sports.nba.game_simulator", "NBAGameSimulator"),
     "nhl": ("app.analytics.sports.nhl.game_simulator", "NHLGameSimulator"),
     "ncaab": ("app.analytics.sports.ncaab.game_simulator", "NCAABGameSimulator"),
+    "nfl": ("app.analytics.sports.nfl.game_simulator", "NFLGameSimulator"),
 }
 
 

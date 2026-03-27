@@ -136,6 +136,9 @@ class NHLSkaterAdvancedStats(Base):
     player_external_ref: Mapped[str] = mapped_column(String(100), nullable=False)
     player_name: Mapped[str] = mapped_column(String(200), nullable=False)
 
+    # Time on ice (decimal minutes, e.g. 18.45)
+    toi_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # xGoals
     xgoals_for: Mapped[float | None] = mapped_column(Float, nullable=True)
     xgoals_against: Mapped[float | None] = mapped_column(Float, nullable=True)

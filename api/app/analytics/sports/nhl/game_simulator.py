@@ -4,6 +4,14 @@ Simulates individual NHL games at the shot-attempt level using
 probability distributions. Designed for high-volume use -- all
 calculations are stateless with no database calls.
 
+Supports two modes:
+
+1. **Team-level** (``simulate_game``): single probability distribution
+   per team for all shot attempts.
+2. **Rotation-aware** (``simulate_game_with_lineups``): separate
+   top-line/depth unit weights. Each shot is randomly assigned to
+   a unit based on ``starter_share``. OT uses top-line only.
+
 Game flow:
     3 regulation periods, each with ~SHOTS_PER_PERIOD attempts per team.
     Each shot attempt is sampled from SHOT_EVENTS weighted by team's
@@ -132,6 +140,91 @@ class NHLGameSimulator:
             "went_to_shootout": went_to_shootout,
         }
 
+    def simulate_game_with_lineups(
+        self,
+        game_context: dict[str, Any],
+        rng: random.Random | None = None,
+    ) -> dict[str, Any]:
+        """Rotation-aware NHL simulation with top-line/depth units.
+
+        Each shot attempt is randomly assigned to top-line or depth
+        unit based on ``*_starter_share``. OT uses top-line only.
+        Shootout uses team-level goal probability.
+
+        Falls back to ``simulate_game`` if rotation keys are absent.
+        """
+        if "home_starter_weights" not in game_context:
+            return self.simulate_game(game_context, rng)
+
+        if rng is None:
+            rng = random.Random()
+
+        h_starter_w = game_context["home_starter_weights"]
+        h_bench_w = game_context["home_bench_weights"]
+        a_starter_w = game_context["away_starter_weights"]
+        a_bench_w = game_context["away_bench_weights"]
+
+        h_share = float(game_context.get("home_starter_share", 0.65))
+        a_share = float(game_context.get("away_starter_share", 0.65))
+
+        home_score = 0
+        away_score = 0
+        home_events = _new_event_counts()
+        away_events = _new_event_counts()
+        periods_played = 0
+        went_to_shootout = False
+
+        # Regulation: 3 periods with rotation
+        for _period in range(1, _PERIODS + 1):
+            periods_played = _period
+            h_goals, a_goals = _simulate_period_rotation(
+                h_starter_w, h_bench_w, h_share,
+                a_starter_w, a_bench_w, a_share,
+                rng, home_events, away_events,
+            )
+            home_score += h_goals
+            away_score += a_goals
+
+        # OT — top-line only
+        if home_score == away_score:
+            periods_played += 1
+            for _ot in range(_MAX_OVERTIMES):
+                winner = _simulate_ot(
+                    h_starter_w, a_starter_w, rng, home_events, away_events,
+                )
+                if winner == "home":
+                    home_score += 1
+                    break
+                elif winner == "away":
+                    away_score += 1
+                    break
+
+        # Shootout (team-level)
+        if home_score == away_score:
+            went_to_shootout = True
+            h_goal_prob = h_starter_w[0]  # goal weight from starter unit
+            a_goal_prob = a_starter_w[0]
+            home_so_prob = (h_goal_prob + _SHOOTOUT_GOAL_PROB) / 2
+            away_so_prob = (a_goal_prob + _SHOOTOUT_GOAL_PROB) / 2
+
+            so_winner = _simulate_shootout(rng, home_so_prob, away_so_prob)
+            if so_winner == "home":
+                home_score += 1
+            else:
+                away_score += 1
+
+        winner = "home" if home_score > away_score else "away"
+
+        return {
+            "home_score": home_score,
+            "away_score": away_score,
+            "winner": winner,
+            "home_events": home_events,
+            "away_events": away_events,
+            "periods_played": periods_played,
+            "went_to_shootout": went_to_shootout,
+        }
+
 
 # ---------------------------------------------------------------------------
 # Event counter helper
@@ -169,6 +262,41 @@ def _simulate_period(
 
         # Away shot attempt
         event = rng.choices(EVENTS, weights=away_weights, k=1)[0]
+        away_events[event] += 1
+        away_events["shots_total"] += 1
+        if event == "goal":
+            away_goals += 1
+
+    return home_goals, away_goals
+
+
+def _simulate_period_rotation(
+    h_starter_w: list[float],
+    h_bench_w: list[float],
+    h_share: float,
+    a_starter_w: list[float],
+    a_bench_w: list[float],
+    a_share: float,
+    rng: random.Random,
+    home_events: dict[str, int],
+    away_events: dict[str, int],
+) -> tuple[int, int]:
+    """Simulate one period with rotation — each shot assigned to a unit."""
+    home_goals = 0
+    away_goals = 0
+
+    for _shot in range(_SHOTS_PER_PERIOD):
+        # Home shot
+        w = h_starter_w if rng.random() < h_share else h_bench_w
+        event = rng.choices(EVENTS, weights=w, k=1)[0]
+        home_events[event] += 1
+        home_events["shots_total"] += 1
+        if event == "goal":
+            home_goals += 1
+
+        # Away shot
+        w = a_starter_w if rng.random() < a_share else a_bench_w
+        event = rng.choices(EVENTS, weights=w, k=1)[0]
         away_events[event] += 1
         away_events["shots_total"] += 1
         if event == "goal":
