@@ -18,9 +18,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "nhl_skater_advanced_stats",
-        sa.Column("toi_minutes", sa.Float(), nullable=True),
+    op.execute(
+        "ALTER TABLE nhl_skater_advanced_stats ADD COLUMN IF NOT EXISTS toi_minutes FLOAT"
     )
 
 

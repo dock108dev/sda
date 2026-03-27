@@ -18,18 +18,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "sports_games",
-        sa.Column(
-            "ingest_error_count",
-            sa.Integer(),
-            server_default=sa.text("0"),
-            nullable=False,
-        ),
+    op.execute(
+        "ALTER TABLE sports_games ADD COLUMN IF NOT EXISTS ingest_error_count INTEGER DEFAULT 0 NOT NULL"
     )
-    op.add_column(
-        "sports_games",
-        sa.Column("last_ingest_error", sa.Text(), nullable=True),
+    op.execute(
+        "ALTER TABLE sports_games ADD COLUMN IF NOT EXISTS last_ingest_error TEXT"
     )
 
 
