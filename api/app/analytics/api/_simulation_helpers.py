@@ -3,6 +3,10 @@
 Extracted from ``analytics_routes.py`` to keep the route module focused on
 HTTP concerns.  All functions here are pure logic or DB lookups — they never
 reference the FastAPI ``router``.
+
+Pitcher regression, pitching-metrics-from-profile, and per-batter weight
+building are in ``app.analytics.services.lineup_weights`` (shared with
+``batch_sim_tasks``).
 """
 
 from __future__ import annotations
@@ -12,6 +16,12 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analytics.services.lineup_weights import (
+    _LEAGUE_AVG_PITCHER,
+    _STARTER_IP_THRESHOLD,
+    pitching_metrics_from_profile as _pitching_metrics_from_profile,
+    regress_pitcher_profile as _regress_pitcher_profile,
+)
 from app.analytics.services.profile_service import (
     get_pitcher_rolling_profile,
     get_player_rolling_profile,
@@ -22,82 +32,6 @@ if TYPE_CHECKING:
     from .analytics_routes import SimulateRequest
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Reliever-as-starter regression
-# ---------------------------------------------------------------------------
-
-# Pitchers with avg IP below this threshold get regressed toward league avg.
-# A full-time starter (5+ IP avg) uses their actual profile; a reliever with
-# 1 avg IP gets ~80% league average because their extreme per-inning rates
-# (high K, low BB) aren't sustainable over a full start.
-_STARTER_IP_THRESHOLD = 5.0
-
-_LEAGUE_AVG_PITCHER: dict[str, float] = {
-    "strikeout_rate": 0.22,
-    "walk_rate": 0.08,
-    "contact_suppression": 0.0,
-    "power_suppression": 0.0,
-}
-
-
-def _regress_pitcher_profile(
-    profile: dict[str, float],
-    avg_ip: float | None,
-) -> dict[str, float]:
-    """Regress a pitcher's profile toward league average based on avg IP.
-
-    Relievers pitch short stints at max effort — their per-inning rates
-    can't be sustained over a full start.  This blends their profile with
-    league average proportionally to how many innings they typically throw.
-    """
-    if avg_ip is None or avg_ip >= _STARTER_IP_THRESHOLD:
-        return profile  # Starter — use actual profile
-
-    blend = max(avg_ip / _STARTER_IP_THRESHOLD, 0.1)  # floor at 10%
-    regressed: dict[str, float] = {}
-    for key in profile:
-        league_val = _LEAGUE_AVG_PITCHER.get(key, 0.0)
-        regressed[key] = round(league_val + blend * (profile[key] - league_val), 4)
-    return regressed
-
-
-def _pitching_metrics_from_profile(
-    team_profile: dict[str, float] | None,
-) -> dict[str, float] | None:
-    """Derive mild bullpen adjustments from a team's batting profile.
-
-    The previous implementation tried to invert batting stats into pitcher
-    metrics, producing nonsensical values (e.g., -90% power suppression).
-
-    Now: use league-average pitcher baselines with small nudges based on
-    the team's own offensive tendencies as a proxy for pitching staff
-    quality.  Teams that strike out a lot tend to have pitchers with
-    higher K rates; teams with low barrel rates tend to suppress power.
-
-    The adjustments are deliberately small (clamped to +-0.05) because
-    batting stats are a weak proxy for pitching ability.
-    """
-    if not team_profile:
-        return None
-    whiff = team_profile.get("whiff_rate")
-    contact = team_profile.get("contact_rate")
-    if whiff is None and contact is None:
-        return None
-
-    # Small offsets from league average, clamped to avoid extreme values
-    k_offset = min(max((whiff or 0.23) - 0.23, -0.05), 0.05)
-    bb_offset = min(max(0.08 - (team_profile.get("plate_discipline_index", 0.52) - 0.52) * 0.1, -0.03), 0.03)
-    contact_offset = min(max(0.77 - (contact or 0.77), -0.05), 0.05) * 0.3
-    barrel = team_profile.get("barrel_rate", 0.07)
-    power_offset = min(max((0.07 - barrel) / 0.07, -0.15), 0.15) * 0.3
-
-    return {
-        "strikeout_rate": round(0.22 + k_offset, 4),
-        "walk_rate": round(max(0.04, min(0.12, 0.08 + bb_offset)), 4),
-        "contact_suppression": round(max(-0.05, min(0.05, contact_offset)), 4),
-        "power_suppression": round(max(-0.05, min(0.05, power_offset)), 4),
-    }
 
 
 async def _build_lineup_context(

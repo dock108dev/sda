@@ -31,13 +31,22 @@ from app.analytics.sports.mlb.constants import (
 )
 
 
-# Maximum deviation from league-average baseline.  A value of 0.5 means
-# the model can shift each event probability by at most 50% of its
+# Maximum deviation from league-average baseline.  A value of 0.10 means
+# the model can shift each event probability by at most 10% of its
 # baseline value.  For example, strikeout baseline is 0.22, so the model
-# output is clamped to 0.11–0.33.  This prevents poorly-calibrated
-# models from producing absurd simulations (e.g., 60% hit rate) while
-# still allowing meaningful team differentiation.
-_MAX_BASELINE_DEVIATION = 0.25
+# output is clamped to 0.198–0.242.
+#
+# This must be conservative because:
+# - The sim uses team-level rolling averages (not individual batter/pitcher
+#   matchups), so profile variance is artificially low.
+# - Each PA in the sim uses the same static probabilities, so small edges
+#   compound across ~40 PAs per team to produce extreme game-level WPs.
+# - Real MLB team-level offensive output varies only ~±10-15% around the
+#   league mean once you account for park/schedule effects.
+#
+# At 0.10 the model still differentiates matchups (best-vs-worst produces
+# ~35/65 WP) without producing 10/90 absurdities.
+_MAX_BASELINE_DEVIATION = 0.10
 
 
 def normalize_probabilities(

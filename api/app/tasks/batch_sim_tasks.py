@@ -162,6 +162,160 @@ async def _save_prediction_outcomes(
         db.add(outcome)
 
 
+async def _try_build_lineup_weights(
+    db: AsyncSession,
+    game,
+    game_context: dict,
+    home_profile: dict | None,
+    away_profile: dict | None,
+    rolling_window: int,
+) -> bool:
+    """Attempt to build per-batter lineup weights for a game.
+
+    For final games: reconstructs batting order from PBP.
+    For scheduled/pregame games: uses most recent lineup + probable pitcher.
+
+    Returns True if lineup weights were successfully built and added to
+    ``game_context``, False otherwise (caller should fall back to team-level).
+    """
+    from app.analytics.services.lineup_fetcher import (
+        fetch_probable_starter,
+        fetch_recent_lineup,
+        get_team_external_ref,
+    )
+    from app.analytics.services.lineup_reconstruction import (
+        get_starting_pitcher,
+        reconstruct_lineup_from_pbp,
+    )
+    from app.analytics.services.lineup_weights import (
+        build_lineup_weights,
+        pitching_metrics_from_profile,
+        regress_pitcher_profile,
+    )
+    from app.analytics.services.profile_service import get_pitcher_rolling_profile
+
+    fallback_pitcher = {
+        "strikeout_rate": 0.22, "walk_rate": 0.08,
+        "contact_suppression": 0.0, "power_suppression": 0.0,
+    }
+
+    is_final = game.status in ("final", "archived")
+
+    # --- Get lineups ---
+    if is_final:
+        home_lineup_data = await reconstruct_lineup_from_pbp(
+            db, game.id, game.home_team_id,
+        )
+        away_lineup_data = await reconstruct_lineup_from_pbp(
+            db, game.id, game.away_team_id,
+        )
+    else:
+        home_lineup_batters = await fetch_recent_lineup(
+            db, game.home_team_id, before_game_id=game.id,
+        )
+        away_lineup_batters = await fetch_recent_lineup(
+            db, game.away_team_id, before_game_id=game.id,
+        )
+        home_lineup_data = {"batters": home_lineup_batters} if home_lineup_batters else None
+        away_lineup_data = {"batters": away_lineup_batters} if away_lineup_batters else None
+
+    if not home_lineup_data or not away_lineup_data:
+        return False
+
+    home_batters = home_lineup_data["batters"]
+    away_batters = away_lineup_data["batters"]
+
+    if len(home_batters) < 3 or len(away_batters) < 3:
+        return False
+
+    # --- Get starting pitchers ---
+    # Away starter faces home lineup; home starter faces away lineup
+    away_sp_info: dict | None = None
+    home_sp_info: dict | None = None
+
+    if is_final:
+        # For final games, get the actual starter from pitcher stats
+        away_sp_info = await get_starting_pitcher(db, game.id, game.away_team_id)
+        home_sp_info = await get_starting_pitcher(db, game.id, game.home_team_id)
+    else:
+        # For future games, try MLB Stats API probable pitchers
+        from app.utils.datetime_utils import to_et_date
+        game_date = to_et_date(game.game_date) if game.game_date else None
+        if game_date:
+            away_ext = await get_team_external_ref(db, game.away_team_id)
+            home_ext = await get_team_external_ref(db, game.home_team_id)
+            if away_ext:
+                away_sp_info = await fetch_probable_starter(game_date, away_ext)
+            if home_ext:
+                home_sp_info = await fetch_probable_starter(game_date, home_ext)
+
+    # --- Get pitcher profiles ---
+    away_sp_profile = fallback_pitcher
+    home_sp_profile = fallback_pitcher
+    away_sp_avg_ip: float | None = None
+    home_sp_avg_ip: float | None = None
+
+    if away_sp_info:
+        raw = await get_pitcher_rolling_profile(
+            away_sp_info["external_ref"], game.away_team_id,
+            rolling_window=rolling_window, db=db,
+        )
+        if raw:
+            away_sp_avg_ip = away_sp_info.get("avg_ip")
+            away_sp_profile = regress_pitcher_profile(raw, away_sp_avg_ip)
+
+    if home_sp_info:
+        raw = await get_pitcher_rolling_profile(
+            home_sp_info["external_ref"], game.home_team_id,
+            rolling_window=rolling_window, db=db,
+        )
+        if raw:
+            home_sp_avg_ip = home_sp_info.get("avg_ip")
+            home_sp_profile = regress_pitcher_profile(raw, home_sp_avg_ip)
+
+    # Bullpen profiles derived from opposing team's batting tendencies
+    away_bullpen = pitching_metrics_from_profile(away_profile) or fallback_pitcher
+    home_bullpen = pitching_metrics_from_profile(home_profile) or fallback_pitcher
+
+    # --- Build per-batter weights ---
+    # Home batters face away starter/bullpen
+    home_weights = await build_lineup_weights(
+        db, home_batters, game.home_team_id,
+        opposing_starter_profile=away_sp_profile,
+        opposing_bullpen_profile=away_bullpen,
+        team_profile=home_profile,
+        rolling_window=rolling_window,
+    )
+    # Away batters face home starter/bullpen
+    away_weights = await build_lineup_weights(
+        db, away_batters, game.away_team_id,
+        opposing_starter_profile=home_sp_profile,
+        opposing_bullpen_profile=home_bullpen,
+        team_profile=away_profile,
+        rolling_window=rolling_window,
+    )
+
+    game_context["home_lineup_weights"] = home_weights["starter_weights"]
+    game_context["away_lineup_weights"] = away_weights["starter_weights"]
+    game_context["home_bullpen_weights"] = home_weights["bullpen_weights"]
+    game_context["away_bullpen_weights"] = away_weights["bullpen_weights"]
+    game_context["starter_innings"] = 6.0
+
+    logger.info(
+        "batch_sim_lineup_built",
+        extra={
+            "game_id": game.id,
+            "home_batters": len(home_batters),
+            "away_batters": len(away_batters),
+            "home_resolved": home_weights["batters_resolved"],
+            "away_resolved": away_weights["batters_resolved"],
+            "home_sp": home_sp_info.get("name") if home_sp_info else None,
+            "away_sp": away_sp_info.get("name") if away_sp_info else None,
+        },
+    )
+    return True
+
+
 async def _execute_batch_sim(
     *,
     sf,
@@ -304,44 +458,57 @@ async def _execute_batch_sim(
 
         has_profiles = bool(home_profile and away_profile)
         use_ml = model_id or probability_mode in ("ml", "ensemble")
+        lineup_mode = False
 
-        if has_profiles and use_ml:
-            # ML pipeline — attach profiles for the resolver
-            game_context["profiles"] = {
-                "home_profile": {"metrics": home_profile},
-                "away_profile": {"metrics": away_profile},
-            }
-            game_context["probability_mode"] = probability_mode
-            if model_id:
-                game_context["_model_id"] = model_id
-        elif has_profiles:
-            # Rule-based: convert profiles directly to PA probabilities
-            from app.analytics.services.profile_service import profile_to_pa_probabilities
-            home_pa = profile_to_pa_probabilities(home_profile)
-            away_pa = profile_to_pa_probabilities(away_profile)
-            game_context["home_probabilities"] = home_pa
-            game_context["away_probabilities"] = away_pa
-        elif use_ml:
-            # ML/model_id requested but profiles unavailable — still set
-            # the mode so the engine can attempt inference (and fail
-            # visibly) rather than silently falling back to defaults.
-            game_context["probability_mode"] = probability_mode
-            if model_id:
-                game_context["_model_id"] = model_id
-            logger.warning(
-                "batch_sim_missing_profiles_for_ml",
-                extra={
-                    "game_id": game.id,
-                    "probability_mode": probability_mode,
-                    "model_id": model_id,
-                },
+        # ----------------------------------------------------------
+        # Attempt lineup-aware simulation (per-batter matchup weights)
+        # ----------------------------------------------------------
+        try:
+            lineup_mode = await _try_build_lineup_weights(
+                db, game, game_context,
+                home_profile, away_profile,
+                rolling_window,
             )
-        # else: no profiles, rule-based mode → league defaults (no overrides)
+        except Exception as exc:
+            logger.info(
+                "lineup_weight_build_skipped",
+                extra={"game_id": game.id, "error": str(exc)},
+            )
+
+        if not lineup_mode:
+            # Fall back to team-level probability resolution
+            if has_profiles and use_ml:
+                game_context["profiles"] = {
+                    "home_profile": {"metrics": home_profile},
+                    "away_profile": {"metrics": away_profile},
+                }
+                game_context["probability_mode"] = probability_mode
+                if model_id:
+                    game_context["_model_id"] = model_id
+            elif has_profiles:
+                from app.analytics.services.profile_service import profile_to_pa_probabilities
+                home_pa = profile_to_pa_probabilities(home_profile)
+                away_pa = profile_to_pa_probabilities(away_profile)
+                game_context["home_probabilities"] = home_pa
+                game_context["away_probabilities"] = away_pa
+            elif use_ml:
+                game_context["probability_mode"] = probability_mode
+                if model_id:
+                    game_context["_model_id"] = model_id
+                logger.warning(
+                    "batch_sim_missing_profiles_for_ml",
+                    extra={
+                        "game_id": game.id,
+                        "probability_mode": probability_mode,
+                        "model_id": model_id,
+                    },
+                )
 
         try:
             sim = engine.run_simulation(
                 game_context=game_context,
                 iterations=iterations,
+                use_lineup=lineup_mode,
             )
         except Exception as exc:
             logger.warning(
@@ -358,7 +525,9 @@ async def _execute_batch_sim(
             continue
 
         # Derive accurate probability_source from what actually ran
-        if "probability_source" in sim:
+        if lineup_mode:
+            prob_source = "lineup_matchup"
+        elif "probability_source" in sim:
             prob_source = sim["probability_source"]
         elif has_profiles:
             prob_source = "team_profile"
