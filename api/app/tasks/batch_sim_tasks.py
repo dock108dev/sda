@@ -162,6 +162,90 @@ async def _save_prediction_outcomes(
         db.add(outcome)
 
 
+def _get_advanced_stats_model(sport: str):
+    """Return the advanced stats ORM model for a sport."""
+    if sport == "nba":
+        from app.db.nba_advanced import NBAGameAdvancedStats
+        return NBAGameAdvancedStats
+    from app.db.mlb_advanced import MLBGameAdvancedStats
+    return MLBGameAdvancedStats
+
+
+async def _try_build_nba_rotation_weights(
+    db: AsyncSession,
+    game,
+    game_context: dict,
+    home_profile: dict | None,
+    away_profile: dict | None,
+    rolling_window: int,
+) -> bool:
+    """Attempt to build starter/bench rotation weights for an NBA game.
+
+    For final games: reconstructs rotation from NBAPlayerAdvancedStats.
+    For scheduled/pregame games: uses most recent rotation.
+
+    Returns True if rotation weights were built, False otherwise.
+    """
+    from app.analytics.services.nba_rotation_service import (
+        get_recent_rotation,
+        reconstruct_rotation_from_stats,
+    )
+    from app.analytics.services.nba_rotation_weights import build_rotation_weights
+
+    is_final = game.status in ("final", "archived")
+
+    if is_final:
+        home_rotation = await reconstruct_rotation_from_stats(db, game.id, game.home_team_id)
+        away_rotation = await reconstruct_rotation_from_stats(db, game.id, game.away_team_id)
+    else:
+        home_rotation = await get_recent_rotation(db, game.home_team_id, exclude_game_id=game.id)
+        away_rotation = await get_recent_rotation(db, game.away_team_id, exclude_game_id=game.id)
+
+    if not home_rotation or not away_rotation:
+        return False
+
+    # Get opposing defense ratings for matchup adjustments
+    away_def = (away_profile or {}).get("def_rating")
+    home_def = (home_profile or {}).get("def_rating")
+
+    home_weights = await build_rotation_weights(
+        db, home_rotation, game.home_team_id,
+        opposing_def_rating=away_def,
+        rolling_window=rolling_window,
+    )
+    away_weights = await build_rotation_weights(
+        db, away_rotation, game.away_team_id,
+        opposing_def_rating=home_def,
+        rolling_window=rolling_window,
+    )
+
+    game_context["home_starter_weights"] = home_weights["starter_weights"]
+    game_context["home_bench_weights"] = home_weights["bench_weights"]
+    game_context["home_starter_share"] = home_weights["starter_share"]
+    game_context["home_ft_pct_starter"] = home_weights["ft_pct_starter"]
+    game_context["home_ft_pct_bench"] = home_weights["ft_pct_bench"]
+
+    game_context["away_starter_weights"] = away_weights["starter_weights"]
+    game_context["away_bench_weights"] = away_weights["bench_weights"]
+    game_context["away_starter_share"] = away_weights["starter_share"]
+    game_context["away_ft_pct_starter"] = away_weights["ft_pct_starter"]
+    game_context["away_ft_pct_bench"] = away_weights["ft_pct_bench"]
+
+    logger.info(
+        "batch_sim_nba_rotation_built",
+        extra={
+            "game_id": game.id,
+            "home_starters": len(home_rotation["starters"]),
+            "away_starters": len(away_rotation["starters"]),
+            "home_resolved": home_weights["players_resolved"],
+            "away_resolved": away_weights["players_resolved"],
+            "home_starter_share": home_weights["starter_share"],
+            "away_starter_share": away_weights["starter_share"],
+        },
+    )
+    return True
+
+
 async def _try_build_lineup_weights(
     db: AsyncSession,
     game,
@@ -331,27 +415,22 @@ async def _execute_batch_sim(
     from sqlalchemy import select
 
     from app.analytics.core.simulation_engine import SimulationEngine
-    from app.db.mlb_advanced import MLBGameAdvancedStats
-    from app.db.sports import SportsGame, SportsTeam
+    from app.db.sports import SportsGame, SportsLeague, SportsTeam
 
-    if sport.lower() != "mlb":
-        return {"error": "only_mlb_supported"}
+    sport_lower = sport.lower()
+    if sport_lower not in ("mlb", "nba"):
+        return {"error": "sport_not_supported", "supported": ["mlb", "nba"]}
 
     async with sf() as db:
         # 1. Find games to simulate
-        # When a date range is provided, include all games (historical + future).
-        # Without dates, default to upcoming (scheduled/pregame) from today.
         game_stmt = select(SportsGame).order_by(SportsGame.game_date.asc())
 
-        # MLB games are scheduled in US Eastern time. Convert date
-        # boundaries to ET so a "March 26" sim doesn't accidentally
-        # pick up a March 25 late-night game stored as early March 26 UTC.
+        # Convert date boundaries to ET so late-night games map correctly.
         if date_start:
             game_stmt = game_stmt.where(
                 SportsGame.game_date >= start_of_et_day_utc(date.fromisoformat(date_start))
             )
         else:
-            # No start date — only upcoming games from today (ET)
             game_stmt = game_stmt.where(
                 SportsGame.status.in_(["scheduled", "pregame"]),
                 SportsGame.game_date >= start_of_et_day_utc(date.today()),
@@ -361,14 +440,14 @@ async def _execute_batch_sim(
                 SportsGame.game_date < end_of_et_day_utc(date.fromisoformat(date_end))
             )
 
-        # Filter to MLB games via league join
-        from app.db.sports import SportsLeague
-        mlb_league = await db.execute(
-            select(SportsLeague.id).where(SportsLeague.code == "MLB")
+        # Filter to sport's league
+        league_code = sport.upper()
+        league_result = await db.execute(
+            select(SportsLeague.id).where(SportsLeague.code == league_code)
         )
-        mlb_league_id = mlb_league.scalar_one_or_none()
-        if mlb_league_id:
-            game_stmt = game_stmt.where(SportsGame.league_id == mlb_league_id)
+        league_id = league_result.scalar_one_or_none()
+        if league_id:
+            game_stmt = game_stmt.where(SportsGame.league_id == league_id)
 
         game_result = await db.execute(game_stmt)
         upcoming_games = game_result.scalars().all()
@@ -387,21 +466,20 @@ async def _execute_batch_sim(
         teams = {t.id: t for t in team_result.scalars().all()}
 
         # 3. Load all historical advanced stats for rolling profiles
+        AdvancedStatsModel = _get_advanced_stats_model(sport_lower)
         all_stats_stmt = (
-            select(MLBGameAdvancedStats)
-            .join(SportsGame, SportsGame.id == MLBGameAdvancedStats.game_id)
+            select(AdvancedStatsModel)
+            .join(SportsGame, SportsGame.id == AdvancedStatsModel.game_id)
             .where(SportsGame.status == "final")
             .order_by(SportsGame.game_date.asc())
         )
         stats_result = await db.execute(all_stats_stmt)
         all_stats = stats_result.scalars().all()
 
-        # Index by game_id
         stats_by_game: dict[int, list] = defaultdict(list)
         for s in all_stats:
             stats_by_game[s.game_id].append(s)
 
-        # Get dates for all games with stats
         all_game_ids = list(stats_by_game.keys())
         game_dates: dict[int, str] = {}
         if all_game_ids:
@@ -412,7 +490,6 @@ async def _execute_batch_sim(
             for gid, gdate in dates_result:
                 game_dates[gid] = str(gdate)
 
-        # Build per-team chronological history
         team_history: dict[int, list[tuple[str, object]]] = defaultdict(list)
         for game_id, stats_list in stats_by_game.items():
             gdate = game_dates.get(game_id, "")
@@ -442,12 +519,14 @@ async def _execute_batch_sim(
             before_date=profile_cutoff,
             window=rolling_window,
             min_games=3,
+            sport=sport_lower,
         )
         away_profile = _build_rolling_profile(
             team_history.get(game.away_team_id, []),
             before_date=profile_cutoff,
             window=rolling_window,
             min_games=3,
+            sport=sport_lower,
         )
 
         # Build game context for SimulationEngine
@@ -461,14 +540,21 @@ async def _execute_batch_sim(
         lineup_mode = False
 
         # ----------------------------------------------------------
-        # Attempt lineup-aware simulation (per-batter matchup weights)
+        # Attempt lineup/rotation-aware simulation
         # ----------------------------------------------------------
         try:
-            lineup_mode = await _try_build_lineup_weights(
-                db, game, game_context,
-                home_profile, away_profile,
-                rolling_window,
-            )
+            if sport_lower == "nba":
+                lineup_mode = await _try_build_nba_rotation_weights(
+                    db, game, game_context,
+                    home_profile, away_profile,
+                    rolling_window,
+                )
+            else:
+                lineup_mode = await _try_build_lineup_weights(
+                    db, game, game_context,
+                    home_profile, away_profile,
+                    rolling_window,
+                )
         except Exception as exc:
             logger.info(
                 "lineup_weight_build_skipped",
@@ -710,5 +796,49 @@ def _count_profile_games(
 # ---------------------------------------------------------------------------
 
 from app.tasks._training_helpers import (  # noqa: E402
-    build_rolling_profile as _build_rolling_profile,
+    build_rolling_profile as _build_rolling_profile_mlb,
 )
+
+
+def _nba_stats_to_metrics(stats) -> dict:
+    """Convert NBAGameAdvancedStats row to a flat metrics dict."""
+    return {
+        "off_rating": float(stats.off_rating or 114.0),
+        "def_rating": float(stats.def_rating or 114.0),
+        "net_rating": float(stats.net_rating or 0.0),
+        "pace": float(stats.pace or 100.0),
+        "efg_pct": float(stats.efg_pct or 0.54),
+        "ts_pct": float(stats.ts_pct or 0.58),
+        "tov_pct": float(stats.tov_pct or 0.13),
+        "orb_pct": float(stats.orb_pct or 0.25),
+        "ft_rate": float(stats.ft_rate or 0.27),
+        "fg3_pct": float(stats.fg3_pct or 0.35),
+        "ft_pct": float(stats.ft_pct or 0.78),
+        "ast_pct": float(stats.ast_pct or 0.60),
+    }
+
+
+def _build_rolling_profile(
+    team_games: list[tuple[str, object]],
+    *,
+    before_date: str,
+    window: int,
+    min_games: int = 5,
+    sport: str = "mlb",
+) -> dict | None:
+    """Sport-aware rolling profile builder."""
+    if sport == "nba":
+        prior = [stats for date_str, stats in team_games if date_str < before_date]
+        if len(prior) < min_games:
+            return None
+        recent = prior[-window:]
+        all_metrics = [_nba_stats_to_metrics(s) for s in recent]
+        aggregated: dict[str, float] = {}
+        for key in all_metrics[0]:
+            values = [m[key] for m in all_metrics if key in m]
+            if values:
+                aggregated[key] = round(sum(values) / len(values), 4)
+        return aggregated
+    return _build_rolling_profile_mlb(
+        team_games, before_date=before_date, window=window, min_games=min_games,
+    )

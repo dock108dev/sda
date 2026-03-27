@@ -4,6 +4,16 @@ Simulates individual NBA games at the possession level using
 event probability distributions. Designed for high-volume use —
 all calculations are stateless with no database calls.
 
+Supports two modes:
+
+1. **Team-level** (``simulate_game``): single probability distribution
+   per team for all possessions.
+2. **Rotation-aware** (``simulate_game_with_lineups``): separate
+   starter/bench unit weights with per-possession random assignment.
+   Each possession is played by either the starter or bench unit
+   based on a ``starter_share`` probability, producing natural
+   within-game variance.
+
 Game flow:
     4 quarters (or more for ties), each with ~25 possessions per team.
     Each possession samples an event from the probability distribution.
@@ -115,6 +125,92 @@ class NBAGameSimulator:
             "periods_played": periods_played,
         }
 
+    def simulate_game_with_lineups(
+        self,
+        game_context: dict[str, Any],
+        rng: random.Random | None = None,
+    ) -> dict[str, Any]:
+        """Rotation-aware NBA simulation with starter/bench units.
+
+        Each possession is randomly assigned to either the starter or
+        bench unit based on ``*_starter_share``.  This produces natural
+        within-game variance — some simulations the bench plays more,
+        others less.
+
+        Expected ``game_context`` keys:
+            home_starter_weights / away_starter_weights: list[float]
+            home_bench_weights / away_bench_weights: list[float]
+            home_starter_share / away_starter_share: float (0-1)
+            home_ft_pct_starter / away_ft_pct_starter: float
+            home_ft_pct_bench / away_ft_pct_bench: float
+
+        Falls back to ``home_probabilities`` / ``away_probabilities``
+        if rotation keys are absent.
+        """
+        # Check for rotation data; fall back to team-level if absent
+        if "home_starter_weights" not in game_context:
+            return self.simulate_game(game_context, rng)
+
+        if rng is None:
+            rng = random.Random()
+
+        h_starter_w = game_context["home_starter_weights"]
+        h_bench_w = game_context["home_bench_weights"]
+        a_starter_w = game_context["away_starter_weights"]
+        a_bench_w = game_context["away_bench_weights"]
+
+        h_starter_share = float(game_context.get("home_starter_share", 0.70))
+        a_starter_share = float(game_context.get("away_starter_share", 0.70))
+
+        h_ft_starter = float(game_context.get("home_ft_pct_starter", _DEFAULT_FT_PCT))
+        h_ft_bench = float(game_context.get("home_ft_pct_bench", _DEFAULT_FT_PCT))
+        a_ft_starter = float(game_context.get("away_ft_pct_starter", _DEFAULT_FT_PCT))
+        a_ft_bench = float(game_context.get("away_ft_pct_bench", _DEFAULT_FT_PCT))
+
+        home_score = 0
+        away_score = 0
+        home_events = _new_event_counts()
+        away_events = _new_event_counts()
+        periods_played = 0
+
+        for quarter in range(1, _QUARTERS + 1):
+            periods_played = quarter
+            h_pts, a_pts = _simulate_quarter_rotation(
+                h_starter_w, h_bench_w, h_starter_share,
+                a_starter_w, a_bench_w, a_starter_share,
+                rng, home_events, away_events,
+                h_ft_starter, h_ft_bench,
+                a_ft_starter, a_ft_bench,
+                _QUARTER_POSSESSIONS,
+            )
+            home_score += h_pts
+            away_score += a_pts
+
+        # Overtime — starters typically play all OT minutes
+        ot = 0
+        while home_score == away_score and ot < _MAX_OVERTIMES:
+            h_pts, a_pts = _simulate_quarter(
+                h_starter_w, a_starter_w, rng,
+                home_events, away_events,
+                h_ft_starter, a_ft_starter,
+                _OT_POSSESSIONS,
+            )
+            home_score += h_pts
+            away_score += a_pts
+            ot += 1
+            periods_played += 1
+
+        winner = "home" if home_score > away_score else "away"
+
+        return {
+            "home_score": home_score,
+            "away_score": away_score,
+            "winner": winner,
+            "home_events": home_events,
+            "away_events": away_events,
+            "periods_played": periods_played,
+        }
+
 
 # ---------------------------------------------------------------------------
 # Event counter helper
@@ -154,6 +250,43 @@ def _simulate_quarter(
         away_pts += _simulate_possession(
             away_weights, rng, away_events, ft_pct_away,
         )
+
+    return home_pts, away_pts
+
+
+def _simulate_quarter_rotation(
+    h_starter_w: list[float],
+    h_bench_w: list[float],
+    h_starter_share: float,
+    a_starter_w: list[float],
+    a_bench_w: list[float],
+    a_starter_share: float,
+    rng: random.Random,
+    home_events: dict[str, int],
+    away_events: dict[str, int],
+    h_ft_starter: float,
+    h_ft_bench: float,
+    a_ft_starter: float,
+    a_ft_bench: float,
+    possessions: int,
+) -> tuple[int, int]:
+    """Simulate a quarter with rotation — each possession randomly
+    assigned to starter or bench unit based on their share."""
+    home_pts = 0
+    away_pts = 0
+
+    for _ in range(possessions):
+        # Home possession — pick unit
+        if rng.random() < h_starter_share:
+            home_pts += _simulate_possession(h_starter_w, rng, home_events, h_ft_starter)
+        else:
+            home_pts += _simulate_possession(h_bench_w, rng, home_events, h_ft_bench)
+
+        # Away possession — pick unit
+        if rng.random() < a_starter_share:
+            away_pts += _simulate_possession(a_starter_w, rng, away_events, a_ft_starter)
+        else:
+            away_pts += _simulate_possession(a_bench_w, rng, away_events, a_ft_bench)
 
     return home_pts, away_pts
 
