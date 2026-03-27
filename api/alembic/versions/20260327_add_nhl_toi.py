@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "nhl_toi_001"
-down_revision = "nhl_adv_stats_001"
+down_revision = "ncaab_adv_stats_001"
 branch_labels = None
 depends_on = None
 
