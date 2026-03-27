@@ -226,9 +226,9 @@ class TestProviderRequest:
 
     def test_qps_budget_exhausted_returns_none(self):
         client = MagicMock()
-        # Create a bucket with 0 capacity effectively
-        bucket = TokenBucket(rate=0.001, capacity=1)
-        bucket.acquire(timeout=0.01)  # drain the single token
+        # Use a mock bucket that always fails to acquire
+        bucket = MagicMock()
+        bucket.acquire.return_value = False
 
         with patch("sports_scraper.utils.provider_request._get_bucket", return_value=bucket):
             result = provider_request(

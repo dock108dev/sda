@@ -412,7 +412,8 @@ class TestIngestBoxscores:
 
     @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
     @patch("sports_scraper.services.nhl_boxscore_ingestion.ingest_boxscores_via_nhl_api")
-    def test_nhl_api_dispatch(self, mock_ingest, mock_today):
+    @patch("sports_scraper.services.nhl_boxscore_ingestion.populate_nhl_games_from_schedule", return_value=0)
+    def test_nhl_api_dispatch(self, _mock_populate, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 3, 5)
         mock_ingest.return_value = (5, 4, 3, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
@@ -432,7 +433,9 @@ class TestIngestBoxscores:
 
     @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
     @patch("sports_scraper.services.nba_boxscore_ingestion.ingest_boxscores_via_nba_api")
-    def test_nba_api_dispatch(self, mock_ingest, mock_today):
+    @patch("sports_scraper.services.nba_boxscore_ingestion.populate_nba_games_from_schedule", return_value=0)
+    @patch("sports_scraper.services.nba_historical_ingestion.ingest_nba_historical_boxscores", return_value=(0, 0, 0))
+    def test_nba_api_dispatch(self, _mock_hist, _mock_populate, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 3, 5)
         mock_ingest.return_value = (3, 2, 1, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
@@ -451,7 +454,8 @@ class TestIngestBoxscores:
 
     @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
     @patch("sports_scraper.services.ncaab_boxscore_ingestion.ingest_boxscores_via_ncaab_api")
-    def test_ncaab_api_dispatch(self, mock_ingest, mock_today):
+    @patch("sports_scraper.services.ncaab_boxscore_ingestion.populate_ncaab_games_from_schedule", return_value=0)
+    def test_ncaab_api_dispatch(self, _mock_populate, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 3, 20)
         mock_ingest.return_value = (8, 7, 6, 0)
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}
@@ -532,7 +536,8 @@ class TestIngestBoxscores:
 
     @patch("sports_scraper.services.phases.boxscore_phase.sports_today_et")
     @patch("sports_scraper.services.nhl_boxscore_ingestion.ingest_boxscores_via_nhl_api")
-    def test_api_dispatch_failure(self, mock_ingest, mock_today):
+    @patch("sports_scraper.services.nhl_boxscore_ingestion.populate_nhl_games_from_schedule", return_value=0)
+    def test_api_dispatch_failure(self, _mock_populate, mock_ingest, mock_today):
         mock_today.return_value = date(2025, 3, 5)
         mock_ingest.side_effect = Exception("api fail")
         summary = {"games": 0, "games_enriched": 0, "games_with_stats": 0}

@@ -461,6 +461,19 @@ class _XGBStringClassesWrapper:
     def predict_proba(self, X: Any) -> Any:
         return self._model.predict_proba(X)
 
+    # ------------------------------------------------------------------
+    # Pickle support — explicit state methods prevent __getattr__ from
+    # intercepting pickle's internal attribute probes (__getstate__,
+    # __reduce_ex__, etc.), which causes infinite recursion on
+    # Python 3.14+.
+    # ------------------------------------------------------------------
+
+    def __getstate__(self) -> dict[str, Any]:
+        return self.__dict__.copy()
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+
     def __getattr__(self, name: str) -> Any:
         # Delegate everything else (e.g., _training_feature_names) to the
         # underlying model or to attributes set on this wrapper.

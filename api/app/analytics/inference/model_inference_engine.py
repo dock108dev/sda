@@ -226,12 +226,12 @@ class ModelInferenceEngine:
                     wrapper._loaded = True
                     self._loaded_model_ids[cache_key] = current_id
                     return wrapper
-            except (FileNotFoundError, RuntimeError, ModuleNotFoundError) as exc:
+            except Exception as exc:
                 logger.warning(
                     "artifact_load_failed",
                     extra={"path": path, "error": str(exc)},
                 )
-                return None
+                # Fall through to built-in model instead of returning None
 
         # No registered model with a path — fall back to built-in model
         return self._registry.get_active_model_instance(sport, model_type)
