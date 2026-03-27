@@ -47,6 +47,11 @@ class InferenceCache:
         if not p.is_file():
             raise FileNotFoundError(f"Model artifact path is not a file: {path}")
 
+        # Verify artifact signature before loading to prevent tampered
+        # or unsigned models from being deserialized.
+        from app.analytics.models.core.artifact_signing import verify_artifact
+        verify_artifact(path)
+
         import joblib
         try:
             model = joblib.load(path)

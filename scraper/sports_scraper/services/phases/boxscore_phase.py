@@ -225,9 +225,16 @@ def ingest_boxscores(
                                 else:
                                     games_skipped += 1
                     except Exception as exc:
-                        logger.warning(
+                        logger.error(
                             "boxscore_scrape_failed", game_id=game_id, error=str(exc)
                         )
+                        try:
+                            from ..game_selection import record_ingest_error
+                            with get_session() as err_session:
+                                record_ingest_error(err_session, game_id, str(exc))
+                                err_session.commit()
+                        except Exception:
+                            pass
             else:
                 # Scrape all games in date range from Sports Reference
                 for game_payload in scraper.fetch_date_range(start, boxscore_end):

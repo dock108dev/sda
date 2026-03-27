@@ -850,7 +850,8 @@ class TestClientGet:
     """Tests for DataGolfClient._get internals."""
 
     @patch("sports_scraper.golf.client.httpx.Client")
-    def test_get_returns_none_on_http_error(self, MockHttpClient):
+    def test_get_raises_on_http_error(self, MockHttpClient):
+        import pytest
         from sports_scraper.golf.client import DataGolfClient
 
         mock_resp = MagicMock()
@@ -859,18 +860,19 @@ class TestClientGet:
         MockHttpClient.return_value.get.return_value = mock_resp
 
         client = DataGolfClient(api_key="test-key")
-        result = client._get("/some-endpoint")
-        assert result is None
+        with pytest.raises(RuntimeError, match="DataGolf API error 500"):
+            client._get("/some-endpoint")
 
     @patch("sports_scraper.golf.client.httpx.Client")
-    def test_get_returns_none_on_exception(self, MockHttpClient):
+    def test_get_raises_on_network_exception(self, MockHttpClient):
+        import pytest
         from sports_scraper.golf.client import DataGolfClient
 
         MockHttpClient.return_value.get.side_effect = Exception("connection failed")
 
         client = DataGolfClient(api_key="test-key")
-        result = client._get("/some-endpoint")
-        assert result is None
+        with pytest.raises(Exception, match="connection failed"):
+            client._get("/some-endpoint")
 
     @patch("sports_scraper.golf.client.httpx.Client")
     def test_get_returns_json_on_success(self, MockHttpClient):
@@ -909,6 +911,7 @@ class TestClientGet:
 
     @patch("sports_scraper.golf.client.httpx.Client")
     def test_get_non_200_with_empty_body(self, MockHttpClient):
+        import pytest
         from sports_scraper.golf.client import DataGolfClient
 
         mock_resp = MagicMock()
@@ -917,5 +920,5 @@ class TestClientGet:
         MockHttpClient.return_value.get.return_value = mock_resp
 
         client = DataGolfClient(api_key="test-key")
-        result = client._get("/rate-limited")
-        assert result is None
+        with pytest.raises(RuntimeError, match="DataGolf API error 429"):
+            client._get("/rate-limited")

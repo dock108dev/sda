@@ -546,8 +546,8 @@ class TestOddsClientFetchEventProps:
         client.client = MagicMock()
         client.client.get.return_value = mock_resp
 
-        result = client.fetch_event_props("NBA", "ev123", markets=["player_points"])
-        assert result == []
+        with pytest.raises(RuntimeError, match="Props API error 500"):
+            client.fetch_event_props("NBA", "ev123", markets=["player_points"])
 
     @patch("sports_scraper.odds.client.parse_prop_event")
     @patch("sports_scraper.odds.client.settings")

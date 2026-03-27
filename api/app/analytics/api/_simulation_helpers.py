@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.services.lineup_weights import (
-    _LEAGUE_AVG_PITCHER,
     _STARTER_IP_THRESHOLD,
     pitching_metrics_from_profile as _pitching_metrics_from_profile,
     regress_pitcher_profile as _regress_pitcher_profile,

@@ -311,7 +311,7 @@ class ScrapeRunManager:
                     self._sync_odds(run_id, config, summary, start, end)
                 except Exception as exc:
                     phase_errors.append("odds")
-                    logger.warning("phase_failed_odds", run_id=run_id, error=str(exc))
+                    logger.error("phase_failed_odds", run_id=run_id, error=str(exc))
 
             if config.boxscores:
                 ingest_run_id = start_job_run("ingest", [config.league_code])
@@ -323,7 +323,7 @@ class ScrapeRunManager:
                     )
                 except Exception as exc:
                     phase_errors.append("boxscores")
-                    logger.warning("phase_failed_boxscores", run_id=run_id, error=str(exc))
+                    logger.error("phase_failed_boxscores", run_id=run_id, error=str(exc))
 
             if ingest_run_id is not None:
                 complete_job_run(ingest_run_id, "success")
@@ -334,21 +334,21 @@ class ScrapeRunManager:
                     self._ingest_pbp(run_id, config, summary, start, end, updated_before_dt)
                 except Exception as exc:
                     phase_errors.append("pbp")
-                    logger.warning("phase_failed_pbp", run_id=run_id, error=str(exc))
+                    logger.error("phase_failed_pbp", run_id=run_id, error=str(exc))
 
             if config.social:
                 try:
                     self._dispatch_social(run_id, config, summary, start, end)
                 except Exception as exc:
                     phase_errors.append("social")
-                    logger.warning("phase_failed_social", run_id=run_id, error=str(exc))
+                    logger.error("phase_failed_social", run_id=run_id, error=str(exc))
 
             if config.advanced_stats:
                 try:
                     self._ingest_advanced_stats(run_id, config, summary, start, end, updated_before_dt)
                 except Exception as exc:
                     phase_errors.append("advanced_stats")
-                    logger.warning("phase_failed_advanced_stats", run_id=run_id, error=str(exc))
+                    logger.error("phase_failed_advanced_stats", run_id=run_id, error=str(exc))
 
             self._run_diagnostics(config)
             phases_requested = sum([

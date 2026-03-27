@@ -14,10 +14,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.analytics.api.analytics_routes import (
-    _pitching_metrics_from_profile,
-    _regress_pitcher_profile,
-    router,
+from app.analytics.api.analytics_routes import router
+from app.analytics.services.lineup_weights import (
+    pitching_metrics_from_profile as _pitching_metrics_from_profile,
+    regress_pitcher_profile as _regress_pitcher_profile,
 )
 from app.analytics.services.profile_service import ProfileResult
 from app.db import get_db

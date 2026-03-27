@@ -358,13 +358,19 @@ def ingest_boxscores_via_nba_api(
         except Exception as exc:
             session.rollback()
             errors += 1
-            logger.warning(
+            logger.error(
                 "nba_boxscore_fetch_failed",
                 run_id=run_id,
                 game_id=game_id,
                 nba_game_id=nba_game_id,
                 error=str(exc),
             )
+            try:
+                from .game_selection import record_ingest_error
+                record_ingest_error(session, game_id, str(exc))
+                session.commit()
+            except Exception:
+                session.rollback()
             continue
 
     logger.info(

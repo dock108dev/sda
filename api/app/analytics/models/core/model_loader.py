@@ -23,9 +23,8 @@ class ModelLoader:
     """Loads serialized ML model artifacts from the filesystem.
 
     Before deserializing, verifies the HMAC signature produced by
-    ``artifact_signing.sign_artifact()``. Artifacts without a ``.sig``
-    file are allowed with a warning (backward compatibility for
-    pre-signing artifacts).
+    ``artifact_signing.sign_artifact()``. Unsigned artifacts (missing
+    ``.sig`` file) are rejected with ``FileNotFoundError``.
     """
 
     def load_model(self, model_path: str) -> Any:
@@ -55,16 +54,8 @@ class ModelLoader:
             raise FileNotFoundError(f"Model file not found: {canonical}")
 
         # Verify HMAC signature before deserialization.
-        try:
-            from .artifact_signing import verify_artifact
-            verify_artifact(canonical)
-        except (RuntimeError, FileNotFoundError):
-            # No signing key configured or sig file missing — allow
-            # with warning for backward compatibility.
-            logger.warning(
-                "artifact_signature_skipped",
-                extra={"path": canonical, "reason": "no_key_or_sig"},
-            )
+        from .artifact_signing import verify_artifact
+        verify_artifact(canonical)  # raises on missing sig, bad sig, or no key
 
         logger.info("loading_model", extra={"path": canonical})
 

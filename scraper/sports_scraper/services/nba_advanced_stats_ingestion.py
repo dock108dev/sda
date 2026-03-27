@@ -4,11 +4,6 @@ Computes efficiency ratings, four factors, and shooting metrics from
 existing team and player boxscore data already in the database.
 No external API calls — reads from sports_team_boxscores and
 sports_player_boxscores JSONB columns.
-
-TODO: Investigate residential proxy or alternative API source for
-stats.nba.com tracking/hustle data (speed, distance, touches, contested
-shots, deflections, pull-up/catch-shoot). These require NBA's optical
-tracking system and cannot be derived from boxscores.
 """
 
 from __future__ import annotations

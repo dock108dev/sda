@@ -20,7 +20,7 @@ from app.realtime.manager import realtime_manager
 from app.realtime.poller import db_poller
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
-from app.routers import auth, fairbet, preferences, reading_positions, simulator, social, sports
+from app.routers import auth, fairbet, preferences, simulator, social, sports
 from app.routers.model_odds import router as model_odds_router
 from app.routers.golf import router as golf_router
 from app.routers.admin import (
@@ -122,7 +122,6 @@ app.include_router(preferences.router)
 # ---------------------------------------------------------------------------
 app.include_router(sports.router, dependencies=auth_dependency)
 app.include_router(social.router, dependencies=auth_dependency)
-app.include_router(reading_positions.router, dependencies=auth_dependency)
 app.include_router(simulator.router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------

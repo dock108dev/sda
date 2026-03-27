@@ -30,11 +30,6 @@ from app.analytics.services.profile_service import (
 )
 from app.db import get_db
 
-from ._simulation_helpers import (  # noqa: F401
-    _STARTER_IP_THRESHOLD,
-    _pitching_metrics_from_profile,
-    _regress_pitcher_profile,
-)
 from ._simulation_helpers import _build_lineup_context, _predict_with_game_model
 
 from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS

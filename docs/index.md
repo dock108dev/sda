@@ -70,4 +70,5 @@
 | [Operator Runbook](ops/runbook.md) | Production operations and monitoring |
 | [Deployment](ops/deployment.md) | Server setup, deploy flow, edge routing, rollbacks |
 | [Infrastructure & Local Dev](ops/infra.md) | Docker configuration, local setup, environment variables |
+| [Production Audit](AUDIT_REPORT.md) | Error handling, security, and resilience audit with remediation plan |
 | [Changelog](changelog.md) | Recent changes and releases |

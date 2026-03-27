@@ -2,6 +2,10 @@
 
 These functions select games that need scraping based on various filters.
 Used by run_manager to determine which games to process.
+
+Games with ``ingest_error_count >= MAX_INGEST_ERRORS`` are automatically
+excluded from selection to prevent infinite retry loops on permanently
+broken games.
 """
 
 from __future__ import annotations
@@ -13,6 +17,10 @@ from sqlalchemy.orm import Session
 
 from ..db import db_models
 from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
+
+# Games that fail this many times are excluded from automatic selection.
+# Reset via admin endpoint or manual DB update.
+MAX_INGEST_ERRORS = 5
 
 
 def select_games_for_boxscores(
@@ -40,6 +48,7 @@ def select_games_for_boxscores(
         db_models.SportsGame.game_date >= start_of_et_day_utc(start_date),
         db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
         db_models.SportsGame.source_game_key.isnot(None),
+        db_models.SportsGame.ingest_error_count < MAX_INGEST_ERRORS,
     )
 
     if only_missing:
@@ -81,6 +90,7 @@ def select_games_for_pbp_sportsref(
         db_models.SportsGame.game_date >= start_of_et_day_utc(start_date),
         db_models.SportsGame.game_date < end_of_et_day_utc(end_date),
         db_models.SportsGame.source_game_key.isnot(None),
+        db_models.SportsGame.ingest_error_count < MAX_INGEST_ERRORS,
     )
 
     if only_missing:
@@ -96,3 +106,35 @@ def select_games_for_pbp_sportsref(
 
     rows = query.all()
     return [(gid, str(source_key), game_dt.date()) for gid, source_key, game_dt in rows if source_key]
+
+
+def record_ingest_error(session: Session, game_id: int, error: str) -> None:
+    """Increment the ingest error count for a game and record the error message.
+
+    Called when per-game boxscore/PBP/advanced stats ingestion fails.
+    Games that exceed ``MAX_INGEST_ERRORS`` are excluded from future
+    automatic selection.
+    """
+    from sqlalchemy import update
+
+    stmt = (
+        update(db_models.SportsGame)
+        .where(db_models.SportsGame.id == game_id)
+        .values(
+            ingest_error_count=db_models.SportsGame.ingest_error_count + 1,
+            last_ingest_error=error[:500],  # truncate long error messages
+        )
+    )
+    session.execute(stmt)
+
+
+def clear_ingest_errors(session: Session, game_id: int) -> None:
+    """Clear ingest error tracking for a game after successful processing."""
+    from sqlalchemy import update
+
+    stmt = (
+        update(db_models.SportsGame)
+        .where(db_models.SportsGame.id == game_id)
+        .values(ingest_error_count=0, last_ingest_error=None)
+    )
+    session.execute(stmt)

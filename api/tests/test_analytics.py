@@ -1114,7 +1114,7 @@ class TestModelLoader:
         with pytest.raises(FileNotFoundError):
             loader.load_model("/nonexistent/path/model.pkl")
 
-    def test_load_valid_pickle(self, tmp_path) -> None:
+    def test_load_valid_pickle(self, tmp_path, monkeypatch) -> None:
         import pickle
 
         from app.analytics.models.core.model_loader import ModelLoader
@@ -1124,6 +1124,11 @@ class TestModelLoader:
         model_file = tmp_path / "test_model.pkl"
         with open(model_file, "wb") as f:
             pickle.dump(model_data, f)
+
+        # Sign the artifact so verification passes
+        monkeypatch.setenv("MODEL_SIGNING_KEY", "a" * 32)
+        from app.analytics.models.core.artifact_signing import sign_artifact
+        sign_artifact(str(model_file))
 
         loader = ModelLoader()
         loaded = loader.load_model(str(model_file))
@@ -2060,16 +2065,24 @@ from app.analytics.models.core.model_registry import ModelRegistry
     not _has_joblib, reason="joblib not installed"
 )
 class TestInferenceCache:
+    """Tests for InferenceCache with mandatory signing."""
+
+    @pytest.fixture(autouse=True)
+    def _set_signing_key(self, monkeypatch):
+        monkeypatch.setenv("MODEL_SIGNING_KEY", "a" * 32)
     """Tests for InferenceCache."""
 
     def test_cache_loads_and_caches_model(self, tmp_path: Path) -> None:
         import joblib
         from sklearn.ensemble import GradientBoostingClassifier
 
+        from app.analytics.models.core.artifact_signing import sign_artifact
+
         model = GradientBoostingClassifier(n_estimators=5, random_state=42)
         model.fit([[1, 2], [3, 4]], [0, 1])
         path = str(tmp_path / "test_model.pkl")
         joblib.dump(model, path)
+        sign_artifact(path)
 
         cache = InferenceCache()
         assert cache.size == 0
@@ -2088,10 +2101,13 @@ class TestInferenceCache:
         import joblib
         from sklearn.ensemble import GradientBoostingClassifier
 
+        from app.analytics.models.core.artifact_signing import sign_artifact
+
         model = GradientBoostingClassifier(n_estimators=5, random_state=42)
         model.fit([[1, 2], [3, 4]], [0, 1])
         path = str(tmp_path / "inv_model.pkl")
         joblib.dump(model, path)
+        sign_artifact(path)
 
         cache = InferenceCache()
         cache.get_model(path)
@@ -2103,10 +2119,14 @@ class TestInferenceCache:
         import joblib
         from sklearn.ensemble import GradientBoostingClassifier
 
+        from app.analytics.models.core.artifact_signing import sign_artifact
+
         model = GradientBoostingClassifier(n_estimators=5, random_state=42)
         model.fit([[1, 2], [3, 4]], [0, 1])
         for name in ["a.pkl", "b.pkl"]:
-            joblib.dump(model, str(tmp_path / name))
+            p = str(tmp_path / name)
+            joblib.dump(model, p)
+            sign_artifact(p)
 
         cache = InferenceCache()
         cache.get_model(str(tmp_path / "a.pkl"))
@@ -2265,10 +2285,12 @@ class TestModelInferenceEngine:
         assert all(isinstance(v, float) for v in probs.values())
 
     @pytest.mark.skipif(not _has_joblib, reason="joblib not installed")
-    def test_cache_prevents_reload(self, tmp_path: Path) -> None:
+    def test_cache_prevents_reload(self, tmp_path: Path, monkeypatch) -> None:
         """Verify inference cache prevents repeated disk reads."""
         import joblib
         from sklearn.ensemble import GradientBoostingClassifier
+
+        monkeypatch.setenv("MODEL_SIGNING_KEY", "a" * 32)
 
         # Train on proper feature set
         records = _make_pa_records(60)
@@ -2281,6 +2303,9 @@ class TestModelInferenceEngine:
         sklearn_model._training_feature_names = names
         path = str(tmp_path / "cache_test.pkl")
         joblib.dump(sklearn_model, path)
+
+        from app.analytics.models.core.artifact_signing import sign_artifact
+        sign_artifact(path)
 
         cache = InferenceCache()
         registry = ModelRegistry(registry_path=None)

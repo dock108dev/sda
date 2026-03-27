@@ -202,12 +202,9 @@ class OddsAPIClient:
 
         response = self.client.get(f"/sports/{sport_key}/odds", params=params)
         if response.status_code != 200:
-            logger.error(
-                "odds_api_error",
-                status=response.status_code,
-                body=self._truncate_body(response.text),
+            raise RuntimeError(
+                f"Odds API error {response.status_code}: {self._truncate_body(response.text)}"
             )
-            return []
 
         payload = response.json()
         logger.info(
@@ -283,12 +280,9 @@ class OddsAPIClient:
         # (base_url already includes /v4)
         response = self.client.get(f"/historical/sports/{sport_key}/odds", params=params)
         if response.status_code != 200:
-            logger.error(
-                "historical_odds_api_error",
-                status=response.status_code,
-                body=self._truncate_body(response.text),
+            raise RuntimeError(
+                f"Historical odds API error {response.status_code}: {self._truncate_body(response.text)}"
             )
-            return []
 
         result = response.json()
 
@@ -400,13 +394,10 @@ class OddsAPIClient:
         self._track_credits(response)
 
         if response.status_code != 200:
-            logger.error(
-                "props_api_error",
-                status=response.status_code,
-                event_id=event_id,
-                body=self._truncate_body(response.text),
+            raise RuntimeError(
+                f"Props API error {response.status_code} for {event_id}: "
+                f"{self._truncate_body(response.text)}"
             )
-            return []
 
         payload = response.json()
         logger.info(

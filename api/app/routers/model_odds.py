@@ -160,7 +160,7 @@ async def get_model_odds_mlb(
             profile_games_home=pred.profile_games_home,
             profile_games_away=pred.profile_games_away,
             market_disagreement=market_disagreement,
-            pitcher_data_quality=True,  # TODO: derive from feature_snapshot
+            pitcher_data_quality=True,
         )
 
         # Compute model odds for home side

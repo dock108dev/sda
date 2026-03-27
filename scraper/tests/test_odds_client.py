@@ -6,6 +6,8 @@ import json
 import os
 import sys
 from datetime import date
+
+import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -375,9 +377,8 @@ class TestOddsAPIClientFetchMainlines:
         client.client = MagicMock()
         client.client.get.return_value = mock_response
 
-        result = client.fetch_mainlines("NBA", date(2024, 1, 15), date(2024, 1, 15))
-
-        assert result == []
+        with pytest.raises(RuntimeError, match="Odds API error 500"):
+            client.fetch_mainlines("NBA", date(2024, 1, 15), date(2024, 1, 15))
 
     @patch("sports_scraper.odds.client.settings")
     def test_fetch_mainlines_with_books_filter(self, mock_settings, tmp_path):
@@ -601,9 +602,8 @@ class TestOddsAPIClientFetchHistorical:
         client.client = MagicMock()
         client.client.get.return_value = mock_response
 
-        result = client.fetch_historical_odds("NBA", date(2024, 1, 15))
-
-        assert result == []
+        with pytest.raises(RuntimeError, match="Historical odds API error 403"):
+            client.fetch_historical_odds("NBA", date(2024, 1, 15))
 
     @patch("sports_scraper.odds.client.settings")
     def test_fetch_historical_empty_data(self, mock_settings, tmp_path):

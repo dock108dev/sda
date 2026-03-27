@@ -93,13 +93,13 @@ class TestVerifyArtifact:
         with pytest.raises(ValueError, match="signature mismatch"):
             verify_artifact(artifact)
 
-    def test_verify_missing_sig_warns_but_passes(self, tmp_path):
-        """Pre-signing artifacts (no .sig file) should be allowed with a warning."""
+    def test_verify_missing_sig_raises(self, tmp_path):
+        """Unsigned artifacts (no .sig file) must be rejected."""
         artifact = tmp_path / "model.pkl"
         artifact.write_bytes(b"old model without sig")
 
-        # No sig file exists — should return True (backward compat)
-        assert verify_artifact(artifact) is True
+        with pytest.raises(FileNotFoundError, match="signature file missing"):
+            verify_artifact(artifact)
 
     def test_verify_missing_artifact_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError):
@@ -142,8 +142,8 @@ class TestModelLoaderIntegration:
         with pytest.raises(ValueError, match="signature mismatch"):
             loader.load_model(str(artifact))
 
-    def test_loader_allows_unsigned_artifacts(self, tmp_path):
-        """Pre-signing artifacts (no .sig) should load with a warning."""
+    def test_loader_rejects_unsigned_artifacts(self, tmp_path):
+        """Unsigned artifacts (no .sig) should be rejected."""
         import joblib
         from sklearn.dummy import DummyClassifier
 
@@ -154,8 +154,8 @@ class TestModelLoaderIntegration:
         joblib.dump(model, artifact)
 
         loader = ModelLoader()
-        loaded = loader.load_model(str(artifact))
-        assert loaded is not None
+        with pytest.raises(FileNotFoundError, match="signature file missing"):
+            loader.load_model(str(artifact))
 
     def test_loader_loads_signed_artifacts(self, tmp_path):
         """Properly signed artifacts should load successfully."""

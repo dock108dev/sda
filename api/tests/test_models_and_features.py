@@ -315,11 +315,16 @@ class TestBaseModelLoad:
         assert model._model is None
         assert model._loaded is False
 
-    def test_load_with_path(self, tmp_path):
+    def test_load_with_path(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("MODEL_SIGNING_KEY", "a" * 32)
+
         model_file = tmp_path / "model.pkl"
         dummy = {"type": "dummy_model"}
         with open(model_file, "wb") as f:
             pickle.dump(dummy, f)
+
+        from app.analytics.models.core.artifact_signing import sign_artifact
+        sign_artifact(str(model_file))
 
         model = ConcreteModel()
         model.load(str(model_file))
@@ -345,11 +350,15 @@ class TestModelLoader:
         with pytest.raises(FileNotFoundError):
             loader.load_model("/nonexistent/path/model.pkl")
 
-    def test_joblib_failure_falls_back_to_pickle(self, tmp_path):
+    def test_joblib_failure_falls_back_to_pickle(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("MODEL_SIGNING_KEY", "a" * 32)
+        from app.analytics.models.core.artifact_signing import sign_artifact
+
         model_file = tmp_path / "model.pkl"
         dummy = {"fallback": True}
         with open(model_file, "wb") as f:
             pickle.dump(dummy, f)
+        sign_artifact(str(model_file))
 
         loader = ModelLoader()
         # Patch joblib to fail, so it falls back to pickle
@@ -357,9 +366,13 @@ class TestModelLoader:
             result = loader.load_model(str(model_file))
         assert result == dummy
 
-    def test_both_failures_raise_runtime_error(self, tmp_path):
+    def test_both_failures_raise_runtime_error(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("MODEL_SIGNING_KEY", "a" * 32)
+        from app.analytics.models.core.artifact_signing import sign_artifact
+
         model_file = tmp_path / "model.bin"
         model_file.write_bytes(b"not a valid model")
+        sign_artifact(str(model_file))
 
         loader = ModelLoader()
         with patch.object(loader, "_load_joblib", side_effect=Exception("joblib fail")):

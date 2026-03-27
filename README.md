@@ -58,14 +58,11 @@ For manual setup, see [docs/ops/infra.md](docs/ops/infra.md#local-services-witho
 ## Directory Structure
 
 ```
-api/          FastAPI backend + analytics engine
+api/          FastAPI backend + analytics engine + ML models
 scraper/      Multi-sport data scraper (Celery workers)
 web/          Admin UI (Next.js)
 infra/        Docker Compose, Dockerfiles, env config
 docs/         Documentation
-packages/     Shared JS packages
-scripts/      Utility scripts
-sql/          Reference SQL queries
 ```
 
 ## Documentation
@@ -78,6 +75,7 @@ sql/          Reference SQL queries
 | [docs/api.md](docs/api.md) | API reference |
 | [docs/analytics.md](docs/analytics.md) | Analytics & ML engine |
 | [docs/ops/deployment.md](docs/ops/deployment.md) | Deployment guide |
+| [docs/AUDIT_REPORT.md](docs/AUDIT_REPORT.md) | Production audit & remediation |
 | [docs/changelog.md](docs/changelog.md) | Release changelog |
 
 ## Contributing

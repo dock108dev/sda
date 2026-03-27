@@ -84,111 +84,107 @@ class ProfileResult:
 
 Surfaced in the API response as `profile_meta.data_freshness` with per-team game counts and date ranges. The frontend shows a stale-data warning when the newest game is older than 3 days.
 
-### MLB Game Simulation (PA-Level)
+### MLB Game Simulation (PA-Level, Lineup-Aware)
 
-Each game simulation runs 9+ innings. Each half-inning simulates plate appearances until 3 outs:
+Each game simulation runs 9+ innings. Each half-inning simulates plate appearances until 3 outs.
 
-1. Sample event (strikeout, out, walk, single, double, triple, home_run) from probability distribution
-2. Advance base runners based on event type
-3. Track runs scored
-4. Accumulate event counts per team (K, BB, HR, singles, etc.)
+**Team-level mode:** All PAs use a single probability distribution per team.
 
-The simulator returns enriched results including per-team event counts and innings played:
+**Lineup-aware mode (default in batch sims):** Each of 9 batters has individual matchup probabilities vs the opposing starter and bullpen. Starter pitches through ~6 innings, then switches to bullpen weights.
 
-```python
-{
-    "home_score": 5, "away_score": 3, "winner": "home",
-    "home_events": {"strikeout": 8, "out": 5, "walk": 3, "single": 6, "double": 2, "triple": 0, "home_run": 1, "pa_total": 38},
-    "away_events": {"strikeout": 9, "out": 4, "walk": 2, "single": 5, "double": 1, "triple": 1, "home_run": 0, "pa_total": 35},
-    "innings_played": 9,
-}
-```
-
-Event data is backward compatible — existing callers that only read `home_score`/`away_score`/`winner` are unaffected.
+- For completed games: batting order reconstructed from PBP (first 9 unique batters)
+- For future games: most recent actual lineup + probable pitcher from MLB Stats API
+- Fallback: team-level probabilities when lineup data unavailable
 
 **Key files:**
-- `core/simulation_engine.py` — orchestrator
-- `core/simulation_runner.py` — N iterations + aggregation + event summary + variance computation
-- `core/simulation_analysis.py` — sanity checks
-- `sports/mlb/game_simulator.py` — PA-level MLB simulator
-
-### NBA Game Simulation (Possession-Level)
-
-Each game simulates ~100 possessions per team across 4 quarters + overtime:
-
-1. Sample possession event (two_pt_make, two_pt_miss, three_pt_make, three_pt_miss, free_throw_trip, turnover)
-2. Score points based on event type (2PT=2, 3PT=3, FT trip=~1.5 avg)
-3. Free throw trips simulate 2 individual FTs at the team's FT%
-4. If tied after 4 quarters, play 5-minute OT periods (max 5)
-
-**Key files:** `sports/nba/game_simulator.py`, `sports/nba/constants.py`
-
-### NHL Game Simulation (Shot-Level)
-
-Each game simulates ~30 shot attempts per team across 3 periods:
-
-1. Sample shot event (goal, save, blocked_shot, missed_shot)
-2. Goals increment score; other events are tracked
-3. If tied after 3 periods: sudden-death 5-minute OT
-4. If still tied: shootout (alternating rounds, max 5 + sudden death)
-
-**Key files:** `sports/nhl/game_simulator.py`, `sports/nhl/constants.py`
-
-### NCAAB Game Simulation (Four-Factor Possession)
-
-Each game simulates ~68 possessions per team across 2 halves:
-
-1. Sample possession event (same as NBA events)
-2. On missed shots: offensive rebound chance (ORB%) grants extra possession (max 3 consecutive)
-3. Free throw trips simulate 2 FTs at team's FT%
-4. If tied after 2 halves: 5-minute OT periods (max 5)
-
-The four-factor model (eFG%, TOV%, ORB%, FT rate) directly maps to possession probabilities.
-
-**Key files:** `sports/ncaab/game_simulator.py`, `sports/ncaab/constants.py`
-
-### Lineup-Aware Simulation
-
-When lineup data is provided, the simulator uses per-batter probability distributions instead of team-level aggregates. Each batter in the lineup gets a unique probability set derived from the `MLBMatchup.batter_vs_pitcher()` matchup engine.
-
-**How it works:**
-
-1. API receives lineup (9 batters + starting pitcher per team)
-2. Player rolling profiles are fetched for each batter via `get_player_rolling_profile()`
-3. Pitcher rolling profile fetched via `get_pitcher_rolling_profile()`
-4. `MLBMatchup.batter_vs_pitcher()` pre-computes 36 probability sets (9 batters × 2 pitcher states × 2 teams) — done once before the simulation loop
-5. `simulate_game_with_lineups()` runs the full game with per-batter weights and lineup index tracking
-6. Pitcher transition: starter pitches through a configurable inning (default 6), then switches to bullpen weights (team-level aggregate)
-
-**Performance:** Pre-computation happens once; the hot loop indexes into pre-computed arrays with `rng.choices()` — same speed as team-level simulation.
-
-**Key files:**
-- `sports/mlb/game_simulator.py` — `simulate_game_with_lineups()`, `_simulate_half_inning_lineup()`
-- `services/profile_service.py` — `get_player_rolling_profile()`, `get_pitcher_rolling_profile()`, `get_team_roster()`
+- `sports/mlb/game_simulator.py` — `simulate_game()` + `simulate_game_with_lineups()`
+- `services/lineup_reconstruction.py` — extract batting order from PBP
+- `services/lineup_weights.py` — per-batter weight building (shared SSOT for pitcher regression + bullpen metrics)
+- `services/lineup_fetcher.py` — probable pitcher from MLB Stats API + recent lineup proxy
 - `sports/mlb/matchup.py` — `batter_vs_pitcher()` probability computation
 
-**Fallback:** When `use_lineup=True` is passed to a simulator that does not implement `simulate_game_with_lineups()`, the runner raises `RuntimeError` rather than silently falling back.
+### NBA Game Simulation (Possession-Level, Rotation-Aware)
 
-### Player & Pitcher Profile Service
+Each game simulates ~100 possessions per team across 4 quarters + overtime.
 
-Rolling statistical profiles for individual batters and pitchers, used by lineup-aware simulation.
+**Team-level mode:** All possessions use a single probability distribution per team.
 
-**`get_player_rolling_profile(player_external_ref, team_id, *, rolling_window, db)`**
-- Queries `MLBPlayerAdvancedStats` for the player's last N games
-- Runs each row through `stats_to_metrics()` and averages across games
-- Returns the same metrics dict shape as `get_team_rolling_profile()`
-- Sparse data blending: if player has < 5 games, blends with team average (weight = games/5)
+**Rotation-aware mode (default in batch sims):** Each possession is randomly assigned to the starter unit (top 5 by minutes, ~70%) or bench unit (~30%). Each unit has its own probability weights derived from individual player profiles weighted by usage rate. OT uses starters only.
 
-**`get_pitcher_rolling_profile(player_external_ref, team_id, *, rolling_window, db)`**
-- Queries `SportsPlayerBoxscore` for the pitcher's recent games
-- Derives metrics from JSONB `stats` column (`innings_pitched`, `strike_outs`, `base_on_balls`, `home_runs`, `hits`)
-- Returns: `strikeout_rate`, `walk_rate`, `contact_suppression`, `power_suppression`
-- Requires ≥ 3 valid games (games with 0 approx batters faced are skipped)
+- Starters identified from `NBAPlayerAdvancedStats.minutes` (top 5 per team)
+- Player profiles: rolling averages of off_rating, ts_pct, efg_pct, usg_pct, shot type splits
+- Unit probabilities adjusted for opposing team's defensive rating
 
-**`get_team_roster(team_abbreviation, *, db)`**
-- Recent batters: distinct players from `MLBPlayerAdvancedStats` in last 30 days with game count
-- Recent pitchers: distinct from `SportsPlayerBoxscore` with games started and avg IP
-- Returns `{batters: [...], pitchers: [...]}`
+**Key files:** `sports/nba/game_simulator.py`, `services/nba_rotation_service.py`, `services/nba_player_profiles.py`, `services/nba_rotation_weights.py`
+
+### NHL Game Simulation (Shot-Level, Rotation-Aware)
+
+Each game simulates ~30 shot attempts per team across 3 periods + OT + shootout.
+
+**Rotation-aware mode:** Each shot is randomly assigned to top-line (top 10 skaters by TOI, ~65%) or depth unit (~35%). Starting goalie's save% adjusts the opposing team's goal probability. OT uses top-line only. Shootout uses blended team/league probability.
+
+- Top-line identified from `NHLSkaterAdvancedStats.toi_minutes` (enriched from boxscore cross-reference)
+- Starting goalie identified from `NHLGoalieAdvancedStats` (most shots faced)
+- Per-skater profiles: xGoals, shooting%, goals_per_60, shots_per_60
+
+**Key files:** `sports/nhl/game_simulator.py`, `services/nhl_rotation_service.py`, `services/nhl_player_profiles.py`, `services/nhl_rotation_weights.py`
+
+### NCAAB Game Simulation (Four-Factor Possession, Rotation-Aware)
+
+Each game simulates ~68 possessions per team across 2 halves with offensive rebound recursion.
+
+**Rotation-aware mode:** Same starter/bench unit model as NBA. Additionally, each unit has its own ORB% and FT% (NCAAB-specific). On missed shots, offensive rebound chance uses the active unit's ORB% (max 3 consecutive ORBs).
+
+- Starters identified from `NCAABPlayerAdvancedStats.minutes` (123K/133K rows have minutes data)
+- Player profiles: off_rating, usg_pct, ts_pct, efg_pct, volume stats
+
+**Key files:** `sports/ncaab/game_simulator.py`, `services/ncaab_rotation_service.py`, `services/ncaab_player_profiles.py`, `services/ncaab_rotation_weights.py`
+
+### NFL Game Simulation (Drive-Based)
+
+Each game simulates ~12 drives per team per half. Each drive resolves as one of: touchdown, field goal, punt, turnover, or turnover on downs.
+
+**Drive outcome probabilities** derived from:
+- Team offensive EPA/play + success rate + CPOE (from nflverse `nfl_game_advanced_stats`)
+- Opposing team's defensive pressure: sacks/game, TFL/game, QB hits/game, turnovers forced/game (from ESPN boxscore JSONB)
+- Special teams: FG success rate from kicking stats
+
+After touchdown: extra point attempt (~94%) or rare 2-point conversion. OT uses modified sudden death (both teams get at least 1 drive).
+
+**Key files:** `sports/nfl/game_simulator.py`, `sports/nfl/constants.py`, `services/nfl_drive_profiles.py`, `services/nfl_drive_weights.py`
+
+### Rotation/Lineup Dispatch in Batch Sims
+
+`batch_sim_tasks.py` dispatches to the appropriate sport-specific builder:
+
+| Sport | Builder | Sim Method | Data Source |
+|-------|---------|-----------|-------------|
+| MLB | `_try_build_lineup_weights()` | `simulate_game_with_lineups()` | PBP batting order + pitcher stats |
+| NBA | `_try_build_nba_rotation_weights()` | `simulate_game_with_lineups()` | Player minutes + advanced stats |
+| NCAAB | `_try_build_ncaab_rotation_weights()` | `simulate_game_with_lineups()` | Player minutes + advanced stats |
+| NHL | `_try_build_nhl_rotation_weights()` | `simulate_game_with_lineups()` | Skater TOI + goalie stats |
+| NFL | `_try_build_nfl_drive_weights()` | `simulate_game_with_lineups()` | Team EPA + defensive boxscore |
+
+All sports fall back to team-level simulation when rotation/lineup data is unavailable.
+
+### Player Profile Services
+
+Each sport has its own player profile service that builds rolling averages from per-game advanced stats:
+
+| Sport | Service | Data Source | Key Metrics |
+|-------|---------|-------------|-------------|
+| MLB | `services/mlb_player_profiles.py` | `MLBPlayerAdvancedStats` | Contact rate, whiff rate, exit velo, barrel% |
+| MLB (pitchers) | `services/profile_service.py` | `MLBPitcherGameStats` + boxscore JSONB | K rate, BB rate, contact/power suppression |
+| NBA | `services/nba_player_profiles.py` | `NBAPlayerAdvancedStats` | Off/def rating, TS%, EFG%, USG%, shot splits |
+| NHL | `services/nhl_player_profiles.py` | `NHLSkaterAdvancedStats` | xGoals, shooting%, goals_per_60, TOI |
+| NCAAB | `services/ncaab_player_profiles.py` | `NCAABPlayerAdvancedStats` | Off rating, USG%, TS%, EFG%, volume stats |
+| NFL | `services/nfl_drive_profiles.py` | `NFLGameAdvancedStats` + boxscore JSONB | EPA/play, success rate, CPOE, sack rate, FG% |
+
+**Shared patterns:**
+- All use rolling windows (default 15-30 games)
+- Players with fewer than 3 games use league-average fallback
+- MLB blends sparse player data with team average (weight = games/5)
+- Pitcher profiles are regressed toward league average based on avg IP (shared in `services/lineup_weights.py`)
 
 ### Event Summary & Sanity Analysis
 
@@ -778,7 +774,6 @@ New nullable columns on `analytics_prediction_outcomes` (migration `20260321_add
 | `analytics/calibration/uncertainty.py` | Uncertainty scoring, conservative probability, confidence bands |
 | `services/model_odds.py` | Decision engine — Kelly sizing, target entry, classification |
 | `routers/model_odds.py` | `GET /api/model-odds/mlb` endpoint |
-| `tasks/calibration_tasks.py` | Celery task for calibration model training |
 
 ---
 

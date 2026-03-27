@@ -84,21 +84,14 @@ class DataGolfClient:
         if elapsed < _MIN_REQUEST_INTERVAL:
             time.sleep(_MIN_REQUEST_INTERVAL - elapsed)
 
-        try:
-            resp = self._client.get(url, params=all_params)
-            self._last_request_at = time.monotonic()
-        except Exception as exc:
-            _log().warning("datagolf_request_failed", path=path, error=str(exc))
-            return None
+        resp = self._client.get(url, params=all_params)
+        self._last_request_at = time.monotonic()
 
         if resp.status_code != 200:
-            _log().warning(
-                "datagolf_api_error",
-                path=path,
-                status=resp.status_code,
-                body=resp.text[:200] if resp.text else "",
+            raise RuntimeError(
+                f"DataGolf API error {resp.status_code} on {path}: "
+                f"{resp.text[:200] if resp.text else ''}"
             )
-            return None
 
         return resp.json()
 

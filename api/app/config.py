@@ -89,11 +89,6 @@ class Settings(BaseSettings):
         return self
 
     # Pipeline validation settings
-    # When True: Score discontinuities FAIL validation and block persistence
-    # When False: Score discontinuities are flagged as DEGRADED but allowed
-    strict_score_continuity: bool = Field(
-        default=False, alias="STRICT_SCORE_CONTINUITY"
-    )
 
     @property
     def allowed_cors_origins(self) -> list[str]:

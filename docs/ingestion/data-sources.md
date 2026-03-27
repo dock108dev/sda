@@ -426,7 +426,7 @@ Cookies expire periodically. If scraping returns empty results, log into x.com a
 - **Replies**: May be included if returned by search (not explicitly filtered)
 
 ### Spoiler Detection
-Conservative patterns in `api/app/utils/reveal_utils.py`:
+Posts with scores or results are flagged with `reveal_risk` + `reveal_reason`:
 - Score patterns: `110-105`, `W 110-105`
 - Result words: "final", "recap", "highlights"
 - Safe patterns whitelisted: "game day", "let's go", etc.
@@ -475,7 +475,6 @@ Implementation: `queue_job_run()`, `activate_queued_job_run()`, `enforce_social_
 - Tweet Mapper: `scraper/sports_scraper/social/tweet_mapper.py`
 - Playwright: `scraper/sports_scraper/social/playwright_collector.py`
 - Registry: `scraper/sports_scraper/social/registry.py`
-- Reveal utils: `api/app/utils/reveal_utils.py` (shared with API)
 
 ## Scraper Execution
 

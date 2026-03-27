@@ -93,14 +93,10 @@ def verify_artifact(artifact_path: str | Path) -> bool:
         raise FileNotFoundError(f"Artifact not found: {artifact_path}")
 
     if not sig_file.exists():
-        # No signature file — artifact predates signing. Log a warning
-        # but allow loading for backward compatibility. Once all existing
-        # artifacts are re-signed, this should become an error.
-        logger.warning(
-            "artifact_signature_missing",
-            extra={"artifact": str(artifact_path)},
+        raise FileNotFoundError(
+            f"Artifact signature file missing: {sig_file}. "
+            f"Model must be re-trained or manually signed."
         )
-        return True
 
     key = _get_signing_key()
     expected = hmac.new(key, artifact_path.read_bytes(), hashlib.sha256).hexdigest()

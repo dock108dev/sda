@@ -202,11 +202,6 @@ TASK_REGISTRY: dict[str, TaskRegistryEntry] = {
             queue="celery",
             description="Check for model degradation via Brier score comparison (args: [sport])",
         ),
-        TaskRegistryEntry(
-            name="train_calibration_model",
-            queue="celery",
-            description="Train sim probability calibration model from historical predictions + closing lines (args: [sport])",
-        ),
         # Golf
         TaskRegistryEntry(
             name="golf_sync_schedule",
