@@ -31,22 +31,20 @@ from app.analytics.sports.mlb.constants import (
 )
 
 
-# Maximum deviation from league-average baseline.  A value of 0.10 means
-# the model can shift each event probability by at most 10% of its
+# Maximum deviation from league-average baseline.  A value of 0.25 means
+# the model can shift each event probability by at most 25% of its
 # baseline value.  For example, strikeout baseline is 0.22, so the model
-# output is clamped to 0.198–0.242.
+# output is clamped to 0.165–0.275.
 #
-# This must be conservative because:
-# - The sim uses team-level rolling averages (not individual batter/pitcher
-#   matchups), so profile variance is artificially low.
-# - Each PA in the sim uses the same static probabilities, so small edges
-#   compound across ~40 PAs per team to produce extreme game-level WPs.
-# - Real MLB team-level offensive output varies only ~±10-15% around the
-#   league mean once you account for park/schedule effects.
+# This allows realistic team-level variance:
+# - Strikeout range 0.165–0.275 (real MLB: ~0.15–0.28)
+# - Home run range 0.0225–0.0375 (real MLB: ~0.02–0.045)
+# - Walk range 0.06–0.10 (real MLB: ~0.05–0.11)
 #
-# At 0.10 the model still differentiates matchups (best-vs-worst produces
-# ~35/65 WP) without producing 10/90 absurdities.
-_MAX_BASELINE_DEVIATION = 0.10
+# The previous value of 0.10 was too aggressive — it compressed all teams
+# into a narrow band producing ~50/50 WP for every matchup.  At 0.25 the
+# model differentiates matchups while still preventing absurd simulations.
+_MAX_BASELINE_DEVIATION = 0.25
 
 
 def normalize_probabilities(
@@ -110,6 +108,7 @@ def anchor_to_baseline(
         baseline = _MLB_DEFAULTS
 
     anchored: dict[str, float] = {}
+    clamped_events: list[str] = []
     for event, model_prob in probs.items():
         base = baseline.get(event, 0.0)
         if base <= 0:
@@ -117,7 +116,21 @@ def anchor_to_baseline(
             continue
         lo = base * (1.0 - max_deviation)
         hi = base * (1.0 + max_deviation)
-        anchored[event] = max(lo, min(hi, model_prob))
+        clamped_val = max(lo, min(hi, model_prob))
+        if clamped_val != model_prob:
+            clamped_events.append(event)
+        anchored[event] = clamped_val
+
+    if clamped_events:
+        logger.debug(
+            "anchor_to_baseline_clamped",
+            extra={
+                "clamped_events": clamped_events,
+                "max_deviation": max_deviation,
+                "pre_clamp": {k: round(v, 4) for k, v in probs.items()},
+                "post_clamp": {k: round(v, 4) for k, v in anchored.items()},
+            },
+        )
 
     # Renormalize after clamping
     total = sum(anchored.values())
@@ -285,6 +298,17 @@ class MLProvider(ProbabilityProvider):
 
         valid_events = MLB_PA_EVENTS if sport.lower() == "mlb" else None
         normalized = normalize_probabilities(probs, valid_events)
+
+        # Log raw ML output before clamping for feature alignment diagnosis.
+        # Check: high-whiff teams should get higher strikeout probability.
+        if sport.lower() == "mlb":
+            logger.info(
+                "ml_provider_pre_anchor",
+                extra={
+                    "raw_probs": {k: round(v, 4) for k, v in normalized.items()},
+                    "model_id": model_id,
+                },
+            )
 
         # Anchor to baseline so miscalibrated models can't produce
         # absurd simulations (e.g., 60% hit rate → 30 runs/game).

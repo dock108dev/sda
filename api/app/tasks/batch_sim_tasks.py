@@ -513,12 +513,29 @@ async def _try_build_lineup_weights(
         away_lineup_data = {"batters": away_lineup_batters} if away_lineup_batters else None
 
     if not home_lineup_data or not away_lineup_data:
+        logger.info(
+            "lineup_build_no_lineup_data",
+            extra={
+                "game_id": game.id,
+                "has_home": bool(home_lineup_data),
+                "has_away": bool(away_lineup_data),
+                "is_final": is_final,
+            },
+        )
         return False
 
     home_batters = home_lineup_data["batters"]
     away_batters = away_lineup_data["batters"]
 
     if len(home_batters) < 3 or len(away_batters) < 3:
+        logger.info(
+            "lineup_build_insufficient_batters",
+            extra={
+                "game_id": game.id,
+                "home_batters": len(home_batters),
+                "away_batters": len(away_batters),
+            },
+        )
         return False
 
     # --- Get starting pitchers ---
@@ -750,38 +767,42 @@ async def _execute_batch_sim(
 
         # ----------------------------------------------------------
         # Attempt lineup/rotation-aware simulation
+        # NOTE: The outer ``async with sf() as db:`` closes before
+        # this loop, so we open a fresh session for DB-dependent
+        # lineup/rotation weight building.
         # ----------------------------------------------------------
         try:
-            if sport_lower == "nba":
-                lineup_mode = await _try_build_nba_rotation_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            elif sport_lower == "ncaab":
-                lineup_mode = await _try_build_ncaab_rotation_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            elif sport_lower == "nhl":
-                lineup_mode = await _try_build_nhl_rotation_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            elif sport_lower == "nfl":
-                lineup_mode = await _try_build_nfl_drive_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            else:
-                lineup_mode = await _try_build_lineup_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
+            async with sf() as lineup_db:
+                if sport_lower == "nba":
+                    lineup_mode = await _try_build_nba_rotation_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                elif sport_lower == "ncaab":
+                    lineup_mode = await _try_build_ncaab_rotation_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                elif sport_lower == "nhl":
+                    lineup_mode = await _try_build_nhl_rotation_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                elif sport_lower == "nfl":
+                    lineup_mode = await _try_build_nfl_drive_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                else:
+                    lineup_mode = await _try_build_lineup_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
         except Exception as exc:
             logger.info(
                 "lineup_weight_build_skipped",
@@ -816,6 +837,25 @@ async def _execute_batch_sim(
                         "model_id": model_id,
                     },
                 )
+
+        # Log which probability path this game is taking
+        if lineup_mode:
+            _prob_path = "lineup_matchup"
+        elif has_profiles and use_ml:
+            _prob_path = "team_ml"
+        elif has_profiles:
+            _prob_path = "team_rule_based"
+        else:
+            _prob_path = "league_defaults"
+        logger.info(
+            "batch_sim_game_prob_path",
+            extra={
+                "game_id": game.id,
+                "prob_path": _prob_path,
+                "lineup_mode": lineup_mode,
+                "has_profiles": has_profiles,
+            },
+        )
 
         try:
             sim = engine.run_simulation(

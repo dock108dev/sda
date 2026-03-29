@@ -81,6 +81,15 @@ DOUBLE_FRACTION = 0.22
 TRIPLE_FRACTION = 0.05
 
 # ---------------------------------------------------------------------------
+# Home field advantage
+# ---------------------------------------------------------------------------
+
+# Relative boost applied to home team offensive probabilities (walk, single).
+# MLB home teams win ~54% of games historically; a 2.5% relative boost on
+# contact/walk events produces roughly +0.04 WP shift to match this.
+MLB_HFA_BOOST = 0.025
+
+# ---------------------------------------------------------------------------
 # Feature-builder baselines (superset used for normalization)
 # ---------------------------------------------------------------------------
 

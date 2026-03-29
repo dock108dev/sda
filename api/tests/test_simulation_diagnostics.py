@@ -195,7 +195,8 @@ class TestPriorityBugFix:
         }
         ctx, _meta = engine._apply_probability_resolver(ctx, "ml", "plate_appearance")
 
-        # Resolver should have overwritten the profile-derived values
+        # Resolver should have overwritten the profile-derived values.
+        # Strikeout is not affected by HFA (only walk/single are boosted).
         assert ctx["home_probabilities"]["strikeout_probability"] == 0.30
         assert ctx["away_probabilities"]["strikeout_probability"] == 0.30
 
