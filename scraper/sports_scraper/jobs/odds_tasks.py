@@ -16,6 +16,7 @@ from celery import shared_task
 from sqlalchemy import select
 
 from ..config_sports import get_odds_enabled_leagues, validate_league_code
+from ..odds.client import QuotaExceededError
 from ..db import db_models, get_session
 from ..logging import logger
 from ..models import IngestionConfig
@@ -93,6 +94,10 @@ def sync_mainline_odds(league_code: str | None = None) -> dict:
                         league=lc,
                         odds_count=odds_count,
                     )
+                except QuotaExceededError:
+                    logger.warning("sync_mainline_odds_quota_exceeded", league=lc)
+                    league_result["status"] = "quota_exceeded"
+                    break
                 except Exception as exc:
                     league_result["status"] = "error"
                     league_result["error"] = str(exc)
@@ -192,6 +197,10 @@ def sync_prop_odds(league_code: str | None = None) -> dict:
                         )
                     else:
                         logger.info("sync_prop_odds_no_events", league=lc)
+                except QuotaExceededError:
+                    logger.warning("sync_prop_odds_quota_exceeded", league=lc)
+                    league_result["status"] = "quota_exceeded"
+                    break
                 except Exception as exc:
                     league_result["status"] = "error"
                     league_result["error"] = str(exc)

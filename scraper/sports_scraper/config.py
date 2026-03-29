@@ -31,6 +31,9 @@ class OddsProviderConfig(BaseModel):
     regions: list[str] = Field(
         default_factory=lambda: ["us", "eu"]
     )
+    # Weekly credit cap — prevents backfills from starving live polling.
+    # 5M monthly quota / 4 weeks = 1.25M per week.
+    weekly_credit_cap: int = Field(default=1_250_000)
 
 
 class ScraperConfig(BaseModel):
@@ -147,6 +150,7 @@ class Settings(BaseSettings):
     scraper_html_cache_dir_override: str | None = Field(None, alias="SCRAPER_HTML_CACHE_DIR")
     scraper_force_cache_refresh_override: bool | None = Field(None, alias="SCRAPER_FORCE_CACHE_REFRESH")
     odds_api_regions: str | None = Field(None, alias="ODDS_API_REGIONS")
+    odds_api_weekly_cap: int | None = Field(None, alias="ODDS_API_WEEKLY_CAP")
     datagolf_api_key: str | None = Field(None, alias="DATAGOLF_API_KEY")
 
     @model_validator(mode="after")
@@ -161,6 +165,8 @@ class Settings(BaseSettings):
             self.scraper_config.force_cache_refresh = bool(self.scraper_force_cache_refresh_override)
         if self.odds_api_regions:
             self.odds_config.regions = [r.strip() for r in self.odds_api_regions.split(",")]
+        if self.odds_api_weekly_cap is not None:
+            self.odds_config.weekly_credit_cap = self.odds_api_weekly_cap
         return self
 
 

@@ -18,6 +18,7 @@ import httpx
 from ..config import settings
 from ..logging import logger
 from ..models import NormalizedOddsSnapshot
+from ..utils.odds_quota import is_quota_exceeded, record_usage
 from .parser import parse_odds_events, parse_prop_event
 
 SPORT_KEY_MAP = {
@@ -75,6 +76,10 @@ PROP_MARKETS: dict[str, list[str]] = {
 CREDIT_WARNING_THRESHOLD = 1000
 CREDIT_ABORT_THRESHOLD = 500
 
+
+class QuotaExceededError(RuntimeError):
+    """Raised when the weekly Odds API credit cap is reached."""
+
 # Default snapshot times for closing lines (in UTC)
 # Evening games typically close around these times
 CLOSING_LINE_HOURS = {
@@ -100,6 +105,31 @@ class OddsAPIClient:
         self._cache_dir = Path(settings.scraper_config.html_cache_dir) / "odds"
         # Track remaining credits from API response headers
         self._credits_remaining: int | None = None
+
+    # ------------------------------------------------------------------
+    # Weekly quota helpers
+    # ------------------------------------------------------------------
+    def _check_quota(self) -> None:
+        """Raise QuotaExceededError if the weekly credit cap is reached."""
+        if is_quota_exceeded():
+            raise QuotaExceededError(
+                "Weekly Odds API credit cap reached — request blocked to preserve quota for live data."
+            )
+
+    def _record_response_usage(self, response: httpx.Response) -> None:
+        """Record the credit cost of a response in the weekly Redis counter."""
+        cost_str = response.headers.get("x-requests-last")
+        if cost_str:
+            try:
+                cost = int(cost_str)
+                new_total = record_usage(cost)
+                logger.debug(
+                    "odds_quota_recorded",
+                    cost=cost,
+                    weekly_total=new_total,
+                )
+            except (ValueError, TypeError):
+                pass
 
     # Thin wrappers so tests that call client._parse_* still work
     def _parse_odds_events(self, league_code: str, events: list, books: list[str] | None = None) -> list:
@@ -179,6 +209,7 @@ class OddsAPIClient:
         """
         if not settings.odds_api_key:
             return []
+        self._check_quota()
 
         sport_key = self._sport_key(league_code)
         if not sport_key:
@@ -201,6 +232,7 @@ class OddsAPIClient:
             params["bookmakers"] = ",".join(books)
 
         response = self.client.get(f"/sports/{sport_key}/odds", params=params)
+        self._record_response_usage(response)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Odds API error {response.status_code}: {self._truncate_body(response.text)}"
@@ -238,6 +270,7 @@ class OddsAPIClient:
         if not settings.odds_api_key:
             logger.warning("odds_api_key_missing", message="ODDS_API_KEY not configured")
             return []
+        self._check_quota()
 
         sport_key = self._sport_key(league_code)
         if not sport_key:
@@ -279,6 +312,7 @@ class OddsAPIClient:
         # FIX: Use /historical/sports/... not /v4/historical/sports/...
         # (base_url already includes /v4)
         response = self.client.get(f"/historical/sports/{sport_key}/odds", params=params)
+        self._record_response_usage(response)
         if response.status_code != 200:
             raise RuntimeError(
                 f"Historical odds API error {response.status_code}: {self._truncate_body(response.text)}"
@@ -367,6 +401,7 @@ class OddsAPIClient:
         """
         if not settings.odds_api_key:
             return []
+        self._check_quota()
 
         sport_key = self._sport_key(league_code)
         if not sport_key:
@@ -390,7 +425,8 @@ class OddsAPIClient:
             params=params,
         )
 
-        # Track credits
+        # Track credits and weekly quota
+        self._record_response_usage(response)
         self._track_credits(response)
 
         if response.status_code != 200:

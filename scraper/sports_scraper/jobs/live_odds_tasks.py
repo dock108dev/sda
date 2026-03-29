@@ -31,6 +31,7 @@ def poll_live_odds_mainline(league_code: str, game_ids: list[int]) -> dict:
     from ..live_odds.closing_lines import capture_closing_lines
     from ..live_odds.redis_store import write_live_snapshot
     from ..odds.client import MARKET_TYPES, OddsAPIClient
+    from ..utils.odds_quota import is_quota_exceeded, record_usage
     from ..utils.provider_request import provider_request
 
     lock_key = f"lock:live_odds_mainline:{league_code}"
@@ -87,6 +88,10 @@ def poll_live_odds_mainline(league_code: str, game_ids: list[int]) -> dict:
                         error=str(exc),
                     )
 
+        # Check weekly quota before making the API call
+        if is_quota_exceeded():
+            return {"skipped": True, "reason": "weekly_quota_exceeded", "league": league_code}
+
         # Fetch live odds (league-batched — single API call)
         regions = ",".join(settings.odds_config.regions)
         params = {
@@ -111,6 +116,14 @@ def poll_live_odds_mainline(league_code: str, game_ids: list[int]) -> dict:
         if response is None or response.status_code != 200:
             status = response.status_code if response else "skipped"
             return {"status": str(status), "league": league_code}
+
+        # Record credit usage for weekly quota tracking
+        try:
+            cost = int(response.headers.get("x-requests-last", "0"))
+            if cost > 0:
+                record_usage(cost)
+        except (ValueError, TypeError):
+            pass
 
         events = response.json()
         if not isinstance(events, list):
@@ -268,6 +281,7 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
     from ..config import settings
     from ..live_odds.redis_store import write_live_snapshot
     from ..odds.client import PROP_MARKETS, OddsAPIClient
+    from ..utils.odds_quota import is_quota_exceeded as _quota_exceeded, record_usage as _record
     from ..utils.provider_request import provider_request
 
     lock_key = f"lock:live_odds_props:{league_code}"
@@ -304,6 +318,11 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
 
         for game_id, event_id in game_events:
 
+            # Check weekly quota
+            if _quota_exceeded():
+                logger.warning("live_props_quota_exceeded", league=league_code)
+                break
+
             # Check credit safety
             if client.should_abort_props:
                 logger.warning("live_props_aborted_credits", league=league_code)
@@ -332,6 +351,14 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
 
             if response is None or response.status_code != 200:
                 continue
+
+            # Record credit usage for weekly quota tracking
+            try:
+                cost = int(response.headers.get("x-requests-last", "0"))
+                if cost > 0:
+                    _record(cost)
+            except (ValueError, TypeError):
+                pass
 
             client._track_credits(response)
             payload = response.json()
