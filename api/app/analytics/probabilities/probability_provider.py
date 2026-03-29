@@ -31,20 +31,15 @@ from app.analytics.sports.mlb.constants import (
 )
 
 
-# Maximum deviation from league-average baseline.  A value of 0.25 means
-# the model can shift each event probability by at most 25% of its
-# baseline value.  For example, strikeout baseline is 0.22, so the model
-# output is clamped to 0.165–0.275.
+# Maximum deviation from league-average baseline for ML fallback path.
+# Only applies when lineup_matchup mode fails and the system falls back
+# to ML-based team-level probability resolution.
 #
-# This allows realistic team-level variance:
-# - Strikeout range 0.165–0.275 (real MLB: ~0.15–0.28)
-# - Home run range 0.0225–0.0375 (real MLB: ~0.02–0.045)
-# - Walk range 0.06–0.10 (real MLB: ~0.05–0.11)
-#
-# The previous value of 0.10 was too aggressive — it compressed all teams
-# into a narrow band producing ~50/50 WP for every matchup.  At 0.25 the
-# model differentiates matchups while still preventing absurd simulations.
-_MAX_BASELINE_DEVIATION = 0.25
+# At 0.15 the ML model can express moderate differentiation while the
+# current model (36% training accuracy) is constrained from producing
+# extreme predictions.  Once a better model is trained, this can be
+# widened.
+_MAX_BASELINE_DEVIATION = 0.15
 
 
 def normalize_probabilities(
