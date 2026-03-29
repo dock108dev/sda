@@ -124,10 +124,18 @@ def _safe_rate(zone_pct: float | None, outside_pct: float | None) -> float:
 
 
 def _power_index(avg_ev: float | None, barrel_pct: float | None) -> float:
-    """Composite power metric from exit velocity and barrel rate."""
+    """Composite power metric from exit velocity and barrel rate.
+
+    Normalized so that league-average inputs (ev=88, barrel_pct=0.07)
+    produce a value of 1.0.  This keeps the HR formula in matchup.py
+    calibrated: ``barrel_rate * power_index * BARREL_HR_CONVERSION``
+    should produce ~3% HR rate for league-average batters.
+    """
     ev = avg_ev or 88.0
     bp = barrel_pct or 0.07
-    return round((ev / 88.0) * (1 + bp * 5), 4)
+    raw = (ev / 88.0) * (1 + bp * 5)
+    # Normalize: league avg raw = (88/88) * (1 + 0.07*5) = 1.35
+    return round(raw / 1.35, 4)
 
 
 def _whiff_rate(stats: Any) -> float:

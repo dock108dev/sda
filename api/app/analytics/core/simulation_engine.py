@@ -199,6 +199,27 @@ class SimulationEngine:
 
         return result
 
+    @staticmethod
+    def _apply_hfa(game_context: dict[str, Any]) -> None:
+        """Apply home field advantage by boosting home offensive probabilities.
+
+        Increases home walk and single rates by MLB_HFA_BOOST (relative)
+        and decreases away equivalents by the same amount.  The shift is
+        small enough (~0.006 total) that the game simulator's
+        ``rng.choices`` handles the minor sum deviation gracefully.
+        """
+        from app.analytics.sports.mlb.constants import MLB_HFA_BOOST
+
+        boost_keys = ("walk_or_hbp_probability", "single_probability")
+
+        for side, factor in (("home_probabilities", 1.0), ("away_probabilities", -1.0)):
+            probs = game_context.get(side)
+            if not probs:
+                continue
+            for key in boost_keys:
+                if key in probs:
+                    probs[key] *= 1.0 + factor * MLB_HFA_BOOST
+
     def _apply_probability_resolver(
         self,
         game_context: dict[str, Any],
@@ -305,6 +326,10 @@ class SimulationEngine:
 
             game_context["home_probabilities"] = sim_probs
             game_context["away_probabilities"] = sim_probs
+
+        # Apply home field advantage for MLB — boost home offensive probs
+        if self.sport.lower() == "mlb":
+            self._apply_hfa(game_context)
 
         # Build diagnostics from resolver metadata
         diagnostics.executed_mode = prob_meta.get("executed_mode", mode)

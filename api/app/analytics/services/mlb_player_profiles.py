@@ -208,9 +208,11 @@ async def _pitcher_profile_from_statcast(
             1.0 - ((1.0 - (m["k_rate"] + m["bb_rate"])) * (1.0 - (m.get("whiff_rate", 0.0) * 0.5))),
             -0.15, 0.30,
         )
+        # Allow mild negative suppression (-0.15) so HR-prone pitchers
+        # amplify batter power slightly, fixing the home/away HR asymmetry.
         m["power_suppression"] = _clamp(
-            1.0 - (m["hr_rate"] / 0.03) if m["hr_rate"] < 0.03 else 0.0,
-            -0.30, 0.50,
+            1.0 - (m["hr_rate"] / 0.03),
+            -0.15, 0.50,
         )
         # Also compute strikeout_rate / walk_rate aliases for matchup.py
         m["strikeout_rate"] = m["k_rate"]
@@ -273,7 +275,7 @@ async def _pitcher_profile_from_boxscore(
                     1.0 - (hits / approx_bf) - 0.30, -0.15, 0.30
                 ),
                 "power_suppression": _clamp(
-                    1.0 - ((home_runs / approx_bf) / 0.03), -0.30, 0.50
+                    1.0 - ((home_runs / approx_bf) / 0.03), -0.15, 0.50
                 ),
             }
         )

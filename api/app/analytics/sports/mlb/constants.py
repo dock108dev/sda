@@ -63,15 +63,18 @@ BASELINE_HARD_HIT_RATE = 0.35
 BASELINE_CONTACT_SUPPRESSION = 0.0
 BASELINE_POWER_SUPPRESSION = 0.0
 
-# Fraction of barrelled balls that become home runs (~43% in real MLB).
-# Without this, hr_prob = barrel_rate × power_index ≈ 0.07, which is
-# roughly double the true MLB HR/PA rate of ~0.03.
-BARREL_HR_CONVERSION = 0.43
+# Fraction of barrelled balls that become home runs.
+# Calibrated for player-level barrel rates (~0.09 for lineup starters)
+# so that league-average matchups produce ~3% HR/PA:
+#   0.09 * 1.0 * 0.33 ≈ 0.030 (3.0%)
+# Previously 0.43, which was correct for team-level barrel rates (0.07)
+# but inflated HRs when using per-batter profiles.
+BARREL_HR_CONVERSION = 0.33
 
 # BABIP — batting average on balls in play.  ~30% of batted balls in
 # play become hits; the rest are fielded outs.  This is the critical
 # factor that converts "contact" into a realistic mix of hits vs outs.
-BASELINE_BABIP = 0.300
+BASELINE_BABIP = 0.315
 
 # Hit-type distribution fractions (of non-HR hits, i.e. balls in play
 # that fall for a hit).  Must sum to ~1.0.
@@ -79,6 +82,15 @@ BASELINE_BABIP = 0.300
 SINGLE_FRACTION = 0.73
 DOUBLE_FRACTION = 0.22
 TRIPLE_FRACTION = 0.05
+
+# ---------------------------------------------------------------------------
+# Home field advantage
+# ---------------------------------------------------------------------------
+
+# Relative boost applied to home team offensive probabilities (walk, single).
+# MLB home teams win ~54% of games historically; a 2.5% relative boost on
+# contact/walk events produces roughly +0.04 WP shift to match this.
+MLB_HFA_BOOST = 0.025
 
 # ---------------------------------------------------------------------------
 # Feature-builder baselines (superset used for normalization)

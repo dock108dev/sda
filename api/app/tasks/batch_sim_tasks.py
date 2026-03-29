@@ -513,12 +513,29 @@ async def _try_build_lineup_weights(
         away_lineup_data = {"batters": away_lineup_batters} if away_lineup_batters else None
 
     if not home_lineup_data or not away_lineup_data:
+        logger.info(
+            "lineup_build_no_lineup_data",
+            extra={
+                "game_id": game.id,
+                "has_home": bool(home_lineup_data),
+                "has_away": bool(away_lineup_data),
+                "is_final": is_final,
+            },
+        )
         return False
 
     home_batters = home_lineup_data["batters"]
     away_batters = away_lineup_data["batters"]
 
     if len(home_batters) < 3 or len(away_batters) < 3:
+        logger.info(
+            "lineup_build_insufficient_batters",
+            extra={
+                "game_id": game.id,
+                "home_batters": len(home_batters),
+                "away_batters": len(away_batters),
+            },
+        )
         return False
 
     # --- Get starting pitchers ---
@@ -542,6 +559,18 @@ async def _try_build_lineup_weights(
             if home_ext:
                 home_sp_info = await fetch_probable_starter(game_date, home_ext)
 
+    logger.info(
+        "lineup_build_pitcher_lookup",
+        extra={
+            "game_id": game.id,
+            "is_final": is_final,
+            "home_sp_found": home_sp_info is not None,
+            "away_sp_found": away_sp_info is not None,
+            "home_sp_name": (home_sp_info or {}).get("name"),
+            "away_sp_name": (away_sp_info or {}).get("name"),
+        },
+    )
+
     # --- Get pitcher profiles ---
     away_sp_profile = fallback_pitcher
     home_sp_profile = fallback_pitcher
@@ -556,6 +585,15 @@ async def _try_build_lineup_weights(
         if raw:
             away_sp_avg_ip = away_sp_info.get("avg_ip")
             away_sp_profile = regress_pitcher_profile(raw, away_sp_avg_ip)
+        else:
+            logger.info(
+                "lineup_build_pitcher_profile_empty",
+                extra={
+                    "game_id": game.id,
+                    "side": "away",
+                    "pitcher_ref": away_sp_info["external_ref"],
+                },
+            )
 
     if home_sp_info:
         raw = await get_pitcher_rolling_profile(
@@ -565,25 +603,37 @@ async def _try_build_lineup_weights(
         if raw:
             home_sp_avg_ip = home_sp_info.get("avg_ip")
             home_sp_profile = regress_pitcher_profile(raw, home_sp_avg_ip)
+        else:
+            logger.info(
+                "lineup_build_pitcher_profile_empty",
+                extra={
+                    "game_id": game.id,
+                    "side": "home",
+                    "pitcher_ref": home_sp_info["external_ref"],
+                },
+            )
 
-    # Bullpen profiles derived from opposing team's batting tendencies
-    away_bullpen = pitching_metrics_from_profile(away_profile) or fallback_pitcher
-    home_bullpen = pitching_metrics_from_profile(home_profile) or fallback_pitcher
+    # Bullpen profiles derived from the OPPOSING team's batting tendencies
+    # as a proxy for that team's pitching staff quality.
+    # Home batters face the away team's bullpen → derived from away profile.
+    # Away batters face the home team's bullpen → derived from home profile.
+    away_team_bullpen = pitching_metrics_from_profile(away_profile) or fallback_pitcher
+    home_team_bullpen = pitching_metrics_from_profile(home_profile) or fallback_pitcher
 
     # --- Build per-batter weights ---
-    # Home batters face away starter/bullpen
+    # Home batters face away starter + away team's bullpen
     home_weights = await build_lineup_weights(
         db, home_batters, game.home_team_id,
         opposing_starter_profile=away_sp_profile,
-        opposing_bullpen_profile=away_bullpen,
+        opposing_bullpen_profile=away_team_bullpen,
         team_profile=home_profile,
         rolling_window=rolling_window,
     )
-    # Away batters face home starter/bullpen
+    # Away batters face home starter + home team's bullpen
     away_weights = await build_lineup_weights(
         db, away_batters, game.away_team_id,
         opposing_starter_profile=home_sp_profile,
-        opposing_bullpen_profile=home_bullpen,
+        opposing_bullpen_profile=home_team_bullpen,
         team_profile=away_profile,
         rolling_window=rolling_window,
     )
@@ -750,45 +800,62 @@ async def _execute_batch_sim(
 
         # ----------------------------------------------------------
         # Attempt lineup/rotation-aware simulation
+        # NOTE: The outer ``async with sf() as db:`` closes before
+        # this loop, so we open a fresh session for DB-dependent
+        # lineup/rotation weight building.
         # ----------------------------------------------------------
         try:
-            if sport_lower == "nba":
-                lineup_mode = await _try_build_nba_rotation_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            elif sport_lower == "ncaab":
-                lineup_mode = await _try_build_ncaab_rotation_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            elif sport_lower == "nhl":
-                lineup_mode = await _try_build_nhl_rotation_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            elif sport_lower == "nfl":
-                lineup_mode = await _try_build_nfl_drive_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
-            else:
-                lineup_mode = await _try_build_lineup_weights(
-                    db, game, game_context,
-                    home_profile, away_profile,
-                    rolling_window,
-                )
+            async with sf() as lineup_db:
+                if sport_lower == "nba":
+                    lineup_mode = await _try_build_nba_rotation_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                elif sport_lower == "ncaab":
+                    lineup_mode = await _try_build_ncaab_rotation_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                elif sport_lower == "nhl":
+                    lineup_mode = await _try_build_nhl_rotation_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                elif sport_lower == "nfl":
+                    lineup_mode = await _try_build_nfl_drive_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
+                else:
+                    lineup_mode = await _try_build_lineup_weights(
+                        lineup_db, game, game_context,
+                        home_profile, away_profile,
+                        rolling_window,
+                    )
         except Exception as exc:
-            logger.info(
-                "lineup_weight_build_skipped",
-                extra={"game_id": game.id, "error": str(exc)},
+            logger.warning(
+                "lineup_weight_build_exception",
+                extra={
+                    "game_id": game.id,
+                    "sport": sport_lower,
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                },
             )
 
         if not lineup_mode:
+            logger.warning(
+                "lineup_mode_fallback",
+                extra={
+                    "game_id": game.id,
+                    "sport": sport_lower,
+                    "game_status": game.status,
+                },
+            )
             # Fall back to team-level probability resolution
             if has_profiles and use_ml:
                 game_context["profiles"] = {
@@ -816,6 +883,25 @@ async def _execute_batch_sim(
                         "model_id": model_id,
                     },
                 )
+
+        # Log which probability path this game is taking
+        if lineup_mode:
+            _prob_path = "lineup_matchup"
+        elif has_profiles and use_ml:
+            _prob_path = "team_ml"
+        elif has_profiles:
+            _prob_path = "team_rule_based"
+        else:
+            _prob_path = "league_defaults"
+        logger.info(
+            "batch_sim_game_prob_path",
+            extra={
+                "game_id": game.id,
+                "prob_path": _prob_path,
+                "lineup_mode": lineup_mode,
+                "has_profiles": has_profiles,
+            },
+        )
 
         try:
             sim = engine.run_simulation(

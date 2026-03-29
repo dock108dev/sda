@@ -95,15 +95,24 @@ class MLBMatchup:
         p_power_supp = _get_pitcher_metric(p, "power_suppression", _BASELINE_POWER_SUPPRESSION)
 
         # Core probabilities
-        contact_prob = _clamp(b_contact * (1.0 - p_contact_supp))
-        strikeout_prob = _clamp(b_whiff * p_k_rate / _BASELINE_WHIFF_RATE)
+        # Floor at 0.60 — real MLB contact rates don't drop below ~65%
+        # at team level; prevents extreme suppression from cratering offense.
+        contact_prob = max(_clamp(b_contact * (1.0 - p_contact_supp)), 0.60)
+        # Strikeout: odds-ratio method using batter whiff tendency and
+        # pitcher K rate, each expressed relative to their own baseline.
+        # This prevents double-counting when both are above average.
+        batter_k_factor = b_whiff / _BASELINE_WHIFF_RATE
+        pitcher_k_factor = p_k_rate / _BASELINE_STRIKEOUT_RATE
+        strikeout_prob = _clamp(_BASELINE_STRIKEOUT_RATE * batter_k_factor * pitcher_k_factor)
         # Walk rate: pitcher BB% is the baseline; adjust by how selective
         # the batter is relative to average.  A patient batter (low swing%)
         # walks more; a free-swinger walks less.
         discipline_factor = (1.0 - b_swing) / (1.0 - _BASELINE_SWING_RATE)
         walk_prob = _clamp(p_bb_rate * discipline_factor)
 
-        # Power adjustment for home runs
+        # Power adjustment for home runs.
+        # BARREL_HR_CONVERSION is calibrated for player-level barrel rates
+        # (~0.09 avg for lineup starters) to produce ~3% league-average HR rate.
         adjusted_power = b_power * (1.0 - p_power_supp)
         hr_prob = _clamp(b_barrel * adjusted_power * _BARREL_HR_CONVERSION)
 

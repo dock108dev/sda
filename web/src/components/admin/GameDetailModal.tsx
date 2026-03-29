@@ -34,7 +34,7 @@ export function GameDetailModal({ game, sport, onClose, outcome }: GameDetailMod
               std={game.score_std_home}
               wp={game.home_win_probability}
             />
-            <span style={{ fontSize: "1.5rem", color: "#6b7280", alignSelf: "center" }}>vs</span>
+            <span style={{ fontSize: "1.5rem", color: "#9ca3af", alignSelf: "center" }}>vs</span>
             <ScoreBox
               label={game.away_team}
               score={game.average_away_score}
@@ -60,7 +60,7 @@ export function GameDetailModal({ game, sport, onClose, outcome }: GameDetailMod
               {game.most_common_scores.slice(0, 8).map((s: ScoreEntry, i: number) => (
                 <div key={i} style={scoreChipStyle}>
                   <span style={{ fontWeight: 600 }}>{s.score}</span>
-                  <span style={{ color: "#6b7280", fontSize: "0.8rem" }}>{(s.probability * 100).toFixed(1)}%</span>
+                  <span style={{ color: "#9ca3af", fontSize: "0.8rem" }}>{(s.probability * 100).toFixed(1)}%</span>
                 </div>
               ))}
             </div>
@@ -104,7 +104,7 @@ export function GameDetailModal({ game, sport, onClose, outcome }: GameDetailMod
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: "1rem" }}>
-      <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em" }}>{title}</h4>
+      <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>{title}</h4>
       {children}
     </div>
   );
@@ -113,11 +113,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function ScoreBox({ label, score, std, wp }: { label: string; score?: number; std?: number; wp?: number }) {
   return (
     <div style={{ textAlign: "center", flex: 1 }}>
-      <div style={{ fontSize: "0.85rem", color: "#9ca3af" }}>{label}</div>
+      <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>{label}</div>
       <div style={{ fontSize: "2rem", fontWeight: 700 }}>
         {score != null ? score.toFixed(1) : "-"}
       </div>
-      {std != null && <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>{"\u00B1"} {std.toFixed(1)}</div>}
+      {std != null && <div style={{ fontSize: "0.8rem", color: "#9ca3af" }}>{"\u00B1"} {std.toFixed(1)}</div>}
       {wp != null && <div style={{ fontSize: "0.85rem", color: wp > 0.5 ? "#22c55e" : "#ef4444" }}>{(wp * 100).toFixed(1)}%</div>}
     </div>
   );
@@ -127,7 +127,7 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{label}</div>
-      <div style={{ fontSize: "0.9rem", fontWeight: 500 }}>{value}</div>
+      <div style={{ fontSize: "0.9rem", fontWeight: 500, color: "#111827" }}>{value}</div>
     </div>
   );
 }
@@ -136,8 +136,8 @@ function RateRow({ label, value }: { label: string; value?: number }) {
   if (value == null) return null;
   return (
     <div style={{ display: "flex", justifyContent: "space-between", padding: "0.15rem 0" }}>
-      <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>{label}</span>
-      <span style={{ fontWeight: 500, fontSize: "0.85rem" }}>{(value * 100).toFixed(1)}%</span>
+      <span style={{ color: "#6b7280", fontSize: "0.85rem" }}>{label}</span>
+      <span style={{ fontWeight: 500, fontSize: "0.85rem", color: "#111827" }}>{(value * 100).toFixed(1)}%</span>
     </div>
   );
 }
@@ -150,12 +150,12 @@ function TwoColumnRates({ homeLabel, awayLabel, homeRates, awayRates, rateLabels
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "0.5rem" }}>
       <div>
-        <div style={{ fontSize: "0.8rem", color: "#9ca3af", textAlign: "center", marginBottom: "0.25rem" }}>{homeLabel}</div>
+        <div style={{ fontSize: "0.8rem", color: "#6b7280", textAlign: "center", marginBottom: "0.25rem" }}>{homeLabel}</div>
         {rateLabels.map(([key, label]) => <RateRow key={key} label={label} value={homeRates[key]} />)}
       </div>
-      <div style={{ borderLeft: "1px solid #374151", margin: "0 0.5rem" }} />
+      <div style={{ borderLeft: "1px solid #e5e7eb", margin: "0 0.5rem" }} />
       <div>
-        <div style={{ fontSize: "0.8rem", color: "#9ca3af", textAlign: "center", marginBottom: "0.25rem" }}>{awayLabel}</div>
+        <div style={{ fontSize: "0.8rem", color: "#6b7280", textAlign: "center", marginBottom: "0.25rem" }}>{awayLabel}</div>
         {rateLabels.map(([key, label]) => <RateRow key={key} label={label} value={awayRates[key]} />)}
       </div>
     </div>
@@ -274,7 +274,7 @@ function NFLStats({ summary }: { summary: { home: any; away: any } }) {
 
 function GameShape({ game, sport }: { game: any; sport: string }) {
   return (
-    <div style={{ ...metaRowStyle, marginTop: "0.75rem", borderTop: "1px solid #374151", paddingTop: "0.75rem" }}>
+    <div style={{ ...metaRowStyle, marginTop: "0.75rem", borderTop: "1px solid #e5e7eb", paddingTop: "0.75rem" }}>
       <MetaItem label="Avg Total" value={game.avg_total?.toFixed(1) ?? game.avg_total_runs?.toFixed(1) ?? "-"} />
       {game.extra_innings_pct != null && <MetaItem label="Extra Inn." value={(game.extra_innings_pct * 100).toFixed(1) + "%"} />}
       {game.shutout_pct != null && <MetaItem label="Shutout" value={(game.shutout_pct * 100).toFixed(1) + "%"} />}
@@ -290,24 +290,24 @@ function GameShape({ game, sport }: { game: any; sport: string }) {
 
 const overlayStyle: React.CSSProperties = {
   position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-  background: "rgba(0,0,0,0.6)", zIndex: 1000,
+  background: "rgba(0,0,0,0.3)", zIndex: 1000,
   display: "flex", alignItems: "center", justifyContent: "center",
   padding: "1rem",
 };
 
 const modalStyle: React.CSSProperties = {
-  background: "#1f2937", borderRadius: "0.75rem", padding: "1.5rem",
+  background: "#ffffff", borderRadius: "0.75rem", padding: "1.5rem",
   maxWidth: "700px", width: "100%", maxHeight: "85vh", overflowY: "auto",
-  color: "#f3f4f6", boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+  color: "#111827", boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
 };
 
 const headerStyle: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "center",
-  marginBottom: "1.25rem", borderBottom: "1px solid #374151", paddingBottom: "0.75rem",
+  marginBottom: "1.25rem", borderBottom: "1px solid #e5e7eb", paddingBottom: "0.75rem",
 };
 
 const closeBtnStyle: React.CSSProperties = {
-  background: "none", border: "none", color: "#9ca3af", fontSize: "1.1rem",
+  background: "none", border: "none", color: "#6b7280", fontSize: "1.1rem",
   cursor: "pointer", padding: "0.25rem 0.5rem",
 };
 
@@ -326,7 +326,7 @@ const scoresGridStyle: React.CSSProperties = {
 };
 
 const scoreChipStyle: React.CSSProperties = {
-  background: "#111827", padding: "0.35rem 0.75rem", borderRadius: "0.5rem",
+  background: "#f9fafb", padding: "0.35rem 0.75rem", borderRadius: "0.5rem",
   display: "flex", gap: "0.5rem", alignItems: "center",
-  border: "1px solid #374151", fontSize: "0.85rem",
+  border: "1px solid #e5e7eb", fontSize: "0.85rem",
 };
