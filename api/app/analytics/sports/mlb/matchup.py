@@ -108,9 +108,13 @@ class MLBMatchup:
         discipline_factor = (1.0 - b_swing) / (1.0 - _BASELINE_SWING_RATE)
         walk_prob = _clamp(p_bb_rate * discipline_factor)
 
-        # Power adjustment for home runs
+        # Power adjustment for home runs.
+        # Cap at 4.5% — the highest realistic team-level HR/PA rate.
+        # Individual player barrel rates from lineup-mode profiles run
+        # higher than team averages (starters > replacement level), so
+        # without the cap the formula overshoots for power hitters.
         adjusted_power = b_power * (1.0 - p_power_supp)
-        hr_prob = _clamp(b_barrel * adjusted_power * _BARREL_HR_CONVERSION)
+        hr_prob = min(b_barrel * adjusted_power * _BARREL_HR_CONVERSION, 0.045)
 
         # Hit-type distribution: apply BABIP to convert contact into
         # realistic hit rates.  Only ~30% of balls in play become hits;
