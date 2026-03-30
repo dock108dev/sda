@@ -664,5 +664,47 @@
   .filters {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .betCard {
+    padding: 0.75rem;
+  }
+
+  .bookOdds {
+    min-width: 65px;
+    padding: 6px 8px;
+  }
+
+  .modeTabs {
+    width: 100%;
+  }
+
+  .modeTab {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+/* ── Responsive: < 480px ── */
+@media (max-width: 479px) {
+  .bookOdds {
+    min-width: 55px;
+    padding: 4px 6px;
+  }
+
+  .bookPrice {
+    font-size: 14px;
+  }
+
+  .bookName {
+    font-size: 10px;
   }
 }
