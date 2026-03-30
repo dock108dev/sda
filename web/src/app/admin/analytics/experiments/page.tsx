@@ -217,7 +217,7 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
       </div>
 
       {/* Parameter Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginTop: "0.5rem" }}>
+      <div className={styles.parameterGrid}>
         {/* Algorithms */}
         <div>
           <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.35rem" }}>
@@ -284,11 +284,11 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
 
       {/* Feature Grid */}
       <div style={{ marginTop: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+        <div className={styles.featureToolbar}>
           <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)" }}>
             Features ({enabledFeatures.length} enabled, {variableFeatures.length} variable)
           </label>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <div className={styles.featureToolbarActions}>
             {loadouts.length > 0 && (
               <select
                 style={{ fontSize: "0.75rem", padding: "2px 4px" }}
@@ -350,7 +350,7 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
         {featuresLoading ? (
           <p style={{ color: "var(--text-muted)" }}>Loading features...</p>
         ) : (
-          <div style={{ maxHeight: "350px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px" }}>
+          <div className={styles.featureTableWrapper}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", position: "sticky", top: 0, background: "#fff" }}>

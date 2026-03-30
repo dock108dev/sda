@@ -319,7 +319,7 @@ export function PregameSimulator() {
 
       {/* Lineup Configuration (MLB only) */}
       {sportConfig.hasLineupMode && useLineup && homeTeam && awayTeam && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div className={styles.lineupGrid}>
           <AdminCard title={`${homeTeam} Lineup`} subtitle="Home batting order">
             <LineupEditor
               lineup={homeLineup}

@@ -424,6 +424,20 @@
   .paginationRight {
     justify-content: center;
   }
+
+  .paginationButtons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .paginationButton {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .pageInfo {
+    min-width: auto;
+  }
 }
 
 /* ── Responsive: < 480px ── */
@@ -438,5 +452,14 @@
 
   .statLabel {
     font-size: 0.6rem;
+  }
+
+  .stat {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .paginationButton {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
   }
 }
