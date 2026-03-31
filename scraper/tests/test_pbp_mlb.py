@@ -18,6 +18,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
+from sports_scraper.live.mlb_pbp import MLBPbpFetcher
 from sports_scraper.services.pbp_mlb import (
     ingest_pbp_via_mlb_api,
     select_games_for_pbp_mlb_api,
@@ -250,3 +251,61 @@ class TestIngestPbpViaMlbApi:
             only_missing=False, updated_before=None,
         )
         assert result == (0, 0)
+
+
+# ---------------------------------------------------------------------------
+# MLBPbpFetcher._normalize_play — is_home_team derivation
+# ---------------------------------------------------------------------------
+
+
+class TestMLBNormalizePlayIsHomeTeam:
+    """Verify is_home_team is derived from half-inning in raw_data."""
+
+    def _make_fetcher(self):
+        client = MagicMock()
+        cache = MagicMock()
+        cache.get.return_value = None
+        return MLBPbpFetcher(client, cache)
+
+    def _make_play(self, *, is_top_inning=True, inning=1, at_bat_index=0):
+        return {
+            "about": {
+                "inning": inning,
+                "isTopInning": is_top_inning,
+                "atBatIndex": at_bat_index,
+                "halfInning": "top" if is_top_inning else "bottom",
+            },
+            "result": {
+                "eventType": "single",
+                "event": "Single",
+                "description": "Player singles.",
+                "homeScore": 0,
+                "awayScore": 0,
+            },
+            "matchup": {
+                "batter": {"id": 123, "fullName": "Test Player"},
+                "pitcher": {"id": 456, "fullName": "Test Pitcher"},
+            },
+            "runners": [],
+            "count": {},
+        }
+
+    def test_top_inning_sets_is_home_team_false(self):
+        """Top of inning = away team batting, so is_home_team should be False."""
+        fetcher = self._make_fetcher()
+        play = self._make_play(is_top_inning=True)
+        result = fetcher._normalize_play(play, game_pk=123)
+
+        assert result is not None
+        assert result.raw_data["is_home_team"] is False
+        assert result.raw_data["is_top_inning"] is True
+
+    def test_bottom_inning_sets_is_home_team_true(self):
+        """Bottom of inning = home team batting, so is_home_team should be True."""
+        fetcher = self._make_fetcher()
+        play = self._make_play(is_top_inning=False)
+        result = fetcher._normalize_play(play, game_pk=123)
+
+        assert result is not None
+        assert result.raw_data["is_home_team"] is True
+        assert result.raw_data["is_top_inning"] is False

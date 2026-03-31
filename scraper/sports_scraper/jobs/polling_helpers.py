@@ -22,6 +22,30 @@ class _RateLimitError(Exception):
     """Raised when an API returns 429."""
 
 
+def _should_fetch_pbp(game, status_result) -> bool:
+    """Determine if PBP should be fetched for this game.
+
+    Fetches PBP when the game is live/pregame, OR when the game just
+    transitioned to final in this poll cycle.  The latter ensures we
+    capture the complete PBP (including the final scoring play) before
+    the game is marked as done.
+    """
+    from ..db import db_models
+
+    if game.status in (db_models.GameStatus.live.value, db_models.GameStatus.pregame.value):
+        return True
+
+    # If the game just went final in this cycle, do one last PBP fetch
+    if (
+        status_result
+        and status_result.transition
+        and status_result.transition.get("to") == db_models.GameStatus.final.value
+    ):
+        return True
+
+    return False
+
+
 def _poll_single_game_pbp(session, game) -> dict:
     """Poll a single game for status + PBP updates.
 
@@ -67,6 +91,7 @@ def _poll_nba_game(session, game) -> dict:
 
     client = NBALiveFeedClient()
     result: dict = {"api_calls": 0}
+    status_result = None
 
     # Fetch scoreboard for status check
     try:
@@ -79,8 +104,8 @@ def _poll_nba_game(session, game) -> dict:
             raise _RateLimitError() from exc
         logger.warning("poll_nba_scoreboard_error", game_id=game.id, error=str(exc))
 
-    # Fetch PBP if game is live or pregame
-    if game.status in (db_models.GameStatus.live.value, db_models.GameStatus.pregame.value):
+    # Fetch PBP if game is live, pregame, or just transitioned to final
+    if _should_fetch_pbp(game, status_result):
         try:
             pbp_result = process_game_pbp_nba(session, game, client=client)
             result["api_calls"] += pbp_result.api_calls
@@ -118,6 +143,7 @@ def _poll_nhl_game(session, game) -> dict:
 
     client = NHLLiveFeedClient()
     result: dict = {"api_calls": 0}
+    status_result = None
 
     # Fetch schedule for status check
     try:
@@ -130,8 +156,8 @@ def _poll_nhl_game(session, game) -> dict:
             raise _RateLimitError() from exc
         logger.warning("poll_nhl_schedule_error", game_id=game.id, error=str(exc))
 
-    # Fetch PBP if game is live or pregame
-    if game.status in (db_models.GameStatus.live.value, db_models.GameStatus.pregame.value):
+    # Fetch PBP if game is live, pregame, or just transitioned to final
+    if _should_fetch_pbp(game, status_result):
         try:
             pbp_result = process_game_pbp_nhl(session, game, client=client)
             result["api_calls"] += pbp_result.api_calls
@@ -169,6 +195,7 @@ def _poll_mlb_game(session, game) -> dict:
 
     client = MLBLiveFeedClient()
     result: dict = {"api_calls": 0}
+    status_result = None
 
     # Fetch schedule for status check
     try:
@@ -181,8 +208,8 @@ def _poll_mlb_game(session, game) -> dict:
             raise _RateLimitError() from exc
         logger.warning("poll_mlb_schedule_error", game_id=game.id, error=str(exc))
 
-    # Fetch PBP if game is live or pregame
-    if game.status in (db_models.GameStatus.live.value, db_models.GameStatus.pregame.value):
+    # Fetch PBP if game is live, pregame, or just transitioned to final
+    if _should_fetch_pbp(game, status_result):
         try:
             pbp_result = process_game_pbp_mlb(session, game, client=client)
             result["api_calls"] += pbp_result.api_calls
@@ -220,6 +247,7 @@ def _poll_nfl_game(session, game) -> dict:
 
     client = NFLLiveFeedClient()
     result: dict = {"api_calls": 0}
+    status_result = None
 
     # Fetch scoreboard for status check
     try:
@@ -232,8 +260,8 @@ def _poll_nfl_game(session, game) -> dict:
             raise _RateLimitError() from exc
         logger.warning("poll_nfl_schedule_error", game_id=game.id, error=str(exc))
 
-    # Fetch PBP if game is live or pregame
-    if game.status in (db_models.GameStatus.live.value, db_models.GameStatus.pregame.value):
+    # Fetch PBP if game is live, pregame, or just transitioned to final
+    if _should_fetch_pbp(game, status_result):
         try:
             pbp_result = process_game_pbp_nfl(session, game, client=client)
             result["api_calls"] += pbp_result.api_calls

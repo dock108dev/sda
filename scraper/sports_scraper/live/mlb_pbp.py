@@ -162,11 +162,13 @@ class MLBPbpFetcher:
         half_inning = about.get("halfInning", "")
 
         # Build comprehensive raw_data
+        # is_home_team: bottom of inning = home team batting
         raw_data: dict[str, Any] = {
             "at_bat_index": at_bat_index,
             "inning": inning,
             "half_inning": half_inning,
             "is_top_inning": is_top,
+            "is_home_team": not is_top,
             "event_type": event_type,
             "event": result.get("event"),
             "rbi": parse_int(result.get("rbi")),
