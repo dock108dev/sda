@@ -9,6 +9,8 @@ import {
   fetchTournamentField,
   fetchTournamentRounds,
   fetchOutrightOdds,
+  addFieldPlayer,
+  removeFieldPlayer,
 } from "@/lib/api/golf";
 import type {
   GolfTournament,
@@ -37,6 +39,10 @@ export default function TournamentDetailPage() {
   const [field, setField] = useState<GolfFieldEntry[]>([]);
   const [rounds, setRounds] = useState<GolfRound[]>([]);
   const [odds, setOdds] = useState<GolfOddsEntry[]>([]);
+
+  // Field management
+  const [addPlayerName, setAddPlayerName] = useState("");
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   // Filters
   const [selectedRound, setSelectedRound] = useState(1);
@@ -136,21 +142,97 @@ export default function TournamentDetailPage() {
       {/* Field */}
       {tab === "field" && (
         <AdminCard>
+          <div style={{ padding: "0.75rem 1rem", display: "flex", gap: "0.5rem", alignItems: "flex-end", borderBottom: "1px solid #e5e7eb" }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: "0.85rem", fontWeight: 500, display: "block", marginBottom: "0.25rem" }}>Add Player</label>
+              <input
+                type="text"
+                placeholder="Last, First (e.g. Aberg, Ludvig)"
+                value={addPlayerName}
+                onChange={(e) => { setAddPlayerName(e.target.value); setFieldError(null); }}
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter" && addPlayerName.trim()) {
+                    try {
+                      setFieldError(null);
+                      await addFieldPlayer(eventId, addPlayerName.trim());
+                      setAddPlayerName("");
+                      const fieldRes = await fetchTournamentField(eventId);
+                      setField(fieldRes.field ?? []);
+                    } catch (err) {
+                      setFieldError(err instanceof Error ? err.message : String(err));
+                    }
+                  }
+                }}
+                style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
+              />
+            </div>
+            <button
+              className={styles.primaryButton}
+              disabled={!addPlayerName.trim()}
+              onClick={async () => {
+                try {
+                  setFieldError(null);
+                  await addFieldPlayer(eventId, addPlayerName.trim());
+                  setAddPlayerName("");
+                  const fieldRes = await fetchTournamentField(eventId);
+                  setField(fieldRes.field ?? []);
+                } catch (err) {
+                  setFieldError(err instanceof Error ? err.message : String(err));
+                }
+              }}
+            >
+              Add
+            </button>
+          </div>
+          {fieldError && (
+            <div style={{ padding: "0.5rem 1rem", color: "#dc2626", fontSize: "0.85rem" }}>
+              {fieldError}
+            </div>
+          )}
           {field.length === 0 ? (
             <div className={styles.empty}>No field data available.</div>
           ) : (
-            <AdminTable headers={["Player", "Status", "Tee Time R1", "Tee Time R2", "DK Salary", "FD Salary"]}>
-              {field.map((e) => (
-                <tr key={e.dg_id}>
-                  <td>{e.player_name ?? "-"}</td>
-                  <td>{e.status}</td>
-                  <td>{e.tee_time_r1 ?? "-"}</td>
-                  <td>{e.tee_time_r2 ?? "-"}</td>
-                  <td>{e.dk_salary != null ? `$${e.dk_salary.toLocaleString()}` : "-"}</td>
-                  <td>{e.fd_salary != null ? `$${e.fd_salary.toLocaleString()}` : "-"}</td>
-                </tr>
-              ))}
-            </AdminTable>
+            <>
+              <div style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", color: "#666" }}>
+                {field.length} players in field
+              </div>
+              <AdminTable headers={["Player", "Status", "Tee Time R1", "Tee Time R2", "DK Salary", "FD Salary", ""]}>
+                {field.map((e) => (
+                  <tr key={e.dg_id}>
+                    <td>{e.player_name ?? "-"}</td>
+                    <td>{e.status}</td>
+                    <td>{e.tee_time_r1 ?? "-"}</td>
+                    <td>{e.tee_time_r2 ?? "-"}</td>
+                    <td>{e.dk_salary != null ? `$${e.dk_salary.toLocaleString()}` : "-"}</td>
+                    <td>{e.fd_salary != null ? `$${e.fd_salary.toLocaleString()}` : "-"}</td>
+                    <td>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Remove ${e.player_name} from the field?`)) return;
+                          try {
+                            await removeFieldPlayer(eventId, e.dg_id);
+                            setField((prev) => prev.filter((f) => f.dg_id !== e.dg_id));
+                          } catch (err) {
+                            alert(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+                          }
+                        }}
+                        style={{
+                          background: "none",
+                          border: "1px solid #dc2626",
+                          color: "#dc2626",
+                          padding: "0.2rem 0.5rem",
+                          borderRadius: "4px",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </AdminTable>
+            </>
           )}
         </AdminCard>
       )}

@@ -49,6 +49,25 @@ export async function fetchTournamentField(
   return request(`/api/golf/tournaments/${eventId}/field`);
 }
 
+export async function addFieldPlayer(
+  eventId: string,
+  playerName: string
+): Promise<{ status: string; dg_id: number; player_name: string }> {
+  return request(`/api/golf/tournaments/${eventId}/field`, {
+    method: "POST",
+    body: JSON.stringify({ player_name: playerName }),
+  });
+}
+
+export async function removeFieldPlayer(
+  eventId: string,
+  dgId: number
+): Promise<{ status: string; dg_id: number; player_name: string }> {
+  return request(`/api/golf/tournaments/${eventId}/field/${dgId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchTournamentLeaderboard(
   eventId: string
 ): Promise<GolfLeaderboardEntry[]> {

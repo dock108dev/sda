@@ -5,18 +5,22 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import Depends, HTTPException, Query
-from sqlalchemy import select
+from pydantic import BaseModel, Field
+from sqlalchemy import delete, func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.db.golf import (
     GolfLeaderboard,
+    GolfPlayer,
     GolfRound,
     GolfTournament,
     GolfTournamentField,
 )
 
 from . import router
+
+_SYNTHETIC_DG_ID_START = 900_000
 
 
 @router.get("/tournaments")
@@ -130,6 +134,102 @@ async def get_tournament_field(
         ],
         "count": len(rows),
     }
+
+
+class AddFieldPlayerRequest(BaseModel):
+    player_name: str = Field(..., description="Player name in 'Last, First' format")
+
+
+@router.post("/tournaments/{event_id}/field")
+async def add_field_player(
+    event_id: str,
+    req: AddFieldPlayerRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Add a player to the tournament field by name.
+
+    Creates the player in golf_players if they don't exist.
+    """
+    t_result = await db.execute(
+        select(GolfTournament.id).where(GolfTournament.event_id == event_id)
+    )
+    tournament_id = t_result.scalar_one_or_none()
+    if tournament_id is None:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    name = req.player_name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="player_name is required")
+
+    # Check if already in field
+    existing = await db.execute(
+        select(GolfTournamentField).where(
+            GolfTournamentField.tournament_id == tournament_id,
+            sa_func.lower(GolfTournamentField.player_name) == name.lower(),
+        )
+    )
+    if existing.scalars().first():
+        raise HTTPException(status_code=409, detail=f"{name} is already in the field")
+
+    # Find or create player
+    player_result = await db.execute(
+        select(GolfPlayer).where(
+            sa_func.lower(GolfPlayer.player_name) == name.lower()
+        )
+    )
+    player = player_result.scalars().first()
+
+    if player:
+        dg_id = player.dg_id
+    else:
+        max_result = await db.execute(
+            select(sa_func.coalesce(sa_func.max(GolfPlayer.dg_id), _SYNTHETIC_DG_ID_START - 1)).where(
+                GolfPlayer.dg_id >= _SYNTHETIC_DG_ID_START
+            )
+        )
+        dg_id = (max_result.scalar() or _SYNTHETIC_DG_ID_START - 1) + 1
+        db.add(GolfPlayer(dg_id=dg_id, player_name=name, amateur=False))
+        await db.flush()
+
+    db.add(GolfTournamentField(
+        tournament_id=tournament_id,
+        dg_id=dg_id,
+        player_name=name,
+        status="active",
+    ))
+    await db.flush()
+
+    return {"status": "added", "dg_id": dg_id, "player_name": name}
+
+
+@router.delete("/tournaments/{event_id}/field/{dg_id}")
+async def remove_field_player(
+    event_id: str,
+    dg_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Remove a player from the tournament field."""
+    t_result = await db.execute(
+        select(GolfTournament.id).where(GolfTournament.event_id == event_id)
+    )
+    tournament_id = t_result.scalar_one_or_none()
+    if tournament_id is None:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+
+    entry = await db.execute(
+        select(GolfTournamentField).where(
+            GolfTournamentField.tournament_id == tournament_id,
+            GolfTournamentField.dg_id == dg_id,
+        )
+    )
+    row = entry.scalars().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Player not in field")
+
+    player_name = row.player_name
+    await db.delete(row)
+
+    return {"status": "removed", "dg_id": dg_id, "player_name": player_name}
 
 
 @router.get("/tournaments/{event_id}/leaderboard")
