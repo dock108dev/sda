@@ -5,7 +5,7 @@ Two Celery tasks split by market type:
 - ``sync_mainline_odds`` — mainline odds (spreads, totals, moneyline)
 - ``sync_prop_odds`` — player/team props
 
-Both run every 60 seconds (staggered via countdown offsets in celery_app.py).
+Mainline runs every 3 minutes; props every 15 minutes (staggered via countdown offsets).
 """
 
 from __future__ import annotations
@@ -166,6 +166,11 @@ def sync_prop_odds(league_code: str | None = None) -> dict:
                 }
 
                 try:
+                    # Only fetch props for games today/tomorrow — props for
+                    # games 2+ days out waste credits and change little.
+                    today = today_et()
+                    tomorrow = today + timedelta(days=1)
+
                     with get_session() as session:
                         stmt = (
                             select(db_models.SportsGame)
@@ -173,6 +178,8 @@ def sync_prop_odds(league_code: str | None = None) -> dict:
                             .where(
                                 db_models.SportsLeague.code == lc,
                                 db_models.SportsGame.status.in_(["scheduled", "pregame"]),
+                                db_models.SportsGame.game_date >= today,
+                                db_models.SportsGame.game_date <= tomorrow,
                                 db_models.SportsGame.external_ids["odds_api_event_id"].astext.isnot(None),
                             )
                         )

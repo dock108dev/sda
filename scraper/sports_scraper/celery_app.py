@@ -157,15 +157,15 @@ _polling_schedule = {
         "schedule": crontab(minute="*/1", hour="0-7,16-23"),
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 15, "expires": 55},
     },
-    "mainline-odds-sync-every-60s": {
+    "mainline-odds-sync-every-3m": {
         "task": "sync_mainline_odds",
-        "schedule": crontab(minute="*/1"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 30, "expires": 55},
+        "schedule": crontab(minute="*/3"),
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 30, "expires": 170},
     },
-    "prop-odds-sync-every-60s": {
+    "prop-odds-sync-every-15m": {
         "task": "sync_prop_odds",
-        "schedule": crontab(minute="*/1"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45, "expires": 55},
+        "schedule": crontab(minute="*/15"),
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45, "expires": 870},
     },
     # Live orchestrator: runs every 5 seconds to dynamically dispatch
     # per-game polling at sport-appropriate cadences (PBP, stats, odds).
