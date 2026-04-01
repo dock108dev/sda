@@ -213,6 +213,14 @@ def _to_last_first(name: str) -> str:
     return name
 
 
+def _to_last_comma_first(name: str) -> str:
+    """Convert 'First Last' to 'Last, First' (DataGolf convention)."""
+    parts = name.strip().split()
+    if len(parts) >= 2:
+        return f"{parts[-1]}, {' '.join(parts[:-1])}"
+    return name
+
+
 def _build_name_variants(name: str) -> list[str]:
     """Build multiple normalized variants for matching."""
     norm = _normalize(name)
@@ -316,7 +324,7 @@ def create_unmatched_players(
     if dry_run:
         print(f"  [DRY RUN] Would create {len(unmatched_names)} player entries")
         return [
-            {"field_name": n, "dg_id": _SYNTHETIC_DG_ID_START + i, "dg_name": n, "amateur": n in MASTERS_AMATEURS_2026}
+            {"field_name": n, "dg_id": _SYNTHETIC_DG_ID_START + i, "dg_name": _to_last_comma_first(n), "amateur": n in MASTERS_AMATEURS_2026}
             for i, n in enumerate(unmatched_names)
         ]
 
@@ -335,15 +343,16 @@ def create_unmatched_players(
     for name in unmatched_names:
         dg_id = next_id
         is_amateur = name in MASTERS_AMATEURS_2026
+        dg_name = _to_last_comma_first(name)
         session.execute(sql, {
             "dg_id": dg_id,
-            "player_name": name,
+            "player_name": dg_name,
             "amateur": is_amateur,
         })
         created.append({
             "field_name": name,
             "dg_id": dg_id,
-            "dg_name": name,
+            "dg_name": dg_name,
             "country": None,
             "amateur": is_amateur,
         })
@@ -482,8 +491,8 @@ def create_pool(session, tournament_id: int, *, status: str = "draft", dry_run: 
                  notes, created_at, updated_at)
             VALUES
                 (:code, :name, :club_code, :tournament_id, :status,
-                 :rules_json::jsonb,
-                 :entry_open_at::timestamptz, :entry_deadline::timestamptz,
+                 CAST(:rules_json AS jsonb),
+                 CAST(:entry_open_at AS timestamptz), CAST(:entry_deadline AS timestamptz),
                  :max_entries_per_email,
                  FALSE, FALSE, TRUE,
                  :notes, NOW(), NOW())

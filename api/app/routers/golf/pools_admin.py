@@ -1,4 +1,4 @@
-"""Golf pool admin endpoints — create, update, delete, buckets, CSV upload."""
+"""Golf pool admin endpoints — create, update, delete, buckets, CSV upload/export."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +19,9 @@ from app.db.golf_pools import (
     GolfPoolBucket,
     GolfPoolBucketPlayer,
     GolfPoolEntry,
+    GolfPoolEntryPick,
+    GolfPoolEntryScore,
+    GolfPoolEntryScorePlayer,
 )
 
 from . import router
@@ -218,9 +222,120 @@ async def admin_list_entries(
     }
 
 
-# ---------------------------------------------------------------------------
-# Operations
-# ---------------------------------------------------------------------------
+@router.delete("/pools/{pool_id}/entries/{entry_id}")
+async def delete_entry(
+    pool_id: int,
+    entry_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete a single entry and all related data (picks, scores)."""
+    await get_pool_or_404(pool_id, db)
+
+    entry = await db.get(GolfPoolEntry, entry_id)
+    if entry is None or entry.pool_id != pool_id:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    email = entry.email
+    entry_name = entry.entry_name
+
+    # Delete related scoring data first (FK cascade should handle this,
+    # but being explicit for clarity)
+    await db.execute(
+        delete(GolfPoolEntryScorePlayer).where(
+            GolfPoolEntryScorePlayer.entry_id == entry_id
+        )
+    )
+    await db.execute(
+        delete(GolfPoolEntryScore).where(GolfPoolEntryScore.entry_id == entry_id)
+    )
+    await db.execute(
+        delete(GolfPoolEntryPick).where(GolfPoolEntryPick.entry_id == entry_id)
+    )
+    await db.delete(entry)
+
+    return {
+        "status": "deleted",
+        "entry_id": entry_id,
+        "email": email,
+        "entry_name": entry_name,
+    }
+
+
+@router.get("/pools/{pool_id}/entries/export")
+async def export_entries_csv(
+    pool_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Export all entries with picks as a CSV download."""
+    pool = await get_pool_or_404(pool_id, db)
+    pick_count = (pool.rules_json or {}).get("pick_count", 7)
+
+    # Load entries
+    stmt = (
+        select(GolfPoolEntry)
+        .where(GolfPoolEntry.pool_id == pool_id)
+        .order_by(GolfPoolEntry.created_at)
+    )
+    result = await db.execute(stmt)
+    entries = result.scalars().all()
+
+    # Load all picks keyed by entry_id
+    picks_stmt = (
+        select(GolfPoolEntryPick)
+        .where(
+            GolfPoolEntryPick.entry_id.in_([e.id for e in entries])
+        )
+        .order_by(GolfPoolEntryPick.pick_slot)
+    )
+    picks_result = await db.execute(picks_stmt)
+    all_picks = picks_result.scalars().all()
+
+    picks_by_entry: dict[int, list] = {}
+    for pk in all_picks:
+        picks_by_entry.setdefault(pk.entry_id, []).append(pk)
+
+    # Build CSV
+    output = io.StringIO()
+    pick_headers = []
+    for i in range(1, pick_count + 1):
+        pick_headers.extend([f"pick_{i}_name", f"pick_{i}_dg_id"])
+
+    writer = csv.writer(output)
+    writer.writerow([
+        "entry_id", "email", "entry_name", "entry_number",
+        "status", "source", "submitted_at",
+        *pick_headers,
+    ])
+
+    for entry in entries:
+        entry_picks = picks_by_entry.get(entry.id, [])
+        pick_cells: list[str] = []
+        for slot in range(1, pick_count + 1):
+            pk = next((p for p in entry_picks if p.pick_slot == slot), None)
+            if pk:
+                pick_cells.extend([pk.player_name_snapshot, str(pk.dg_id)])
+            else:
+                pick_cells.extend(["", ""])
+
+        writer.writerow([
+            entry.id,
+            entry.email,
+            entry.entry_name or "",
+            entry.entry_number,
+            entry.status,
+            entry.source,
+            entry.submitted_at.isoformat() if entry.submitted_at else "",
+            *pick_cells,
+        ])
+
+    csv_content = output.getvalue()
+    filename = f"{pool.code}_entries.csv"
+
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/pools/{pool_id}/rescore")

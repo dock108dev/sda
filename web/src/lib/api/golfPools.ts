@@ -158,3 +158,20 @@ export async function lockPool(
     method: "POST",
   });
 }
+
+// ── Delete entry ──
+
+export async function deletePoolEntry(
+  poolId: number | string,
+  entryId: number
+): Promise<{ status: string; entry_id: number; email: string }> {
+  return request(`/api/golf/pools/${poolId}/entries/${entryId}`, {
+    method: "DELETE",
+  });
+}
+
+// ── Export entries CSV ──
+
+export function entriesExportUrl(poolId: number | string): string {
+  return `/proxy/api/golf/pools/${poolId}/entries/export`;
+}

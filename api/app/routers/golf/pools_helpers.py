@@ -189,6 +189,55 @@ async def next_entry_number(pool_id: int, email: str, db: AsyncSession) -> int:
     return (result.scalar() or 0) + 1
 
 
+async def _dedup_entry_names(pool_id: int, entry_name: str | None, db: AsyncSession) -> None:
+    """Number duplicate entry names within a pool.
+
+    When multiple entries share the same name (case-insensitive), all of
+    them get a suffix: ``Name (1)``, ``Name (2)``, etc., ordered by
+    ``created_at``.  The first entry to be submitted gets ``(1)``.
+    """
+    if not entry_name:
+        return
+
+    # Find all entries in this pool with the same base name (case-insensitive).
+    # Strip any existing " (N)" suffix before comparing so re-runs are idempotent.
+    result = await db.execute(
+        select(GolfPoolEntry)
+        .where(
+            GolfPoolEntry.pool_id == pool_id,
+        )
+        .order_by(GolfPoolEntry.created_at)
+    )
+    all_entries = result.scalars().all()
+
+    import re
+    _suffix_re = re.compile(r"\s*\(\d+\)\s*$")
+
+    def _base_name(name: str | None) -> str:
+        if not name:
+            return ""
+        return _suffix_re.sub("", name).strip().lower()
+
+    target_base = _base_name(entry_name)
+    if not target_base:
+        return
+
+    dupes = [e for e in all_entries if _base_name(e.entry_name) == target_base]
+
+    if len(dupes) < 2:
+        return
+
+    # Get the canonical casing from the first entry's base name
+    canonical = _suffix_re.sub("", dupes[0].entry_name or "").strip()
+
+    for i, entry in enumerate(dupes, 1):
+        new_name = f"{canonical} ({i})"
+        if entry.entry_name != new_name:
+            entry.entry_name = new_name
+
+    await db.flush()
+
+
 async def create_entry_and_picks(
     pool: GolfPool,
     email: str,
@@ -227,6 +276,11 @@ async def create_entry_and_picks(
             )
         )
     await db.flush()
+
+    # Number duplicate entry names: "Mike" + "Mike" → "Mike (1)", "Mike (2)"
+    await _dedup_entry_names(pool.id, entry_name, db)
+    await db.refresh(entry)
+
     return entry
 
 

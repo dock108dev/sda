@@ -9,6 +9,8 @@ import {
   fetchPoolEntries,
   rescorePool,
   lockPool,
+  deletePoolEntry,
+  entriesExportUrl,
 } from "@/lib/api/golfPools";
 import type {
   GolfPool,
@@ -90,6 +92,20 @@ export default function PoolDetailPage() {
     } finally {
       setOpLoading(false);
     }
+  };
+
+  const handleDeleteEntry = async (entryId: number, email: string) => {
+    if (!confirm(`Delete entry #${entryId} (${email})? This cannot be undone.`)) return;
+    try {
+      await deletePoolEntry(poolId, entryId);
+      setEntries((prev) => prev.filter((e) => e.id !== entryId));
+    } catch (err) {
+      alert(`Failed to delete entry: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleExportCsv = () => {
+    window.open(entriesExportUrl(poolId), "_blank");
   };
 
   const filteredEntries = entries.filter((e) => {
@@ -241,22 +257,30 @@ export default function PoolDetailPage() {
       {/* Entries */}
       {tab === "entries" && (
         <AdminCard>
-          <div className={styles.filterBar}>
-            <div className={styles.formGroup}>
+          <div className={styles.filterBar} style={{ display: "flex", alignItems: "flex-end", gap: "1rem" }}>
+            <div className={styles.formGroup} style={{ flex: 1 }}>
               <label>Search</label>
               <input
                 type="text"
                 placeholder="Filter by email or name..."
                 value={entrySearch}
                 onChange={(e) => setEntrySearch(e.target.value)}
-                style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
+                style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc", width: "100%" }}
               />
             </div>
+            <button
+              className={styles.primaryButton}
+              onClick={handleExportCsv}
+              disabled={entries.length === 0}
+              title="Download all entries as CSV"
+            >
+              Export CSV
+            </button>
           </div>
           {filteredEntries.length === 0 ? (
             <div className={styles.empty}>No entries found.</div>
           ) : (
-            <AdminTable headers={["ID", "Email", "Entry Name", "Picks", "Created"]}>
+            <AdminTable headers={["ID", "Email", "Entry Name", "Picks", "Created", ""]}>
               {filteredEntries.map((e) => (
                 <tr key={e.id}>
                   <td>{e.id}</td>
@@ -266,10 +290,30 @@ export default function PoolDetailPage() {
                   <td style={{ fontSize: "0.85rem" }}>
                     {new Date(e.created_at).toLocaleString()}
                   </td>
+                  <td>
+                    <button
+                      onClick={() => handleDeleteEntry(e.id, e.email)}
+                      style={{
+                        background: "none",
+                        border: "1px solid #dc2626",
+                        color: "#dc2626",
+                        padding: "0.25rem 0.5rem",
+                        borderRadius: "4px",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                      }}
+                      title={`Delete entry for ${e.email}`}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </AdminTable>
           )}
+          <div style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", color: "#666" }}>
+            {filteredEntries.length} of {entries.length} entries shown
+          </div>
         </AdminCard>
       )}
 
