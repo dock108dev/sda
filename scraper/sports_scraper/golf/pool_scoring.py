@@ -1,10 +1,20 @@
 """Golf pool scoring — reads live data from DB and writes materialized results.
 
 This is a lightweight DB-backed scoring pipeline that:
-1. Loads entries + picks from ``golf_pool_entries`` / ``golf_pool_entry_picks``
-2. Loads live leaderboard data from ``golf_leaderboard``
-3. Runs the pure scoring engine (ported from ``api.app.services.golf_pool_scoring``)
-4. Upserts materialized results to ``golf_pool_entry_scores`` / ``golf_pool_entry_score_players``
+1. Auto-activates pools whose ``scoring_starts_at`` has passed
+2. Auto-locks pools whose ``entry_deadline`` has passed
+3. Loads entries + picks from ``golf_pool_entries`` / ``golf_pool_entry_picks``
+4. Loads live leaderboard data from ``golf_leaderboard``
+5. Runs the pure scoring engine (ported from ``api.app.services.golf_pool_scoring``)
+6. Upserts materialized results to ``golf_pool_entry_scores`` / ``golf_pool_entry_score_players``
+
+Auto-activation:
+    Pools store ``scoring_starts_at`` in ``rules_json``.  When the current
+    UTC time passes that threshold, the pool is transitioned from any
+    pre-live status (draft/open/locked) to ``status='live'`` with
+    ``scoring_enabled=TRUE``.  Pools whose ``entry_deadline`` has passed
+    are also auto-locked (entries blocked by the API deadline check, but
+    the status column is updated for clarity).
 
 Uses ``sqlalchemy.text()`` for raw SQL following the ``persistence.py`` pattern.
 
@@ -21,6 +31,7 @@ Column naming conventions (from the Alembic migration):
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
@@ -36,6 +47,124 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _ELIGIBLE_STATUSES = frozenset({"active"})
+
+# Statuses eligible for auto-lock (entry_deadline passed)
+_PRE_LOCK_STATUSES = ("draft", "open")
+
+# Statuses eligible for auto-activation (scoring_starts_at passed)
+_PRE_LIVE_STATUSES = ("draft", "open", "locked")
+
+
+# ---------------------------------------------------------------------------
+# Auto-activation helpers
+# ---------------------------------------------------------------------------
+
+
+def _auto_activate_pools(session: Session) -> list[dict[str, Any]]:
+    """Auto-lock and auto-activate pools based on timestamps in rules_json.
+
+    1. Pools in draft/open whose ``entry_deadline`` has passed → locked
+    2. Pools in draft/open/locked whose ``rules_json->scoring_starts_at``
+       has passed → live + scoring_enabled
+
+    Returns list of activation events for logging.
+    """
+    now = datetime.now(timezone.utc)
+    events: list[dict[str, Any]] = []
+
+    # --- Auto-lock: entry_deadline has passed ---
+    rows = session.execute(
+        text("""
+            SELECT id, code, status, entry_deadline
+            FROM golf_pools
+            WHERE status IN ('draft', 'open')
+              AND entry_deadline IS NOT NULL
+              AND entry_deadline <= :now
+        """),
+        {"now": now},
+    ).fetchall()
+
+    for r in rows:
+        pool_id, code, old_status = r[0], r[1], r[2]
+        session.execute(
+            text("""
+                UPDATE golf_pools
+                SET status = 'locked', updated_at = NOW()
+                WHERE id = :id
+            """),
+            {"id": pool_id},
+        )
+        events.append({
+            "pool_id": pool_id,
+            "code": code,
+            "action": "auto_locked",
+            "from_status": old_status,
+        })
+        logger.info(
+            "golf_pool_auto_locked",
+            pool_id=pool_id,
+            code=code,
+            from_status=old_status,
+            entry_deadline=str(r[3]),
+        )
+
+    # --- Auto-activate: scoring_starts_at has passed ---
+    rows = session.execute(
+        text("""
+            SELECT id, code, status, rules_json
+            FROM golf_pools
+            WHERE status IN ('draft', 'open', 'locked')
+              AND rules_json IS NOT NULL
+              AND rules_json->>'scoring_starts_at' IS NOT NULL
+        """),
+    ).fetchall()
+
+    for r in rows:
+        pool_id, code, old_status, rules_json = r[0], r[1], r[2], r[3]
+        starts_at_str = (rules_json or {}).get("scoring_starts_at")
+        if not starts_at_str:
+            continue
+
+        try:
+            starts_at = datetime.fromisoformat(starts_at_str)
+            if starts_at.tzinfo is None:
+                starts_at = starts_at.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            logger.warning(
+                "golf_pool_bad_scoring_starts_at",
+                pool_id=pool_id,
+                value=starts_at_str,
+            )
+            continue
+
+        if now >= starts_at:
+            session.execute(
+                text("""
+                    UPDATE golf_pools
+                    SET status = 'live', scoring_enabled = TRUE, updated_at = NOW()
+                    WHERE id = :id
+                """),
+                {"id": pool_id},
+            )
+            events.append({
+                "pool_id": pool_id,
+                "code": code,
+                "action": "auto_activated",
+                "from_status": old_status,
+                "scoring_starts_at": starts_at_str,
+            })
+            logger.info(
+                "golf_pool_auto_activated",
+                pool_id=pool_id,
+                code=code,
+                from_status=old_status,
+                scoring_starts_at=starts_at_str,
+            )
+
+    if events:
+        session.commit()
+
+    return events
 
 
 # ---------------------------------------------------------------------------
@@ -430,8 +559,15 @@ def _upsert_score_players(
 def score_all_live_pools(session: Session) -> dict[str, Any]:
     """Score all live pools and write materialized results.
 
+    Also handles auto-activation: pools whose ``scoring_starts_at``
+    (in ``rules_json``) has passed are transitioned to live and scored
+    in the same tick.
+
     Returns summary dict suitable for Celery task result.
     """
+    # Auto-lock/activate pools whose time has come
+    activation_events = _auto_activate_pools(session)
+
     pools = _load_live_pools(session)
 
     if not pools:
@@ -485,4 +621,7 @@ def score_all_live_pools(session: Session) -> dict[str, Any]:
                 error=str(exc),
             )
 
-    return {"pools_scored": pools_scored, "total_entries": total_entries}
+    result: dict[str, Any] = {"pools_scored": pools_scored, "total_entries": total_entries}
+    if activation_events:
+        result["activations"] = activation_events
+    return result

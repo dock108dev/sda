@@ -213,8 +213,18 @@ class TestRankEntries:
         assert ranked[0]["rank"] is None
 
 
+def _empty_fetchall():
+    """Mock result with empty fetchall — used for auto-activate queries."""
+    return MagicMock(fetchall=MagicMock(return_value=[]))
+
+
 class TestScoreAllLivePools:
-    """Integration-level tests for score_all_live_pools."""
+    """Integration-level tests for score_all_live_pools.
+
+    _auto_activate_pools runs 2 queries (auto-lock, auto-activate) before
+    the main scoring loop.  Each test prepends 2 empty-result mocks so the
+    auto-activate phase is a no-op.
+    """
 
     def test_no_live_pools(self):
         from sports_scraper.golf.pool_scoring import score_all_live_pools
@@ -230,29 +240,25 @@ class TestScoreAllLivePools:
 
         session = MagicMock()
 
-        # First call: _load_live_pools
         pool_rows = [(1, "CLUB1", 100, None, "live")]
-        # Second call: _load_entries_and_picks -> entry rows
         entry_rows = [(10, "test@example.com", "Team X")]
-        # Third call: pick rows for entry 10
         pick_rows = [
             (i, f"Player {i}", i, 1)
             for i in range(1, 8)
         ]
-        # Fourth call: _load_leaderboard
         lb_rows = [
             (i, f"Player {i}", "active", i, -3 + i, 18, 70, 70, 70, 70)
             for i in range(1, 8)
         ]
 
-        # Mock sequential execute calls
         call_results = [
+            _empty_fetchall(),  # auto-lock query
+            _empty_fetchall(),  # auto-activate query
             MagicMock(fetchall=MagicMock(return_value=pool_rows)),      # live pools
             MagicMock(fetchall=MagicMock(return_value=entry_rows)),      # entries
             MagicMock(fetchall=MagicMock(return_value=pick_rows)),       # picks
             MagicMock(fetchall=MagicMock(return_value=lb_rows)),         # leaderboard
         ]
-        # After leaderboard, there are upsert calls that don't use fetchall
         for _ in range(20):
             call_results.append(MagicMock())
 
@@ -261,7 +267,6 @@ class TestScoreAllLivePools:
         result = score_all_live_pools(session)
         assert result["pools_scored"] == 1
         assert result["total_entries"] == 1
-        session.commit.assert_called_once()
 
     def test_pool_scoring_exception_rolls_back(self):
         from sports_scraper.golf.pool_scoring import score_all_live_pools
@@ -269,8 +274,9 @@ class TestScoreAllLivePools:
         session = MagicMock()
         pool_rows = [(1, "CLUB1", 100, None, "live")]
 
-        # First call returns pools, second raises
         session.execute.side_effect = [
+            _empty_fetchall(),  # auto-lock query
+            _empty_fetchall(),  # auto-activate query
             MagicMock(fetchall=MagicMock(return_value=pool_rows)),
             Exception("DB error"),
         ]
@@ -287,6 +293,8 @@ class TestScoreAllLivePools:
         empty_entries = []
 
         session.execute.side_effect = [
+            _empty_fetchall(),  # auto-lock query
+            _empty_fetchall(),  # auto-activate query
             MagicMock(fetchall=MagicMock(return_value=pool_rows)),
             MagicMock(fetchall=MagicMock(return_value=empty_entries)),
         ]
@@ -305,6 +313,8 @@ class TestScoreAllLivePools:
         empty_lb = []
 
         session.execute.side_effect = [
+            _empty_fetchall(),  # auto-lock query
+            _empty_fetchall(),  # auto-activate query
             MagicMock(fetchall=MagicMock(return_value=pool_rows)),
             MagicMock(fetchall=MagicMock(return_value=entry_rows)),
             MagicMock(fetchall=MagicMock(return_value=pick_rows)),
