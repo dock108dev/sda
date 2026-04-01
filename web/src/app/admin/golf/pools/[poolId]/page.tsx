@@ -281,34 +281,60 @@ export default function PoolDetailPage() {
             <div className={styles.empty}>No entries found.</div>
           ) : (
             <AdminTable headers={["ID", "Email", "Entry Name", "Picks", "Created", ""]}>
-              {filteredEntries.map((e) => (
-                <tr key={e.id}>
-                  <td>{e.id}</td>
-                  <td>{e.email}</td>
-                  <td>{e.entry_name ?? "-"}</td>
-                  <td>{e.picks_count}</td>
-                  <td style={{ fontSize: "0.85rem" }}>
-                    {new Date(e.created_at).toLocaleString()}
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => handleDeleteEntry(e.id, e.email)}
-                      style={{
-                        background: "none",
-                        border: "1px solid #dc2626",
-                        color: "#dc2626",
-                        padding: "0.25rem 0.5rem",
-                        borderRadius: "4px",
-                        fontSize: "0.8rem",
-                        cursor: "pointer",
-                      }}
-                      title={`Delete entry for ${e.email}`}
+              {filteredEntries.map((e) => {
+                const pickCount = e.picks?.length ?? e.picks_count ?? 0;
+                const incomplete = pickCount < 7;
+                const lastNames = (e.picks ?? [])
+                  .sort((a, b) => a.pick_slot - b.pick_slot)
+                  .map((pk) => {
+                    const name = pk.player_name || "";
+                    // "Last, First" → "Last"; "First Last" → "Last"
+                    return name.includes(",") ? name.split(",")[0].trim() : name.split(" ").pop() ?? name;
+                  })
+                  .join(", ");
+
+                return (
+                  <tr
+                    key={e.id}
+                    style={incomplete ? { background: "#fef2f2", borderLeft: "3px solid #dc2626" } : undefined}
+                  >
+                    <td>{e.id}</td>
+                    <td>{e.email}</td>
+                    <td>{e.entry_name ?? "-"}</td>
+                    <td
+                      style={{ fontSize: "0.85rem", maxWidth: "400px" }}
+                      title={lastNames}
                     >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      {incomplete && (
+                        <span style={{ color: "#dc2626", fontWeight: 600, marginRight: "0.25rem" }}>
+                          ({pickCount}/7)
+                        </span>
+                      )}
+                      {lastNames || "-"}
+                    </td>
+                    <td style={{ fontSize: "0.85rem" }}>
+                      {new Date(e.created_at).toLocaleString()}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleDeleteEntry(e.id, e.email)}
+                        style={{
+                          background: "none",
+                          border: "1px solid #dc2626",
+                          color: "#dc2626",
+                          padding: "0.25rem 0.5rem",
+                          borderRadius: "4px",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                        }}
+                        title={`Delete entry for ${e.email}`}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </AdminTable>
           )}
           <div style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", color: "#666" }}>

@@ -6,11 +6,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Depends, HTTPException, Query
-from sqlalchemy import select
+from pydantic import BaseModel, Field
+from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.db.golf import GolfTournament, GolfTournamentField
+from app.db.golf import GolfPlayer, GolfTournament, GolfTournamentField
 from app.db.golf_pools import (
     GolfPool,
     GolfPoolBucket,
@@ -29,7 +30,6 @@ from .pools_helpers import (
     get_player_names,
     get_pool_or_404,
     serialize_entry,
-    serialize_pick,
     serialize_pool,
     validate_entry_picks,
 )
@@ -149,13 +149,176 @@ async def get_pool_field(
     }
 
 
+# Synthetic dg_id range — matches scraper/scripts/setup_masters_pool.py
+_SYNTHETIC_DG_ID_START = 900_000
+
+
+class AddOtherPlayerRequest(BaseModel):
+    player_name: str = Field(..., description="Player name in 'Last, First' format")
+
+
+@router.post("/pools/{pool_id}/field/other")
+async def add_other_player(
+    pool_id: int,
+    req: AddOtherPlayerRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Add an 'other' player to a pool's tournament field by name.
+
+    Creates the player in golf_players (with a synthetic dg_id) if they
+    don't already exist, then adds them to the tournament field.  Returns
+    the dg_id so the frontend can use it in a normal entry submission.
+
+    Player name should be in 'Last, First' format.
+    """
+    pool = await get_pool_or_404(pool_id, db)
+    name = req.player_name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="player_name is required")
+
+    # Check if this player already exists in the field (case-insensitive)
+    existing = await db.execute(
+        select(GolfTournamentField).where(
+            GolfTournamentField.tournament_id == pool.tournament_id,
+            sa_func.lower(GolfTournamentField.player_name) == name.lower(),
+        )
+    )
+    existing_row = existing.scalars().first()
+    if existing_row:
+        return {
+            "status": "existing",
+            "dg_id": existing_row.dg_id,
+            "player_name": existing_row.player_name,
+        }
+
+    # Check if player exists in golf_players by name
+    player_result = await db.execute(
+        select(GolfPlayer).where(
+            sa_func.lower(GolfPlayer.player_name) == name.lower()
+        )
+    )
+    player = player_result.scalars().first()
+
+    if player:
+        dg_id = player.dg_id
+    else:
+        # Create with synthetic dg_id
+        max_result = await db.execute(
+            select(sa_func.coalesce(sa_func.max(GolfPlayer.dg_id), _SYNTHETIC_DG_ID_START - 1)).where(
+                GolfPlayer.dg_id >= _SYNTHETIC_DG_ID_START
+            )
+        )
+        next_id = (max_result.scalar() or _SYNTHETIC_DG_ID_START - 1) + 1
+
+        new_player = GolfPlayer(
+            dg_id=next_id,
+            player_name=name,
+            amateur=False,
+        )
+        db.add(new_player)
+        await db.flush()
+        dg_id = next_id
+
+    # Add to tournament field
+    field_entry = GolfTournamentField(
+        tournament_id=pool.tournament_id,
+        dg_id=dg_id,
+        player_name=name,
+        status="active",
+    )
+    db.add(field_entry)
+    await db.flush()
+
+    return {
+        "status": "added",
+        "dg_id": dg_id,
+        "player_name": name,
+    }
+
+
+async def _resolve_write_in_picks(
+    pool: GolfPool,
+    picks: list,
+    db: AsyncSession,
+) -> list:
+    """Resolve write-in picks (dg_id=0 with player_name).
+
+    For each write-in, find or create the player and add them to the
+    tournament field, then swap in the real dg_id.  Returns the updated
+    picks list with all dg_ids resolved.
+    """
+    resolved = []
+    for pk in picks:
+        if pk.dg_id != 0 or not pk.player_name:
+            resolved.append(pk)
+            continue
+
+        name = pk.player_name.strip()
+        if not name:
+            resolved.append(pk)
+            continue
+
+        # Check if already in the field (case-insensitive)
+        existing = await db.execute(
+            select(GolfTournamentField).where(
+                GolfTournamentField.tournament_id == pool.tournament_id,
+                sa_func.lower(GolfTournamentField.player_name) == name.lower(),
+            )
+        )
+        existing_row = existing.scalars().first()
+
+        if existing_row:
+            pk.dg_id = existing_row.dg_id
+            resolved.append(pk)
+            continue
+
+        # Check if player exists in golf_players by name
+        player_result = await db.execute(
+            select(GolfPlayer).where(
+                sa_func.lower(GolfPlayer.player_name) == name.lower()
+            )
+        )
+        player = player_result.scalars().first()
+
+        if player:
+            dg_id = player.dg_id
+        else:
+            # Create with synthetic dg_id
+            max_result = await db.execute(
+                select(sa_func.coalesce(sa_func.max(GolfPlayer.dg_id), _SYNTHETIC_DG_ID_START - 1)).where(
+                    GolfPlayer.dg_id >= _SYNTHETIC_DG_ID_START
+                )
+            )
+            dg_id = (max_result.scalar() or _SYNTHETIC_DG_ID_START - 1) + 1
+            db.add(GolfPlayer(dg_id=dg_id, player_name=name, amateur=False))
+            await db.flush()
+
+        # Add to tournament field
+        db.add(GolfTournamentField(
+            tournament_id=pool.tournament_id,
+            dg_id=dg_id,
+            player_name=name,
+            status="active",
+        ))
+        await db.flush()
+
+        pk.dg_id = dg_id
+        resolved.append(pk)
+
+    return resolved
+
+
 @router.post("/pools/{pool_id}/entries")
 async def submit_entry(
     pool_id: int,
     req: EntrySubmitRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Submit a pool entry with picks."""
+    """Submit a pool entry with picks.
+
+    Write-in picks: send ``dg_id: 0`` with ``player_name: "Last, First"``
+    and the backend will resolve/create the player automatically.
+    """
     pool = await get_pool_or_404(pool_id, db)
 
     if pool.status not in ("open", "draft"):
@@ -173,6 +336,9 @@ async def submit_entry(
                 detail=f"Maximum {pool.max_entries_per_email} entries per email reached",
             )
 
+    # Resolve write-in picks (dg_id=0) before validation
+    req.picks = await _resolve_write_in_picks(pool, req.picks, db)
+
     dg_ids = [pk.dg_id for pk in req.picks]
     player_names = await get_player_names(dg_ids, db)
 
@@ -181,7 +347,22 @@ async def submit_entry(
         raise HTTPException(status_code=422, detail={"validation_errors": errors})
 
     entry = await create_entry_and_picks(pool, req.email, req.entry_name, req.picks, player_names, db)
-    return {"status": "submitted", "entry": serialize_entry(entry)}
+
+    picks_response = [
+        {"dg_id": pk.dg_id, "pick_slot": pk.pick_slot, "player_name": player_names.get(pk.dg_id, pk.player_name or f"Player {pk.dg_id}")}
+        for pk in req.picks
+    ]
+
+    return {
+        "status": "submitted",
+        "entry": {
+            "id": entry.id,
+            "pool_id": entry.pool_id,
+            "email": entry.email,
+            "entry_name": entry.entry_name,
+            "picks": picks_response,
+        },
+    }
 
 
 @router.get("/pools/{pool_id}/entries/by-email")

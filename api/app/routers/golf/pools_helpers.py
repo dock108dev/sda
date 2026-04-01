@@ -30,6 +30,7 @@ class PickRequest(BaseModel):
     dg_id: int
     pick_slot: int
     bucket_number: int | None = None
+    player_name: str | None = Field(None, description="For write-in 'other' picks (dg_id=0): player name in 'Last, First' format")
 
 
 class EntrySubmitRequest(BaseModel):

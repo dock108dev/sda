@@ -23,6 +23,7 @@ export interface GolfPoolEntry {
   email: string;
   entry_name: string | null;
   picks_count: number;
+  picks?: { dg_id: number; player_name: string; pick_slot: number }[];
   created_at: string;
 }
 

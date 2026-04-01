@@ -216,9 +216,35 @@ async def admin_list_entries(
 
     result = await db.execute(stmt)
     entries = result.scalars().all()
+
+    # Load picks for all entries so we can include count + player names
+    from app.db.golf_pools import GolfPoolEntryPick
+
+    entry_ids = [e.id for e in entries]
+    picks_by_entry: dict[int, list] = {}
+    if entry_ids:
+        picks_result = await db.execute(
+            select(GolfPoolEntryPick)
+            .where(GolfPoolEntryPick.entry_id.in_(entry_ids))
+            .order_by(GolfPoolEntryPick.pick_slot)
+        )
+        for pk in picks_result.scalars().all():
+            picks_by_entry.setdefault(pk.entry_id, []).append(pk)
+
+    serialized = []
+    for e in entries:
+        entry_data = serialize_entry(e)
+        picks = picks_by_entry.get(e.id, [])
+        entry_data["picks_count"] = len(picks)
+        entry_data["picks"] = [
+            {"dg_id": pk.dg_id, "player_name": pk.player_name_snapshot, "pick_slot": pk.pick_slot}
+            for pk in picks
+        ]
+        serialized.append(entry_data)
+
     return {
-        "entries": [serialize_entry(e) for e in entries],
-        "count": len(entries),
+        "entries": serialized,
+        "count": len(serialized),
     }
 
 
