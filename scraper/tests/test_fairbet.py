@@ -222,24 +222,24 @@ class TestDeleteStaleFairbetOdds:
     """Tests for delete_stale_fairbet_odds function."""
 
     def test_stale_rows_deleted(self):
-        """Acquires advisory lock, executes DELETE, returns rowcount."""
+        """Acquires advisory lock, executes DELETE, releases lock."""
         from datetime import datetime, timezone
 
         mock_session = MagicMock()
 
-        # First call: advisory lock (returns True via scalar())
+        # Calls: pg_try_advisory_lock, DELETE, pg_advisory_unlock
         mock_lock_result = MagicMock()
         mock_lock_result.scalar.return_value = True
-        # Second call: DELETE (returns rowcount)
         mock_delete_result = MagicMock()
         mock_delete_result.rowcount = 5
-        mock_session.execute.side_effect = [mock_lock_result, mock_delete_result]
+        mock_unlock_result = MagicMock()
+        mock_session.execute.side_effect = [mock_lock_result, mock_delete_result, mock_unlock_result]
 
         batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         count = delete_stale_fairbet_odds(mock_session, batch_ts)
 
         assert count == 5
-        assert mock_session.execute.call_count == 2
+        assert mock_session.execute.call_count == 3  # lock + delete + unlock
 
     def test_returns_zero_when_no_stale(self):
         """Returns 0 when nothing to delete."""
@@ -251,7 +251,8 @@ class TestDeleteStaleFairbetOdds:
         mock_lock_result.scalar.return_value = True
         mock_delete_result = MagicMock()
         mock_delete_result.rowcount = 0
-        mock_session.execute.side_effect = [mock_lock_result, mock_delete_result]
+        mock_unlock_result = MagicMock()
+        mock_session.execute.side_effect = [mock_lock_result, mock_delete_result, mock_unlock_result]
 
         batch_ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         count = delete_stale_fairbet_odds(mock_session, batch_ts)

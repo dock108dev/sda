@@ -312,10 +312,12 @@ def delete_stale_fairbet_odds(session: Session, batch_ts: datetime) -> int:
     # Advisory lock key — arbitrary constant unique to this operation.
     # pg_try_advisory_xact_lock is transaction-scoped and non-blocking:
     # returns true if acquired, false if another session holds it.
+    # Use a session-level advisory lock (not transaction-scoped) so it
+    # survives the intermediate commits in the batch upsert loop above.
     _STALE_DELETE_LOCK_KEY = 839271654
 
     lock_result = session.execute(
-        text("SELECT pg_try_advisory_xact_lock(:key)"),
+        text("SELECT pg_try_advisory_lock(:key)"),
         {"key": _STALE_DELETE_LOCK_KEY},
     )
     acquired = lock_result.scalar()
@@ -323,21 +325,31 @@ def delete_stale_fairbet_odds(session: Session, batch_ts: datetime) -> int:
         logger.debug("fairbet_stale_delete_skipped_lock_held")
         return 0
 
-    sql = text("""
-        DELETE FROM fairbet_game_odds_work AS stale
-        USING (
-            SELECT DISTINCT game_id, book, market_category
-            FROM fairbet_game_odds_work
-            WHERE updated_at >= :batch_ts
-        ) AS touched
-        WHERE stale.game_id = touched.game_id
-          AND stale.book = touched.book
-          AND stale.market_category = touched.market_category
-          AND stale.updated_at < :batch_ts
-    """)
+    try:
+        sql = text("""
+            DELETE FROM fairbet_game_odds_work AS stale
+            USING (
+                SELECT DISTINCT game_id, book, market_category
+                FROM fairbet_game_odds_work
+                WHERE updated_at >= :batch_ts
+            ) AS touched
+            WHERE stale.game_id = touched.game_id
+              AND stale.book = touched.book
+              AND stale.market_category = touched.market_category
+              AND stale.updated_at < :batch_ts
+        """)
 
-    result = session.execute(sql, {"batch_ts": batch_ts})
-    deleted = result.rowcount
-    if deleted:
-        logger.debug("fairbet_stale_delete_detail", deleted=deleted, batch_ts=str(batch_ts))
-    return deleted
+        result = session.execute(sql, {"batch_ts": batch_ts})
+        deleted = result.rowcount
+        if deleted:
+            logger.debug("fairbet_stale_delete_detail", deleted=deleted, batch_ts=str(batch_ts))
+        return deleted
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        # Always release the session-level lock
+        session.execute(
+            text("SELECT pg_advisory_unlock(:key)"),
+            {"key": _STALE_DELETE_LOCK_KEY},
+        )
