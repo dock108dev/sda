@@ -13,7 +13,10 @@ from .game_processors import GameProcessResult
 def process_game_pbp_ncaab(session, game, *, client=None) -> GameProcessResult:
     """Fetch and persist PBP for a single NCAAB game.
 
-    Tries CBB API first (cbb_game_id), then NCAA API fallback (ncaa_game_id).
+    Routing by game status:
+    - scheduled/pregame: skip (nothing to fetch)
+    - live: NCAA API only (real-time PBP)
+    - final: CBB API first, NCAA API fallback
     """
     from ..db import db_models
     from ..live.ncaab import NCAABLiveFeedClient
@@ -31,7 +34,20 @@ def process_game_pbp_ncaab(session, game, *, client=None) -> GameProcessResult:
     if not cbb_game_id and not ncaa_game_id:
         return result
 
-    # --- Try CBB API first ---
+    # --- Scheduled/Pregame: nothing to fetch ---
+    if game.status in (
+        db_models.GameStatus.scheduled.value,
+        db_models.GameStatus.pregame.value,
+    ):
+        return result
+
+    # --- Live: NCAA API for real-time PBP ---
+    if game.status == db_models.GameStatus.live.value:
+        if ncaa_game_id:
+            result = _fetch_ncaa_pbp(session, game, ncaa_game_id, client)
+        return result
+
+    # --- Final: CBB API first, NCAA API fallback ---
     if cbb_game_id:
         try:
             cbb_id = int(cbb_game_id)
@@ -46,61 +62,61 @@ def process_game_pbp_ncaab(session, game, *, client=None) -> GameProcessResult:
                 inserted = upsert_plays(session, game.id, payload.plays, source="cbb_api")
                 result.events_inserted = inserted or 0
                 game.last_pbp_at = now_utc()
-
-                if game.status == db_models.GameStatus.pregame.value:
-                    game.status = db_models.GameStatus.live.value
-                    game.updated_at = now_utc()
-                    result.transition = {
-                        "game_id": game.id,
-                        "from": "pregame",
-                        "to": "live",
-                    }
-                    logger.info(
-                        "poll_pbp_inferred_live",
-                        game_id=game.id,
-                        league="NCAAB",
-                        reason="pbp_plays_found",
-                        play_count=len(payload.plays),
-                        cbb_game_id=cbb_id,
-                    )
                 return result
 
-    # --- NCAA API fallback ---
+    # CBB had no data — try NCAA fallback for final games
     if ncaa_game_id and result.events_inserted == 0:
-        home_team = session.query(db_models.SportsTeam).get(game.home_team_id)
-        away_team = session.query(db_models.SportsTeam).get(game.away_team_id)
-        home_abbr = home_team.abbreviation if home_team else None
-        away_abbr = away_team.abbreviation if away_team else None
+        ncaa_result = _fetch_ncaa_pbp(session, game, ncaa_game_id, client)
+        result.api_calls += ncaa_result.api_calls
+        result.events_inserted += ncaa_result.events_inserted
+        if ncaa_result.transition:
+            result.transition = ncaa_result.transition
 
-        payload = client.fetch_ncaa_play_by_play(
-            ncaa_game_id,
-            game_status=game.status,
-            home_abbr=home_abbr,
-            away_abbr=away_abbr,
-        )
-        result.api_calls += 1
+    return result
 
-        if payload.plays:
-            inserted = upsert_plays(session, game.id, payload.plays, source="ncaa_api")
-            result.events_inserted = inserted or 0
-            game.last_pbp_at = now_utc()
 
-            if game.status == db_models.GameStatus.pregame.value:
-                game.status = db_models.GameStatus.live.value
-                game.updated_at = now_utc()
-                result.transition = {
-                    "game_id": game.id,
-                    "from": "pregame",
-                    "to": "live",
-                }
-                logger.info(
-                    "poll_pbp_inferred_live",
-                    game_id=game.id,
-                    league="NCAAB",
-                    reason="ncaa_pbp_plays_found",
-                    play_count=len(payload.plays),
-                    ncaa_game_id=ncaa_game_id,
-                )
+def _fetch_ncaa_pbp(session, game, ncaa_game_id, client) -> GameProcessResult:
+    """Fetch PBP from NCAA API for a single game."""
+    from ..db import db_models
+    from ..persistence.plays import upsert_plays
+    from ..utils.datetime_utils import now_utc
+
+    result = GameProcessResult()
+
+    home_team = session.query(db_models.SportsTeam).get(game.home_team_id)
+    away_team = session.query(db_models.SportsTeam).get(game.away_team_id)
+    home_abbr = home_team.abbreviation if home_team else None
+    away_abbr = away_team.abbreviation if away_team else None
+
+    payload = client.fetch_ncaa_play_by_play(
+        ncaa_game_id,
+        game_status=game.status,
+        home_abbr=home_abbr,
+        away_abbr=away_abbr,
+    )
+    result.api_calls += 1
+
+    if payload.plays:
+        inserted = upsert_plays(session, game.id, payload.plays, source="ncaa_api")
+        result.events_inserted = inserted or 0
+        game.last_pbp_at = now_utc()
+
+        if game.status == db_models.GameStatus.pregame.value:
+            game.status = db_models.GameStatus.live.value
+            game.updated_at = now_utc()
+            result.transition = {
+                "game_id": game.id,
+                "from": "pregame",
+                "to": "live",
+            }
+            logger.info(
+                "poll_pbp_inferred_live",
+                game_id=game.id,
+                league="NCAAB",
+                reason="ncaa_pbp_plays_found",
+                play_count=len(payload.plays),
+                ncaa_game_id=ncaa_game_id,
+            )
 
     return result
 

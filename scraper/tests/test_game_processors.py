@@ -801,7 +801,8 @@ class TestProcessGameBoxscoreMlb:
 class TestProcessGamePbpNcaab:
     @patch("sports_scraper.persistence.plays.upsert_plays")
     @patch("sports_scraper.utils.datetime_utils.now_utc")
-    def test_cbb_api_inserts_plays(self, mock_now, mock_upsert):
+    def test_cbb_api_inserts_plays_for_final_game(self, mock_now, mock_upsert):
+        """Final games use CBB API for PBP."""
         mock_now.return_value = datetime(2025, 3, 15, 20, 0, 0, tzinfo=UTC)
         mock_upsert.return_value = 10
 
@@ -810,7 +811,7 @@ class TestProcessGamePbpNcaab:
 
         game = _make_game(
             external_ids={"cbb_game_id": "12345"},
-            status="live",
+            status="final",
         )
         session = MagicMock()
         result = process_game_pbp_ncaab(session, game, client=client)
@@ -819,27 +820,23 @@ class TestProcessGamePbpNcaab:
         assert result.events_inserted == 10
         mock_upsert.assert_called_once_with(session, game.id, ["p1"], source="cbb_api")
 
-    @patch("sports_scraper.persistence.plays.upsert_plays")
-    @patch("sports_scraper.utils.datetime_utils.now_utc")
-    def test_cbb_api_infers_live_from_pregame(self, mock_now, mock_upsert):
-        mock_now.return_value = datetime(2025, 3, 15, 20, 0, 0, tzinfo=UTC)
-        mock_upsert.return_value = 5
-
+    def test_pregame_skips_all_apis(self):
+        """Pregame games skip both APIs entirely."""
         client = MagicMock()
-        client.fetch_play_by_play.return_value = _mock_pbp_payload(plays=["p1"])
-
         game = _make_game(
-            external_ids={"cbb_game_id": "12345"},
+            external_ids={"cbb_game_id": "12345", "ncaa_game_id": "NCAA123"},
             status="pregame",
         )
 
         with patch("sports_scraper.db.db_models") as mock_db:
+            mock_db.GameStatus.scheduled.value = "scheduled"
             mock_db.GameStatus.pregame.value = "pregame"
             mock_db.GameStatus.live.value = "live"
             result = process_game_pbp_ncaab(MagicMock(), game, client=client)
 
-        assert result.transition is not None
-        assert result.transition["to"] == "live"
+        assert result.api_calls == 0
+        client.fetch_play_by_play.assert_not_called()
+        client.fetch_ncaa_play_by_play.assert_not_called()
 
     def test_no_external_ids_returns_empty(self):
         game = _make_game(external_ids={})
@@ -855,14 +852,12 @@ class TestProcessGamePbpNcaab:
 
     @patch("sports_scraper.persistence.plays.upsert_plays")
     @patch("sports_scraper.utils.datetime_utils.now_utc")
-    def test_ncaa_fallback_when_cbb_has_no_plays(self, mock_now, mock_upsert):
+    def test_live_game_uses_ncaa_api_directly(self, mock_now, mock_upsert):
+        """Live games go straight to NCAA API, skip CBB."""
         mock_now.return_value = datetime(2025, 3, 15, 20, 0, 0, tzinfo=UTC)
         mock_upsert.return_value = 7
 
         client = MagicMock()
-        # CBB returns no plays
-        client.fetch_play_by_play.return_value = _mock_pbp_payload(plays=[])
-        # NCAA fallback returns plays
         client.fetch_ncaa_play_by_play.return_value = _mock_pbp_payload(plays=["np1"])
 
         session = MagicMock()
@@ -879,10 +874,48 @@ class TestProcessGamePbpNcaab:
 
         with patch("sports_scraper.db.db_models") as mock_db:
             mock_db.SportsTeam = MagicMock()
+            mock_db.GameStatus.scheduled.value = "scheduled"
             mock_db.GameStatus.pregame.value = "pregame"
+            mock_db.GameStatus.live.value = "live"
             result = process_game_pbp_ncaab(session, game, client=client)
 
-        assert result.api_calls == 2
+        assert result.api_calls == 1
+        assert result.events_inserted == 7
+        # CBB API should NOT be called for live games
+        client.fetch_play_by_play.assert_not_called()
+        mock_upsert.assert_called_with(session, game.id, ["np1"], source="ncaa_api")
+
+    @patch("sports_scraper.persistence.plays.upsert_plays")
+    @patch("sports_scraper.utils.datetime_utils.now_utc")
+    def test_final_game_falls_back_to_ncaa_when_cbb_empty(self, mock_now, mock_upsert):
+        """Final games try CBB first, fall back to NCAA if no plays."""
+        mock_now.return_value = datetime(2025, 3, 15, 20, 0, 0, tzinfo=UTC)
+        mock_upsert.return_value = 7
+
+        client = MagicMock()
+        client.fetch_play_by_play.return_value = _mock_pbp_payload(plays=[])
+        client.fetch_ncaa_play_by_play.return_value = _mock_pbp_payload(plays=["np1"])
+
+        session = MagicMock()
+        home_team = MagicMock()
+        home_team.abbreviation = "DUKE"
+        away_team = MagicMock()
+        away_team.abbreviation = "UNC"
+        session.query.return_value.get.side_effect = [home_team, away_team]
+
+        game = _make_game(
+            external_ids={"cbb_game_id": "12345", "ncaa_game_id": "NCAA123"},
+            status="final",
+        )
+
+        with patch("sports_scraper.db.db_models") as mock_db:
+            mock_db.SportsTeam = MagicMock()
+            mock_db.GameStatus.scheduled.value = "scheduled"
+            mock_db.GameStatus.pregame.value = "pregame"
+            mock_db.GameStatus.live.value = "live"
+            result = process_game_pbp_ncaab(session, game, client=client)
+
+        assert result.api_calls == 2  # CBB + NCAA
         assert result.events_inserted == 7
         mock_upsert.assert_called_with(session, game.id, ["np1"], source="ncaa_api")
 
@@ -909,37 +942,29 @@ class TestProcessGamePbpNcaab:
 
         with patch("sports_scraper.db.db_models") as mock_db:
             mock_db.SportsTeam = MagicMock()
+            mock_db.GameStatus.scheduled.value = "scheduled"
             mock_db.GameStatus.pregame.value = "pregame"
+            mock_db.GameStatus.live.value = "live"
             result = process_game_pbp_ncaab(session, game, client=client)
 
         assert result.api_calls == 1
         assert result.events_inserted == 4
 
-    @patch("sports_scraper.persistence.plays.upsert_plays")
-    @patch("sports_scraper.utils.datetime_utils.now_utc")
-    def test_ncaa_fallback_infers_live_from_pregame(self, mock_now, mock_upsert):
-        mock_now.return_value = datetime(2025, 3, 15, 20, 0, 0, tzinfo=UTC)
-        mock_upsert.return_value = 2
-
+    def test_scheduled_game_skips_all_apis(self):
+        """Scheduled games skip all APIs."""
         client = MagicMock()
-        client.fetch_ncaa_play_by_play.return_value = _mock_pbp_payload(plays=["np1"])
-
-        session = MagicMock()
-        session.query.return_value.get.return_value = MagicMock(abbreviation="X")
-
         game = _make_game(
             external_ids={"ncaa_game_id": "NCAA789"},
-            status="pregame",
+            status="scheduled",
         )
 
         with patch("sports_scraper.db.db_models") as mock_db:
+            mock_db.GameStatus.scheduled.value = "scheduled"
             mock_db.GameStatus.pregame.value = "pregame"
-            mock_db.GameStatus.live.value = "live"
-            mock_db.SportsTeam = MagicMock()
-            result = process_game_pbp_ncaab(session, game, client=client)
+            result = process_game_pbp_ncaab(MagicMock(), game, client=client)
 
-        assert result.transition is not None
-        assert result.transition["to"] == "live"
+        assert result.api_calls == 0
+        client.fetch_ncaa_play_by_play.assert_not_called()
 
     def test_ncaa_fallback_missing_teams(self):
         """NCAA fallback works even when team lookups return None."""
