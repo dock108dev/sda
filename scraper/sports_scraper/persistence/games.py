@@ -283,10 +283,15 @@ def _enrich_existing(
     away_score: int | None,
     venue: str | None,
     external_ids: dict[str, Any] | None,
-    game_date: datetime,
+    game_date,
     season_type: str,
 ) -> None:
-    """Update an existing game with new data without regressing state."""
+    """Update an existing game with new data without regressing state.
+
+    Never updates ``game_date`` to a value that would violate the
+    ``uq_game_identity`` constraint — if the new timestamp conflicts
+    with another game row, the update is silently skipped.
+    """
     updated = False
 
     # Status: only advance forward
@@ -317,12 +322,31 @@ def _enrich_existing(
             updated = True
 
     # Only update game_date when the incoming value carries a REAL time
-    # (e.g., from a schedule API or odds commence_time). Date-only sources
-    # (Basketball Reference, boxscore ingestion) should never overwrite a
-    # real datetime with a midnight placeholder.
+    # and the existing value is a placeholder.
+    # DO NOT update if it would violate uq_game_identity (another game
+    # already has this exact timestamp for the same teams).
     if _has_real_time(game_date) and not _has_real_time(game.game_date):
-        game.game_date = _to_datetime(game_date)
-        updated = True
+        new_dt = _to_datetime(game_date)
+        if new_dt != game.game_date:
+            # Check for conflict before updating
+            from sqlalchemy import select
+            conflict = (
+                select(db_models.SportsGame.id)
+                .where(
+                    db_models.SportsGame.league_id == game.league_id,
+                    db_models.SportsGame.season == game.season,
+                    db_models.SportsGame.game_date == new_dt,
+                    db_models.SportsGame.home_team_id == game.home_team_id,
+                    db_models.SportsGame.away_team_id == game.away_team_id,
+                    db_models.SportsGame.id != game.id,
+                )
+            )
+            # Use the session bound to this game's state
+            from sqlalchemy.orm import object_session
+            sess = object_session(game)
+            if sess and not sess.execute(conflict).first():
+                game.game_date = new_dt
+                updated = True
 
     # Season type
     if season_type != "regular" and game.season_type == "regular":
