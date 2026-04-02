@@ -20,8 +20,23 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
 
 
+import pytest
+
 from sports_scraper.odds.synchronizer import OddsSynchronizer
 from sports_scraper.persistence.odds import OddsUpsertResult
+
+
+@pytest.fixture(autouse=True)
+def _mock_persist_lock(monkeypatch):
+    """Auto-mock the Redis persist lock for all synchronizer tests."""
+    monkeypatch.setattr(
+        "sports_scraper.odds.synchronizer.acquire_redis_lock",
+        lambda *a, **kw: "fake-token",
+    )
+    monkeypatch.setattr(
+        "sports_scraper.odds.synchronizer.release_redis_lock",
+        lambda *a, **kw: None,
+    )
 
 
 class TestOddsSynchronizerInit:

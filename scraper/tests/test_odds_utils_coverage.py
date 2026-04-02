@@ -749,6 +749,14 @@ class TestUpsertFairbetOdds:
 # synchronizer.py coverage — lines 179, 213-220, 244, 262, 313-371
 # ===========================================================================
 
+@pytest.fixture(autouse=True)
+def _mock_odds_persist_lock():
+    """Auto-mock the Redis persist lock for synchronizer tests."""
+    with patch("sports_scraper.odds.synchronizer.acquire_redis_lock", return_value="fake-token"), \
+         patch("sports_scraper.odds.synchronizer.release_redis_lock"):
+        yield
+
+
 class TestSynchronizerPersistSnapshots:
     """Lines 244, 262: _persist_snapshots with batching and exception handling."""
 

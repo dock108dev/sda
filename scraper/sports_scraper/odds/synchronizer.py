@@ -16,6 +16,7 @@ from ..models import IngestionConfig
 from ..persistence import upsert_odds
 from ..persistence.odds import OddsUpsertResult
 from ..utils.datetime_utils import now_utc, today_et
+from ..utils.redis_lock import acquire_redis_lock, release_redis_lock
 from .client import OddsAPIClient
 from .fairbet import delete_stale_fairbet_odds
 
@@ -223,12 +224,43 @@ class OddsSynchronizer:
     # with the concurrent 60-second odds poller.
     PERSIST_BATCH_SIZE = 50
 
+    # Redis lock shared by all odds writers (scheduled sync, backfill,
+    # live orchestrator).  Serialises DB writes to fairbet_game_odds_work
+    # and sports_game_odds, preventing the deadlocks that occur when two
+    # workers upsert overlapping (game_id, book, market) rows.
+    _PERSIST_LOCK_KEY = "lock:odds_persist"
+    _PERSIST_LOCK_TIMEOUT = 120  # seconds — long enough for a full batch
+
     def _persist_snapshots(
         self,
         snapshots: list,
         league_code: str,
     ) -> int:
-        """Persist odds snapshots to database."""
+        """Persist odds snapshots to database.
+
+        Acquires a shared Redis lock so concurrent odds writers (scheduled
+        sync, backfill, live orchestrator) don't deadlock on fairbet rows.
+        """
+        lock_token = acquire_redis_lock(self._PERSIST_LOCK_KEY, timeout=self._PERSIST_LOCK_TIMEOUT)
+        if not lock_token:
+            logger.warning(
+                "odds_persist_skipped_locked",
+                league=league_code,
+                snapshots=len(snapshots),
+            )
+            return 0
+
+        try:
+            return self._persist_snapshots_inner(snapshots, league_code)
+        finally:
+            release_redis_lock(self._PERSIST_LOCK_KEY, lock_token)
+
+    def _persist_snapshots_inner(
+        self,
+        snapshots: list,
+        league_code: str,
+    ) -> int:
+        """Inner persist logic — called while holding the persist lock."""
         inserted = 0
         skipped = 0
         errors = 0
