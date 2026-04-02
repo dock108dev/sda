@@ -567,19 +567,25 @@ class TestUpdateGameFromLiveFeed:
 
 
 class TestUpsertGame:
-    """Tests for upsert_game function."""
+    """Tests for upsert_game function (delegates to find_or_create_game)."""
 
     @patch("sports_scraper.persistence.games._upsert_team")
     @patch("sports_scraper.persistence.games.get_league_id")
     def test_upserts_game(self, mock_get_league_id, mock_upsert_team):
-        """Upserts a game via PostgreSQL insert."""
+        """Creates a game via find_or_create_game when none exists."""
         from sports_scraper.models import GameIdentification, NormalizedGame, NormalizedTeamBoxscore
         from sports_scraper.persistence.games import upsert_game
 
         mock_session = MagicMock()
         mock_get_league_id.return_value = 1
         mock_upsert_team.side_effect = [10, 20]
-        mock_session.execute.return_value.first.return_value = (42, True)
+
+        # All query chains return None (no existing game)
+        query_mock = MagicMock()
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = None
+        mock_session.query.return_value = query_mock
+        mock_session.get.return_value = None
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
         away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")
@@ -587,12 +593,11 @@ class TestUpsertGame:
             league_code="NBA",
             season=2024,
             season_type="regular",
-            game_date=datetime(2024, 1, 15, tzinfo=UTC),
+            game_date=datetime(2024, 1, 15, 5, 0, tzinfo=UTC),  # midnight ET
             home_team=home_team,
             away_team=away_team,
             source_game_key="nba_123",
         )
-        # NormalizedGame requires non-empty team_boxscores
         team_boxscores = [
             NormalizedTeamBoxscore(team=home_team, is_home=True, points=110),
             NormalizedTeamBoxscore(team=away_team, is_home=False, points=105),
@@ -606,23 +611,39 @@ class TestUpsertGame:
             team_boxscores=team_boxscores,
         )
 
-        game_id, inserted = upsert_game(mock_session, normalized)
+        game_id, created = upsert_game(mock_session, normalized)
 
-        assert game_id == 42
-        assert inserted is True
-        mock_session.execute.assert_called_once()
+        assert created is True
+        mock_session.add.assert_called_once()
 
     @patch("sports_scraper.persistence.games._upsert_team")
     @patch("sports_scraper.persistence.games.get_league_id")
-    def test_raises_on_failed_upsert(self, mock_get_league_id, mock_upsert_team):
-        """Raises RuntimeError when upsert fails."""
+    def test_matches_existing_game(self, mock_get_league_id, mock_upsert_team):
+        """Finds existing game and enriches it with boxscore data."""
         from sports_scraper.models import GameIdentification, NormalizedGame, NormalizedTeamBoxscore
         from sports_scraper.persistence.games import upsert_game
 
         mock_session = MagicMock()
         mock_get_league_id.return_value = 1
         mock_upsert_team.side_effect = [10, 20]
-        mock_session.execute.return_value.first.return_value = None
+
+        existing_game = MagicMock()
+        existing_game.id = 42
+        existing_game.status = "scheduled"
+        existing_game.home_score = None
+        existing_game.away_score = None
+        existing_game.venue = None
+        existing_game.external_ids = {}
+        existing_game.game_date = datetime(2024, 1, 15, 23, 0, tzinfo=UTC)
+        existing_game.season_type = "regular"
+        existing_game.source_game_key = None
+        existing_game.scrape_version = 1
+
+        query_mock = MagicMock()
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = existing_game
+        mock_session.query.return_value = query_mock
+        mock_session.get.return_value = existing_game
 
         home_team = TeamIdentity(league_code="NBA", name="Lakers", abbreviation="LAL")
         away_team = TeamIdentity(league_code="NBA", name="Celtics", abbreviation="BOS")
@@ -630,10 +651,10 @@ class TestUpsertGame:
             league_code="NBA",
             season=2024,
             season_type="regular",
-            game_date=datetime(2024, 1, 15, tzinfo=UTC),
+            game_date=datetime(2024, 1, 15, 5, 0, tzinfo=UTC),
             home_team=home_team,
             away_team=away_team,
-            source_game_key="nba_123",
+            source_game_key="202401150LAL",
         )
         team_boxscores = [
             NormalizedTeamBoxscore(team=home_team, is_home=True, points=110),
@@ -647,5 +668,9 @@ class TestUpsertGame:
             team_boxscores=team_boxscores,
         )
 
-        with pytest.raises(RuntimeError, match="Failed to upsert game"):
-            upsert_game(mock_session, normalized)
+        game_id, created = upsert_game(mock_session, normalized)
+
+        assert game_id == 42
+        assert created is False
+        # source_game_key should be set on the existing game
+        assert existing_game.source_game_key == "202401150LAL"

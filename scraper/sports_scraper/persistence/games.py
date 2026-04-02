@@ -11,9 +11,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import case, func, literal_column, or_, update
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..db import db_models
@@ -472,118 +469,46 @@ def update_game_from_live_feed(
 
 
 def upsert_game(session: Session, normalized: NormalizedGame) -> tuple[int, bool]:
-    """Upsert a game, creating or updating as needed.
+    """Upsert a game from historical boxscore ingestion.
+
+    Delegates to ``find_or_create_game`` for game resolution, then sets
+    boxscore-specific fields (source_game_key, scrape_version).
 
     Returns the game ID and whether it was newly created.
     """
-    league_id = get_league_id(session, normalized.identity.league_code)
-    home_team_id = _upsert_team(session, league_id, normalized.identity.home_team)
-    away_team_id = _upsert_team(session, league_id, normalized.identity.away_team)
-    normalized_status = _normalize_status(normalized.status)
-
-    base_stmt = insert(db_models.SportsGame).values(
-        league_id=league_id,
-        season=normalized.identity.season,
-        season_type=normalized.identity.season_type,
+    game_id, created = find_or_create_game(
+        session,
+        league_code=normalized.identity.league_code,
         game_date=normalized.identity.game_date,
-        home_team_id=home_team_id,
-        away_team_id=away_team_id,
+        home_team=normalized.identity.home_team,
+        away_team=normalized.identity.away_team,
+        status=normalized.status,
         home_score=normalized.home_score,
         away_score=normalized.away_score,
         venue=normalized.venue,
-        status=normalized_status,
-        end_time=None,  # Will be set from PBP data
         source_game_key=normalized.identity.source_game_key,
-        scrape_version=1,
-        last_scraped_at=now_utc(),
-        last_ingested_at=now_utc(),
-        external_ids={},
-    )
-    excluded = base_stmt.excluded
-    ingest_checks = [
-        excluded.home_score.is_distinct_from(db_models.SportsGame.home_score),
-        excluded.away_score.is_distinct_from(db_models.SportsGame.away_score),
-        excluded.status.is_distinct_from(db_models.SportsGame.status),
-        excluded.venue.is_distinct_from(db_models.SportsGame.venue),
-    ]
-    ingest_changed = or_(*ingest_checks)
-
-    conflict_updates = {
-        "home_score": normalized.home_score,
-        "away_score": normalized.away_score,
-        "status": normalized_status,
-        "venue": normalized.venue,
-        "scrape_version": db_models.SportsGame.scrape_version + 1,
-        "last_scraped_at": now_utc(),
-        "last_ingested_at": case(
-            (ingest_changed, now_utc()),
-            else_=db_models.SportsGame.last_ingested_at,
-        ),
-        "updated_at": now_utc(),
-        # Don't touch end_time - it comes from PBP data
-        # Only set source_game_key if the existing row doesn't have one; avoid clobber.
-        "source_game_key": func.coalesce(db_models.SportsGame.source_game_key, normalized.identity.source_game_key),
-    }
-
-    # Prefer identity constraint to avoid duplicate-key violations when the same game is seen
-    # under a different source_game_key.
-    stmt = base_stmt.on_conflict_do_update(
-        constraint="uq_game_identity",
-        set_=conflict_updates,
+        season_type=normalized.identity.season_type or "regular",
     )
 
-    stmt = stmt.returning(
-        db_models.SportsGame.id,
-        (literal_column("xmax") == 0).label("inserted"),
-    )
+    # Set boxscore-specific fields that find_or_create_game doesn't handle
+    if game_id is not None:
+        game = session.get(db_models.SportsGame, game_id)
+        if game is not None:
+            updated = False
+            if normalized.identity.source_game_key and not game.source_game_key:
+                game.source_game_key = normalized.identity.source_game_key
+                updated = True
+            game.scrape_version = (game.scrape_version or 0) + 1
+            game.last_scraped_at = now_utc()
+            if updated:
+                game.updated_at = now_utc()
+            session.flush()
 
-    try:
-        result = session.execute(stmt).first()
-    except IntegrityError as exc:
-        # The INSERT … ON CONFLICT targets uq_game_identity, but the row may
-        # already exist under the same source_game_key with a slightly
-        # different identity (team-ID mapping drift, timezone edge, etc.).
-        # Fall back to an update-by-source_game_key so we don't lose the row.
-        if "uq_sports_game_league_source_key" not in str(exc.orig):
-            raise
-        session.rollback()
-        upd = (
-            update(db_models.SportsGame)
-            .where(
-                db_models.SportsGame.league_id == league_id,
-                db_models.SportsGame.source_game_key == normalized.identity.source_game_key,
-            )
-            .values(
-                home_score=normalized.home_score,
-                away_score=normalized.away_score,
-                status=normalized_status,
-                venue=normalized.venue,
-                scrape_version=db_models.SportsGame.scrape_version + 1,
-                last_scraped_at=now_utc(),
-                updated_at=now_utc(),
-            )
-            .returning(db_models.SportsGame.id)
-        )
-        row = session.execute(upd).first()
-        if not row:
-            raise RuntimeError("Failed to upsert game via source_game_key fallback") from exc
-        logger.info(
-            "game_resolution_source_key_fallback",
-            league=normalized.identity.league_code,
-            game_id=int(row[0]),
-            external_id=normalized.identity.source_game_key,
-        )
-        return int(row[0]), False
-
-    if not result:
-        raise RuntimeError("Failed to upsert game")
-    game_id, inserted = result
     logger.info(
         "game_resolution",
         league=normalized.identity.league_code,
-        game_id=int(game_id),
+        game_id=game_id,
         external_id=normalized.identity.source_game_key,
-        inserted=bool(inserted),
+        inserted=created,
     )
-    # Idempotent upsert: game_date is immutable, and end_time only set on final status.
-    return int(game_id), bool(inserted)
+    return game_id, created  # type: ignore[return-value]
