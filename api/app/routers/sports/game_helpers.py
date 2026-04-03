@@ -416,7 +416,7 @@ async def enqueue_single_game_resync(
         end_date=datetime.combine(game_date_et, datetime.min.time()),
         status="pending",
         requested_by="admin_game_resync",
-        config=config.model_dump(by_alias=False),
+        config=config.model_dump(by_alias=False, mode="json"),
     )
     session.add(run)
     await session.flush()
