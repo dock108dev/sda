@@ -219,9 +219,29 @@ def serialize_lineup_meta(meta: dict) -> dict:
 
     hs = meta.get("home_starter")
     if hs:
-        result["home_starter"] = {"name": hs.get("name", "?"), "external_ref": hs.get("external_ref", "")}
+        result["home_starter"] = {
+            "name": hs.get("name", "?"),
+            "external_ref": hs.get("external_ref", ""),
+            **_pitcher_line(meta.get("home_sp_profile")),
+        }
     aws = meta.get("away_starter")
     if aws:
-        result["away_starter"] = {"name": aws.get("name", "?"), "external_ref": aws.get("external_ref", "")}
+        result["away_starter"] = {
+            "name": aws.get("name", "?"),
+            "external_ref": aws.get("external_ref", ""),
+            **_pitcher_line(meta.get("away_sp_profile")),
+        }
 
     return result
+
+
+def _pitcher_line(profile: dict | None) -> dict:
+    """Extract projected pitching line from a pitcher profile dict."""
+    if not profile:
+        return {}
+    return {
+        "k_rate": round((profile.get("strikeout_rate") or profile.get("k_rate") or 0) * 100, 1),
+        "bb_rate": round((profile.get("walk_rate") or profile.get("bb_rate") or 0) * 100, 1),
+        "hr_rate": round((profile.get("hr_rate") or 0) * 100, 1),
+        "whiff_rate": round((profile.get("whiff_rate") or 0) * 100, 1),
+    }

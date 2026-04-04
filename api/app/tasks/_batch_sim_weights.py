@@ -470,6 +470,8 @@ async def try_build_lineup_weights(
         "away_lineup": away_batters,
         "home_starter": home_sp_info,
         "away_starter": away_sp_info,
+        "home_sp_profile": home_sp_profile,
+        "away_sp_profile": away_sp_profile,
         "home_weights": home_weights["starter_weights"],
         "away_weights": away_weights["starter_weights"],
     }

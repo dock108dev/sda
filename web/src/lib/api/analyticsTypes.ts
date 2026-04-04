@@ -496,11 +496,20 @@ export interface BatterLine {
   BIP: number;
 }
 
+export interface PitcherLine {
+  name: string;
+  external_ref: string;
+  k_rate?: number;
+  bb_rate?: number;
+  hr_rate?: number;
+  whiff_rate?: number;
+}
+
 export interface LineupInfo {
   home_batting: BatterLine[];
   away_batting: BatterLine[];
-  home_starter?: { name: string; external_ref: string };
-  away_starter?: { name: string; external_ref: string };
+  home_starter?: PitcherLine;
+  away_starter?: PitcherLine;
 }
 
 export interface LineAnalysis {

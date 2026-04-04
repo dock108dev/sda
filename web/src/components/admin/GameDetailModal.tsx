@@ -1,6 +1,6 @@
 "use client";
 
-import { type BatchSimGameResult, type ScoreEntry, type BatterLine, type LineAnalysis } from "@/lib/api/analyticsTypes";
+import { type BatchSimGameResult, type ScoreEntry, type BatterLine, type LineAnalysis, type PitcherLine } from "@/lib/api/analyticsTypes";
 
 interface GameDetailModalProps {
   game: BatchSimGameResult;
@@ -78,21 +78,12 @@ export function GameDetailModal({ game, sport, onClose, outcome }: GameDetailMod
         {s === "mlb" && game.lineup_info && (
           <>
             <Section title="Projected Pitching Matchup">
-              <div style={pitcherMatchupStyle}>
-                <div style={{ textAlign: "center", flex: 1 }}>
-                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{game.home_team} SP</div>
-                  <div style={{ fontSize: "1rem", fontWeight: 600, color: "#111827" }}>
-                    {game.lineup_info.home_starter?.name ?? "Unknown"}
-                  </div>
-                </div>
-                <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>vs</span>
-                <div style={{ textAlign: "center", flex: 1 }}>
-                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{game.away_team} SP</div>
-                  <div style={{ fontSize: "1rem", fontWeight: 600, color: "#111827" }}>
-                    {game.lineup_info.away_starter?.name ?? "Unknown"}
-                  </div>
-                </div>
-              </div>
+              <PitcherMatchup
+                homeTeam={game.home_team}
+                awayTeam={game.away_team}
+                homeSP={game.lineup_info.home_starter}
+                awaySP={game.lineup_info.away_starter}
+              />
             </Section>
             <Section title={`${game.home_team} Projected Batting`}>
               <BattingTable batters={game.lineup_info.home_batting} />
@@ -376,6 +367,54 @@ function LineAnalysisDisplay({ la, home, away }: { la: LineAnalysis; home: strin
   );
 }
 
+function PitcherStat({ label, value }: { label: string; value?: number }) {
+  return (
+    <div style={{ fontSize: "0.8rem" }}>
+      <span style={{ color: "#6b7280" }}>{label}: </span>
+      <span style={{ fontWeight: 500, color: "#111827" }}>{value != null ? `${value.toFixed(1)}%` : "-"}</span>
+    </div>
+  );
+}
+
+function PitcherMatchup({ homeTeam, awayTeam, homeSP, awaySP }: {
+  homeTeam: string; awayTeam: string;
+  homeSP?: PitcherLine; awaySP?: PitcherLine;
+}) {
+  return (
+    <div style={pitcherMatchupStyle}>
+      <div style={{ textAlign: "center", flex: 1 }}>
+        <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{homeTeam} SP</div>
+        <div style={{ fontSize: "1rem", fontWeight: 600, color: "#111827", marginBottom: "0.25rem" }}>
+          {homeSP?.name ?? "Unknown"}
+        </div>
+        {homeSP?.k_rate != null && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.1rem" }}>
+            <PitcherStat label="K" value={homeSP.k_rate} />
+            <PitcherStat label="BB" value={homeSP.bb_rate} />
+            <PitcherStat label="HR" value={homeSP.hr_rate} />
+            <PitcherStat label="Whiff" value={homeSP.whiff_rate} />
+          </div>
+        )}
+      </div>
+      <span style={{ color: "#9ca3af", fontSize: "0.85rem", alignSelf: "flex-start", marginTop: "1rem" }}>vs</span>
+      <div style={{ textAlign: "center", flex: 1 }}>
+        <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{awayTeam} SP</div>
+        <div style={{ fontSize: "1rem", fontWeight: 600, color: "#111827", marginBottom: "0.25rem" }}>
+          {awaySP?.name ?? "Unknown"}
+        </div>
+        {awaySP?.k_rate != null && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.1rem" }}>
+            <PitcherStat label="K" value={awaySP.k_rate} />
+            <PitcherStat label="BB" value={awaySP.bb_rate} />
+            <PitcherStat label="HR" value={awaySP.hr_rate} />
+            <PitcherStat label="Whiff" value={awaySP.whiff_rate} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BattingTable({ batters }: { batters: BatterLine[] }) {
   if (!batters || batters.length === 0) {
     return <div style={{ fontSize: "0.8rem", color: "#9ca3af" }}>No lineup data</div>;
@@ -410,8 +449,7 @@ function BattingTable({ batters }: { batters: BatterLine[] }) {
               {cols.map((c) => (
                 <td key={c.key} style={{
                   ...tdStyle,
-                  color: c.key === "HR" && (b[c.key] as number) >= 4 ? "#dc2626" :
-                         c.key === "K" && (b[c.key] as number) >= 25 ? "#9ca3af" : "#111827",
+                  color: c.key === "HR" && (b[c.key] as number) >= 4 ? "#dc2626" : "#111827",
                   fontWeight: c.key === "HR" && (b[c.key] as number) >= 4 ? 600 : 400,
                 }}>
                   {(b[c.key] as number).toFixed(1)}
