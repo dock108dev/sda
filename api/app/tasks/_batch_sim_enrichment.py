@@ -27,6 +27,80 @@ _MONEYLINE_KEYS = frozenset({"h2h", "moneyline"})
 # ---------------------------------------------------------------------------
 
 
+def _match_closing_line_sides(
+    lines: list,
+    home_lower: str,
+    away_lower: str,
+) -> tuple[float | None, float | None]:
+    """Match ClosingLine rows to home/away.
+
+    ``ClosingLine.selection`` may be a literal ``"home"``/``"away"``
+    (from ``SportsGameOdds.side``) or a team name string.  Tries
+    explicit side labels first, then team-name substring matching.
+    """
+    home_price: float | None = None
+    away_price: float | None = None
+
+    for cl in lines:
+        sel = cl.selection.lower().strip()
+        # Explicit "home"/"away" labels (most common)
+        if sel == "home":
+            home_price = cl.price_american
+            continue
+        if sel == "away":
+            away_price = cl.price_american
+            continue
+        # Team-name substring matching
+        if home_lower in sel or sel in home_lower:
+            home_price = cl.price_american
+        elif away_lower in sel or sel in away_lower:
+            away_price = cl.price_american
+
+    # Fallback: if exactly 2 unmatched lines, assign by favorite/underdog
+    # (lower price = favorite = more likely home in most datasets)
+    if (home_price is None or away_price is None) and len(lines) >= 2:
+        sorted_lines = sorted(lines, key=lambda cl: cl.price_american)
+        home_price = sorted_lines[0].price_american
+        away_price = sorted_lines[1].price_american
+
+    return home_price, away_price
+
+
+def _match_fairbet_sides(
+    book_lines: list,
+    home_lower: str,
+    away_lower: str,
+) -> tuple[float | None, float | None]:
+    """Match FairbetGameOddsWork rows to home/away.
+
+    ``selection_key`` uses the ``team:{slug}`` convention from
+    ``build_selection_key()``.  Tries slug matching first, then
+    falls back to substring matching on the raw key.
+    """
+    home_price: float | None = None
+    away_price: float | None = None
+
+    # Slugify team names for matching (replace spaces/special with _)
+    home_slug = home_lower.replace(" ", "_").replace("-", "_")
+    away_slug = away_lower.replace(" ", "_").replace("-", "_")
+
+    for row in book_lines:
+        sel = row.selection_key.lower()
+        # Match "team:{slug}" format
+        if home_slug in sel or home_lower in sel:
+            home_price = row.price
+        elif away_slug in sel or away_lower in sel:
+            away_price = row.price
+
+    # Fallback: assign by price (favorite first)
+    if (home_price is None or away_price is None) and len(book_lines) >= 2:
+        sorted_lines = sorted(book_lines, key=lambda r: r.price)
+        home_price = sorted_lines[0].price
+        away_price = sorted_lines[1].price
+
+    return home_price, away_price
+
+
 async def enrich_with_closing_lines(
     db: AsyncSession,
     sim_results: list[dict],
@@ -126,32 +200,19 @@ async def enrich_with_closing_lines(
 
         if gid in cl_by_game:
             lines = cl_by_game[gid]
-            for cl in lines:
-                sel_lower = cl.selection.lower()
-                if home_lower in sel_lower or sel_lower in home_lower:
-                    home_price = cl.price_american
-                elif away_lower in sel_lower or sel_lower in away_lower:
-                    away_price = cl.price_american
-            if (home_price is None or away_price is None) and len(lines) >= 2:
-                home_price = lines[0].price_american
-                away_price = lines[1].price_american
+            home_price, away_price = _match_closing_line_sides(
+                lines, home_lower, away_lower,
+            )
             provider = "Pinnacle"
 
         elif gid in current_by_game:
             lines = current_by_game[gid]
             books = {row.book for row in lines}
-            chosen_book = "Pinnacle" if "Pinnacle" in books else next(iter(books))
+            chosen_book = "Pinnacle" if "Pinnacle" in books else sorted(books)[0]
             book_lines = [r for r in lines if r.book == chosen_book]
-
-            for row in book_lines:
-                sel_lower = row.selection_key.lower()
-                if home_lower in sel_lower or sel_lower in home_lower:
-                    home_price = row.price
-                elif away_lower in sel_lower or sel_lower in away_lower:
-                    away_price = row.price
-            if (home_price is None or away_price is None) and len(book_lines) >= 2:
-                home_price = book_lines[0].price
-                away_price = book_lines[1].price
+            home_price, away_price = _match_fairbet_sides(
+                book_lines, home_lower, away_lower,
+            )
             line_type = "current"
             provider = chosen_book
 

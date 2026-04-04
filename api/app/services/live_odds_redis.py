@@ -71,17 +71,23 @@ def read_live_snapshot(
         key = _SNAPSHOT_KEY.format(league=league, game_id=game_id, market_key=market_key)
         raw = r.get(key)
         _reset_circuit()
-        if raw:
-            data = json.loads(raw)
-            data["ttl_seconds_remaining"] = r.ttl(key)
-            return data, None
-        return None, None
     except Exception as exc:
         _trip_circuit()
         logger.warning("live_odds_redis_read_error", extra={
             "game_id": game_id, "market_key": market_key, "error": str(exc)
         })
         return None, f"redis_error: {exc}"
+    if raw:
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError) as exc:
+            logger.warning("live_odds_redis_json_error", extra={
+                "game_id": game_id, "market_key": market_key, "error": str(exc)
+            })
+            return None, f"json_error: {exc}"
+        data["ttl_seconds_remaining"] = r.ttl(key)
+        return data, None
+    return None, None
 
 
 def read_all_live_snapshots_for_game(
@@ -101,12 +107,14 @@ def read_all_live_snapshots_for_game(
         pattern = f"live:odds:{league}:{game_id}:*"
         result: dict[str, dict] = {}
         for key in r.scan_iter(pattern, count=50):
-            # Skip history keys
             if ":history:" in key:
                 continue
             raw = r.get(key)
             if raw:
-                data = json.loads(raw)
+                try:
+                    data = json.loads(raw)
+                except (ValueError, TypeError):
+                    continue  # skip malformed keys, don't trip circuit
                 market_key = key.rsplit(":", 1)[-1]
                 data["ttl_seconds_remaining"] = r.ttl(key)
                 result[market_key] = data
@@ -136,13 +144,19 @@ def read_live_history(
         key = _HISTORY_KEY.format(game_id=game_id, market_key=market_key)
         raw_list = r.lrange(key, 0, count - 1)
         _reset_circuit()
-        return [json.loads(item) for item in raw_list], None
     except Exception as exc:
         _trip_circuit()
         logger.warning("live_odds_redis_history_error", extra={
             "game_id": game_id, "market_key": market_key, "error": str(exc)
         })
         return [], f"redis_error: {exc}"
+    entries = []
+    for item in raw_list:
+        try:
+            entries.append(json.loads(item))
+        except (ValueError, TypeError):
+            continue  # skip malformed entries, don't trip circuit
+    return entries, None
 
 
 def discover_live_game_ids(league: str | None = None) -> list[tuple[str, int]]:
