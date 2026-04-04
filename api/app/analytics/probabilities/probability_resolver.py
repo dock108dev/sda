@@ -176,8 +176,8 @@ class ProbabilityResolver:
                     "trained_at": status["trained_at"],
                     "metrics": status["metrics"],
                 }
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("model_info_lookup_failed", extra={"error": str(exc)})
         return None
 
     def _get_or_create(

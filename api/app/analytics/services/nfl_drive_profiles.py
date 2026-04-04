@@ -208,7 +208,7 @@ async def _get_special_teams_profile(
                         total_fg_made += int(parts[0])
                         total_fg_att += int(parts[1])
                     except (ValueError, IndexError):
-                        pass
+                        logger.debug("fg_parse_failed", extra={"raw": fg_str})
 
     fg_pct = total_fg_made / total_fg_att if total_fg_att > 0 else 0.85
 

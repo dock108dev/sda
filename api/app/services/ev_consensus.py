@@ -156,12 +156,12 @@ def compute_ev_median_consensus(
         try:
             all_implied_a.append(american_to_implied(entry["price"]))
         except ValueError:
-            pass
+            logger.debug("skipped_invalid_price_consensus", extra={"price": entry["price"], "book": entry.get("book")})
     for entry in side_b_books:
         try:
             all_implied_b.append(american_to_implied(entry["price"]))
         except ValueError:
-            pass
+            logger.debug("skipped_invalid_price_consensus", extra={"price": entry["price"], "book": entry.get("book")})
 
     if all_implied_a and all_implied_b:
         median_impl_a = _median(sorted(all_implied_a))

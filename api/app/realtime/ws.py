@@ -45,8 +45,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 await asyncio.sleep(WS_PING_INTERVAL_S)
                 if websocket.client_state == WebSocketState.CONNECTED:
                     await websocket.send_json({"type": "ping"})
-        except Exception:
-            pass
+        except asyncio.CancelledError:
+            pass  # expected on shutdown
+        except Exception as exc:
+            logger.debug("ws_ping_loop_error", extra={"error": str(exc)})
 
     ping_task = asyncio.create_task(_ping_loop())
 

@@ -371,7 +371,7 @@ class EnsembleProvider(ProbabilityProvider):
         self.last_providers_used = sorted(predictions.keys())
 
         if not predictions:
-            logger.info("ensemble_all_providers_failed", extra={"sport": sport})
+            logger.warning("ensemble_all_providers_failed", extra={"sport": sport})
             valid_events = MLB_PA_EVENTS if sport.lower() == "mlb" else None
             return normalize_probabilities(_MLB_DEFAULTS, valid_events)
 

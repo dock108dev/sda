@@ -479,12 +479,13 @@ function GameflowCard() {
 
 export default function ControlPanelPage() {
   const [held, setHeld] = useState(false);
+  const [holdError, setHoldError] = useState(false);
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     getHoldStatus()
-      .then((s) => setHeld(s.held))
-      .catch(() => {});
+      .then((s) => { setHeld(s.held); setHoldError(false); })
+      .catch(() => setHoldError(true));
   }, []);
 
   const toggleHold = useCallback(async () => {
@@ -510,7 +511,9 @@ export default function ControlPanelPage() {
       <div className={held ? styles.holdBannerActive : styles.holdBanner}>
         <div className={styles.holdBannerContent}>
           <span className={styles.holdBannerText}>
-            {held
+            {holdError
+              ? "Scheduler hold status unknown — could not reach server."
+              : held
               ? "Schedulers are HELD — beat tasks will be skipped. Manual triggers still work."
               : "Schedulers are active."}
           </span>

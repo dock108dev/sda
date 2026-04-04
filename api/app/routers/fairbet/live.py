@@ -476,7 +476,7 @@ async def fairbet_live(
                 imp = american_to_implied(b.price)
                 price_dec = round(1.0 / imp, 3) if imp > 0 else None
             except (ValueError, ZeroDivisionError):
-                pass
+                logger.debug("skipped_invalid_odds_conversion", extra={"price": b.price})
             ev_tier: str | None = None
             ev_val = b.display_ev if b.display_ev is not None else b.ev_percent
             if ev_val is not None:

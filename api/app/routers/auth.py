@@ -270,7 +270,7 @@ async def forgot_password(
         try:
             await send_password_reset_email(to=user.email, token=token, base_url=base_url)
         except Exception:
-            pass  # already logged by send_email
+            logger.debug("password_reset_email_delivery_failed")
     else:
         # Log but don't reveal whether the account exists
         logger.info(
@@ -340,7 +340,7 @@ async def request_magic_link(
         try:
             await send_magic_link_email(to=user.email, token=token, base_url=base_url)
         except Exception:
-            pass  # already logged by send_email
+            logger.debug("magic_link_email_delivery_failed")
     else:
         logger.info(
             "magic_link_no_match",

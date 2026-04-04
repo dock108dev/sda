@@ -5,11 +5,22 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+import app.services.live_odds_redis as redis_mod
 from app.services.live_odds_redis import (
     read_all_live_snapshots_for_game,
     read_live_history,
     read_live_snapshot,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_circuit_breaker():
+    """Reset the circuit breaker before each test."""
+    redis_mod._redis_error_until = 0.0
+    yield
+    redis_mod._redis_error_until = 0.0
 
 
 class TestReadLiveSnapshot:

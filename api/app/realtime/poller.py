@@ -379,7 +379,7 @@ class DBPoller:
                 try:
                     subscribed_game_ids.add(int(parts[1]))
                 except ValueError:
-                    pass
+                    logger.debug("channel_id_parse_failed", extra={"channel": ch})
 
         if not subscribed_game_ids:
             return

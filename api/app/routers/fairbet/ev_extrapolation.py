@@ -8,7 +8,6 @@ via _annotate_pair_ev returns "reference_missing".
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import math
 from datetime import UTC, datetime
@@ -321,7 +320,7 @@ def _try_extrapolated_ev(
                         # Our "no-vig" prob exceeds Pinnacle's vigged prob — impossible
                         return "extrapolation_exceeds_pinnacle"
                 except ValueError:
-                    pass
+                    logger.debug("skipped_invalid_pinnacle_price", extra={"price": price})
 
     # 8c. DIVERGENCE CHECK: Compare extrapolated fair prob against median
     # implied prob across non-sharp books.  Catches phantom EV from
@@ -339,6 +338,7 @@ def _try_extrapolated_ev(
             try:
                 non_sharp_implieds.append(american_to_implied(price))
             except ValueError:
+                logger.debug("skipped_invalid_book_price", extra={"book": book_name, "price": price})
                 continue
         if non_sharp_implieds:
             non_sharp_implieds.sort()
@@ -421,11 +421,15 @@ def _try_extrapolated_ev(
             book_name = b["book"] if isinstance(b, dict) else b.book
             price = b["price"] if isinstance(b, dict) else b.price
             if book_name == "Pinnacle":
-                with contextlib.suppress(ValueError):
+                try:
                     pinnacle_implied = american_to_implied(price)
+                except ValueError:
+                    logger.debug("skipped_invalid_pinnacle_price", extra={"price": price})
             else:
-                with contextlib.suppress(ValueError):
+                try:
                     non_sharp_implieds.append(american_to_implied(price))
+                except ValueError:
+                    logger.debug("skipped_invalid_book_price", extra={"book": book_name, "price": price})
 
         # Compute numeric confidence (with extrapolation penalty)
         num_confidence, conf_flags = _compute_side_confidence(

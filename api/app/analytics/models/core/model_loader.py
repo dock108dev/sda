@@ -62,7 +62,7 @@ class ModelLoader:
         try:
             return self._load_joblib(canonical)
         except Exception:
-            logger.debug("joblib_load_failed, trying pickle", extra={"path": canonical})
+            logger.warning("joblib_load_failed, trying pickle", extra={"path": canonical})
 
         try:
             return self._load_pickle(canonical)

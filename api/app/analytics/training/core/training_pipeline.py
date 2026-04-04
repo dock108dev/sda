@@ -237,8 +237,8 @@ class TrainingPipeline:
                     )
                     if "brier_score" in mm_result:
                         result["brier_score"] = mm_result["brier_score"]
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("brier_score_computation_failed", extra={"error": str(exc)})
             return result
         return self._evaluator.evaluate_regressor(model, X_test, y_test)
 

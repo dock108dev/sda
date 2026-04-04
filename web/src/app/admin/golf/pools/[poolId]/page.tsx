@@ -48,8 +48,11 @@ export default function PoolDetailPage() {
       .finally(() => setLoading(false));
   }, [poolId]);
 
+  const [tabError, setTabError] = useState<string | null>(null);
+
   // Load tab data
   const loadTabData = useCallback(async () => {
+    setTabError(null);
     try {
       if (tab === "leaderboard") {
         const res = await fetchPoolLeaderboard(poolId);
@@ -58,8 +61,8 @@ export default function PoolDetailPage() {
         const res = await fetchPoolEntries(poolId);
         setEntries(res);
       }
-    } catch {
-      // Tab data load failure is non-fatal
+    } catch (err) {
+      setTabError(err instanceof Error ? err.message : "Failed to load tab data");
     }
   }, [poolId, tab]);
 
@@ -200,8 +203,10 @@ export default function PoolDetailPage() {
         </AdminCard>
       )}
 
+      {tabError && <div className={styles.error}>{tabError}</div>}
+
       {/* Leaderboard */}
-      {tab === "leaderboard" && (
+      {!tabError && tab === "leaderboard" && (
         <AdminCard>
           {leaderboard.length === 0 ? (
             <div className={styles.empty}>No leaderboard data available. Pool may not have been scored yet.</div>
@@ -255,7 +260,7 @@ export default function PoolDetailPage() {
       )}
 
       {/* Entries */}
-      {tab === "entries" && (
+      {!tabError && tab === "entries" && (
         <AdminCard>
           <div className={styles.filterBar} style={{ display: "flex", alignItems: "flex-end", gap: "1rem" }}>
             <div className={styles.formGroup} style={{ flex: 1 }}>

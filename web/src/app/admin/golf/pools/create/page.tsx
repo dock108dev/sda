@@ -29,10 +29,12 @@ export default function CreatePoolPage() {
   // Auto-filled rules based on club
   const selectedClub = CLUB_OPTIONS.find((c) => c.code === clubCode) ?? CLUB_OPTIONS[0];
 
+  const [tournError, setTournError] = useState<string | null>(null);
+
   useEffect(() => {
     listTournaments({ limit: 50 })
       .then(setTournaments)
-      .catch(() => setTournaments([]));
+      .catch((err) => setTournError(err instanceof Error ? err.message : "Failed to load tournaments"));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,18 +112,22 @@ export default function CreatePoolPage() {
 
           <div className={styles.formGroup}>
             <label>Tournament</label>
-            <select
-              value={tournamentId}
-              onChange={(e) => setTournamentId(e.target.value ? Number(e.target.value) : "")}
-              required
-            >
-              <option value="">Select a tournament...</option>
-              {tournaments.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.event_name} ({t.start_date})
-                </option>
-              ))}
-            </select>
+            {tournError ? (
+              <div style={{ color: "#ef4444", fontSize: "0.85rem" }}>Failed to load tournaments: {tournError}</div>
+            ) : (
+              <select
+                value={tournamentId}
+                onChange={(e) => setTournamentId(e.target.value ? Number(e.target.value) : "")}
+                required
+              >
+                <option value="">Select a tournament...</option>
+                {tournaments.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.event_name} ({t.start_date})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className={styles.formGroup}>

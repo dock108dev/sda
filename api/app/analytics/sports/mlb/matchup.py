@@ -9,7 +9,10 @@ League-average baselines match those in ``metrics.py``.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from app.analytics.core.types import PlayerProfile, TeamProfile
 from app.analytics.sports.mlb.constants import (
@@ -219,7 +222,7 @@ class MLBMatchup:
                 try:
                     diff = round(float(a_val) - float(b_val), 4)
                 except (ValueError, TypeError):
-                    pass
+                    logger.debug("matchup_diff_conversion_failed", extra={"key": key, "a": a_val, "b": b_val})
             comparison[key] = {"a": a_val, "b": b_val, "diff": diff}
 
         return comparison

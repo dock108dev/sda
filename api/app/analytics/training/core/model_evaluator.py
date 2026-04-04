@@ -55,8 +55,8 @@ class ModelEvaluator:
             try:
                 y_proba = model.predict_proba(X_test)
                 result["log_loss"] = round(log_loss(y_test, y_proba), 4)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("log_loss_computation_failed", extra={"error": str(exc)})
 
         result["class_distribution"] = _class_distribution(y_test)
         return result

@@ -140,6 +140,7 @@ def select_embedded_tweets(
         try:
             tweet_id = int(raw_id)
         except (ValueError, TypeError):
+            logger.debug("tweet_id_parse_failed", extra={"raw_id": raw_id})
             continue
 
         score = scorer.score(tweet)

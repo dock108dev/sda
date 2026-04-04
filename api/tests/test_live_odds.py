@@ -6,7 +6,18 @@ import json
 import time
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+import app.services.live_odds_redis as redis_mod
 from app.db.odds import ClosingLine
+
+
+@pytest.fixture(autouse=True)
+def _reset_circuit_breaker():
+    """Reset the circuit breaker before each test."""
+    redis_mod._redis_error_until = 0.0
+    yield
+    redis_mod._redis_error_until = 0.0
 
 # ---------------------------------------------------------------------------
 # ClosingLine model

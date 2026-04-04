@@ -17,7 +17,7 @@ from ..config import settings
 from ..logging import logger
 from ..models import NormalizedPlayByPlay
 from ..utils.cache import APICache
-from ..utils.datetime_utils import date_to_utc_datetime, start_of_et_day_utc
+from ..utils.datetime_utils import start_of_et_day_utc
 from ..utils.parsing import parse_int
 from .mlb_boxscore import MLBBoxscoreFetcher
 from .mlb_constants import MLB_SCHEDULE_URL

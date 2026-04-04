@@ -155,17 +155,47 @@ After touchdown: extra point attempt (~94%) or rare 2-point conversion. OT uses 
 
 ### Rotation/Lineup Dispatch in Batch Sims
 
-`batch_sim_tasks.py` dispatches to the appropriate sport-specific builder:
+The batch simulation orchestrator (`batch_sim_tasks.py`) is split into focused modules:
 
-| Sport | Builder | Sim Method | Data Source |
-|-------|---------|-----------|-------------|
-| MLB | `_try_build_lineup_weights()` | `simulate_game_with_lineups()` | PBP batting order + pitcher stats |
-| NBA | `_try_build_nba_rotation_weights()` | `simulate_game_with_lineups()` | Player minutes + advanced stats |
-| NCAAB | `_try_build_ncaab_rotation_weights()` | `simulate_game_with_lineups()` | Player minutes + advanced stats |
-| NHL | `_try_build_nhl_rotation_weights()` | `simulate_game_with_lineups()` | Skater TOI + goalie stats |
-| NFL | `_try_build_nfl_drive_weights()` | `simulate_game_with_lineups()` | Team EPA + defensive boxscore |
+| Module | Purpose |
+|--------|---------|
+| `batch_sim_tasks.py` | Celery task entry point, job lifecycle, simulation orchestration loop |
+| `_batch_sim_weights.py` | Sport-specific rotation/lineup weight builders (one per sport) |
+| `_batch_sim_helpers.py` | Stats converters, rolling profile builder, lineup metadata serializer |
+| `_batch_sim_enrichment.py` | Closing/current line analysis, batch summary, prediction outcome persistence |
+
+Each sport dispatches to its own weight builder:
+
+| Sport | Builder | Data Source |
+|-------|---------|-------------|
+| MLB | `try_build_lineup_weights()` | Consensus lineup (last 7 games) + rotation prediction + pitcher profiles |
+| NBA | `try_build_nba_rotation_weights()` | Player minutes + advanced stats |
+| NCAAB | `try_build_ncaab_rotation_weights()` | Player minutes + advanced stats |
+| NHL | `try_build_nhl_rotation_weights()` | Skater TOI + goalie stats |
+| NFL | `try_build_nfl_drive_weights()` | Team EPA + defensive boxscore |
 
 All sports fall back to team-level simulation when rotation/lineup data is unavailable.
+
+### MLB Rotation & Lineup Prediction (Future Games)
+
+For scheduled games where actual data doesn't exist yet:
+
+**Starter prediction** (`mlb_rotation_service.py`) uses a fallback chain:
+1. MLB Stats API probable pitcher (reliable 1-2 days out)
+2. Rotation cycle projection — identifies the 5/6-man rotation from recent starts, projects forward by counting game days
+3. OpenAI tiebreaker — for ambiguous rotations (< 4 clear members)
+
+**Lineup prediction** (`lineup_fetcher.fetch_consensus_lineup()`) analyses the last 7 completed games:
+- Frequency analysis identifies the 9 most common starters
+- Batting order consensus uses mode position per player
+- Falls back to single most recent game if < 3 games have data
+
+### Line Analysis Enrichment
+
+After all simulations complete, `_batch_sim_enrichment.enrich_with_closing_lines()` adds market comparison data:
+- **Final games**: Uses Pinnacle closing lines from the `ClosingLine` table
+- **Future games**: Uses current market lines from `FairbetGameOddsWork`
+- Computes: devigged market probability (Shin method), model edge, model fair line, EV%
 
 ### Player Profile Services
 
@@ -183,8 +213,9 @@ Each sport has its own player profile service that builds rolling averages from 
 **Shared patterns:**
 - All use rolling windows (default 15-30 games)
 - Players with fewer than 3 games use league-average fallback
-- MLB blends sparse player data with team average (weight = games/5)
+- MLB blends sparse batter data with team average (weight = games/5)
 - Pitcher profiles are regressed toward league average based on avg IP (shared in `services/lineup_weights.py`)
+- Pitcher and batter profiles query by `player_external_ref` only (no team_id filter), so traded players retain full cross-team history
 
 ### Event Summary & Sanity Analysis
 

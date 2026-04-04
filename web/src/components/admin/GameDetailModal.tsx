@@ -1,6 +1,6 @@
 "use client";
 
-import { type BatchSimGameResult, type ScoreEntry } from "@/lib/api/analyticsTypes";
+import { type BatchSimGameResult, type ScoreEntry, type BatterLine, type LineAnalysis } from "@/lib/api/analyticsTypes";
 
 interface GameDetailModalProps {
   game: BatchSimGameResult;
@@ -53,6 +53,13 @@ export function GameDetailModal({ game, sport, onClose, outcome }: GameDetailMod
           </div>
         </Section>
 
+        {/* Line Analysis */}
+        {game.line_analysis && (
+          <Section title="Line Analysis">
+            <LineAnalysisDisplay la={game.line_analysis} home={game.home_team} away={game.away_team} />
+          </Section>
+        )}
+
         {/* Most Common Scores */}
         {game.most_common_scores && game.most_common_scores.length > 0 && (
           <Section title="Most Likely Final Scores">
@@ -67,14 +74,50 @@ export function GameDetailModal({ game, sport, onClose, outcome }: GameDetailMod
           </Section>
         )}
 
-        {/* Sport-Specific Stats */}
-        {game.event_summary && (
+        {/* Projected Lineup & Pitching (MLB with lineup_info) */}
+        {s === "mlb" && game.lineup_info && (
+          <>
+            <Section title="Projected Pitching Matchup">
+              <div style={pitcherMatchupStyle}>
+                <div style={{ textAlign: "center", flex: 1 }}>
+                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{game.home_team} SP</div>
+                  <div style={{ fontSize: "1rem", fontWeight: 600, color: "#111827" }}>
+                    {game.lineup_info.home_starter?.name ?? "Unknown"}
+                  </div>
+                </div>
+                <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>vs</span>
+                <div style={{ textAlign: "center", flex: 1 }}>
+                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{game.away_team} SP</div>
+                  <div style={{ fontSize: "1rem", fontWeight: 600, color: "#111827" }}>
+                    {game.lineup_info.away_starter?.name ?? "Unknown"}
+                  </div>
+                </div>
+              </div>
+            </Section>
+            <Section title={`${game.home_team} Projected Batting`}>
+              <BattingTable batters={game.lineup_info.home_batting} />
+            </Section>
+            <Section title={`${game.away_team} Projected Batting`}>
+              <BattingTable batters={game.lineup_info.away_batting} />
+            </Section>
+          </>
+        )}
+
+        {/* Fallback: Sport-Specific aggregate stats (non-lineup or non-MLB) */}
+        {game.event_summary && !(s === "mlb" && game.lineup_info) && (
           <Section title="Projected Box Score">
             {s === "mlb" && <MLBStats summary={game.event_summary} />}
             {(s === "nba" || s === "ncaab") && <BasketballStats summary={game.event_summary} sport={s} />}
             {s === "nhl" && <NHLStats summary={game.event_summary} />}
             {s === "nfl" && <NFLStats summary={game.event_summary} />}
             {game.event_summary.game && <GameShape game={game.event_summary.game} sport={s} />}
+          </Section>
+        )}
+
+        {/* Game shape for MLB lineup mode */}
+        {s === "mlb" && game.lineup_info && game.event_summary?.game && (
+          <Section title="Game Shape">
+            <GameShape game={game.event_summary.game} sport={s} />
           </Section>
         )}
 
@@ -272,6 +315,116 @@ function NFLStats({ summary }: { summary: { home: any; away: any } }) {
   );
 }
 
+function fmtML(ml: number): string {
+  return ml >= 0 ? `+${ml}` : `${ml}`;
+}
+
+function fmtEdge(edge: number): string {
+  const pct = (edge * 100).toFixed(1);
+  return edge >= 0 ? `+${pct}%` : `${pct}%`;
+}
+
+function edgeColor(edge: number): string {
+  if (edge >= 0.03) return "#16a34a";
+  if (edge >= 0.01) return "#65a30d";
+  if (edge > -0.01) return "#6b7280";
+  return "#dc2626";
+}
+
+function LineAnalysisDisplay({ la, home, away }: { la: LineAnalysis; home: string; away: string }) {
+  const isClosing = la.line_type === "closing";
+  const mlLabel = isClosing ? "Close ML" : "Current ML";
+  return (
+    <div>
+      <table style={{ ...battingTableStyle, marginBottom: "0.5rem" }}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, textAlign: "left", minWidth: "80px" }}>Side</th>
+            <th style={thStyle}>{mlLabel}</th>
+            <th style={thStyle}>Mkt Prob</th>
+            <th style={thStyle}>Model Prob</th>
+            <th style={thStyle}>Model Line</th>
+            <th style={thStyle}>Edge</th>
+            <th style={thStyle}>EV%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ ...tdStyle, textAlign: "left", fontWeight: 500 }}>{home}</td>
+            <td style={tdStyle}>{fmtML(la.market_home_ml)}</td>
+            <td style={tdStyle}>{(la.market_home_wp * 100).toFixed(1)}%</td>
+            <td style={{ ...tdStyle, fontWeight: 600 }}>{(la.model_home_wp * 100).toFixed(1)}%</td>
+            <td style={{ ...tdStyle, fontWeight: 500 }}>{fmtML(la.model_home_line)}</td>
+            <td style={{ ...tdStyle, fontWeight: 600, color: edgeColor(la.home_edge) }}>{fmtEdge(la.home_edge)}</td>
+            <td style={{ ...tdStyle, color: la.home_ev_pct >= 0 ? "#16a34a" : "#dc2626" }}>{la.home_ev_pct >= 0 ? "+" : ""}{la.home_ev_pct.toFixed(1)}%</td>
+          </tr>
+          <tr style={{ background: "#f9fafb" }}>
+            <td style={{ ...tdStyle, textAlign: "left", fontWeight: 500 }}>{away}</td>
+            <td style={tdStyle}>{fmtML(la.market_away_ml)}</td>
+            <td style={tdStyle}>{(la.market_away_wp * 100).toFixed(1)}%</td>
+            <td style={{ ...tdStyle, fontWeight: 600 }}>{(la.model_away_wp * 100).toFixed(1)}%</td>
+            <td style={{ ...tdStyle, fontWeight: 500 }}>{fmtML(la.model_away_line)}</td>
+            <td style={{ ...tdStyle, fontWeight: 600, color: edgeColor(la.away_edge) }}>{fmtEdge(la.away_edge)}</td>
+            <td style={{ ...tdStyle, color: la.away_ev_pct >= 0 ? "#16a34a" : "#dc2626" }}>{la.away_ev_pct >= 0 ? "+" : ""}{la.away_ev_pct.toFixed(1)}%</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style={{ fontSize: "0.7rem", color: "#9ca3af", textAlign: "right" }}>
+        {isClosing ? "Closing" : "Current"} line via {la.provider} (devigged via Shin)
+      </div>
+    </div>
+  );
+}
+
+function BattingTable({ batters }: { batters: BatterLine[] }) {
+  if (!batters || batters.length === 0) {
+    return <div style={{ fontSize: "0.8rem", color: "#9ca3af" }}>No lineup data</div>;
+  }
+  const cols: { key: keyof BatterLine; label: string }[] = [
+    { key: "K", label: "K%" },
+    { key: "BB", label: "BB%" },
+    { key: "1B", label: "1B%" },
+    { key: "2B", label: "2B%" },
+    { key: "3B", label: "3B%" },
+    { key: "HR", label: "HR%" },
+    { key: "BIP", label: "BIP%" },
+  ];
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={battingTableStyle}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, textAlign: "left", minWidth: "110px" }}>#</th>
+            {cols.map((c) => (
+              <th key={c.key} style={thStyle}>{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {batters.map((b, i) => (
+            <tr key={i} style={i % 2 === 0 ? {} : { background: "#f9fafb" }}>
+              <td style={{ ...tdStyle, textAlign: "left", fontWeight: 500 }}>
+                <span style={{ color: "#9ca3af", marginRight: "0.4rem" }}>{i + 1}.</span>
+                {b.name}
+              </td>
+              {cols.map((c) => (
+                <td key={c.key} style={{
+                  ...tdStyle,
+                  color: c.key === "HR" && (b[c.key] as number) >= 4 ? "#dc2626" :
+                         c.key === "K" && (b[c.key] as number) >= 25 ? "#9ca3af" : "#111827",
+                  fontWeight: c.key === "HR" && (b[c.key] as number) >= 4 ? 600 : 400,
+                }}>
+                  {(b[c.key] as number).toFixed(1)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function GameShape({ game, sport }: { game: any; sport: string }) {
   return (
     <div style={{ ...metaRowStyle, marginTop: "0.75rem", borderTop: "1px solid #e5e7eb", paddingTop: "0.75rem" }}>
@@ -329,4 +482,24 @@ const scoreChipStyle: React.CSSProperties = {
   background: "#f9fafb", padding: "0.35rem 0.75rem", borderRadius: "0.5rem",
   display: "flex", gap: "0.5rem", alignItems: "center",
   border: "1px solid #e5e7eb", fontSize: "0.85rem",
+};
+
+const pitcherMatchupStyle: React.CSSProperties = {
+  display: "flex", justifyContent: "space-around", alignItems: "center",
+  padding: "0.5rem 0",
+};
+
+const battingTableStyle: React.CSSProperties = {
+  width: "100%", borderCollapse: "collapse", fontSize: "0.8rem",
+};
+
+const thStyle: React.CSSProperties = {
+  textAlign: "center", padding: "0.3rem 0.4rem", fontSize: "0.7rem",
+  color: "#6b7280", fontWeight: 600, textTransform: "uppercase",
+  borderBottom: "1px solid #e5e7eb", letterSpacing: "0.03em",
+};
+
+const tdStyle: React.CSSProperties = {
+  textAlign: "center", padding: "0.25rem 0.4rem", fontSize: "0.8rem",
+  borderBottom: "1px solid #f3f4f6",
 };

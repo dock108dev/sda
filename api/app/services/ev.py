@@ -9,7 +9,6 @@ for a given (league, market_category) pair.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import math
 from dataclasses import dataclass, field
@@ -299,12 +298,22 @@ def compute_ev_for_market(
     if true_prob_a is not None and true_prob_b is not None:
         implied_probs_a: list[float] = []
         implied_probs_b: list[float] = []
+        _skipped = 0
         for entry in side_a_books:
-            with contextlib.suppress(ValueError):
+            try:
                 implied_probs_a.append(american_to_implied(entry["price"]))
+            except ValueError:
+                _skipped += 1
         for entry in side_b_books:
-            with contextlib.suppress(ValueError):
+            try:
                 implied_probs_b.append(american_to_implied(entry["price"]))
+            except ValueError:
+                _skipped += 1
+        if _skipped:
+            logger.debug(
+                "ev_sanity_check_invalid_odds_skipped",
+                extra={"skipped": _skipped},
+            )
 
         if implied_probs_a and implied_probs_b:
             median_implied_a = _median(sorted(implied_probs_a))

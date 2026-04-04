@@ -485,6 +485,41 @@ export interface ScoreEntry {
   probability: number;
 }
 
+export interface BatterLine {
+  name: string;
+  K: number;
+  BB: number;
+  "1B": number;
+  "2B": number;
+  "3B": number;
+  HR: number;
+  BIP: number;
+}
+
+export interface LineupInfo {
+  home_batting: BatterLine[];
+  away_batting: BatterLine[];
+  home_starter?: { name: string; external_ref: string };
+  away_starter?: { name: string; external_ref: string };
+}
+
+export interface LineAnalysis {
+  market_home_ml: number;
+  market_away_ml: number;
+  market_home_wp: number;
+  market_away_wp: number;
+  model_home_wp: number;
+  model_away_wp: number;
+  home_edge: number;
+  away_edge: number;
+  model_home_line: number;
+  model_away_line: number;
+  home_ev_pct: number;
+  away_ev_pct: number;
+  provider: string;
+  line_type: "closing" | "current";
+}
+
 export interface BatchSimGameResult {
   game_id: string;
   game_date: string;
@@ -498,6 +533,8 @@ export interface BatchSimGameResult {
   has_profiles?: boolean;
   error?: string;
   event_summary?: EventSummary;
+  lineup_info?: LineupInfo;
+  line_analysis?: LineAnalysis;
   // Projected box score detail
   score_distribution?: Record<string, number>;
   most_common_scores?: ScoreEntry[];

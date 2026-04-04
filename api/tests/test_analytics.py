@@ -4200,7 +4200,7 @@ class TestBuildRollingProfile:
         return obj
 
     def test_returns_none_when_insufficient_history(self):
-        from app.tasks.batch_sim_tasks import _build_rolling_profile
+        from app.tasks._batch_sim_helpers import build_rolling_profile as _build_rolling_profile
 
         # Only 3 games before target date, min_games=5
         games = [("2025-04-01", self._make_stats()) for _ in range(3)]
@@ -4210,7 +4210,7 @@ class TestBuildRollingProfile:
         assert result is None
 
     def test_returns_profile_with_sufficient_history(self):
-        from app.tasks.batch_sim_tasks import _build_rolling_profile
+        from app.tasks._batch_sim_helpers import build_rolling_profile as _build_rolling_profile
 
         games = [(f"2025-04-{i+1:02d}", self._make_stats()) for i in range(10)]
         result = _build_rolling_profile(
@@ -4227,7 +4227,7 @@ class TestBuildRollingProfile:
         assert "expected_slug" in result
 
     def test_excludes_games_on_or_after_target_date(self):
-        from app.tasks.batch_sim_tasks import _build_rolling_profile
+        from app.tasks._batch_sim_helpers import build_rolling_profile as _build_rolling_profile
 
         # 3 games before target, 7 on or after
         games = [(f"2025-04-{i+1:02d}", self._make_stats()) for i in range(3)]
@@ -4239,7 +4239,7 @@ class TestBuildRollingProfile:
         assert result is None
 
     def test_window_limits_games_used(self):
-        from app.tasks.batch_sim_tasks import _build_rolling_profile
+        from app.tasks._batch_sim_helpers import build_rolling_profile as _build_rolling_profile
 
         # 20 games, window=5 — should average only last 5
         early_stats = self._make_stats(avg_exit_velo=80.0)
@@ -4256,7 +4256,7 @@ class TestBuildRollingProfile:
         assert result["avg_exit_velocity"] == 100.0
 
     def test_averages_metrics_correctly(self):
-        from app.tasks.batch_sim_tasks import _build_rolling_profile
+        from app.tasks._batch_sim_helpers import build_rolling_profile as _build_rolling_profile
 
         stats_a = self._make_stats(barrel_pct=0.10, hard_hit_pct=0.40)
         stats_b = self._make_stats(barrel_pct=0.20, hard_hit_pct=0.50)
@@ -4524,7 +4524,7 @@ class TestSavePredictionOutcomes:
     """Verify _save_prediction_outcomes helper."""
 
     def test_function_exists(self):
-        from app.tasks.batch_sim_tasks import _save_prediction_outcomes
+        from app.tasks._batch_sim_enrichment import save_prediction_outcomes as _save_prediction_outcomes
 
         assert callable(_save_prediction_outcomes)
 
