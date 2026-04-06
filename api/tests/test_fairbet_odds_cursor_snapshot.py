@@ -51,6 +51,7 @@ async def test_ev_snapshot_missing_returns_410(monkeypatch):
         kwargs["snapshot_id"] = "dead-snapshot"
         await odds_router.get_fairbet_odds(**kwargs)
     assert exc.value.status_code == 410
+    assert exc.value.detail == "Snapshot expired or not found."
 
 
 @pytest.mark.asyncio
@@ -65,6 +66,7 @@ async def test_cursor_sort_mismatch_returns_400():
         kwargs["cursor"] = bad_cursor
         await odds_router.get_fairbet_odds(**kwargs)
     assert exc.value.status_code == 400
+    assert exc.value.detail == "Cursor sort does not match sort_by."
 
 
 @pytest.mark.asyncio
@@ -78,7 +80,7 @@ async def test_invalid_cursor_returns_400():
         kwargs["cursor"] = "%%%not-a-valid-cursor%%%"
         await odds_router.get_fairbet_odds(**kwargs)
     assert exc.value.status_code == 400
-    assert "Invalid cursor" in str(exc.value.detail)
+    assert exc.value.detail == "Invalid cursor."
 
 
 @pytest.mark.asyncio
@@ -104,7 +106,7 @@ async def test_invalid_ev_snapshot_cursor_returns_400(monkeypatch):
         kwargs["cursor"] = "%%%not-a-valid-cursor%%%"
         await odds_router.get_fairbet_odds(**kwargs)
     assert exc.value.status_code == 400
-    assert "Invalid cursor for EV snapshot" in str(exc.value.detail)
+    assert exc.value.detail == "Invalid cursor for EV snapshot."
 
 
 @pytest.mark.asyncio
@@ -116,7 +118,7 @@ async def test_has_fair_requires_ev_sort():
         kwargs["has_fair"] = True
         await odds_router.get_fairbet_odds(**kwargs)
     assert exc.value.status_code == 400
-    assert "require sort_by=ev" in str(exc.value.detail)
+    assert exc.value.detail == "has_fair/min_ev require sort_by=ev snapshot mode."
 
 
 @pytest.mark.asyncio
@@ -128,4 +130,4 @@ async def test_min_ev_requires_ev_sort():
         kwargs["min_ev"] = 1.5
         await odds_router.get_fairbet_odds(**kwargs)
     assert exc.value.status_code == 400
-    assert "require sort_by=ev" in str(exc.value.detail)
+    assert exc.value.detail == "has_fair/min_ev require sort_by=ev snapshot mode."
