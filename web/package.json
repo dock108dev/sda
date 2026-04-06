@@ -12,7 +12,7 @@
     "@dock108/js-core": "file:../packages/js-core",
     "@dock108/ui": "file:../packages/ui",
     "@dock108/ui-kit": "file:../packages/ui-kit",
-    "next": "16.2.1",
+    "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.0"
@@ -22,7 +22,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.1",
+    "eslint-config-next": "16.2.2",
     "typescript": "^5"
   }
 }
