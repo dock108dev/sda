@@ -42,12 +42,14 @@ def update_game_states(session: Session) -> dict[str, int]:
         "scheduled_to_pregame": 0,
         "pregame_to_live": 0,
         "stale_to_final": 0,
+        "phantom_canceled": 0,
         "final_to_archived": 0,
     }
 
     counts["scheduled_to_pregame"] = _promote_scheduled_to_pregame(session)
     counts["pregame_to_live"] = _promote_pregame_to_live(session)
     counts["stale_to_final"] = _promote_stale_to_final(session)
+    counts["phantom_canceled"] = _cancel_phantom_finals(session)
     counts["final_to_archived"] = _promote_final_to_archived(session)
 
     total = sum(counts.values())
@@ -156,6 +158,61 @@ def _promote_pregame_to_live(session: Session) -> int:
     return promoted
 
 
+def _is_phantom_game(game: db_models.SportsGame) -> bool:
+    """Return True if a game has no evidence of being played.
+
+    Phantom games are stubs created by odds feeds for conditional matchups
+    (e.g., tournament "if-necessary" games) that never actually occurred.
+    They have no scores, no PBP, no boxscore, and no scrape data.
+    """
+    return (
+        game.home_score is None
+        and game.away_score is None
+        and game.last_pbp_at is None
+        and game.last_boxscore_at is None
+        and game.last_scraped_at is None
+    )
+
+
+def _cancel_phantom_finals(session: Session) -> int:
+    """Cancel final games that were never actually played.
+
+    Catches phantom games that were already promoted to final by
+    earlier runs (before the phantom detection was added).
+    """
+    now = now_utc()
+    canceled = 0
+
+    games = (
+        session.query(db_models.SportsGame)
+        .filter(
+            db_models.SportsGame.status == db_models.GameStatus.final.value,
+            db_models.SportsGame.home_score.is_(None),
+            db_models.SportsGame.away_score.is_(None),
+            db_models.SportsGame.last_pbp_at.is_(None),
+            db_models.SportsGame.last_boxscore_at.is_(None),
+            db_models.SportsGame.last_scraped_at.is_(None),
+        )
+        .all()
+    )
+
+    for game in games:
+        game.status = db_models.GameStatus.canceled.value
+        game.end_time = None
+        game.updated_at = now
+        canceled += 1
+        logger.info(
+            "game_state_transition",
+            game_id=game.id,
+            from_status="final",
+            to_status="canceled",
+            game_date=str(game.game_date),
+            reason="phantom_final_canceled",
+        )
+
+    return canceled
+
+
 def _promote_stale_to_final(session: Session) -> int:
     """Force overdue scheduled/pregame/live games to final.
 
@@ -199,30 +256,46 @@ def _promote_stale_to_final(session: Session) -> int:
 
         for game in games:
             old_status = game.status
-            game.status = db_models.GameStatus.final.value
-            game.end_time = game.game_date + timedelta(hours=config.estimated_game_duration_hours)
-            game.updated_at = now
-            promoted += 1
-            if old_status == db_models.GameStatus.live.value:
-                logger.warning(
-                    "game_state_transition",
-                    game_id=game.id,
-                    league=league_code,
-                    from_status=old_status,
-                    to_status="final",
-                    game_date=str(game.game_date),
-                    reason="stale_live_timeout",
-                )
-            else:
+            never_played = _is_phantom_game(game)
+
+            if never_played:
+                game.status = db_models.GameStatus.canceled.value
+                game.updated_at = now
+                promoted += 1
                 logger.info(
                     "game_state_transition",
                     game_id=game.id,
                     league=league_code,
                     from_status=old_status,
-                    to_status="final",
+                    to_status="canceled",
                     game_date=str(game.game_date),
-                    reason="stale_timeout",
+                    reason="phantom_game_canceled",
                 )
+            else:
+                game.status = db_models.GameStatus.final.value
+                game.end_time = game.game_date + timedelta(hours=config.estimated_game_duration_hours)
+                game.updated_at = now
+                promoted += 1
+                if old_status == db_models.GameStatus.live.value:
+                    logger.warning(
+                        "game_state_transition",
+                        game_id=game.id,
+                        league=league_code,
+                        from_status=old_status,
+                        to_status="final",
+                        game_date=str(game.game_date),
+                        reason="stale_live_timeout",
+                    )
+                else:
+                    logger.info(
+                        "game_state_transition",
+                        game_id=game.id,
+                        league=league_code,
+                        from_status=old_status,
+                        to_status="final",
+                        game_date=str(game.game_date),
+                        reason="stale_timeout",
+                    )
 
     return promoted
 

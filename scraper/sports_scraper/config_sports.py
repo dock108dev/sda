@@ -93,7 +93,7 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         scheduled_ingestion=True,
         live_pbp_enabled=True,
         live_boxscore_enabled=True,
-        estimated_game_duration_hours=3.5,
+        estimated_game_duration_hours=5.0,  # 3.5h game + buffer for rain delays
     ),
     "NFL": LeagueConfig(
         code="NFL",

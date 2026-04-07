@@ -28,6 +28,27 @@ GET /api/analytics/mlb-teams        (MLB backward compat)
 GET /api/analytics/mlb-roster?team=NYY (MLB only — lineup support)
 ```
 
+#### Roster Response (MLB)
+
+The roster endpoint now includes **projected lineup** and **probable starter** fields that downstream apps should use as defaults:
+
+```json
+{
+  "batters": [...],
+  "pitchers": [...],
+  "projected_lineup": [
+    { "external_ref": "665489", "name": "Jarren Duran" },
+    ...
+  ],
+  "probable_starter": { "external_ref": "678394", "name": "Brayan Bello" }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `projected_lineup` | `array` or absent | Consensus 9-batter batting order from last 7 games. Use as default lineup pre-fill. Fall back to top 9 from `batters` if absent. |
+| `probable_starter` | `object` or absent | Today's announced starter (from MLB Stats API). Cross-reference `external_ref` against `pitchers` for `avg_ip`. Fall back to first pitcher if absent. |
+
 ### Team Profiles
 
 ```

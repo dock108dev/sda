@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from sports_scraper.services.game_state_updater import (
     _ARCHIVE_AFTER_DAYS,
+    _cancel_phantom_finals,
+    _is_phantom_game,
     _promote_final_to_archived,
     _promote_pregame_to_live,
     _promote_scheduled_to_pregame,
@@ -33,6 +35,11 @@ def _make_game(**kwargs) -> MagicMock:
     game.closed_at = kwargs.get("closed_at")
     game.league_id = kwargs.get("league_id", _MOCK_LEAGUE_ID)
     game.social_scrape_2_at = kwargs.get("social_scrape_2_at")
+    game.home_score = kwargs.get("home_score")
+    game.away_score = kwargs.get("away_score")
+    game.last_pbp_at = kwargs.get("last_pbp_at")
+    game.last_boxscore_at = kwargs.get("last_boxscore_at")
+    game.last_scraped_at = kwargs.get("last_scraped_at")
     return game
 
 
@@ -41,26 +48,29 @@ def _make_game(**kwargs) -> MagicMock:
 # ---------------------------------------------------------------------------
 class TestUpdateGameStates:
     @patch(f"{_MOD}._promote_final_to_archived", return_value=0)
+    @patch(f"{_MOD}._cancel_phantom_finals", return_value=0)
     @patch(f"{_MOD}._promote_stale_to_final", return_value=0)
     @patch(f"{_MOD}._promote_pregame_to_live", return_value=0)
     @patch(f"{_MOD}._promote_scheduled_to_pregame", return_value=0)
-    def test_returns_counts_dict(self, mock_sched, mock_pregame, mock_stale, mock_final):
+    def test_returns_counts_dict(self, mock_sched, mock_pregame, mock_stale, mock_phantom, mock_final):
         session = MagicMock()
         result = update_game_states(session)
         assert result == {
             "scheduled_to_pregame": 0,
             "pregame_to_live": 0,
             "stale_to_final": 0,
+            "phantom_canceled": 0,
             "final_to_archived": 0,
         }
 
     @patch(f"{_MOD}.logger")
     @patch(f"{_MOD}._promote_final_to_archived", return_value=1)
+    @patch(f"{_MOD}._cancel_phantom_finals", return_value=0)
     @patch(f"{_MOD}._promote_stale_to_final", return_value=0)
     @patch(f"{_MOD}._promote_pregame_to_live", return_value=0)
     @patch(f"{_MOD}._promote_scheduled_to_pregame", return_value=2)
     def test_logs_info_when_transitions(
-        self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger
+        self, mock_sched, mock_pregame, mock_stale, mock_phantom, mock_final, mock_logger
     ):
         session = MagicMock()
         result = update_game_states(session)
@@ -70,11 +80,12 @@ class TestUpdateGameStates:
 
     @patch(f"{_MOD}.logger")
     @patch(f"{_MOD}._promote_final_to_archived", return_value=0)
+    @patch(f"{_MOD}._cancel_phantom_finals", return_value=0)
     @patch(f"{_MOD}._promote_stale_to_final", return_value=0)
     @patch(f"{_MOD}._promote_pregame_to_live", return_value=0)
     @patch(f"{_MOD}._promote_scheduled_to_pregame", return_value=0)
     def test_logs_debug_when_no_transitions(
-        self, mock_sched, mock_pregame, mock_stale, mock_final, mock_logger
+        self, mock_sched, mock_pregame, mock_stale, mock_phantom, mock_final, mock_logger
     ):
         session = MagicMock()
         update_game_states(session)
@@ -256,6 +267,8 @@ class TestPromoteStaleToFinal:
         game = _make_game(
             status="live",
             game_date=now - timedelta(hours=7),  # 7 hrs ago, cutoff is 6
+            home_score=105,
+            away_score=98,
         )
 
         session = MagicMock()
@@ -299,6 +312,8 @@ class TestPromoteStaleToFinal:
         game = _make_game(
             status="live",
             game_date=now - timedelta(hours=7),
+            home_score=88,
+            away_score=90,
         )
 
         session = MagicMock()
@@ -316,8 +331,8 @@ class TestPromoteStaleToFinal:
 
     @patch(f"{_MOD}.LEAGUE_CONFIG")
     @patch(f"{_MOD}.now_utc", return_value=_utc_now())
-    def test_promotes_stale_scheduled_game(self, mock_now, mock_config):
-        """Existing behavior: scheduled game past cutoff → final."""
+    def test_promotes_stale_scheduled_game_with_data(self, mock_now, mock_config):
+        """Scheduled game past cutoff with boxscore data → final."""
         now = _utc_now()
         config = MagicMock()
         config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
@@ -327,6 +342,8 @@ class TestPromoteStaleToFinal:
         game = _make_game(
             status="scheduled",
             game_date=now - timedelta(hours=7),
+            home_score=100,
+            away_score=95,
         )
 
         session = MagicMock()
@@ -339,8 +356,32 @@ class TestPromoteStaleToFinal:
 
     @patch(f"{_MOD}.LEAGUE_CONFIG")
     @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_cancels_phantom_scheduled_game(self, mock_now, mock_config):
+        """Scheduled game past cutoff with NO game data → canceled."""
+        now = _utc_now()
+        config = MagicMock()
+        config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
+        config.postgame_window_hours = _POSTGAME_WINDOW_HOURS
+        mock_config.items.return_value = [("NBA", config)]
+
+        game = _make_game(
+            status="scheduled",
+            game_date=now - timedelta(hours=7),
+            # no scores, no pbp, no boxscore, no scrape — phantom
+        )
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.scalar.return_value = _MOCK_LEAGUE_ID
+        session.query.return_value.filter.return_value.all.return_value = [game]
+
+        result = _promote_stale_to_final(session)
+        assert result == 1
+        assert game.status == "canceled"
+
+    @patch(f"{_MOD}.LEAGUE_CONFIG")
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
     def test_mixed_stale_statuses(self, mock_now, mock_config):
-        """All three stale statuses (scheduled, pregame, live) promoted together."""
+        """Real games promoted to final, phantom canceled."""
         now = _utc_now()
         config = MagicMock()
         config.estimated_game_duration_hours = _ESTIMATED_GAME_DURATION_HOURS
@@ -348,9 +389,9 @@ class TestPromoteStaleToFinal:
         mock_config.items.return_value = [("NBA", config)]
 
         games = [
-            _make_game(id=1, status="scheduled", game_date=now - timedelta(hours=8)),
-            _make_game(id=2, status="pregame", game_date=now - timedelta(hours=7)),
-            _make_game(id=3, status="live", game_date=now - timedelta(hours=10)),
+            _make_game(id=1, status="scheduled", game_date=now - timedelta(hours=8), home_score=88, away_score=80),
+            _make_game(id=2, status="pregame", game_date=now - timedelta(hours=7)),  # phantom
+            _make_game(id=3, status="live", game_date=now - timedelta(hours=10), last_pbp_at=now - timedelta(hours=8)),
         ]
 
         session = MagicMock()
@@ -359,8 +400,9 @@ class TestPromoteStaleToFinal:
 
         result = _promote_stale_to_final(session)
         assert result == 3
-        for g in games:
-            assert g.status == "final"
+        assert games[0].status == "final"
+        assert games[1].status == "canceled"
+        assert games[2].status == "final"
 
 
 # ---------------------------------------------------------------------------
@@ -408,3 +450,79 @@ class TestPromoteFinalToArchived:
         assert result == 2
         for g in games:
             assert g.status == "archived"
+
+
+# ---------------------------------------------------------------------------
+# _is_phantom_game
+# ---------------------------------------------------------------------------
+class TestIsPhantomGame:
+    def test_phantom_game_all_none(self):
+        """Game with no scores, no PBP, no boxscore, no scrape → phantom."""
+        game = _make_game()
+        assert _is_phantom_game(game) is True
+
+    def test_not_phantom_with_scores(self):
+        game = _make_game(home_score=100, away_score=95)
+        assert _is_phantom_game(game) is False
+
+    def test_not_phantom_with_pbp(self):
+        game = _make_game(last_pbp_at=_utc_now())
+        assert _is_phantom_game(game) is False
+
+    def test_not_phantom_with_boxscore(self):
+        game = _make_game(last_boxscore_at=_utc_now())
+        assert _is_phantom_game(game) is False
+
+    def test_not_phantom_with_scrape(self):
+        game = _make_game(last_scraped_at=_utc_now())
+        assert _is_phantom_game(game) is False
+
+    def test_not_phantom_with_only_home_score(self):
+        game = _make_game(home_score=0)
+        assert _is_phantom_game(game) is False
+
+
+# ---------------------------------------------------------------------------
+# _cancel_phantom_finals
+# ---------------------------------------------------------------------------
+class TestCancelPhantomFinals:
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_cancels_phantom_final_game(self, mock_now):
+        now = _utc_now()
+        game = _make_game(
+            status="final",
+            game_date=now - timedelta(hours=24),
+        )
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.all.return_value = [game]
+
+        result = _cancel_phantom_finals(session)
+        assert result == 1
+        assert game.status == "canceled"
+        assert game.end_time is None
+        assert game.updated_at == now
+
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_no_phantom_finals(self, mock_now):
+        session = MagicMock()
+        session.query.return_value.filter.return_value.all.return_value = []
+
+        result = _cancel_phantom_finals(session)
+        assert result == 0
+
+    @patch(f"{_MOD}.now_utc", return_value=_utc_now())
+    def test_multiple_phantom_finals(self, mock_now):
+        now = _utc_now()
+        games = [
+            _make_game(id=1, status="final", game_date=now - timedelta(days=5)),
+            _make_game(id=2, status="final", game_date=now - timedelta(days=2)),
+        ]
+
+        session = MagicMock()
+        session.query.return_value.filter.return_value.all.return_value = games
+
+        result = _cancel_phantom_finals(session)
+        assert result == 2
+        for g in games:
+            assert g.status == "canceled"

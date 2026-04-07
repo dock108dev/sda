@@ -89,38 +89,49 @@ export function PregameSimulator() {
     setRosterLoading(true);
     try {
       const roster = await getMLBRoster(team);
+      // Use projected lineup if available, else fall back to top 9 by games played
+      const lineupSlots = roster.projected_lineup
+        ? roster.projected_lineup.map((b) => ({
+            external_ref: b.external_ref,
+            name: b.name,
+          }))
+        : roster.batters && roster.batters.length >= 9
+          ? roster.batters.slice(0, 9).map((b) => ({
+              external_ref: b.external_ref,
+              name: b.name,
+            }))
+          : [];
+
+      // Use probable starter if available, else fall back to top pitcher by avg IP
+      const starterSlot: StarterSlot | null = roster.probable_starter
+        ? (() => {
+            const p = roster.pitchers?.find(
+              (pit) => pit.external_ref === roster.probable_starter!.external_ref,
+            );
+            return {
+              external_ref: roster.probable_starter.external_ref,
+              name: roster.probable_starter.name,
+              avg_ip: p?.avg_ip,
+            };
+          })()
+        : roster.pitchers && roster.pitchers.length > 0
+          ? {
+              external_ref: roster.pitchers[0].external_ref,
+              name: roster.pitchers[0].name,
+              avg_ip: roster.pitchers[0].avg_ip,
+            }
+          : null;
+
       if (side === "home") {
         setHomeBatters(roster.batters || []);
         setHomePitchers(roster.pitchers || []);
-        // Auto-fill lineup with top 9 batters by games played
-        if (roster.batters && roster.batters.length >= 9) {
-          setHomeLineup(
-            roster.batters.slice(0, 9).map((b) => ({
-              external_ref: b.external_ref,
-              name: b.name,
-            })),
-          );
-        }
-        // Auto-fill starter with top pitcher
-        if (roster.pitchers && roster.pitchers.length > 0) {
-          const top = roster.pitchers[0];
-          setHomeStarter({ external_ref: top.external_ref, name: top.name, avg_ip: top.avg_ip });
-        }
+        if (lineupSlots.length > 0) setHomeLineup(lineupSlots);
+        if (starterSlot) setHomeStarter(starterSlot);
       } else {
         setAwayBatters(roster.batters || []);
         setAwayPitchers(roster.pitchers || []);
-        if (roster.batters && roster.batters.length >= 9) {
-          setAwayLineup(
-            roster.batters.slice(0, 9).map((b) => ({
-              external_ref: b.external_ref,
-              name: b.name,
-            })),
-          );
-        }
-        if (roster.pitchers && roster.pitchers.length > 0) {
-          const top = roster.pitchers[0];
-          setAwayStarter({ external_ref: top.external_ref, name: top.name, avg_ip: top.avg_ip });
-        }
+        if (lineupSlots.length > 0) setAwayLineup(lineupSlots);
+        if (starterSlot) setAwayStarter(starterSlot);
       }
     } catch {
       setError(`Failed to load roster for ${team}`);

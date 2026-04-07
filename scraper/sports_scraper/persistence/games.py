@@ -81,13 +81,19 @@ def _cache_delete(key: str) -> None:
 
 def _has_real_time(game_date) -> bool:
     """Return True if game_date carries a meaningful tip time (not a
-    midnight-ET placeholder created from a date-only source)."""
-    from datetime import date as _date_type
+    placeholder created from a date-only source).
+
+    Recognises two placeholder patterns:
+    - midnight ET  (from ``date_to_utc_datetime`` / ``_to_datetime``)
+    - noon ET      (from NHL ``_et_noon_utc`` schedule fallback)
+    """
+    from datetime import date as _date_type, timedelta as _td
     if isinstance(game_date, _date_type) and not isinstance(game_date, datetime):
         return False  # bare date — no time info
-    # Check if it's midnight ET (placeholder from date_to_utc_datetime)
     et_day = to_et_date(game_date)
-    return game_date != start_of_et_day_utc(et_day)
+    midnight_et = start_of_et_day_utc(et_day)
+    noon_et = midnight_et + _td(hours=12)
+    return game_date != midnight_et and game_date != noon_et
 
 
 def _to_datetime(game_date) -> datetime:

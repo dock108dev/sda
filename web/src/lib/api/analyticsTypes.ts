@@ -680,8 +680,15 @@ export interface RosterPitcher {
   avg_ip: number;
 }
 
+export interface ProjectedLineupSlot {
+  external_ref: string;
+  name: string;
+}
+
 export interface MLBRosterResponse {
   batters: RosterBatter[];
   pitchers: RosterPitcher[];
+  projected_lineup?: ProjectedLineupSlot[];
+  probable_starter?: ProjectedLineupSlot;
   error?: string;
 }

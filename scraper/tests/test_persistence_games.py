@@ -23,6 +23,7 @@ os.environ.setdefault("ENVIRONMENT", "development")
 
 from sports_scraper.models import TeamIdentity
 from sports_scraper.persistence.games import (
+    _has_real_time,
     _normalize_status,
     merge_external_ids,
     resolve_status_transition,
@@ -674,3 +675,33 @@ class TestUpsertGame:
         assert created is False
         # source_game_key should be set on the existing game
         assert existing_game.source_game_key == "202401150LAL"
+
+
+class TestHasRealTime:
+    """Tests for _has_real_time: detect placeholder vs real game times."""
+
+    def test_bare_date_is_not_real(self):
+        from datetime import date
+        assert _has_real_time(date(2026, 4, 7)) is False
+
+    def test_midnight_et_is_not_real(self):
+        """Midnight ET placeholder (from _to_datetime on bare date)."""
+        from sports_scraper.utils.datetime_utils import start_of_et_day_utc
+        from datetime import date
+        midnight = start_of_et_day_utc(date(2026, 4, 7))
+        assert _has_real_time(midnight) is False
+
+    def test_noon_et_is_not_real(self):
+        """Noon ET placeholder (from NHL _et_noon_utc fallback)."""
+        from sports_scraper.utils.datetime_utils import start_of_et_day_utc
+        from datetime import date, timedelta
+        noon = start_of_et_day_utc(date(2026, 4, 7)) + timedelta(hours=12)
+        assert _has_real_time(noon) is False
+
+    def test_real_game_time_is_real(self):
+        """7 PM ET (23:00 UTC) is a real game time."""
+        assert _has_real_time(datetime(2026, 4, 7, 23, 0, tzinfo=UTC)) is True
+
+    def test_another_real_time(self):
+        """1:30 AM UTC (9:30 PM ET) is a real game time."""
+        assert _has_real_time(datetime(2026, 4, 8, 1, 30, tzinfo=UTC)) is True

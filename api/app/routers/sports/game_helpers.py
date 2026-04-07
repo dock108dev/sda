@@ -14,7 +14,7 @@ from ...celery_client import get_celery_app
 from ...db import AsyncSession
 from ...db.scraper import SportsScrapeRun
 from ...db.social import TeamSocialPost
-from ...db.sports import SportsGame, SportsLeague, SportsTeam
+from ...db.sports import GameStatus, SportsGame, SportsLeague, SportsTeam
 from ...game_metadata.models import GameContext, StandingsEntry, TeamRatings
 from ...services.game_status import compute_status_flags
 from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
@@ -53,6 +53,11 @@ def apply_game_filters(
     final_only: bool = False,
 ) -> Select[tuple[SportsGame]]:
     """Apply filtering options for list endpoints."""
+    # Always exclude canceled/postponed games — they're phantom stubs or
+    # games that never happened (e.g., conditional tournament matchups).
+    _EXCLUDED_STATUSES = (GameStatus.canceled.value, GameStatus.postponed.value)
+    stmt = stmt.where(SportsGame.status.notin_(_EXCLUDED_STATUSES))
+
     if final_only:
         stmt = stmt.where(SportsGame.status.in_(_FINAL_STATUSES))
 

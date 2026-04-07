@@ -2,7 +2,23 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-03-25] - Current
+## [2026-04-07] - Current
+
+### Phantom Game Detection & Cancellation
+
+- **Phantom game auto-cancel:** Games created from odds feeds for conditional tournament matchups (e.g., "Illinois @ Duke" when UConn won the prior round) are now automatically marked `canceled` instead of `final` when they have no scores, PBP, boxscore, or scrape data past their expected end time. Existing phantom finals are also retroactively fixed on the next game state updater cycle.
+- **Games list excludes canceled/postponed:** The `GET /games` endpoint now filters out `canceled` and `postponed` games by default, preventing phantom games from appearing in consumer-facing apps.
+
+### NHL Game Time Fix
+
+- **NHL start times no longer stuck at noon ET:** Fixed `_has_real_time()` to recognize the noon-ET placeholder (from `_et_noon_utc()`) as a non-real time. Previously, games created with the noon-ET fallback were never updated with actual start times from the NHL schedule API because the system incorrectly treated noon ET as a real game time.
+
+### Projected Lineups & Probable Starters
+
+- **Roster endpoint enhanced:** `GET /api/analytics/mlb-roster` now returns optional `projected_lineup` (consensus 9-batter batting order from last 7 games) and `probable_starter` (today's announced starter from MLB Stats API). Downstream apps should use these fields as default pre-fills for simulation lineup selectors.
+- **Frontend auto-fill improved:** The simulator UI now uses projected lineup and probable starter when available, falling back to top-9-by-games-played only when the new fields are absent.
+
+## [2026-03-25]
 
 ### Multi-Sport Simulator & Analytics
 

@@ -173,7 +173,7 @@ class ActiveGamesResolver:
             return []
 
         # Include pregame/live games with stale PBP, plus final games
-        # that never got any play data (backfill after missed live window).
+        # that need PBP backfill (missed live window or incomplete data).
         has_plays = exists().where(
             db_models.SportsGamePlay.game_id == db_models.SportsGame.id
         )
@@ -199,6 +199,17 @@ class ActiveGamesResolver:
                         (db_models.SportsGame.status == db_models.GameStatus.final.value)
                         & (db_models.SportsGame.game_date > now - timedelta(hours=48))
                         & not_(has_plays)
+                    ),
+                    # Backfill: final games from last 48 hours where PBP was captured
+                    # before the game was finalized (incomplete due to rain delays,
+                    # stale timeout, etc). Re-fetches once to get the full PBP.
+                    (
+                        (db_models.SportsGame.status == db_models.GameStatus.final.value)
+                        & (db_models.SportsGame.game_date > now - timedelta(hours=48))
+                        & (db_models.SportsGame.home_score.isnot(None))
+                        & (db_models.SportsGame.last_pbp_at.isnot(None))
+                        & (db_models.SportsGame.last_boxscore_at.isnot(None))
+                        & (db_models.SportsGame.last_pbp_at < db_models.SportsGame.last_boxscore_at)
                     ),
                 ),
             )

@@ -408,6 +408,8 @@ Look up any valid filter value, enum, or config constant without digging into so
 
 **Lifecycle:** `scheduled` &rarr; `pregame` &rarr; `live` &rarr; `final` &rarr; `archived`
 
+`canceled` and `postponed` are terminal non-lifecycle statuses. Games that were never played (e.g., conditional tournament matchups where the prerequisite game had a different outcome) are automatically marked `canceled` by the game state updater. The games list endpoint excludes `canceled` and `postponed` games by default.
+
 Source: `api/app/db/sports.py` &rarr; `GameStatus`
 
 ### Market Types (Mainline)
@@ -1609,12 +1611,26 @@ Get recent roster for an MLB team. Returns batters and pitchers who have appeare
   "pitchers": [
     { "external_ref": "543037", "name": "Gerrit Cole", "games": 6, "avg_ip": 6.2 },
     { "external_ref": "656302", "name": "Carlos Rodon", "games": 5, "avg_ip": 5.8 }
-  ]
+  ],
+  "projected_lineup": [
+    { "external_ref": "665489", "name": "Jarren Duran" },
+    { "external_ref": "646240", "name": "Rafael Devers" },
+    { "external_ref": "680557", "name": "Triston Casas" },
+    { "external_ref": "680776", "name": "Masataka Yoshida" },
+    { "external_ref": "656555", "name": "Alex Verdugo" },
+    { "external_ref": "663993", "name": "Connor Wong" },
+    { "external_ref": "596105", "name": "Trevor Story" },
+    { "external_ref": "672284", "name": "Ceddanne Rafaela" },
+    { "external_ref": "543807", "name": "Justin Turner" }
+  ],
+  "probable_starter": { "external_ref": "678394", "name": "Brayan Bello" }
 }
 ```
 
 - **Batters:** From `MLBPlayerAdvancedStats`, ordered by game count descending
 - **Pitchers:** From `SportsPlayerBoxscore` (where `innings_pitched > 0`), ordered by appearance count descending
+- **`projected_lineup`** *(optional)*: Consensus 9-batter batting order derived from the team's last 7 games. Uses the most frequent starters in their most common batting positions. Absent when insufficient PBP data exists (fewer than 3 recent games). Downstream apps should use this as the default lineup pre-fill when present, falling back to top 9 batters from the `batters` array.
+- **`probable_starter`** *(optional)*: Today's announced probable starting pitcher from the MLB Stats API. Published 1-2 days before game time. Absent when MLB has not yet announced a starter or the API is unavailable. Downstream apps should cross-reference `external_ref` against the `pitchers` array to get `avg_ip`.
 
 ### Simulation
 
