@@ -17,13 +17,11 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    Text,
     UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import text
 
 from .base import Base
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "mlb_daily_forecasts_001"
 down_revision = "user_prefs_score_hide_001"
@@ -54,8 +55,8 @@ def upgrade() -> None:
         sa.Column("line_type", sa.String(20), nullable=True),
         # Metadata
         sa.Column("model_id", sa.String(200), nullable=True),
-        sa.Column("event_summary", sa.dialects.postgresql.JSONB, nullable=True),
-        sa.Column("feature_snapshot", sa.dialects.postgresql.JSONB, nullable=True),
+        sa.Column("event_summary", JSONB, nullable=True),
+        sa.Column("feature_snapshot", JSONB, nullable=True),
         # Timestamps
         sa.Column("refreshed_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
