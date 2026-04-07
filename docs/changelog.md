@@ -18,6 +18,18 @@ All notable changes to Sports Data Admin.
 - **Roster endpoint enhanced:** `GET /api/analytics/mlb-roster` now returns optional `projected_lineup` (consensus 9-batter batting order from last 7 games) and `probable_starter` (today's announced starter from MLB Stats API). Downstream apps should use these fields as default pre-fills for simulation lineup selectors.
 - **Frontend auto-fill improved:** The simulator UI now uses projected lineup and probable starter when available, falling back to top-9-by-games-played only when the new fields are absent.
 
+### Analytics Access Model Restructured
+
+- **Read-only endpoints no longer require admin role:** All read-only analytics endpoints (teams, rosters, profiles, simulations, predictions, model metrics, calibration reports, game theory) are now accessible with just an API key. Previously the entire `/api/analytics/*` router required admin role, blocking downstream consuming apps from accessing read-only data.
+- **Admin gating moved to per-endpoint:** 18 mutation endpoints (train, delete, activate, batch jobs, experiments, feature config CRUD) now have individual `Depends(require_admin)` decorators. See [Analytics Integration Guide](analytics-downstream.md) for the full breakdown.
+- **API-key-verified admin bypass:** Requests that pass API key verification are granted admin access without requiring Origin header matching. This fixes 403 errors on the admin UI when the browser origin doesn't match `ADMIN_ORIGINS`.
+
+### Live Game Protection
+
+- **Rain delay / extras protection:** Live games that have received fresh PBP or boxscore data within the last 30 minutes are protected from the stale timeout, regardless of wall clock time since game start. Previously, games with rain delays exceeding the estimated duration were prematurely marked final, cutting off live PBP data.
+- **Incomplete PBP backfill:** Final games from the last 48 hours where PBP was captured before the final boxscore are automatically re-fetched once, recovering missing late-inning data from rain delays or timeout-induced truncation.
+- **MLB duration increased:** `estimated_game_duration_hours` bumped from 3.5 to 5.0 as a secondary safety net for extended games.
+
 ## [2026-03-25]
 
 ### Multi-Sport Simulator & Analytics

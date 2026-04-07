@@ -9,12 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.dependencies.roles import require_admin
 from app.db.analytics import AnalyticsPredictionOutcome
 
 router = APIRouter()
 
 
-@router.post("/record-outcomes")
+@router.post("/record-outcomes", dependencies=[Depends(require_admin)])
 async def post_record_outcomes(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
@@ -143,7 +144,7 @@ def _serialize_prediction_outcome(o: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/degradation-check")
+@router.post("/degradation-check", dependencies=[Depends(require_admin)])
 async def post_degradation_check(
     sport: str = Query("mlb", description="Sport to check"),
 ) -> dict[str, Any]:
@@ -184,7 +185,7 @@ async def list_degradation_alerts(
     }
 
 
-@router.post("/degradation-alerts/{alert_id}/acknowledge")
+@router.post("/degradation-alerts/{alert_id}/acknowledge", dependencies=[Depends(require_admin)])
 async def acknowledge_degradation_alert(
     alert_id: int,
     db: AsyncSession = Depends(get_db),

@@ -1,18 +1,19 @@
 # Analytics Integration Guide
 
-> API reference for the analytics system. All endpoints live under `/api/analytics/`.
+> API reference for consuming apps. All endpoints live under `/api/analytics/`.
 
 ---
 
-## Navigation Structure
+## Access Model
 
-| Nav Item | Route | Purpose |
-|----------|-------|---------|
-| **Simulator** | `/analytics/simulator` | Multi-sport pregame Monte Carlo simulations (MLB, NBA, NHL, NCAAB) |
-| **Models** | `/analytics/models` | Feature loadouts, training, model registry, performance |
-| **Batch Sims** | `/analytics/batch` | Bulk simulation jobs + prediction outcome tracking |
-| **Experiments** | `/analytics/experiments` | Parameter sweep training + variant comparison |
-| **Profiles** | `/analytics/profiles` | Team rolling profile comparison + scouting |
+Analytics endpoints use **two access tiers**:
+
+| Tier | Auth | Description |
+|------|------|-------------|
+| **Read** | API key only (`X-API-Key`) | Teams, rosters, profiles, simulations, predictions, model metrics, calibration reports |
+| **Admin** | API key + admin role | Training, model activation/deletion, batch jobs, experiments, feature config CRUD |
+
+Downstream consuming apps only need an API key for all read operations. Admin-gated endpoints are marked with a lock icon below.
 
 ---
 
@@ -28,14 +29,20 @@ GET /api/analytics/mlb-teams        (MLB backward compat)
 GET /api/analytics/mlb-roster?team=NYY (MLB only — lineup support)
 ```
 
+All three are **read-only** (API key only).
+
 #### Roster Response (MLB)
 
-The roster endpoint now includes **projected lineup** and **probable starter** fields that downstream apps should use as defaults:
+The roster endpoint returns **projected lineup** and **probable starter** fields that downstream apps should use as defaults:
 
 ```json
 {
-  "batters": [...],
-  "pitchers": [...],
+  "batters": [
+    { "external_ref": "660271", "name": "Aaron Judge", "games_played": 28 }
+  ],
+  "pitchers": [
+    { "external_ref": "543037", "name": "Gerrit Cole", "games": 6, "avg_ip": 6.2 }
+  ],
   "projected_lineup": [
     { "external_ref": "665489", "name": "Jarren Duran" },
     ...
@@ -55,7 +62,7 @@ The roster endpoint now includes **projected lineup** and **probable starter** f
 GET /api/analytics/team-profile?team=NYY&sport=mlb&rolling_window=30
 ```
 
-Returns team metrics with league baselines for comparison.
+Returns team metrics with league baselines for comparison. **Read-only.**
 
 ### Run Simulation
 
@@ -68,7 +75,6 @@ POST /api/analytics/simulate
   "iterations": 5000,
   "rolling_window": 30,
   "probability_mode": "ml",
-  "model_id": "mlb_pa_v3",  // optional: test a specific model without activating it
   "home_lineup": [...],     // optional: exactly 9 batters
   "away_lineup": [...],     // optional: exactly 9 batters
   "home_starter": {...},    // optional
@@ -78,24 +84,11 @@ POST /api/analytics/simulate
 }
 ```
 
-The backend uses the active trained model (or the model specified by `model_id`). Falls back to rule-based if no model is trained.
+**Read-only** (computation only, no data mutation). Works for any sport — lineup fields are MLB-only.
 
-The response includes `event_summary` (per-team PA rates and game shape metrics) and `simulation_info.sanity_warnings` when anomalous results are detected.
+### Public Simulator API (alternative)
 
-**Multi-sport:** The same endpoint works for any sport:
-```json
-{
-  "sport": "nba",
-  "home_team": "BOS",
-  "away_team": "LAL",
-  "iterations": 5000
-}
-```
-Lineup-related fields (`home_lineup`, `away_lineup`, `home_starter`, `away_starter`, `starter_innings`) are MLB-only.
-
-### Public Simulator API (for downstream apps)
-
-Simplified endpoints at `/api/simulator/{sport}` — no configuration needed:
+Simplified endpoints at `/api/simulator/{sport}` — same access tier (API key only):
 
 ```
 GET  /api/simulator/{sport}/teams
@@ -106,143 +99,103 @@ See [API Reference](api.md#simulator) for full documentation.
 
 ---
 
-## Models Page
+## Models & Predictions (read-only)
 
-### Feature Loadouts
+All of these are **read-only** (API key only):
+
+- `GET /api/analytics/models` — list registered models
+- `GET /api/analytics/models/active` — currently active models
+- `GET /api/analytics/models/details` — model details
+- `GET /api/analytics/models/compare` — compare models
+- `GET /api/analytics/model-metrics` — model performance metrics
+- `GET /api/analytics/model-predict` — run a single prediction
+- `POST /api/analytics/model-predict` — run prediction with custom params
+- `GET /api/analytics/ensemble-config` — read ensemble config
+- `GET /api/analytics/ensemble-configs` — list all configs
+
+### Calibration & Outcomes (read-only)
+
+- `GET /api/analytics/calibration-report` — prediction accuracy
+- `GET /api/analytics/prediction-outcomes` — historical predictions (filter by `sport`, `status`)
+- `GET /api/analytics/degradation-alerts` — model health alerts
+
+### Feature Configs (read-only)
+
 - `GET /api/analytics/feature-configs` — list loadouts (filter by `sport`, `model_type`)
 - `GET /api/analytics/feature-config/{id}` — single loadout
+- `GET /api/analytics/available-features?sport=mlb` — list features with descriptions
+
+---
+
+## Game Theory (read-only)
+
+All computation-only, no data mutation:
+
+- `POST /api/analytics/game-theory/kelly` — optimal bet sizing
+- `POST /api/analytics/game-theory/kelly/batch` — batch bet sizing
+- `POST /api/analytics/game-theory/nash` — Nash equilibrium
+- `POST /api/analytics/game-theory/nash/lineup` — lineup optimization
+- `POST /api/analytics/game-theory/nash/pitch-selection` — pitch selection
+- `POST /api/analytics/game-theory/portfolio` — portfolio optimization
+- `POST /api/analytics/game-theory/minimax` — minimax solver
+- `POST /api/analytics/game-theory/regret-matching` — regret matching
+
+---
+
+## Batch Jobs & Results (read-only)
+
+- `GET /api/analytics/batch-simulate-jobs` — list batch sim jobs
+- `GET /api/analytics/batch-simulate-job/{id}` — job detail with `batch_summary` and `warnings`
+- `GET /api/analytics/training-jobs` — list training jobs
+- `GET /api/analytics/training-job/{job_id}` — training job detail
+
+### Experiments (read-only)
+
+- `GET /api/analytics/experiments` — list experiment suites
+- `GET /api/analytics/experiments/{id}` — suite detail with variant leaderboard
+- `GET /api/analytics/replay-jobs` — list replay jobs
+- `GET /api/analytics/replay-job/{id}` — replay detail
+- `GET /api/analytics/mlb-data-coverage` — data availability
+- `GET /api/analytics/backtest-jobs` — list backtest jobs
+- `GET /api/analytics/backtest-job/{id}` — backtest detail
+
+---
+
+## Admin-Only Endpoints
+
+These require admin role (API key + JWT with `role=admin`). **Not intended for downstream consuming apps.**
+
+### Training & Models
+- `POST /api/analytics/train` — start training job
+- `POST /api/analytics/training-job/{id}/cancel` — cancel training
+- `POST /api/analytics/models/activate` — activate a model
+- `DELETE /api/analytics/models` — delete a model
+- `POST /api/analytics/ensemble-config` — create/update ensemble config
+
+### Batch Operations
+- `POST /api/analytics/batch-simulate` — start bulk batch sim
+- `DELETE /api/analytics/batch-simulate-job/{id}` — delete batch job
+- `POST /api/analytics/record-outcomes` — record prediction outcomes
+- `POST /api/analytics/backtest` — start backtest
+
+### Feature Configs
 - `POST /api/analytics/feature-config` — create loadout
 - `PUT /api/analytics/feature-config/{id}` — update loadout
 - `DELETE /api/analytics/feature-config/{id}` — delete loadout
+- `POST /api/analytics/feature-configs/bulk-delete` — bulk delete
 - `POST /api/analytics/feature-config/{id}/clone` — clone loadout
-- `POST /api/analytics/feature-configs/bulk-delete` — bulk delete (`{"ids": [1, 2, 3]}`)
-- `GET /api/analytics/available-features?sport=mlb` — list features with descriptions
 
-### Training
-- `POST /api/analytics/train` — start training job
-- `GET /api/analytics/training-jobs` — list jobs
-- `POST /api/analytics/training-job/:id/cancel`
-
-### Registry
-- `GET /api/analytics/models` — list registered models
-- `POST /api/analytics/models/activate` — activate a model
-- `GET /api/analytics/models/compare`
-
-### Performance
-- `GET /api/analytics/calibration-report`
-- `GET /api/analytics/degradation-alerts`
-
----
-
-## Batch Sims
-
-### Endpoints
-
-- `POST /api/analytics/batch-simulate` — accepts optional `model_id` to test a specific trained model
-- `GET /api/analytics/batch-simulate-jobs` — list jobs
-- `GET /api/analytics/batch-simulate-job/{id}` — detail with `batch_summary` and `warnings`
-- `DELETE /api/analytics/batch-simulate-job/{id}` — delete job (revokes Celery task if running)
-- `POST /api/analytics/record-outcomes` — trigger outcome recording for finalized games
-- `GET /api/analytics/prediction-outcomes` — list prediction outcomes (filter by `sport`, `status`)
-
-### Response: Batch Sim Job
-
-```jsonc
-{
-  "id": 17,
-  "sport": "mlb",
-  "probability_mode": "ml",
-  "iterations": 5000,
-  "rolling_window": 60,
-  "date_start": "2025-08-01",
-  "date_end": "2025-08-01",
-  "status": "completed",           // pending | queued | running | completed | failed
-  "celery_task_id": "abc-123",
-  "game_count": 11,
-  "results": [                     // array of per-game results
-    {
-      "game_id": 125322,
-      "game_date": "2025-08-01",
-      "home_team": "Seattle Mariners",
-      "away_team": "Texas Rangers",
-      "home_win_probability": 0.509,
-      "away_win_probability": 0.491,
-      "average_home_score": 5.5,
-      "average_away_score": 5.6,
-      "probability_source": "ml",
-      "has_profiles": true
-    }
-  ],
-  "error_message": null,
-  "created_at": "2026-03-18T...",
-  "completed_at": "2026-03-18T...",
-  // Detail endpoint only (GET /batch-simulate-job/{id}):
-  "batch_summary": {
-    "avg_home_runs": 5.4,
-    "avg_away_runs": 5.5,
-    "avg_total_runs": 10.8,
-    "home_win_rate": 0.727,
-    "wp_distribution": {"50-55": 5, "55-60": 2, "60-70": 4, "70+": 0}
-  },
-  "warnings": [                    // sanity alerts (may be empty)
-    "Home avg runs (18.3) is unrealistically high (>15)"
-  ]
-}
-```
-
-### Response: Prediction Outcome
-
-```jsonc
-{
-  "id": 1,
-  "game_id": 125322,
-  "sport": "mlb",
-  "batch_sim_job_id": 17,
-  "home_team": "Seattle Mariners",
-  "away_team": "Texas Rangers",
-  "predicted_home_wp": 0.509,
-  "predicted_away_wp": 0.491,
-  "predicted_home_score": 5.5,
-  "predicted_away_score": 5.6,
-  "probability_mode": "ml",
-  "game_date": "2025-08-01",
-  // Populated after game finishes (null while pending):
-  "actual_home_score": 4,
-  "actual_away_score": 6,
-  "home_win_actual": false,
-  "correct_winner": false,
-  "brier_score": 0.245,
-  "outcome_recorded_at": "2026-03-18T...",
-  "created_at": "2026-03-18T..."
-}
-```
-
-### Model Testing Workflow
-
-1. `POST /api/analytics/train` — train a model with custom parameters, get `job_id`
-2. `GET /api/analytics/training-job/{id}` — poll until complete, get `model_id`
-3. `POST /api/analytics/batch-simulate` with `model_id` — test that model on real games
-4. Results include `event_summary` (PA rates), `batch_summary`, and `warnings` for tuning
-5. `POST /api/analytics/simulate` with `model_id` — test single matchups with diagnostics
-
----
-
-## Experiments
-
-Parameter sweep training — combinatorial grid of algorithms, rolling windows, test splits, and feature loadouts.
-
+### Experiments
 - `POST /api/analytics/experiments` — create and launch suite
-- `GET /api/analytics/experiments` — list suites
-- `GET /api/analytics/experiments/:id` — suite detail with variant leaderboard
-- `POST /api/analytics/experiments/:id/promote/:variant_id` — activate winning model
-- `POST /api/analytics/experiments/:id/cancel` — stop a running experiment
-- `DELETE /api/analytics/experiments/:id` — delete suite and all variants
-- `DELETE /api/analytics/experiments/:id/variant/:variant_id` — delete single variant
+- `POST /api/analytics/experiments/{id}/promote/{variant_id}` — activate winning model
+- `POST /api/analytics/experiments/{id}/cancel` — stop experiment
+- `DELETE /api/analytics/experiments/{id}` — delete suite
+- `DELETE /api/analytics/experiments/{id}/variant/{variant_id}` — delete variant
+- `POST /api/analytics/replay` — start replay job
 
-### Historical Replay
-
-- `POST /api/analytics/replay` — evaluate model on historical games
-- `GET /api/analytics/replay-jobs`
+### Alerts
+- `POST /api/analytics/degradation-check` — trigger degradation check
+- `POST /api/analytics/degradation-alerts/{id}/acknowledge` — acknowledge alert
 
 ---
 

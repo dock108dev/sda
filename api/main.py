@@ -132,11 +132,11 @@ app.include_router(fairbet.router, dependencies=auth_dependency)
 app.include_router(model_odds_router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
-# Analytics — admin-only endpoints (training, batch simulation, model
-# activation).  Admin UI requests are granted admin via Origin check;
-# consumer apps must send a JWT with role=admin.
+# Analytics — read-only endpoints (teams, profiles, rosters, predictions)
+# are accessible to any API-key holder.  Mutation endpoints (train, delete,
+# activate, batch jobs) require admin role via per-endpoint Depends.
 # ---------------------------------------------------------------------------
-app.include_router(analytics_router, dependencies=admin_dependency)
+app.include_router(analytics_router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
 # Golf — tournament, player, odds, and DFS endpoints

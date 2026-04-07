@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.inference.model_inference_engine import ModelInferenceEngine
+from app.dependencies.roles import require_admin
 from app.analytics.models.core.model_registry import ModelRegistry
 from app.analytics.services.model_service import ModelService
 from app.db import get_db
@@ -237,7 +238,7 @@ async def get_model_compare(
     return _model_service.compare_models(sport, model_type, ids)
 
 
-@router.post("/models/activate")
+@router.post("/models/activate", dependencies=[Depends(require_admin)])
 async def post_activate_model(
     req: ModelActivateRequest,
     db: AsyncSession = Depends(get_db),
@@ -300,7 +301,7 @@ class ModelDeleteRequest(BaseModel):
     )
 
 
-@router.delete("/models")
+@router.delete("/models", dependencies=[Depends(require_admin)])
 async def delete_model(
     req: ModelDeleteRequest,
     db: AsyncSession = Depends(get_db),
@@ -454,7 +455,7 @@ async def list_ensemble_configs_endpoint() -> dict[str, Any]:
     return {"configs": [c.to_dict() for c in configs], "count": len(configs)}
 
 
-@router.post("/ensemble-config")
+@router.post("/ensemble-config", dependencies=[Depends(require_admin)])
 async def post_ensemble_config(req: EnsembleConfigRequest) -> dict[str, Any]:
     """Update ensemble configuration for a sport + model type."""
     from app.analytics.ensemble.ensemble_config import (

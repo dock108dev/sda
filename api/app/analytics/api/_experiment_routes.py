@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.dependencies.roles import require_admin
 
 router = APIRouter()
 
@@ -80,7 +81,7 @@ def _serialize_variant(v: Any) -> dict[str, Any]:
     }
 
 
-@router.post("/experiments")
+@router.post("/experiments", dependencies=[Depends(require_admin)])
 async def create_experiment_suite(
     req: ExperimentSuiteRequest,
     db: AsyncSession = Depends(get_db),
@@ -168,7 +169,7 @@ async def get_experiment_suite(
     return data
 
 
-@router.post("/experiments/{suite_id}/promote/{variant_id}")
+@router.post("/experiments/{suite_id}/promote/{variant_id}", dependencies=[Depends(require_admin)])
 async def promote_experiment_variant(
     suite_id: int,
     variant_id: int,
@@ -244,7 +245,7 @@ async def _revoke_suite_tasks(
             pass  # best-effort
 
 
-@router.post("/experiments/{suite_id}/cancel")
+@router.post("/experiments/{suite_id}/cancel", dependencies=[Depends(require_admin)])
 async def cancel_experiment_suite(
     suite_id: int,
     db: AsyncSession = Depends(get_db),
@@ -283,7 +284,7 @@ async def cancel_experiment_suite(
     return {"status": "cancelled", "suite": _serialize_experiment_suite(suite)}
 
 
-@router.delete("/experiments/{suite_id}")
+@router.delete("/experiments/{suite_id}", dependencies=[Depends(require_admin)])
 async def delete_experiment_suite(
     suite_id: int,
     db: AsyncSession = Depends(get_db),
@@ -307,7 +308,7 @@ async def delete_experiment_suite(
     return {"status": "deleted", "id": suite_id}
 
 
-@router.delete("/experiments/{suite_id}/variant/{variant_id}")
+@router.delete("/experiments/{suite_id}/variant/{variant_id}", dependencies=[Depends(require_admin)])
 async def delete_experiment_variant(
     suite_id: int,
     variant_id: int,
@@ -385,7 +386,7 @@ def _serialize_replay_job(job: Any) -> dict[str, Any]:
     }
 
 
-@router.post("/replay")
+@router.post("/replay", dependencies=[Depends(require_admin)])
 async def start_replay(
     req: ReplayRequest,
     db: AsyncSession = Depends(get_db),

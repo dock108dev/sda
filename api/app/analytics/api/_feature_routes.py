@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.db.analytics import AnalyticsFeatureConfig
+from app.dependencies.roles import require_admin
 
 router = APIRouter()
 
@@ -92,7 +93,7 @@ async def get_feature_config_by_id(
     return _serialize_loadout(row)
 
 
-@router.post("/feature-config")
+@router.post("/feature-config", dependencies=[Depends(require_admin)])
 async def create_feature_config(
     req: FeatureLoadoutCreateRequest,
     db: AsyncSession = Depends(get_db),
@@ -111,7 +112,7 @@ async def create_feature_config(
     return {"status": "created", **_serialize_loadout(row)}
 
 
-@router.put("/feature-config/{config_id}")
+@router.put("/feature-config/{config_id}", dependencies=[Depends(require_admin)])
 async def update_feature_config(
     config_id: int,
     req: FeatureLoadoutUpdateRequest,
@@ -138,7 +139,7 @@ async def update_feature_config(
     return {"status": "updated", **_serialize_loadout(row)}
 
 
-@router.delete("/feature-config/{config_id}")
+@router.delete("/feature-config/{config_id}", dependencies=[Depends(require_admin)])
 async def delete_feature_config(
     config_id: int,
     db: AsyncSession = Depends(get_db),
@@ -157,7 +158,7 @@ class BulkDeleteRequest(BaseModel):
     ids: list[int] = Field(..., description="List of loadout IDs to delete")
 
 
-@router.post("/feature-configs/bulk-delete")
+@router.post("/feature-configs/bulk-delete", dependencies=[Depends(require_admin)])
 async def bulk_delete_feature_configs(
     req: BulkDeleteRequest,
     db: AsyncSession = Depends(get_db),
@@ -180,7 +181,7 @@ async def bulk_delete_feature_configs(
     return {"status": "deleted", "deleted": len(deleted_ids), "ids": deleted_ids}
 
 
-@router.post("/feature-config/{config_id}/clone")
+@router.post("/feature-config/{config_id}/clone", dependencies=[Depends(require_admin)])
 async def clone_feature_config(
     config_id: int,
     name: str = Query(None, description="Name for the cloned loadout"),

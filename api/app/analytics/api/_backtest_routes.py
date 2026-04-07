@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.dependencies.roles import require_admin
 
 router = APIRouter()
 
@@ -53,7 +54,7 @@ def _serialize_backtest_job(job) -> dict[str, Any]:
     }
 
 
-@router.post("/backtest")
+@router.post("/backtest", dependencies=[Depends(require_admin)])
 async def start_backtest(
     req: BacktestRequest,
     db: AsyncSession = Depends(get_db),

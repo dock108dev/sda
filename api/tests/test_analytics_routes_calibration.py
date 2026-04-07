@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from app.analytics.api.analytics_routes import router
 from app.db import get_db
+from app.dependencies.roles import require_admin
 
 
 def _make_client(mock_db=None):
@@ -30,6 +31,7 @@ def _make_client(mock_db=None):
 
     app = FastAPI()
     app.dependency_overrides[get_db] = mock_get_db
+    app.dependency_overrides[require_admin] = lambda: "admin"
     app.include_router(router)
     return TestClient(app)
 

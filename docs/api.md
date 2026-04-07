@@ -185,7 +185,19 @@ Authenticated response:
 |------|-------------|--------|
 | `guest` | No token provided | Games, settings, pregame FairBet |
 | `user` | Authenticated beta user | Everything guest + full FairBet |
-| `admin` | Developer access | Everything user + analytics, history |
+| `admin` | Developer access | Everything user + mutation analytics (train, delete, activate) |
+
+### Access Tiers
+
+Endpoints are grouped into three access tiers:
+
+| Tier | Auth Required | Examples |
+|------|--------------|----------|
+| **Public** | API key only | Games, teams, rosters, profiles, simulations, predictions, FairBet, game theory |
+| **User** | API key + JWT (`role=user`) | Full FairBet live odds |
+| **Admin** | API key + JWT (`role=admin`) | Train models, activate models, delete data, batch jobs, experiments, feature configs |
+
+All read-only data endpoints (teams, rosters, profiles, predictions, calibration reports, model metrics) are accessible with just an API key. Only endpoints that mutate data or trigger expensive operations require admin role.
 
 ### JWT Payload
 

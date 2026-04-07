@@ -21,6 +21,7 @@ from app.analytics.services.lineup_weights import (
 )
 from app.analytics.services.profile_service import ProfileResult
 from app.db import get_db
+from app.dependencies.roles import require_admin
 
 
 def _make_client(mock_db=None):
@@ -40,6 +41,7 @@ def _make_client(mock_db=None):
 
     app = FastAPI()
     app.dependency_overrides[get_db] = mock_get_db
+    app.dependency_overrides[require_admin] = lambda: "admin"
     app.include_router(router)
     return TestClient(app), mock_db
 

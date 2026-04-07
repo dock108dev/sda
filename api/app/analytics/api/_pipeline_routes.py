@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.dependencies.roles import require_admin
 
 router = APIRouter()
 
@@ -61,7 +62,7 @@ def _serialize_training_job(job) -> dict[str, Any]:
     }
 
 
-@router.post("/train")
+@router.post("/train", dependencies=[Depends(require_admin)])
 async def start_training(
     req: TrainModelRequest,
     db: AsyncSession = Depends(get_db),
@@ -153,7 +154,7 @@ async def get_training_job(
     return _serialize_training_job(job)
 
 
-@router.post("/training-job/{job_id}/cancel")
+@router.post("/training-job/{job_id}/cancel", dependencies=[Depends(require_admin)])
 async def cancel_training_job(
     job_id: int,
     db: AsyncSession = Depends(get_db),
@@ -202,7 +203,7 @@ class BatchSimulateRequest(BaseModel):
     model_id: str | None = Field(None, description="Specific model ID to test (uses active model if omitted)")
 
 
-@router.post("/batch-simulate")
+@router.post("/batch-simulate", dependencies=[Depends(require_admin)])
 async def post_batch_simulate(
     req: BatchSimulateRequest,
     db: AsyncSession = Depends(get_db),
@@ -267,7 +268,7 @@ async def get_batch_simulate_job(
     return _serialize_batch_sim_job(job, include_diagnostics=True)
 
 
-@router.delete("/batch-simulate-job/{job_id}")
+@router.delete("/batch-simulate-job/{job_id}", dependencies=[Depends(require_admin)])
 async def delete_batch_simulate_job(
     job_id: int,
     db: AsyncSession = Depends(get_db),
