@@ -294,6 +294,7 @@ def _promote_stale_to_final(session: Session) -> int:
 
             if never_played:
                 game.status = db_models.GameStatus.canceled.value
+                game.end_time = None
                 game.updated_at = now
                 promoted += 1
                 logger.info(

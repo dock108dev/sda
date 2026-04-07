@@ -51,12 +51,12 @@ def apply_game_filters(
     missing_social: bool,
     missing_any: bool,
     final_only: bool = False,
+    include_canceled: bool = False,
 ) -> Select[tuple[SportsGame]]:
     """Apply filtering options for list endpoints."""
-    # Always exclude canceled/postponed games — they're phantom stubs or
-    # games that never happened (e.g., conditional tournament matchups).
-    _EXCLUDED_STATUSES = (GameStatus.canceled.value, GameStatus.postponed.value)
-    stmt = stmt.where(SportsGame.status.notin_(_EXCLUDED_STATUSES))
+    if not include_canceled:
+        _EXCLUDED_STATUSES = (GameStatus.canceled.value, GameStatus.postponed.value)
+        stmt = stmt.where(SportsGame.status.notin_(_EXCLUDED_STATUSES))
 
     if final_only:
         stmt = stmt.where(SportsGame.status.in_(_FINAL_STATUSES))

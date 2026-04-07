@@ -202,7 +202,9 @@ class ActiveGamesResolver:
                     ),
                     # Backfill: final games from last 48 hours where PBP was captured
                     # before the game was finalized (incomplete due to rain delays,
-                    # stale timeout, etc). Re-fetches once to get the full PBP.
+                    # stale timeout, etc). Only triggers when PBP hasn't been
+                    # refreshed in the last hour, preventing repeated re-fetches
+                    # from routine boxscore updates.
                     (
                         (db_models.SportsGame.status == db_models.GameStatus.final.value)
                         & (db_models.SportsGame.game_date > now - timedelta(hours=48))
@@ -210,6 +212,7 @@ class ActiveGamesResolver:
                         & (db_models.SportsGame.last_pbp_at.isnot(None))
                         & (db_models.SportsGame.last_boxscore_at.isnot(None))
                         & (db_models.SportsGame.last_pbp_at < db_models.SportsGame.last_boxscore_at)
+                        & (db_models.SportsGame.last_pbp_at < now - timedelta(hours=1))
                     ),
                 ),
             )

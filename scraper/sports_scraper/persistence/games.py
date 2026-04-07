@@ -8,7 +8,7 @@ strategy and a Redis-based match cache shared across all Celery workers.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date as _date_type, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
@@ -87,18 +87,16 @@ def _has_real_time(game_date) -> bool:
     - midnight ET  (from ``date_to_utc_datetime`` / ``_to_datetime``)
     - noon ET      (from NHL ``_et_noon_utc`` schedule fallback)
     """
-    from datetime import date as _date_type, timedelta as _td
     if isinstance(game_date, _date_type) and not isinstance(game_date, datetime):
         return False  # bare date — no time info
     et_day = to_et_date(game_date)
     midnight_et = start_of_et_day_utc(et_day)
-    noon_et = midnight_et + _td(hours=12)
+    noon_et = midnight_et + timedelta(hours=12)
     return game_date != midnight_et and game_date != noon_et
 
 
 def _to_datetime(game_date) -> datetime:
     """Coerce a date or datetime to a timezone-aware UTC datetime for storage."""
-    from datetime import date as _date_type
     if isinstance(game_date, _date_type) and not isinstance(game_date, datetime):
         return start_of_et_day_utc(game_date)
     return game_date
