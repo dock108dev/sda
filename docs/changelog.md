@@ -18,6 +18,12 @@ All notable changes to Sports Data Admin.
 - **Roster endpoint enhanced:** `GET /api/analytics/mlb-roster` now returns optional `projected_lineup` (consensus 9-batter batting order from last 7 games) and `probable_starter` (today's announced starter from MLB Stats API). Downstream apps should use these fields as default pre-fills for simulation lineup selectors.
 - **Frontend auto-fill improved:** The simulator UI now uses projected lineup and probable starter when available, falling back to top-9-by-games-played only when the new fields are absent.
 
+### Hourly MLB Forecasts
+
+- **Automated daily predictions:** New hourly Celery task (`refresh_mlb_forecasts`) pre-computes Monte Carlo simulations for all MLB games in the next 24 hours using the active model, 30-day rolling window, and 5000 iterations. Results include full line analysis (edges, EV, fair lines) from current market odds.
+- **Work table:** `mlb_daily_forecasts` stores one row per game, upserted each hour. Flat columns (not JSONB) for direct SQL filtering by edge/EV.
+- **New endpoint:** `GET /api/analytics/forecasts/mlb` — read-only, API-key-only. Supports `?date=`, `?game_id=`, `?min_edge=` filters. See [Analytics Integration Guide](analytics-downstream.md#daily-forecasts-mlb).
+
 ### Analytics Access Model Restructured
 
 - **Read-only endpoints no longer require admin role:** All read-only analytics endpoints (teams, rosters, profiles, simulations, predictions, model metrics, calibration reports, game theory) are now accessible with just an API key. Previously the entire `/api/analytics/*` router required admin role, blocking downstream consuming apps from accessing read-only data.

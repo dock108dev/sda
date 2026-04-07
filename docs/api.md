@@ -1603,6 +1603,20 @@ List MLB teams with the number of games that have advanced Statcast data. Used b
 }
 ```
 
+### MLB Daily Forecasts
+
+#### `GET /forecasts/mlb`
+
+Pre-computed predictions for all MLB games in the next 24 hours, refreshed hourly. Read-only, API key only.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `date` | `string` | today (ET) | Game date `YYYY-MM-DD` |
+| `game_id` | `int` | — | Filter to specific game |
+| `min_edge` | `float` | — | Min absolute edge on either side |
+
+**Response:** See [Analytics Integration Guide](analytics-downstream.md#daily-forecasts-mlb) for full response shape and field descriptions.
+
 ### MLB Roster
 
 #### `GET /mlb-roster`
