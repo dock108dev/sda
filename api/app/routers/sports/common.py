@@ -290,6 +290,14 @@ def _get_float_stat(stats: dict[str, Any], key: str) -> float | None:
     return None
 
 
+def _normalize_save_pct(stats: dict) -> float | None:
+    """Return SV% as decimal (0.935). Handles legacy rows stored as percentage (93.5)."""
+    val = _get_float_stat(stats, "save_percentage")
+    if val is not None and val > 1:
+        val = round(val / 100, 4)
+    return val
+
+
 def serialize_nhl_goalie(player: SportsPlayerBoxscore) -> NHLGoalieStat:
     """Serialize NHL goalie boxscore with goaltender-specific fields."""
     stats = player.stats or {}
@@ -300,7 +308,7 @@ def serialize_nhl_goalie(player: SportsPlayerBoxscore) -> NHLGoalieStat:
         shots_against=_get_int_stat(stats, "shots_against"),
         saves=_get_int_stat(stats, "saves"),
         goals_against=_get_int_stat(stats, "goals_against"),
-        save_percentage=_get_float_stat(stats, "save_percentage"),
+        save_percentage=_normalize_save_pct(stats),
         raw_stats=stats,
         source=player.source,
         updated_at=player.updated_at,

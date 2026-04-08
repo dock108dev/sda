@@ -523,8 +523,10 @@ def upgrade() -> None:
     from sqlalchemy import text
 
     conn = op.get_bind()
+    updated = 0
+    skipped = []
     for abbr, league, pl, pd, sl, sd in _ALL_TEAM_COLORS:
-        conn.execute(
+        result = conn.execute(
             text("""
                 UPDATE sports_teams
                 SET color_light_hex = :pl,
@@ -538,6 +540,13 @@ def upgrade() -> None:
             """),
             {"abbr": abbr, "league": league, "pl": pl, "pd": pd, "sl": sl, "sd": sd},
         )
+        if result.rowcount == 1:
+            updated += 1
+        else:
+            skipped.append(f"{league}/{abbr}")
+    print(f"Team colors: {updated} updated, {len(skipped)} skipped")
+    if skipped:
+        print(f"  Skipped (no matching team): {', '.join(skipped[:20])}")
 
 
 def downgrade() -> None:

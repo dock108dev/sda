@@ -83,6 +83,8 @@ async def list_teams(
             gamesCount=row.games_count or 0,
             colorLightHex=row.SportsTeam.color_light_hex,
             colorDarkHex=row.SportsTeam.color_dark_hex,
+            colorSecondaryLightHex=row.SportsTeam.color_secondary_light_hex,
+            colorSecondaryDarkHex=row.SportsTeam.color_secondary_dark_hex,
         )
         for row in rows
     ]
@@ -178,6 +180,8 @@ async def get_team(team_id: int, session: AsyncSession = Depends(get_db)) -> Tea
         xProfileUrl=f"https://x.com/{team.x_handle}" if team.x_handle else None,
         colorLightHex=team.color_light_hex,
         colorDarkHex=team.color_dark_hex,
+        colorSecondaryLightHex=team.color_secondary_light_hex,
+        colorSecondaryDarkHex=team.color_secondary_dark_hex,
         recentGames=recent_games,
     )
 
@@ -304,5 +308,7 @@ async def update_team_colors(
         xProfileUrl=f"https://x.com/{team.x_handle}" if team.x_handle else None,
         colorLightHex=team.color_light_hex,
         colorDarkHex=team.color_dark_hex,
+        colorSecondaryLightHex=team.color_secondary_light_hex,
+        colorSecondaryDarkHex=team.color_secondary_dark_hex,
         recentGames=recent_games,
     )
