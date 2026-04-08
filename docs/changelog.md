@@ -36,6 +36,20 @@ All notable changes to Sports Data Admin.
 - **Incomplete PBP backfill:** Final games from the last 48 hours where PBP was captured before the final boxscore are automatically re-fetched once, recovering missing late-inning data from rain delays or timeout-induced truncation.
 - **MLB duration increased:** `estimated_game_duration_hours` bumped from 3.5 to 5.0 as a secondary safety net for extended games.
 
+### Team Colors: Secondary Colors & Clash Resolution
+
+- **Secondary colors added:** Every team now has 4 colors: `colorLightHex`, `colorDarkHex`, `colorSecondaryLightHex`, `colorSecondaryDarkHex`. 495 teams seeded across MLB (30), NBA (30), NFL (32), NHL (33), and NCAAB (370). NCAAB sourced from Wikipedia's Module:College_color/data.
+- **Clash resolution changed:** Home team now always keeps its primary colors. Away team adapts: primary → secondary → neutral. Light and dark modes resolved independently. Previously home yielded to neutral.
+- **New team fields:** `GET /teams` and `GET /teams/{id}` now include `colorSecondaryLightHex` and `colorSecondaryDarkHex`. `PATCH /teams/{id}/colors` accepts all 4 fields.
+- **Game colors unchanged:** `homeTeamColorLight`, `homeTeamColorDark`, `awayTeamColorLight`, `awayTeamColorDark` are still the final resolved values — downstream apps read these directly, no changes needed.
+
+### NHL Data Fixes
+
+- **Shootout scores:** Games going to shootout now correctly show the winner's score (e.g., 3-2) instead of regulation tie (2-2). PBP score reconciliation no longer downgrades scores set by the boxscore API.
+- **Goalie SV%:** Now stored as decimal (0.935) instead of percentage (93.5). **Breaking change** — downstream apps displaying SV% that expected a pre-multiplied percentage value should now multiply by 100 or format as decimal.
+- **Player stats sorted by TOI:** NHL skaters and goalies are now returned in descending time-on-ice order.
+- **Team stats enriched:** NHL team boxscores now include hits, blocked shots, giveaways, and takeaways (aggregated from player stats).
+
 ## [2026-03-25]
 
 ### Multi-Sport Simulator & Analytics

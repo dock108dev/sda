@@ -297,11 +297,19 @@ def upsert_plays(
 
         session.flush()
 
-        # Reconcile game-level scores from PBP data
+        # Reconcile game-level scores from PBP data.
+        # Only update if PBP has HIGHER total (never downgrade — boxscore
+        # may include shootout winner that PBP doesn't track as a scored play).
         final_scores = get_final_scores_from_pbp(session, game_id)
         if final_scores:
             pbp_home, pbp_away = final_scores
-            if game.home_score != pbp_home or game.away_score != pbp_away:
+            try:
+                pbp_total = int(pbp_home or 0) + int(pbp_away or 0)
+                game_total = int(game.home_score or 0) + int(game.away_score or 0)
+            except (TypeError, ValueError):
+                pbp_total = 0
+                game_total = 0
+            if pbp_total > game_total:
                 logger.info(
                     "score_reconciled_from_pbp",
                     game_id=game_id,

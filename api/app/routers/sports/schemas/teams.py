@@ -20,6 +20,8 @@ class TeamSummary(BaseModel):
     games_count: int = Field(alias="gamesCount")
     color_light_hex: str | None = Field(None, alias="colorLightHex")
     color_dark_hex: str | None = Field(None, alias="colorDarkHex")
+    color_secondary_light_hex: str | None = Field(None, alias="colorSecondaryLightHex")
+    color_secondary_dark_hex: str | None = Field(None, alias="colorSecondaryDarkHex")
 
 
 class TeamListResponse(BaseModel):
@@ -58,6 +60,8 @@ class TeamDetail(BaseModel):
     x_profile_url: str | None = Field(None, alias="xProfileUrl")
     color_light_hex: str | None = Field(None, alias="colorLightHex")
     color_dark_hex: str | None = Field(None, alias="colorDarkHex")
+    color_secondary_light_hex: str | None = Field(None, alias="colorSecondaryLightHex")
+    color_secondary_dark_hex: str | None = Field(None, alias="colorSecondaryDarkHex")
     recent_games: list[TeamGameSummary] = Field(alias="recentGames")
 
 
@@ -83,14 +87,22 @@ def _validate_hex_color(v: str | None) -> str | None:
 
 
 class TeamColorUpdate(BaseModel):
-    """Request body for updating team colors."""
+    """Request body for updating team colors (primary and secondary)."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     color_light_hex: str | None = Field(None, alias="colorLightHex")
     color_dark_hex: str | None = Field(None, alias="colorDarkHex")
+    color_secondary_light_hex: str | None = Field(None, alias="colorSecondaryLightHex")
+    color_secondary_dark_hex: str | None = Field(None, alias="colorSecondaryDarkHex")
 
-    @field_validator("color_light_hex", "color_dark_hex", mode="before")
+    @field_validator(
+        "color_light_hex",
+        "color_dark_hex",
+        "color_secondary_light_hex",
+        "color_secondary_dark_hex",
+        mode="before",
+    )
     @classmethod
     def validate_hex(cls, v: str | None) -> str | None:
         return _validate_hex_color(v)

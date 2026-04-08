@@ -294,7 +294,8 @@ class NHLBoxscoreFetcher:
         # Get goals against and save percentage
         goals_against = parse_int(player_data.get("goalsAgainst"))
         save_pctg = player_data.get("savePctg")
-        save_percentage = round(float(save_pctg) * 100, 1) if save_pctg is not None else None
+        # Store as decimal (0.935), not percentage (93.5) — frontend formats
+        save_percentage = round(float(save_pctg), 4) if save_pctg is not None else None
 
         # Build raw stats
         raw_stats = {
@@ -344,6 +345,22 @@ class NHLBoxscoreFetcher:
         total_shots = sum(p.shots_on_goal or 0 for p in skaters)
         total_pim = sum(p.penalties or 0 for p in skaters)
         total_assists = sum(p.assists or 0 for p in skaters)
+        total_goals = sum(p.goals or 0 for p in skaters)
+        total_hits = sum(p.hits or 0 for p in skaters)
+        total_blocked = sum(p.blocked_shots or 0 for p in skaters)
+        total_giveaways = sum(p.giveaways or 0 for p in skaters)
+        total_takeaways = sum(p.takeaways or 0 for p in skaters)
+
+        raw_stats = {
+            "goals": total_goals,
+            "assists": total_assists,
+            "shots_on_goal": total_shots,
+            "penalty_minutes": total_pim,
+            "hits": total_hits,
+            "blocked_shots": total_blocked,
+            "giveaways": total_giveaways,
+            "takeaways": total_takeaways,
+        }
 
         return NormalizedTeamBoxscore(
             team=team_identity,
@@ -352,5 +369,5 @@ class NHLBoxscoreFetcher:
             shots_on_goal=total_shots if total_shots > 0 else None,
             penalty_minutes=total_pim if total_pim > 0 else None,
             assists=total_assists if total_assists > 0 else None,
-            raw_stats={},
+            raw_stats=raw_stats,
         )

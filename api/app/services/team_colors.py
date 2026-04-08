@@ -1,8 +1,8 @@
 """Team color utilities: hex conversion and clash detection.
 
-Ported from GameTheme.swift (lines 617-658). This is a pure utility module
-with no database access — it can be called from game endpoints to resolve
-matchup colors when two teams have visually similar colors.
+Resolves game-level matchup colors so API consumers get final values
+with no client-side color shifting needed. Home team always keeps its
+primary colors; away team adapts (primary → secondary → neutral).
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ def color_distance(c1: str, c2: str) -> float:
     """Normalized Euclidean distance in RGB space (0.0-1.0).
 
     Max possible RGB distance is sqrt(3) ≈ 1.732, so we normalize by that.
-    Matches the Swift implementation in GameTheme.swift.
     """
     r1, g1, b1 = hex_to_rgb(c1)
     r2, g2, b2 = hex_to_rgb(c2)
@@ -35,29 +34,54 @@ def color_distance(c1: str, c2: str) -> float:
     return math.sqrt(dr * dr + dg * dg + db * db) / math.sqrt(3)
 
 
+def _pick_away_color(
+    home_color: str,
+    away_primary: str | None,
+    away_secondary: str | None,
+    neutral: str,
+) -> str:
+    """Pick the best away color that doesn't clash with home.
+
+    Priority: primary → secondary → neutral.
+    """
+    if away_primary and color_distance(home_color, away_primary) >= CLASH_THRESHOLD:
+        return away_primary
+    if away_secondary and color_distance(home_color, away_secondary) >= CLASH_THRESHOLD:
+        return away_secondary
+    return neutral
+
+
 def get_matchup_colors(
     home_color_light: str | None,
     home_color_dark: str | None,
     away_color_light: str | None,
     away_color_dark: str | None,
+    away_secondary_light: str | None = None,
+    away_secondary_dark: str | None = None,
 ) -> dict[str, str]:
-    """Return matchup-aware colors. Home team yields to neutral on clash.
+    """Return matchup-aware colors. Away team adapts on clash; home keeps primary.
 
-    When the home and away light-mode colors are too similar (distance < threshold),
-    the home team's colors are replaced with neutral black/white to ensure visual
-    distinction. This matches the Swift app behavior where the home team yields.
+    Clash resolution is done independently for light and dark modes:
+    - Home always uses its primary colors
+    - Away uses primary unless it clashes with home, then secondary, then neutral
 
     Returns dict with keys: homeLightHex, homeDarkHex, awayLightHex, awayDarkHex.
     """
     h_light = home_color_light or NEUTRAL_LIGHT
     h_dark = home_color_dark or NEUTRAL_DARK
-    a_light = away_color_light or NEUTRAL_LIGHT
-    a_dark = away_color_dark or NEUTRAL_DARK
 
-    # Check clash on light-mode colors (primary comparison)
-    if color_distance(h_light, a_light) < CLASH_THRESHOLD:
-        h_light = NEUTRAL_LIGHT
-        h_dark = NEUTRAL_DARK
+    a_light = _pick_away_color(
+        h_light,
+        away_color_light,
+        away_secondary_light,
+        NEUTRAL_LIGHT,
+    )
+    a_dark = _pick_away_color(
+        h_dark,
+        away_color_dark,
+        away_secondary_dark,
+        NEUTRAL_DARK,
+    )
 
     return {
         "homeLightHex": h_light,

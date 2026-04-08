@@ -58,7 +58,7 @@ class TestColorDistance:
 
 
 # ---------------------------------------------------------------------------
-# get_matchup_colors
+# get_matchup_colors — basic passthrough
 # ---------------------------------------------------------------------------
 
 
@@ -70,28 +70,81 @@ class TestGetMatchupColors:
         assert result["awayLightHex"] == "#0000FF"
         assert result["awayDarkHex"] == "#0000CC"
 
-    def test_clashing_colors_home_yields(self):
-        # Same color for both teams — home should be replaced with neutral
+    def test_home_always_keeps_primary(self):
+        """Home never yields — away adapts."""
         result = get_matchup_colors("#FF0000", "#CC0000", "#FF0000", "#CC0000")
-        assert result["homeLightHex"] == NEUTRAL_LIGHT
-        assert result["homeDarkHex"] == NEUTRAL_DARK
-        assert result["awayLightHex"] == "#FF0000"
-        assert result["awayDarkHex"] == "#CC0000"
-
-    def test_very_similar_colors_clash(self):
-        # Colors differ by 1 unit in red — distance is tiny, should clash
-        result = get_matchup_colors("#FF0000", "#000000", "#FE0000", "#000000")
-        assert result["homeLightHex"] == NEUTRAL_LIGHT
+        assert result["homeLightHex"] == "#FF0000"
+        assert result["homeDarkHex"] == "#CC0000"
 
     def test_none_colors_default_to_neutral(self):
         result = get_matchup_colors(None, None, None, None)
-        # Both default to neutral, which clash (distance = 0), so home yields
         assert result["homeLightHex"] == NEUTRAL_LIGHT
         assert result["homeDarkHex"] == NEUTRAL_DARK
-        assert result["awayLightHex"] == NEUTRAL_LIGHT
-        assert result["awayDarkHex"] == NEUTRAL_DARK
 
     def test_one_side_none(self):
         result = get_matchup_colors(None, None, "#0000FF", "#0000CC")
-        # Home defaults to #000000, away is #0000FF — likely distinct
         assert result["awayLightHex"] == "#0000FF"
+
+
+# ---------------------------------------------------------------------------
+# get_matchup_colors — clash detection with secondary fallback
+# ---------------------------------------------------------------------------
+
+
+class TestClashWithSecondary:
+    def test_clash_falls_back_to_secondary(self):
+        """Away primary clashes → away switches to secondary."""
+        result = get_matchup_colors(
+            "#FF0000", "#CC0000",  # home primary
+            "#FF0000", "#CC0000",  # away primary (clashes)
+            away_secondary_light="#0000FF",
+            away_secondary_dark="#0000CC",
+        )
+        assert result["homeLightHex"] == "#FF0000"
+        assert result["homeDarkHex"] == "#CC0000"
+        assert result["awayLightHex"] == "#0000FF"
+        assert result["awayDarkHex"] == "#0000CC"
+
+    def test_clash_no_secondary_falls_to_neutral(self):
+        """Away primary clashes, no secondary → away gets neutral."""
+        result = get_matchup_colors(
+            "#FF0000", "#CC0000",
+            "#FF0000", "#CC0000",
+        )
+        assert result["awayLightHex"] == NEUTRAL_LIGHT
+        assert result["awayDarkHex"] == NEUTRAL_DARK
+
+    def test_clash_secondary_also_clashes_falls_to_neutral(self):
+        """Away primary AND secondary both clash → neutral."""
+        result = get_matchup_colors(
+            "#FF0000", "#CC0000",
+            "#FF0000", "#CC0000",
+            away_secondary_light="#FE0000",  # still too close
+            away_secondary_dark="#CB0000",
+        )
+        assert result["awayLightHex"] == NEUTRAL_LIGHT
+        assert result["awayDarkHex"] == NEUTRAL_DARK
+
+    def test_very_similar_colors_trigger_clash(self):
+        """Colors differ by 1 unit in red — should clash."""
+        result = get_matchup_colors(
+            "#FF0000", "#CC0000",
+            "#FE0000", "#CB0000",
+            away_secondary_light="#0000FF",
+            away_secondary_dark="#0000CC",
+        )
+        # Light clashes → secondary used
+        assert result["awayLightHex"] == "#0000FF"
+
+    def test_independent_light_dark_clash(self):
+        """Light clashes but dark doesn't — resolved independently."""
+        result = get_matchup_colors(
+            "#FF0000", "#000066",  # home: red light, dark blue dark
+            "#FE0000", "#FFFF00",  # away: red light (clashes), yellow dark (fine)
+            away_secondary_light="#00FF00",
+            away_secondary_dark="#009900",
+        )
+        # Light: away primary clashes, falls to secondary
+        assert result["awayLightHex"] == "#00FF00"
+        # Dark: away primary is fine (yellow vs dark blue)
+        assert result["awayDarkHex"] == "#FFFF00"
