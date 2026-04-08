@@ -77,6 +77,7 @@ async def create_scrape_run(
 
         # Create a SportsJobRun so the task appears in the Runs Drawer
         # with status="queued" — visible immediately, cancelable.
+        # Flushed so the worker can find it by celery_task_id on startup.
         job_run = SportsJobRun(
             phase="data_backfill",
             leagues=[league.code.upper()],
@@ -85,6 +86,7 @@ async def create_scrape_run(
             celery_task_id=async_result.id,
         )
         session.add(job_run)
+        await session.flush()
     except Exception as exc:  # pragma: no cover
         from ...logging_config import get_logger
 
@@ -405,6 +407,17 @@ async def create_bulk_backfill(
         "only_missing": body.only_missing,
     }
 
+    # Create the job run BEFORE dispatching so the worker can find it
+    all_leagues = sorted(set(c["league_code"] for c in raw_chunks))
+    job_run = SportsJobRun(
+        phase="data_backfill",
+        leagues=all_leagues,
+        status="queued",
+        started_at=now_utc(),
+    )
+    session.add(job_run)
+    await session.flush()
+
     celery_app = get_celery_app()
     try:
         async_result = celery_app.send_task(
@@ -414,17 +427,7 @@ async def create_bulk_backfill(
             routing_key="sports-scraper",
             headers={"manual_trigger": True},
         )
-
-        # Create a single job run for the entire bulk operation
-        all_leagues = sorted(set(c["league_code"] for c in raw_chunks))
-        job_run = SportsJobRun(
-            phase="data_backfill",
-            leagues=all_leagues,
-            status="queued",
-            started_at=now_utc(),
-            celery_task_id=async_result.id,
-        )
-        session.add(job_run)
+        job_run.celery_task_id = async_result.id
 
         result_chunks = [
             BulkBackfillChunk(
