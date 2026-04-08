@@ -222,7 +222,7 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
     player_stats: list = []
 
     if is_nhl:
-        # NHL: populate sport-specific lists, leave player_stats empty
+        # NHL: populate sport-specific lists sorted by TOI desc, leave player_stats empty
         skaters = []
         goalies = []
         for player in game.player_boxscores:
@@ -231,10 +231,18 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
             if player_role == "goalie":
                 goalies.append(serialize_nhl_goalie(player))
             else:
-                # Default to skater for NHL players without explicit role
                 skaters.append(serialize_nhl_skater(player))
-        nhl_skaters = skaters
-        nhl_goalies = goalies
+
+        def _toi_sort_key(p) -> float:
+            """Extract TOI as minutes for sorting (higher = first)."""
+            toi = getattr(p, "toi", None)
+            if isinstance(toi, str) and ":" in toi:
+                parts = toi.split(":")
+                return int(parts[0]) + int(parts[1]) / 60
+            return 0.0
+
+        nhl_skaters = sorted(skaters, key=_toi_sort_key, reverse=True)
+        nhl_goalies = sorted(goalies, key=_toi_sort_key, reverse=True)
     elif is_mlb:
         # MLB: separate batters and pitchers, leave player_stats empty
         batters = []
@@ -301,6 +309,8 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         game.home_team.color_dark_hex if game.home_team else None,
         game.away_team.color_light_hex if game.away_team else None,
         game.away_team.color_dark_hex if game.away_team else None,
+        away_secondary_light=game.away_team.color_secondary_light_hex if game.away_team else None,
+        away_secondary_dark=game.away_team.color_secondary_dark_hex if game.away_team else None,
     )
 
     status_flags = compute_status_flags(game.status)

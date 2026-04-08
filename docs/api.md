@@ -744,7 +744,7 @@ Get the AI-generated game flow for a game.
 - Each block has a semantic `role`: SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, or RESOLUTION
 - `scoreBefore`/`scoreAfter` arrays are `[awayScore, homeScore]`
 - `playId` equals `playIndex` (sequential play number)
-- **Team colors are clash-resolved** — When home and away light-mode colors are too similar (Euclidean RGB distance < 0.12), the home team's colors are replaced with neutral black (`#000000`) / white (`#FFFFFF`). Consumers get ready-to-use colors with no client-side clash logic needed.
+- **Team colors are clash-resolved** — When home and away colors are too similar (Euclidean RGB distance < 0.12), the away team falls back to its secondary colors, then to neutral black/white. Home always keeps its primary colors. Light and dark modes are resolved independently. Consumers get ready-to-use colors with no client-side clash logic needed.
 
 **Response (404):** No game flow exists for this game.
 
@@ -847,7 +847,9 @@ List teams with game counts.
       "leagueCode": "NBA",
       "gamesCount": 45,
       "colorLightHex": "#FDB927",
-      "colorDarkHex": "#552583"
+      "colorDarkHex": "#552583",
+      "colorSecondaryLightHex": "#552583",
+      "colorSecondaryDarkHex": "#FDB927"
     }
   ],
   "total": 30
@@ -2851,6 +2853,8 @@ interface OddsEntry {
 
 ### NHL Player Stats
 
+Both `nhlSkaters` and `nhlGoalies` arrays are sorted by time-on-ice descending. `savePercentage` is a decimal (0.935 = 93.5%) — multiply by 100 for display.
+
 ```typescript
 interface NHLSkaterStat {
   team: string;
@@ -2874,7 +2878,7 @@ interface NHLGoalieStat {
   shotsAgainst: number | null;
   saves: number | null;
   goalsAgainst: number | null;
-  savePercentage: number | null;
+  savePercentage: number | null;  // decimal, e.g. 0.935 (NOT percentage)
   rawStats: object;
 }
 ```

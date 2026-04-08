@@ -218,6 +218,10 @@ async def update_team_colors(
         team.color_light_hex = body.color_light_hex
     if "color_dark_hex" in body.model_fields_set:
         team.color_dark_hex = body.color_dark_hex
+    if "color_secondary_light_hex" in body.model_fields_set:
+        team.color_secondary_light_hex = body.color_secondary_light_hex
+    if "color_secondary_dark_hex" in body.model_fields_set:
+        team.color_secondary_dark_hex = body.color_secondary_dark_hex
 
     await session.commit()
     await session.refresh(team)

@@ -99,6 +99,8 @@ class SportsTeam(Base):
     location: Mapped[str | None] = mapped_column(String(100), nullable=True)
     color_light_hex: Mapped[str | None] = mapped_column(String(7), nullable=True)
     color_dark_hex: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    color_secondary_light_hex: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    color_secondary_dark_hex: Mapped[str | None] = mapped_column(String(7), nullable=True)
     x_handle: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     external_codes: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False

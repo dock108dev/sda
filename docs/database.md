@@ -111,6 +111,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `analytics_experiment_suites` | A/B experiment suites — groups of strategy variants to compare |
 | `analytics_experiment_variants` | Individual variants within an experiment suite (strategy config, metrics) |
 | `analytics_replay_jobs` | Historical replay jobs — re-simulate past games with different strategies |
+| `mlb_daily_forecasts` | Hourly-refreshed MLB predictions — one row per game, upserted by `refresh_mlb_forecasts` task. Flat columns for direct SQL querying of edges and EV |
 
 ### Authentication
 

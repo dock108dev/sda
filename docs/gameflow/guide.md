@@ -44,7 +44,7 @@ All game responses include **clash-resolved team colors** — ready-to-use hex v
 | `homeTeamColorLight` / `awayTeamColorLight` | Hex color for light backgrounds |
 | `homeTeamColorDark` / `awayTeamColorDark` | Hex color for dark backgrounds |
 
-**Clash detection:** When two teams' light-mode colors are too visually similar (Euclidean RGB distance < 0.12), the **home** team's colors are replaced with neutral black (`#000000`) / white (`#FFFFFF`). This matches the iOS app's existing behavior — the server does it once instead of every client independently.
+**Clash detection:** When two teams' colors are too visually similar (Euclidean RGB distance < 0.12), the **away** team falls back to its secondary colors, then to neutral black/white. Home always keeps its primary colors. Light and dark modes are resolved independently. The server does this once so clients never need clash logic.
 
 ---
 
