@@ -744,7 +744,7 @@ Get the AI-generated game flow for a game.
 - Each block has a semantic `role`: SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, or RESOLUTION
 - `scoreBefore`/`scoreAfter` arrays are `[awayScore, homeScore]`
 - `playId` equals `playIndex` (sequential play number)
-- **Team colors are clash-resolved** — When home and away light-mode colors are too similar (Euclidean RGB distance < 0.12), the home team's colors are replaced with neutral black (`#000000`) / white (`#FFFFFF`). Consumers get ready-to-use colors with no client-side clash logic needed.
+- **Team colors are clash-resolved** — When home and away colors are too similar (Euclidean RGB distance < 0.12), the away team falls back to its secondary colors, then to neutral black/white. Home always keeps its primary colors. Light and dark modes are resolved independently. Consumers get ready-to-use colors with no client-side clash logic needed.
 
 **Response (404):** No game flow exists for this game.
 

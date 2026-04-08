@@ -263,8 +263,8 @@ def summarize_game(
         game.home_team.color_dark_hex,
         game.away_team.color_light_hex,
         game.away_team.color_dark_hex,
-        away_secondary_light=getattr(game.away_team, "color_secondary_light_hex", None),
-        away_secondary_dark=getattr(game.away_team, "color_secondary_dark_hex", None),
+        away_secondary_light=game.away_team.color_secondary_light_hex,
+        away_secondary_dark=game.away_team.color_secondary_dark_hex,
     )
 
     # Latest play's period/clock for live score context

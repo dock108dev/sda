@@ -309,6 +309,8 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         game.home_team.color_dark_hex if game.home_team else None,
         game.away_team.color_light_hex if game.away_team else None,
         game.away_team.color_dark_hex if game.away_team else None,
+        away_secondary_light=game.away_team.color_secondary_light_hex if game.away_team else None,
+        away_secondary_dark=game.away_team.color_secondary_dark_hex if game.away_team else None,
     )
 
     status_flags = compute_status_flags(game.status)
