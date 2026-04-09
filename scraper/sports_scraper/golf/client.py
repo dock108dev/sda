@@ -526,13 +526,20 @@ class DataGolfClient:
         _cs = _safe_int(p.get("current_score"))
         total_score = _cs if _cs is not None else _safe_int(p.get("total", p.get("total_score")))
 
+        thru = _safe_int(p.get("thru"))
+
+        # If a player has started (thru > 0) but total_score is still None,
+        # they are at even par — DataGolf sometimes omits the score field.
+        if total_score is None and thru is not None and thru > 0:
+            total_score = 0
+
         return DGLeaderboardEntry(
             dg_id=int(p.get("dg_id", 0)),
             player_name=p.get("player_name", ""),
             position=position,
             total_score=total_score,
             today_score=_safe_int(p.get("today", p.get("today_score"))),
-            thru=_safe_int(p.get("thru")),
+            thru=thru,
             total_strokes=_safe_int(p.get("total_strokes")),
             r1=_safe_int(p.get("R1", p.get("r1"))),
             r2=_safe_int(p.get("R2", p.get("r2"))),
