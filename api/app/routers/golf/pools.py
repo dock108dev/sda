@@ -59,7 +59,7 @@ async def list_pools(
     if status:
         stmt = stmt.where(GolfPool.status == status)
     if active_only:
-        stmt = stmt.where(GolfPool.status.in_(["open", "live"]))
+        stmt = stmt.where(GolfPool.status.in_(["open", "locked", "live"]))
 
     result = await db.execute(stmt)
     rows = result.scalars().all()

@@ -8,6 +8,7 @@ import {
   fetchPoolLeaderboard,
   fetchPoolEntries,
   rescorePool,
+  goLivePool,
   lockPool,
   deletePoolEntry,
   entriesExportUrl,
@@ -78,6 +79,20 @@ export default function PoolDetailPage() {
       setOpMessage(`Rescore triggered. Task ID: ${res.task_id ?? "submitted"}`);
     } catch (err) {
       setOpMessage(`Rescore failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setOpLoading(false);
+    }
+  };
+
+  const handleGoLive = async () => {
+    setOpLoading(true);
+    setOpMessage(null);
+    try {
+      const updated = await goLivePool(poolId);
+      setPool(updated);
+      setOpMessage("Pool is now live with scoring enabled.");
+    } catch (err) {
+      setOpMessage(`Go Live failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setOpLoading(false);
     }
@@ -370,6 +385,17 @@ export default function PoolDetailPage() {
             <div style={{ display: "flex", gap: "1rem" }}>
               <button
                 className={styles.primaryButton}
+                onClick={handleGoLive}
+                disabled={opLoading || pool?.status === "live"}
+                style={{
+                  background: pool?.status === "live" ? "#999" : "#16a34a",
+                }}
+              >
+                {pool?.status === "live" ? "Already Live" : "Go Live"}
+              </button>
+
+              <button
+                className={styles.primaryButton}
                 onClick={handleRescore}
                 disabled={opLoading}
               >
@@ -388,6 +414,9 @@ export default function PoolDetailPage() {
               </button>
             </div>
 
+            <p style={{ fontSize: "0.85rem", color: "#666", margin: 0 }}>
+              <strong>Go Live:</strong> Sets pool status to &ldquo;live&rdquo; and enables scoring. The pool will appear in the downstream app and auto-score every 5 minutes.
+            </p>
             <p style={{ fontSize: "0.85rem", color: "#666", margin: 0 }}>
               <strong>Rescore:</strong> Triggers the scoring engine to recalculate all entry scores from current leaderboard data.
             </p>

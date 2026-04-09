@@ -383,6 +383,20 @@ async def trigger_rescore(
     return {"status": "dispatched", "pool_id": pool_id, "task_id": task.id}
 
 
+@router.post("/pools/{pool_id}/go-live")
+async def go_live_pool(
+    pool_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Activate pool for live scoring (set status to live + scoring_enabled)."""
+    pool = await get_pool_or_404(pool_id, db)
+    pool.status = "live"
+    pool.scoring_enabled = True
+    await db.flush()
+    await db.refresh(pool)
+    return {"status": "live", **serialize_pool(pool)}
+
+
 @router.post("/pools/{pool_id}/lock")
 async def lock_pool(
     pool_id: int,

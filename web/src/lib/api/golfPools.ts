@@ -151,6 +151,14 @@ export async function rescorePool(
   });
 }
 
+export async function goLivePool(
+  poolId: number | string
+): Promise<GolfPool> {
+  return request(`/api/golf/pools/${poolId}/go-live`, {
+    method: "POST",
+  });
+}
+
 export async function lockPool(
   poolId: number | string
 ): Promise<GolfPool> {
