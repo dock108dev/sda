@@ -235,7 +235,7 @@ export default function PoolDetailPage() {
                 "Qualified",
                 "Counted",
                 "Status",
-                ...leaderboard[0]?.picks?.map((_, i) => `Pick ${i + 1}`) ?? [],
+                ...(leaderboard[0]?.picks ?? []).map((_, i) => `Pick ${i + 1}`),
               ]}
             >
               {leaderboard.map((e) => (
@@ -253,7 +253,7 @@ export default function PoolDetailPage() {
                   <td>{e.qualified_golfers_count}</td>
                   <td>{e.counted_golfers_count}</td>
                   <td>{e.qualification_status}</td>
-                  {e.picks.map((pick) => (
+                  {(e.picks ?? []).map((pick) => (
                     <td
                       key={pick.dg_id}
                       style={{

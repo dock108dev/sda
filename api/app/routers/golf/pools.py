@@ -445,7 +445,7 @@ async def get_pool_leaderboard(
             "rank": score.rank,
             "is_tied": score.is_tied,
             "last_scored_at": score.last_scored_at.isoformat() if score.last_scored_at else None,
-            "players": [
+            "picks": [
                 {
                     "dg_id": sp.dg_id,
                     "player_name": sp.player_name_snapshot,
