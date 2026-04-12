@@ -11,11 +11,11 @@ This guide explains how to fetch and display the **Game Flow** — compact narra
 ```bash
 # Get games with game flow for a date
 curl -H "X-API-Key: YOUR_KEY" \
-  "https://sports-data-admin.dock108.ai/api/admin/sports/games?startDate=2026-01-22&league=NBA"
+  "https://sda.dock108.dev/api/admin/sports/games?startDate=2026-01-22&league=NBA"
 
 # Get the game flow for a specific game
 curl -H "X-API-Key: YOUR_KEY" \
-  "https://sports-data-admin.dock108.ai/api/admin/sports/games/123/flow"
+  "https://sda.dock108.dev/api/admin/sports/games/123/flow"
 ```
 
 ---
@@ -480,7 +480,7 @@ struct BlockPlayerStat: Codable {
 
 // Fetch game flow
 func fetchGameFlow(gameId: Int) async throws -> GameFlowResponse {
-    var request = URLRequest(url: URL(string: "https://sports-data-admin.dock108.ai/api/admin/sports/games/\(gameId)/flow")!)
+    var request = URLRequest(url: URL(string: "https://sda.dock108.dev/api/admin/sports/games/\(gameId)/flow")!)
     request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
     let (data, _) = try await URLSession.shared.data(for: request)
     return try JSONDecoder().decode(GameFlowResponse.self, from: data)

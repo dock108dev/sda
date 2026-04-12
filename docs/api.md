@@ -51,7 +51,7 @@ include the `X-API-Key` header. This applies to both admin UI routes
 
 ```http
 GET /api/sports/games HTTP/1.1
-Host: sports-data-admin.dock108.ai
+Host: sda.dock108.dev
 X-API-Key: your-api-key-here
 ```
 
@@ -2147,11 +2147,11 @@ Public-facing MLB game simulation endpoints for downstream apps. Uses ML models 
 ```bash
 # 1. List available teams
 curl -H "X-API-Key: $API_KEY" \
-  https://sports-data-admin.dock108.ai/api/simulator/mlb/teams
+  https://sda.dock108.dev/api/simulator/mlb/teams
 
 # 2. Run a simulation
 curl -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
-  https://sports-data-admin.dock108.ai/api/simulator/mlb \
+  https://sda.dock108.dev/api/simulator/mlb \
   -d '{"home_team": "NYY", "away_team": "LAD"}'
 ```
 
@@ -2300,7 +2300,7 @@ List teams available for simulation for any sport. `{sport}` is one of: `mlb`, `
 **Example:**
 ```bash
 curl -H "X-API-Key: $API_KEY" \
-  https://sports-data-admin.dock108.ai/api/simulator/nba/teams
+  https://sda.dock108.dev/api/simulator/nba/teams
 ```
 
 **Response:** Same shape as MLB teams endpoint.
@@ -2322,7 +2322,7 @@ Run a Monte Carlo game simulation for any sport.
 **Example:**
 ```bash
 curl -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
-  https://sports-data-admin.dock108.ai/api/simulator/nba \
+  https://sda.dock108.dev/api/simulator/nba \
   -d '{"home_team": "BOS", "away_team": "LAL"}'
 ```
 

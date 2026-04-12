@@ -87,8 +87,10 @@ function unauthorizedResponse(): NextResponse {
   });
 }
 
-// Apply to admin UI pages only. Exempt all backend-bound paths so that if
-// Caddy mis-routes them here they pass through instead of getting a spurious 401.
+// Apply to admin UI pages only. Exempt backend-bound paths and common public
+// metadata/static assets so browser side-requests don't trigger duplicate auth prompts.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|proxy/|auth/|v1/|healthz|docs|openapi\\.json).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|api/|proxy/|auth/|v1/|healthz|docs|openapi\\.json|favicon\\.ico|favicon\\.svg|robots\\.txt|sitemap\\.xml|site\\.webmanifest|manifest\\.webmanifest|apple-touch-icon\\.png).*)",
+  ],
 };

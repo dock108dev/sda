@@ -10,7 +10,7 @@
 # IMPORTANT: Use `handle`, NOT `handle_path`. handle_path strips the
 # matched prefix, causing FastAPI to 404 on /api/admin/... routes.
 
-sports-data-admin.dock108.ai {
+sda.dock108.dev {
 	encode gzip
 
 	# ── Security headers ─────────────────────────────────────────

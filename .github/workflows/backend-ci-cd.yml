@@ -267,7 +267,7 @@ jobs:
               python3 infra/scripts/update_caddy_site_block.py \
                 infra/Caddyfile \
                 /etc/caddy/Caddyfile \
-                sports-data-admin.dock108.ai
+                sda.dock108.dev
 
               caddy validate --config /etc/caddy/Caddyfile
               systemctl reload caddy
