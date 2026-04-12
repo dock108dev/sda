@@ -11,7 +11,7 @@ flowchart LR
   end
 
   subgraph Edge
-    Caddy[Caddy\nsports-data-admin.dock108.ai]
+    Caddy[Caddy\nsda.dock108.dev]
   end
 
   subgraph App

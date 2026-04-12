@@ -69,6 +69,34 @@ With `handle_path`, a request to `/api/admin/sports/games` becomes `/admin/sport
 
 **Another pitfall:** Forgetting to route `/auth/*` to FastAPI. Without it, auth requests (login, signup, etc.) fall through to Next.js, which rejects them with its own Basic auth middleware — returning a misleading `401 Basic realm="Sports Admin"` that looks like a Caddy issue.
 
+### Domain Cutover Checklist (`sda.dock108.dev`)
+
+Use this checklist when replacing the production hostname.
+
+1. Update DNS in Cloudflare so `sda.dock108.dev` resolves to the VM.
+2. Set production URL env values in `infra/.env` on the server:
+   - `FRONTEND_URL=https://sda.dock108.dev`
+   - `ALLOWED_CORS_ORIGINS=https://sda.dock108.dev`
+   - `ADMIN_ORIGINS=https://sda.dock108.dev` (if origin-based admin checks are used)
+   - `NEXT_PUBLIC_SPORTS_API_URL=https://sda.dock108.dev`
+3. Deploy using `backend-ci-cd.yml` so the Caddy site block sync logic runs.
+4. Confirm `/etc/caddy/Caddyfile` only contains the new site block and remove any stale `sports-data-admin.dock108.ai` block from previous deploys.
+5. Validate and reload Caddy:
+
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+6. Run post-cutover checks:
+
+```bash
+curl -f https://sda.dock108.dev/healthz
+curl -f https://sda.dock108.dev/api/health
+```
+
+Then verify login, admin proxy pages, realtime features, and password reset/magic-link flows from the browser.
+
 ---
 
 ## CI/CD Workflows
