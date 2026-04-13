@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Sports data ingestion service for Scroll Down Sports."
 requires-python = ">=3.11"
 dependencies = [
-  "pydantic>=2.8.0,<3.0.0",
+  "pydantic>=2.12.5,<3.0.0",
   "pydantic-settings>=2.5.0,<3.0.0",
   "sqlalchemy>=2.0.0,<3.0.0",
   "psycopg[binary]>=3.2.0,<4.0.0",
