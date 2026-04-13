@@ -16,7 +16,7 @@ dependencies = [
   "celery>=5.4.0,<6.0.0",
   "redis>=5.0.0,<8.0.0",
   "tenacity>=9.0.0,<10.0.0",
-  "playwright>=1.47.0,<2.0.0",
+  "playwright>=1.58.0,<2.0.0",
   "nflreadpy>=0.1.5",
   # Transitive dep — pinned for CVE fix (ReDoS in AdlLexer/GUID matching)
   "pygments>=2.20.0",
