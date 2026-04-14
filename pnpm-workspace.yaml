@@ -1,3 +1,12 @@
 packages:
   - "web"
   - "packages/*"
+
+# Support pnpm 10.x strict build-script controls in CI/local.
+# Keep both keys for compatibility across pnpm 10 minors.
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver

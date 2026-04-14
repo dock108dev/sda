@@ -49,7 +49,9 @@ class GameStatus(str, Enum):
     final = "final"
     archived = "archived"
     postponed = "postponed"
-    cancelled = "cancelled"
+    canceled = "canceled"
+    # Backward-compatible UK spelling alias.
+    cancelled = "canceled"
 
 
 class SportsLeague(Base):
