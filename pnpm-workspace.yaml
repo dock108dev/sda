@@ -2,7 +2,8 @@ packages:
   - "web"
   - "packages/*"
 
-# Support pnpm 10.x strict build-script controls in CI/local.
+# pnpm 10.26+ (preferred): explicit allowlist for packages that run install/postinstall scripts.
+# Older pnpm 10 used onlyBuiltDependencies; allowBuilds replaces it (#10311).
 # Keep both keys for compatibility across pnpm 10 minors.
 allowBuilds:
   sharp: true

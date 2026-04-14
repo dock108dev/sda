@@ -92,10 +92,11 @@ async def start_training(
         db.add(job)
         await db.flush()
         await db.refresh(job)
-    except Exception as exc:
+    except Exception:
+        logger.exception("Failed to create training job")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to create training job: {exc}",
+            detail="Failed to create training job",
         )
 
     try:
@@ -104,9 +105,10 @@ async def start_training(
         job.celery_task_id = task.id
         job.status = "queued"
         await db.flush()
-    except Exception as exc:
+    except Exception:
+        logger.exception("Failed to dispatch training task job_id=%s", job.id)
         job.status = "failed"
-        job.error_message = f"Failed to dispatch task: {exc}"
+        job.error_message = "Failed to dispatch task"
         await db.flush()
 
     # Refresh after second flush so server-side onupdate columns

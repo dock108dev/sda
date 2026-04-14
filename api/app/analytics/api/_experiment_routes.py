@@ -111,9 +111,10 @@ async def create_experiment_suite(
         suite.celery_task_id = task.id
         suite.status = "queued"
         await db.flush()
-    except Exception as exc:
+    except Exception:
+        logger.exception("Failed to dispatch experiment suite suite_id=%s", suite.id)
         suite.status = "failed"
-        suite.error_message = f"Failed to dispatch: {exc}"
+        suite.error_message = "Failed to dispatch task"
         await db.flush()
 
     await db.refresh(suite)
@@ -420,9 +421,10 @@ async def start_replay(
         job.celery_task_id = task.id
         job.status = "queued"
         await db.flush()
-    except Exception as exc:
+    except Exception:
+        logger.exception("Failed to dispatch replay job job_id=%s", job.id)
         job.status = "failed"
-        job.error_message = f"Failed to dispatch: {exc}"
+        job.error_message = "Failed to dispatch task"
         await db.flush()
 
     await db.refresh(job)

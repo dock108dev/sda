@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.dependencies.roles import require_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -82,9 +85,10 @@ async def start_backtest(
         job.celery_task_id = task.id
         job.status = "queued"
         await db.flush()
-    except Exception as exc:
+    except Exception:
+        logger.exception("Failed to dispatch backtest task job_id=%s", job.id)
         job.status = "failed"
-        job.error_message = f"Failed to dispatch task: {exc}"
+        job.error_message = "Failed to dispatch task"
         await db.flush()
 
     await db.refresh(job)

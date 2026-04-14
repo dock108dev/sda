@@ -190,6 +190,24 @@ async def next_entry_number(pool_id: int, email: str, db: AsyncSession) -> int:
     return (result.scalar() or 0) + 1
 
 
+def _strip_trailing_duplicate_suffix(name: str) -> str:
+    """Strip trailing `` (N)`` suffixes (N decimal digits), iteratively.
+
+    Replaces a regex on entry names to avoid ReDoS on uncontrolled input; work
+    is linear in string length.
+    """
+    s = name.rstrip()
+    while s.endswith(")"):
+        open_idx = s.rfind("(")
+        if open_idx < 0:
+            break
+        inner = s[open_idx + 1 : -1].strip()
+        if not inner.isdigit():
+            break
+        s = s[:open_idx].rstrip()
+    return s
+
+
 async def _dedup_entry_names(pool_id: int, entry_name: str | None, db: AsyncSession) -> None:
     """Number duplicate entry names within a pool.
 
@@ -211,13 +229,10 @@ async def _dedup_entry_names(pool_id: int, entry_name: str | None, db: AsyncSess
     )
     all_entries = result.scalars().all()
 
-    import re
-    _suffix_re = re.compile(r"\s*\(\d+\)\s*$")
-
     def _base_name(name: str | None) -> str:
         if not name:
             return ""
-        return _suffix_re.sub("", name).strip().lower()
+        return _strip_trailing_duplicate_suffix(name).strip().lower()
 
     target_base = _base_name(entry_name)
     if not target_base:
@@ -229,7 +244,7 @@ async def _dedup_entry_names(pool_id: int, entry_name: str | None, db: AsyncSess
         return
 
     # Get the canonical casing from the first entry's base name
-    canonical = _suffix_re.sub("", dupes[0].entry_name or "").strip()
+    canonical = _strip_trailing_duplicate_suffix(dupes[0].entry_name or "").strip()
 
     for i, entry in enumerate(dupes, 1):
         new_name = f"{canonical} ({i})"
