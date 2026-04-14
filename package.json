@@ -1,5 +1,12 @@
 {
   "name": "sports-data-admin",
   "private": true,
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.0",
+  "pnpm": {
+    "allowBuilds": {
+      "sharp": true,
+      "unrs-resolver": true
+    }
+  }
 }

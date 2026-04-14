@@ -2,7 +2,8 @@ packages:
   - "web"
   - "packages/*"
 
-# pnpm 10+ blocks dependency install scripts unless allowlisted (Next.js → sharp, etc.).
-onlyBuiltDependencies:
-  - sharp
-  - unrs-resolver
+# pnpm 10.26+ (preferred): explicit allowlist for packages that run install/postinstall scripts.
+# Older pnpm 10 used onlyBuiltDependencies; allowBuilds replaces it (#10311).
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
