@@ -4,6 +4,66 @@ After digging through the full backend, scraper, and the completed Phase 1 front
 
 ---
 
+## Scroll-down-web handoff: Playwright, BFF, and what SDA must hold
+
+This section is a **brainsump refresh** distilled from two consumer-side audits: **`SDA_HANDOFF.md`** (Playwright coverage map, CI policy, route inventory) and **`MINIMAL_SDA_FIXTURES.md`** (minimal JSON shapes and invariants). It is written for **this repo** (sports-data-admin / sports data API) as the upstream that scroll-down-web’s Next.js BFF calls with `SPORTS_DATA_API_KEY` (or equivalent).
+
+### CI policy on the consumer (`@live-upstream`)
+
+| Layer | Command / workflow | Intent |
+|--------|----------------------|--------|
+| **PR** | Playwright with `--grep "@smoke"` and `--grep-invert "@live-upstream"` | UI + BFF smoke **without** requiring live schedules, FairBet slates, or golf leaderboards from SDA. |
+| **Daily** | Full Playwright | Includes `@live-upstream` tests that hit **real (or production-like)** upstream data through the web BFF. |
+
+**Tag rule (consumer repo):** mark `@live-upstream` on any spec that needs non-empty games/odds/golf/history from SDA or that would skip/fail on an empty slate. **Do not** tag pure mocks, fixture-only `/api/ai/*` tests, or checks that only assert a non-5xx response.
+
+**Implication for SDA:** PRs here are not blocked by consumer daily E2E, but **prod regressions** still surface in consumer daily runs. When daily fails, triage maps **failing test title → BFF route → upstream path** (see below).
+
+### BFF routes the browser tests care about (consumer → upstream mental model)
+
+The consumer app implements **`/api/*`** under its own `web/src/app/api/`. Those handlers forward to **this** API (e.g. admin sports routes). Playwright **explicitly** references strings like `/api/games`, `/api/fairbet`, `/api/golf/*`, `/api/history`; **implicitly**, loading `/`, `/game/[id]`, `/fairbet`, `/golf`, `/history` pulls the same BFF surface.
+
+| Consumer BFF (examples) | Typical SDA responsibility |
+|-------------------------|----------------------------|
+| `GET /api/games`, `GET /api/games/*` | List + detail + flow-related data; must yield **renderable** game rows when tests expect data. |
+| `GET /api/fairbet`, `/api/fairbet/odds`, `/api/fairbet/live` | Odds/EV cards, live FairBet; **numeric consistency** (EV, implied prob, cross-book) is an SDA concern. |
+| `GET /api/golf/leaderboard`, `/api/golf/tournaments` | Tournament and leaderboard payloads for golf specs. |
+| `GET /api/history` | History tier: pro vs free (`403` + `pro_required` where tests expect gating). |
+
+Exact BFF implementation lives in **scroll-down-web** (`web/src/app/api/**/route.ts`). Upstream paths are often under **`/api/admin/sports/...`** (and consumer flow may use **`/api/v1/...`** where that split exists). This repo should treat **admin + v1** contracts as the source of truth for payloads the BFF proxies or reshapes.
+
+### Minimal invariants (from `MINIMAL_SDA_FIXTURES.md`)
+
+Use these when reproducing consumer Playwright failures or when stubbing the BFF locally.
+
+**1. Games list (`GET` equivalent upstream: games list used by home)**  
+- **Invariant:** `200` JSON with `games: GameSummary[]`; at least one row must be **renderable** on `/` (`[data-testid='game-row']` in consumer tests).  
+- **High-signal fields:** `id`, `leagueCode`, `gameDate`, `status`, `homeTeam`, `awayTeam`; optional `homeScore`, `awayScore`, `hasFlow`, `hasOdds`, `isLive`, plus any **ingestion / freshness** fields the BFF exposes (consumer derives staleness UI from those).  
+- **Empty slate:** many tests skip with “No game data available.” For **stable** daily E2E, SDA (or a fixture environment) should expose **at least one game per league** the UI shows (e.g. MLB, NBA, NCAAB, NHL) for a **stable date window**.
+
+**2. FairBet (`/fairbet` → fairbet BFF routes)**  
+- **Invariant:** Within timeout, either at least one `[data-testid='bet-card']` **or** `[data-testid='fairbet-empty-state']` (empty is valid).  
+- **When cards exist:** smoke tests expect EV / tier / book row / attribution / line-movement **regions** to exist; **SDA owns numeric correctness**; consumer asserts presence and coarse behavior (blur, pro gate, etc.).
+
+**3. History (`GET /api/history?…` on consumer)**  
+- **Invariant:** For pro tier (cookie or `?tier=pro`), response must allow `/history` to render `[data-testid='page-history']` when authorized; free tier returns **`403`** with `pro_required` where gated tests expect it.  
+- Date ranges in tests may be **fixed**; SDA should either return **stable** payloads for those params or document supported windows.
+
+**4. Phase 9 book-details blur (consumer stub)**  
+- Consumer **`fairbet/phase9.spec.ts`** may stub `**/api/fairbet/odds**` with a minimal `BetsResponse`-shaped JSON so blur/layout tests run without a full odds feed. **SDA must still satisfy section 2 in production**; the stub only documents **minimum card shape** for those assertions.
+
+### What to give the consumer team from SDA
+
+1. **Stable regression windows:** known dates + leagues with guaranteed non-empty games list (and optional FairBet/history) for `@live-upstream` daily runs.  
+2. **Failing test titles** from daily Playwright → map to BFF route → **exact upstream endpoint + query** this repo serves.  
+3. **Non-goals for SDA:** layout, focus order, Pro copy, PWA, Stripe, magic-link UX — **web-only**.
+
+### Spec areas that typically carry `@live-upstream` (consumer repo)
+
+FairBet (multiple specs), home/game list and cache/perf, game detail/timeline/stats, golf leaderboard/tournaments, history page, ads/mobile/freemium/realtime suites — see consumer `rg '@live-upstream' web/tests` for the live list.
+
+---
+
 ## What the backend actually is right now
 
 This is a real platform. Not a prototype pretending to be one. FastAPI + SQLAlchemy 2.0 async + Celery + Redis + Postgres. Two separate process trees: an API server and a scraper worker. The API handles routes, realtime (WS/SSE), and analytics tasks. The scraper handles ingestion, odds, social, and flow generation.
