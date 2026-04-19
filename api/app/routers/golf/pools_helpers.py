@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,8 @@ from app.db.golf_pools import (
     GolfPoolEntryPick,
 )
 from app.services.golf_pool_scoring import Pick, rules_from_json, validate_picks
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 # ---------------------------------------------------------------------------
@@ -69,11 +72,15 @@ class PoolUpdateRequest(BaseModel):
 
 
 class BucketPlayerItem(BaseModel):
+    model_config = _ALIAS_CFG
+
     dg_id: int
     player_name: str
 
 
 class BucketItem(BaseModel):
+    model_config = _ALIAS_CFG
+
     bucket_number: int
     label: str | None = None
     players: list[BucketPlayerItem]

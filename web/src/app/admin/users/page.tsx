@@ -7,8 +7,8 @@ interface UserRecord {
   id: number;
   email: string;
   role: string;
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export default function UsersPage() {
@@ -243,7 +243,7 @@ export default function UsersPage() {
           </thead>
           <tbody>
             {users.map((user) => (
-              <tr key={user.id} className={!user.is_active ? styles.inactive : ""}>
+              <tr key={user.id} className={!user.isActive ? styles.inactive : ""}>
                 <td>{user.id}</td>
                 <td>
                   {editingEmailId === user.id ? (
@@ -294,19 +294,19 @@ export default function UsersPage() {
                 </td>
                 <td>
                   <span
-                    className={`${styles.badge} ${user.is_active ? styles.badgeActive : styles.badgeInactive}`}
+                    className={`${styles.badge} ${user.isActive ? styles.badgeActive : styles.badgeInactive}`}
                   >
-                    {user.is_active ? "Active" : "Disabled"}
+                    {user.isActive ? "Active" : "Disabled"}
                   </span>
                 </td>
-                <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                 <td>
                   <div className={styles.actions}>
                     <button
-                      className={`${styles.actionBtn} ${user.is_active ? styles.disableBtn : styles.enableBtn}`}
-                      onClick={() => handleToggleActive(user.id, user.is_active)}
+                      className={`${styles.actionBtn} ${user.isActive ? styles.disableBtn : styles.enableBtn}`}
+                      onClick={() => handleToggleActive(user.id, user.isActive)}
                     >
-                      {user.is_active ? "Disable" : "Enable"}
+                      {user.isActive ? "Disable" : "Enable"}
                     </button>
                     {resetPasswordId === user.id ? (
                       <span className={styles.inlineEdit}>

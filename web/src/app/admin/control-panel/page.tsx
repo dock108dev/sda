@@ -60,7 +60,7 @@ function TaskCard({ task }: { task: TaskDef }) {
         }
       }
       const res = await triggerTask(task.name, args);
-      setResult({ taskId: res.task_id });
+      setResult({ taskId: res.taskId });
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Dispatch failed";
@@ -191,7 +191,7 @@ function DataBackfillCard() {
   const [dataTypes, setDataTypes] = useState<Set<string>>(() => new Set());
   const [forceAll, setForceAll] = useState(false);
   const [dispatching, setDispatching] = useState(false);
-  const [preview, setPreview] = useState<{ total_chunks: number; chunks: BulkBackfillChunk[] } | null>(null);
+  const [preview, setPreview] = useState<{ totalChunks: number; chunks: BulkBackfillChunk[] } | null>(null);
   const [result, setResult] = useState<{ dispatched: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -242,7 +242,7 @@ function DataBackfillCard() {
     setResult(null);
     try {
       const res = await createBulkBackfill(buildParams());
-      setResult({ dispatched: res.chunks_dispatched, total: res.total_chunks });
+      setResult({ dispatched: res.chunksDispatched, total: res.totalChunks });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -254,7 +254,7 @@ function DataBackfillCard() {
   const previewSummary = preview
     ? Object.entries(
         preview.chunks.reduce<Record<string, number>>((acc, c) => {
-          acc[c.league_code] = (acc[c.league_code] || 0) + 1;
+          acc[c.leagueCode] = (acc[c.leagueCode] || 0) + 1;
           return acc;
         }, {})
       )
@@ -339,7 +339,7 @@ function DataBackfillCard() {
       {preview && previewSummary && (
         <div className={styles.resultList}>
           <span className={styles.dispatchedMsg}>
-            {preview.total_chunks} monthly chunks:{" "}
+            {preview.totalChunks} monthly chunks:{" "}
             {previewSummary.map(([lc, n]) => `${lc} (${n})`).join(", ")}
           </span>
         </div>

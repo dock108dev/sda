@@ -147,7 +147,7 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
         setFeatureGrid(buildDefaultGrid(feats));
         setLoadouts(loadoutRes.loadouts || []);
       })
-      .catch(() => {})
+      .catch((err) => { console.error("experiments_feature_load_failed", err); })
       .finally(() => setFeaturesLoading(false));
   }, [sportCode]);
 

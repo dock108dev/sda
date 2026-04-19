@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 import redis
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from ...celery_client import get_celery_app
 from ...config import settings
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +44,8 @@ class TriggerRequest(BaseModel):
 
 
 class TriggerResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
     status: str
     task_name: str
     task_id: str
@@ -46,6 +53,18 @@ class TriggerResponse(BaseModel):
 
 class HoldStatusResponse(BaseModel):
     held: bool
+
+
+class SessionHealthResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
+    is_valid: bool
+    checked_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    auth_token_present: bool = False
+    ct0_present: bool = False
+    circuit_open: bool = False
+    stale: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +262,12 @@ TASK_REGISTRY: dict[str, TaskRegistryEntry] = {
             queue="sports-scraper",
             description="Score all live golf pools and write materialized results",
         ),
+        # Social — session health
+        TaskRegistryEntry(
+            name="check_playwright_session_health",
+            queue="social-scraper",
+            description="Run a Playwright session health probe against X/Twitter",
+        ),
     ]
 }
 
@@ -271,6 +296,63 @@ async def set_hold_status(body: HoldStatusResponse) -> HoldStatusResponse:
 async def get_task_registry() -> list[TaskRegistryEntry]:
     """Return the list of tasks that can be triggered via the admin UI."""
     return list(TASK_REGISTRY.values())
+
+
+_HEALTH_KEY = "playwright:session:health"
+_CIRCUIT_OPEN_KEY = "playwright:session:circuit_open"
+# Health snapshot is considered stale if older than 35 min (one probe cadence + margin)
+_HEALTH_STALE_SECONDS = 35 * 60
+
+
+@router.get("/social/session-health", response_model=SessionHealthResponse)
+async def get_session_health() -> SessionHealthResponse:
+    """Return the most recent Playwright session health snapshot from Redis.
+
+    Updated every 30 minutes by the check_playwright_session_health beat task.
+    The ``stale`` flag is set when the snapshot is older than 35 minutes,
+    indicating that the probe has not run recently (e.g. worker is down).
+    """
+    r = _redis()
+    raw = r.get(_HEALTH_KEY)
+    circuit_open = r.get(_CIRCUIT_OPEN_KEY) == "1"
+
+    if not raw:
+        return SessionHealthResponse(
+            is_valid=False,
+            circuit_open=circuit_open,
+            failure_reason="no health snapshot — probe has not run yet",
+            stale=True,
+        )
+
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return SessionHealthResponse(
+            is_valid=False,
+            circuit_open=circuit_open,
+            failure_reason="malformed health snapshot in Redis",
+            stale=True,
+        )
+
+    stale = False
+    checked_at_str = data.get("checked_at")
+    if checked_at_str:
+        try:
+            checked_at = datetime.fromisoformat(checked_at_str)
+            age = (datetime.now(timezone.utc) - checked_at).total_seconds()
+            stale = age > _HEALTH_STALE_SECONDS
+        except Exception:
+            stale = True
+
+    return SessionHealthResponse(
+        is_valid=data.get("is_valid", False),
+        checked_at=checked_at_str,
+        failure_reason=data.get("failure_reason"),
+        auth_token_present=data.get("auth_token_present", False),
+        ct0_present=data.get("ct0_present", False),
+        circuit_open=circuit_open,
+        stale=stale,
+    )
 
 
 @router.post("/tasks/trigger", response_model=TriggerResponse)

@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "test": "PYTHONPATH=api:scraper .venv/bin/pytest api/tests/test_game_status_hook.py api/tests/test_validate_blocks.py scraper/tests/test_flow_trigger_lock.py scraper/tests/test_flow_sweep.py scraper/tests/test_golden_corpus.py --no-cov"
+  },
   "pnpm": {
     "allowBuilds": {
       "sharp": true,

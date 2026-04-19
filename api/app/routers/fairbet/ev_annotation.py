@@ -16,7 +16,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from ...services.ev import (
     book_spread_factor,
@@ -33,6 +34,8 @@ logger = logging.getLogger(__name__)
 
 class BookOdds(BaseModel):
     """Odds from a single book for a bet."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     book: str
     price: float

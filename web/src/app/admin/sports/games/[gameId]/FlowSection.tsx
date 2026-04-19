@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchGameFlow } from "@/lib/api/sportsAdmin";
-import type { GameFlowResponse, GameFlowMoment, GameFlowPlay, MomentBoxScore, MomentPlayerStat, NarrativeBlock, BlockMiniBox, BlockPlayerStat } from "@/lib/api/sportsAdmin/gameFlowTypes";
+import type { FlowStatusResponse, GameFlowResponse, GameFlowMoment, GameFlowPlay, MomentBoxScore, MomentPlayerStat, NarrativeBlock, BlockMiniBox, BlockPlayerStat } from "@/lib/api/sportsAdmin/gameFlowTypes";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { formatPeriodLabel, formatPeriodRange } from "@/lib/utils/periodLabels";
 import styles from "./styles.module.css";
@@ -18,7 +18,13 @@ type FlowSectionProps = {
   gameId: number;
   hasFlow: boolean;
   leagueCode: string;
+  /** Game status string (e.g. "final", "live"). Used to show pending state for final games. */
+  gameStatus: string;
 };
+
+function isFlowStatusResponse(r: GameFlowResponse | FlowStatusResponse): r is FlowStatusResponse {
+  return "status" in r && !("flow" in r);
+}
 
 type MomentCardProps = {
   moment: GameFlowMoment;
@@ -104,18 +110,12 @@ function MomentCard({ moment, momentIndex, plays, leagueCode }: MomentCardProps)
   const momentPlays = plays.filter((p) => moment.playIds.includes(p.playId));
   const explicitPlayIds = new Set(moment.explicitlyNarratedPlayIds);
 
-  // Format score display
-  const formatScore = (score: number[]) => {
-    if (score.length >= 2) {
-      return `${score[0]}-${score[1]}`;
-    }
-    return "—";
-  };
+  const formatScore = (score: { home: number; away: number }) =>
+    `${score.away}-${score.home}`;
 
-  // Check if score changed
   const scoreChanged =
-    moment.scoreBefore[0] !== moment.scoreAfter[0] ||
-    moment.scoreBefore[1] !== moment.scoreAfter[1];
+    moment.scoreBefore.home !== moment.scoreAfter.home ||
+    moment.scoreBefore.away !== moment.scoreAfter.away;
 
   return (
     <div className={styles.momentCard}>
@@ -269,8 +269,10 @@ function BlockMiniBoxDisplay({ miniBox }: { miniBox: BlockMiniBox }) {
   );
 }
 
-export function FlowSection({ gameId, hasFlow, leagueCode }: FlowSectionProps) {
+export function FlowSection({ gameId, hasFlow, leagueCode, gameStatus }: FlowSectionProps) {
+  const isFinal = gameStatus === "final";
   const [story, setStory] = useState<GameFlowResponse | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<FlowStatusResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -279,7 +281,15 @@ export function FlowSection({ gameId, hasFlow, leagueCode }: FlowSectionProps) {
     setError(null);
     try {
       const data = await fetchGameFlow(gameId);
-      setStory(data);
+      if (data === null) {
+        setError("Game not found");
+      } else if (isFlowStatusResponse(data)) {
+        setPendingStatus(data);
+        setStory(null);
+      } else {
+        setStory(data);
+        setPendingStatus(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load game flow");
     } finally {
@@ -288,13 +298,13 @@ export function FlowSection({ gameId, hasFlow, leagueCode }: FlowSectionProps) {
   }, [gameId]);
 
   useEffect(() => {
-    if (hasFlow) {
+    if (hasFlow || isFinal) {
       loadFlow();
     }
-  }, [hasFlow, loadFlow]);
+  }, [hasFlow, isFinal, loadFlow]);
 
-  // Don't render section if no flow
-  if (!hasFlow) {
+  // Don't render section if game is not final and has no flow
+  if (!hasFlow && !isFinal) {
     return null;
   }
 
@@ -304,7 +314,22 @@ export function FlowSection({ gameId, hasFlow, leagueCode }: FlowSectionProps) {
 
       {error && <div className={styles.storyError}>Error: {error}</div>}
 
-      {!loading && !error && !story && (
+      {!loading && !error && pendingStatus && (
+        <div className={styles.subtle}>
+          {pendingStatus.status === "RECAP_PENDING" ? (
+            <>
+              Recap generating&hellip;
+              {pendingStatus.etaMinutes != null && pendingStatus.etaMinutes > 0
+                ? ` ETA: ~${pendingStatus.etaMinutes} min`
+                : " (may be overdue)"}
+            </>
+          ) : (
+            `Game is ${pendingStatus.status.replace("_", " ").toLowerCase()} — no recap yet.`
+          )}
+        </div>
+      )}
+
+      {!loading && !error && !story && !pendingStatus && (
         <div className={styles.subtle}>No game flow found.</div>
       )}
 
@@ -345,7 +370,7 @@ export function FlowSection({ gameId, hasFlow, leagueCode }: FlowSectionProps) {
                           {formatPeriodRange(block.periodStart, block.periodEnd, leagueCode)}
                         </span>
                         <span className={styles.momentScoreChange}>
-                          {block.scoreBefore[0]}-{block.scoreBefore[1]} → {block.scoreAfter[0]}-{block.scoreAfter[1]}
+                          {block.scoreBefore.away}-{block.scoreBefore.home} → {block.scoreAfter.away}-{block.scoreAfter.home}
                         </span>
                       </div>
                     </div>

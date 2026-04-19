@@ -16,7 +16,7 @@ SportsGameFlow table stores:
 - moments_json: JSONB containing ordered list of condensed moments
 - moment_count: INTEGER for quick access
 - validated_at: TIMESTAMPTZ when validation passed
-- story_version: "v2-moments"
+- story_version: "v2-blocks"  (legacy rows carry "v2-moments"; see docs/gameflow/version-semantics.md)
 - blocks_json: JSONB containing 4-7 narrative blocks
 - block_count: INTEGER for quick access
 - blocks_version: "v1-blocks"
@@ -60,14 +60,16 @@ from ....db.flow import SportsGameFlow
 from ....db.sports import SportsGame
 from ....utils.datetime_utils import now_utc
 from ..models import StageInput, StageOutput
+from .embedded_tweets import validate_embedded_tweet_ids
 
 if TYPE_CHECKING:
     from ....db import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-# Flow version identifiers
-FLOW_VERSION = "v2-moments"
+# Flow version identifiers. See docs/gameflow/version-semantics.md.
+FLOW_VERSION = "v2-blocks"
+_LEGACY_FLOW_VERSION = "v2-moments"  # deprecated; accepted on read during transition window
 BLOCKS_VERSION = "v1-blocks"
 
 
@@ -157,11 +159,11 @@ async def execute_finalize_moments(
 
     sport = game.league.code if game.league else "NBA"
 
-    # Check for existing v2-moments flow for this game
+    # Accept both current and legacy story_version during transition window.
     existing_result = await session.execute(
         select(SportsGameFlow).where(
             SportsGameFlow.game_id == game_id,
-            SportsGameFlow.story_version == FLOW_VERSION,
+            SportsGameFlow.story_version.in_([FLOW_VERSION, _LEGACY_FLOW_VERSION]),
         )
     )
     existing_flow = existing_result.scalar_one_or_none()
@@ -170,9 +172,13 @@ async def execute_finalize_moments(
     openai_calls = previous_output.get("openai_calls", 0)
     total_words = previous_output.get("total_words", 0)
 
+    # Validate all embedded tweet references exist before writing.
+    await validate_embedded_tweet_ids(session, blocks)
+
     if existing_flow:
-        # Update existing flow
+        # Update existing flow; upgrade legacy story_version on overwrite.
         output.add_log(f"Updating existing flow (id={existing_flow.id})")
+        existing_flow.story_version = FLOW_VERSION
         existing_flow.moments_json = moments
         existing_flow.moment_count = len(moments)
         existing_flow.validated_at = validation_time

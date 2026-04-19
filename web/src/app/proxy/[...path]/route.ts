@@ -39,9 +39,10 @@ async function proxyRequest(
   }
 
   return new Promise((resolve) => {
+    // Only forward headers that the backend needs; do NOT forward
+    // X-Forwarded-Origin (user-controllable) to prevent origin-spoofing.
     const incomingOrigin =
       request.headers.get("origin") || new URL(request.url).origin;
-    const incomingReferer = request.headers.get("referer") || undefined;
     const incomingAuth = request.headers.get("authorization") || undefined;
 
     const options: http.RequestOptions = {
@@ -53,8 +54,6 @@ async function proxyRequest(
         "Content-Type": request.headers.get("content-type") || "application/json",
         ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
         ...(incomingOrigin ? { Origin: incomingOrigin } : {}),
-        ...(incomingOrigin ? { "X-Forwarded-Origin": incomingOrigin } : {}),
-        ...(incomingReferer ? { Referer: incomingReferer } : {}),
         ...(incomingAuth ? { Authorization: incomingAuth } : {}),
         ...(body ? { "Content-Length": Buffer.byteLength(body) } : {}),
       },

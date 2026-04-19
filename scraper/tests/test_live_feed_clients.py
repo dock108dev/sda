@@ -518,7 +518,7 @@ class TestNCAABLiveFeedClient:
         games = client.fetch_games(date(2024, 1, 15), date(2024, 1, 15))
 
         assert len(games) == 1
-        assert games[0].status == "canceled"
+        assert games[0].status == "cancelled"
 
     @patch("sports_scraper.live.ncaab.settings")
     def test_fetch_games_failure(self, mock_settings):

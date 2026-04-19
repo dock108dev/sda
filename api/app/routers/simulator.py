@@ -24,7 +24,8 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.api.analytics_routes import _predict_with_game_model
@@ -33,9 +34,10 @@ from app.analytics.services.profile_service import (
     get_team_rolling_profile,
     profile_to_probabilities,
 )
+from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS
 from app.db import get_db
 
-from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +106,8 @@ class GameSimulationRequest(BaseModel):
 class GameSimulationResponse(BaseModel):
     """Response from ``POST /api/simulator/{sport}``."""
 
+    model_config = _ALIAS_CFG
+
     sport: str
     home_team: str
     away_team: str
@@ -121,6 +125,8 @@ class GameSimulationResponse(BaseModel):
 
 class TeamInfo(BaseModel):
     """A team available for simulation."""
+
+    model_config = _ALIAS_CFG
 
     abbreviation: str
     name: str

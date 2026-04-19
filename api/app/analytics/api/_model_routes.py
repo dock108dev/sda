@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
+
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,7 +126,7 @@ async def get_models(
         file_models = _model_registry.list_models(sport=sport, model_type=model_type)
         active_ids = {m["model_id"] for m in file_models if m.get("active")}
     except Exception:
-        pass
+        logger.debug("model_registry_lookup_failed", exc_info=True)
 
     models: list[dict[str, Any]] = []
     for job in jobs:
@@ -199,7 +202,7 @@ async def get_model_details(
             )
             active_ids = {m["model_id"] for m in file_models if m.get("active")}
         except Exception:
-            pass
+            logger.debug("model_registry_lookup_failed", exc_info=True)
 
         return {
             "model_id": job.model_id,

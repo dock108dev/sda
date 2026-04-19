@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+
 
 from ...celery_client import get_celery_app
 
@@ -11,6 +13,8 @@ router = APIRouter()
 
 
 class OddsSyncResponse(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     status: str
     league: str
     mainline_task_id: str

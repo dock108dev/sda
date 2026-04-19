@@ -23,11 +23,13 @@ from sqlalchemy.orm import attributes, selectinload
 from ...db import AsyncSession
 from ...db.flow import SportsGameFlow
 from ...db.sports import SportsGame
-from .stages.embedded_tweets import load_and_attach_embedded_tweets
+from .stages.embedded_tweets import load_and_attach_embedded_tweets, validate_embedded_tweet_ids
 
 logger = logging.getLogger(__name__)
 
-FLOW_VERSION = "v2-moments"
+# See docs/gameflow/version-semantics.md.
+FLOW_VERSION = "v2-blocks"
+_LEGACY_FLOW_VERSION = "v2-moments"  # deprecated; accepted on read during transition window
 
 
 async def backfill_embedded_tweets_for_game(
@@ -54,11 +56,11 @@ async def backfill_embedded_tweets_for_game(
         Dict with status and details of the backfill operation.
     """
     if flow is None:
-        # Load the flow (single-game entry point)
+        # Load the flow (single-game entry point); accept legacy story_version during transition.
         flow_result = await session.execute(
             select(SportsGameFlow).where(
                 SportsGameFlow.game_id == game_id,
-                SportsGameFlow.story_version == FLOW_VERSION,
+                SportsGameFlow.story_version.in_([FLOW_VERSION, _LEGACY_FLOW_VERSION]),
             )
         )
         flow = flow_result.scalar_one_or_none()
@@ -119,6 +121,9 @@ async def backfill_embedded_tweets_for_game(
             "candidates": selection.total_candidates,
         }
 
+    # Validate all embedded tweet references exist before writing.
+    await validate_embedded_tweet_ids(session, updated_blocks)
+
     # Persist updated blocks
     flow.blocks_json = updated_blocks
     attributes.flag_modified(flow, "blocks_json")
@@ -161,7 +166,7 @@ async def find_and_backfill_all(
 
     flow_result = await session.execute(
         select(SportsGameFlow).where(
-            SportsGameFlow.story_version == FLOW_VERSION,
+            SportsGameFlow.story_version.in_([FLOW_VERSION, _LEGACY_FLOW_VERSION]),
             SportsGameFlow.blocks_json.isnot(None),
             SportsGameFlow.generated_at >= cutoff,
         )

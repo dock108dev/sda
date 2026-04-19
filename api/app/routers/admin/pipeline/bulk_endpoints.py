@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -17,6 +17,9 @@ from .models import (
 )
 
 router = APIRouter()
+
+_MAX_DATE_RANGE_DAYS = 180
+_MAX_GAMES_PER_BULK = 500
 
 
 @router.post(
@@ -36,11 +39,35 @@ async def bulk_generate_async(
     """
     from ....celery_app import celery_app
 
-    # Parse date strings to datetime
-    start_dt = datetime.strptime(request.start_date, "%Y-%m-%d")
-    end_dt = datetime.strptime(request.end_date, "%Y-%m-%d").replace(
-        hour=23, minute=59, second=59
-    )
+    # Parse and validate date range
+    try:
+        start_dt = datetime.strptime(request.start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(request.end_date, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid date format: {e}",
+        )
+
+    if end_dt < start_dt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="end_date must be on or after start_date",
+        )
+    if (end_dt - start_dt) > timedelta(days=_MAX_DATE_RANGE_DAYS):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Date range cannot exceed {_MAX_DATE_RANGE_DAYS} days",
+        )
+
+    max_games = request.max_games if request.max_games is not None else _MAX_GAMES_PER_BULK
+    if max_games > _MAX_GAMES_PER_BULK:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"max_games cannot exceed {_MAX_GAMES_PER_BULK}",
+        )
 
     # Create job record in database
     job = BulkFlowGenerationJob(
@@ -49,7 +76,7 @@ async def bulk_generate_async(
         end_date=end_dt,
         leagues=request.leagues,
         force_regenerate=request.force,
-        max_games=request.max_games,
+        max_games=max_games,
         triggered_by="admin",
     )
     session.add(job)

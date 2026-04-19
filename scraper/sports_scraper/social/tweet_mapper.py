@@ -20,6 +20,7 @@ from ..config import settings
 from ..config_sports import LEAGUE_CONFIG, LeagueConfig
 from ..logging import logger
 from ..utils.datetime_utils import SPORTS_DAY_BOUNDARY_HOUR_ET, now_utc
+from .models import GamePhase
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -270,6 +271,7 @@ def map_unmapped_tweets(
                     )
                 else:
                     tweet.mapping_status = "no_game"
+                    tweet.game_phase = GamePhase.unknown
                     tweet.updated_at = now_utc()
                     no_game_count += 1
                     logger.debug(
@@ -390,6 +392,7 @@ def map_tweets_for_team(
             mapped_count += 1
         else:
             tweet.mapping_status = "no_game"
+            tweet.game_phase = GamePhase.unknown
             tweet.updated_at = now_utc()
             no_game_count += 1
 

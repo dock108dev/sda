@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class TimelineGenerationRequest(BaseModel):
@@ -20,6 +23,8 @@ class TimelineGenerationRequest(BaseModel):
 class TimelineGenerationResponse(BaseModel):
     """Response after generating a timeline."""
 
+    model_config = _ALIAS_CFG
+
     game_id: int
     timeline_version: str
     success: bool
@@ -28,6 +33,8 @@ class TimelineGenerationResponse(BaseModel):
 
 class MissingTimelineGame(BaseModel):
     """Game missing timeline artifact."""
+
+    model_config = _ALIAS_CFG
 
     game_id: int
     game_date: str
@@ -40,6 +47,8 @@ class MissingTimelineGame(BaseModel):
 
 class MissingTimelinesResponse(BaseModel):
     """List of games missing timeline artifacts."""
+
+    model_config = _ALIAS_CFG
 
     games: list[MissingTimelineGame]
     total_count: int
@@ -56,6 +65,8 @@ class BatchGenerationRequest(BaseModel):
 class BatchGenerationResponse(BaseModel):
     """Response after batch timeline generation."""
 
+    model_config = _ALIAS_CFG
+
     job_id: str
     message: str
     games_found: int
@@ -63,6 +74,8 @@ class BatchGenerationResponse(BaseModel):
 
 class SyncBatchGenerationResponse(BaseModel):
     """Response after synchronous batch timeline generation."""
+
+    model_config = _ALIAS_CFG
 
     games_processed: int
     games_successful: int
@@ -84,6 +97,8 @@ class RegenerateBatchRequest(BaseModel):
 class ExistingTimelineGame(BaseModel):
     """Game with an existing timeline artifact."""
 
+    model_config = _ALIAS_CFG
+
     game_id: int
     game_date: str
     league: str
@@ -95,6 +110,8 @@ class ExistingTimelineGame(BaseModel):
 
 class ExistingTimelinesResponse(BaseModel):
     """List of games with existing timeline artifacts."""
+
+    model_config = _ALIAS_CFG
 
     games: list[ExistingTimelineGame]
     total_count: int

@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class TeamResolutionResult(BaseModel):
     """Single team resolution result."""
+
+    model_config = _ALIAS_CFG
 
     source: str = Field(description="Source identifier (abbreviation)")
     resolved_id: int | None = Field(description="Internal team ID if resolved")
@@ -21,6 +26,8 @@ class TeamResolutionResult(BaseModel):
 class PlayerResolutionResult(BaseModel):
     """Single player resolution result."""
 
+    model_config = _ALIAS_CFG
+
     source: str = Field(description="Source player name")
     resolved_name: str | None = Field(description="Normalized player name")
     status: str = Field(description="success, failed")
@@ -31,6 +38,8 @@ class PlayerResolutionResult(BaseModel):
 class ResolutionIssue(BaseModel):
     """Resolution issue requiring review."""
 
+    model_config = _ALIAS_CFG
+
     source: str
     reason: str | None = None
     occurrences: int = Field(default=1)
@@ -40,6 +49,8 @@ class ResolutionIssue(BaseModel):
 class ResolutionStats(BaseModel):
     """Stats for a category of resolutions."""
 
+    model_config = _ALIAS_CFG
+
     total: int
     resolved: int
     failed: int
@@ -48,6 +59,8 @@ class ResolutionStats(BaseModel):
 
 class ResolutionSummaryResponse(BaseModel):
     """Summary of all entity resolutions for a game or run."""
+
+    model_config = _ALIAS_CFG
 
     game_id: int
     pipeline_run_id: int | None
@@ -63,6 +76,8 @@ class ResolutionSummaryResponse(BaseModel):
 
 class ResolutionDetailResponse(BaseModel):
     """Detailed resolution info for a single entity."""
+
+    model_config = _ALIAS_CFG
 
     entity_type: str
     source_identifier: str

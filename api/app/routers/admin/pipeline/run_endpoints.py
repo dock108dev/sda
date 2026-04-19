@@ -5,6 +5,8 @@ Start, re-run, execute individual stages, continue, and run full pipeline.
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
@@ -33,6 +35,7 @@ from .models import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -74,9 +77,10 @@ async def start_pipeline(
     except PipelineExecutionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
+        logger.exception("start_pipeline_error", extra={"game_id": game_id})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start pipeline: {e}",
+            detail="Failed to start pipeline. See server logs for details.",
         )
 
 
@@ -150,10 +154,11 @@ async def rerun_pipeline(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
+        logger.exception("rerun_pipeline_error", extra={"game_id": game_id})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to re-run pipeline: {e}",
+            detail="Failed to re-run pipeline. See server logs for details.",
         )
 
 
@@ -206,10 +211,11 @@ async def execute_stage(
 
     except PipelineExecutionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
+    except Exception:
+        logger.exception("execute_stage_error", extra={"run_id": run_id, "stage": stage})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Stage execution failed: {e}",
+            detail="Stage execution failed. See server logs for details.",
         )
 
 
@@ -262,10 +268,11 @@ async def continue_pipeline(
 
     except PipelineExecutionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
+    except Exception:
+        logger.exception("continue_pipeline_error", extra={"run_id": run_id})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to continue pipeline: {e}",
+            detail="Failed to continue pipeline. See server logs for details.",
         )
 
 
@@ -321,8 +328,9 @@ async def run_full_pipeline(
 
     except PipelineExecutionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
+    except Exception:
+        logger.exception("run_full_pipeline_error", extra={"game_id": game_id})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Pipeline execution failed: {e}",
+            detail="Pipeline execution failed. See server logs for details.",
         )

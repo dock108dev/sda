@@ -2,53 +2,53 @@ import { request } from "./client";
 
 export interface PipelineStageStatus {
   stage: string;
-  stage_order: number;
+  stageOrder: number;
   status: "pending" | "running" | "success" | "failed" | "skipped";
-  started_at: string | null;
-  finished_at: string | null;
-  duration_seconds: number | null;
-  error_details: string | null;
-  has_output: boolean;
-  output_summary: Record<string, unknown> | null;
-  log_count: number;
-  can_execute: boolean;
+  startedAt: string | null;
+  finishedAt: string | null;
+  durationSeconds: number | null;
+  errorDetails: string | null;
+  hasOutput: boolean;
+  outputSummary: Record<string, unknown> | null;
+  logCount: number;
+  canExecute: boolean;
 }
 
 export interface PipelineRunSummary {
-  run_id: number;
-  run_uuid: string;
-  game_id: number;
-  triggered_by: string;
+  runId: number;
+  runUuid: string;
+  gameId: number;
+  triggeredBy: string;
   status: "pending" | "running" | "completed" | "failed" | "paused";
-  current_stage: string | null;
-  created_at: string;
-  started_at: string | null;
-  finished_at: string | null;
-  stages_completed: number;
-  stages_total: number;
-  progress_percent: number;
+  currentStage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  stagesCompleted: number;
+  stagesTotal: number;
+  progressPercent: number;
   stages: PipelineStageStatus[];
 }
 
 export interface RunFullPipelineResponse {
-  run_id: number;
-  run_uuid: string;
-  game_id: number;
+  runId: number;
+  runUuid: string;
+  gameId: number;
   status: string;
-  stages_completed: number;
-  stages_failed: number;
-  duration_seconds: number | null;
-  artifact_id: number | null;
+  stagesCompleted: number;
+  stagesFailed: number;
+  durationSeconds: number | null;
+  artifactId: number | null;
   message: string;
 }
 
 export interface GamePipelineRunsResponse {
-  game_id: number;
-  game_info: Record<string, unknown>;
+  gameId: number;
+  gameInfo: Record<string, unknown>;
   runs: PipelineRunSummary[];
-  total_runs: number;
-  has_successful_run: boolean;
-  latest_artifact_at: string | null;
+  totalRuns: number;
+  hasSuccessfulRun: boolean;
+  latestArtifactAt: string | null;
 }
 
 export async function runFullPipeline(

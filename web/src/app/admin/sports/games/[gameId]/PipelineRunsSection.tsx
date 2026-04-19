@@ -111,8 +111,8 @@ export function PipelineRunsSection({ gameId }: PipelineRunsSectionProps) {
     }
   };
 
-  const toggleExpand = (runId: number) => {
-    setExpandedRunId((prev) => (prev === runId ? null : runId));
+  const toggleExpand = (id: number) => {
+    setExpandedRunId((prev) => (prev === id ? null : id));
   };
 
   return (
@@ -162,12 +162,12 @@ export function PipelineRunsSection({ gameId }: PipelineRunsSectionProps) {
           <tbody>
             {runs.map((run) => {
               const statusInfo = runStatusLabel(run.status);
-              const isExpanded = expandedRunId === run.run_id;
+              const isExpanded = expandedRunId === run.runId;
               return (
-                <React.Fragment key={run.run_id}>
-                  <tr style={{ cursor: "pointer" }} onClick={() => toggleExpand(run.run_id)}>
-                    <td>{run.run_id}</td>
-                    <td>{run.triggered_by}</td>
+                <React.Fragment key={run.runId}>
+                  <tr style={{ cursor: "pointer" }} onClick={() => toggleExpand(run.runId)}>
+                    <td>{run.runId}</td>
+                    <td>{run.triggeredBy}</td>
                     <td>
                       <span
                         style={{
@@ -183,8 +183,8 @@ export function PipelineRunsSection({ gameId }: PipelineRunsSectionProps) {
                         {statusInfo.text}
                       </span>
                     </td>
-                    <td>{run.started_at ? formatTime(run.started_at) : "—"}</td>
-                    <td>{run.started_at ? formatDuration(run.started_at, run.finished_at) : "—"}</td>
+                    <td>{run.startedAt ? formatTime(run.startedAt) : "—"}</td>
+                    <td>{run.startedAt ? formatDuration(run.startedAt, run.finishedAt) : "—"}</td>
                     <td style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
                       {isExpanded ? "▲" : "▼"}
                     </td>
@@ -204,7 +204,7 @@ export function PipelineRunsSection({ gameId }: PipelineRunsSectionProps) {
                             return (
                               <div key={stageName} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                                 <span
-                                  title={`${stageName}: ${label}${stage?.error_details ? ` — ${stage.error_details}` : ""}`}
+                                  title={`${stageName}: ${label}${stage?.errorDetails ? ` — ${stage.errorDetails}` : ""}`}
                                   style={{
                                     display: "inline-block",
                                     padding: "0.2rem 0.5rem",
@@ -225,13 +225,13 @@ export function PipelineRunsSection({ gameId }: PipelineRunsSectionProps) {
                             );
                           })}
                         </div>
-                        {run.stages.some((s) => s.error_details) && (
+                        {run.stages.some((s) => s.errorDetails) && (
                           <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>
                             {run.stages
-                              .filter((s) => s.error_details)
+                              .filter((s) => s.errorDetails)
                               .map((s) => (
                                 <div key={s.stage}>
-                                  <strong>{s.stage}:</strong> {s.error_details}
+                                  <strong>{s.stage}:</strong> {s.errorDetails}
                                 </div>
                               ))}
                           </div>

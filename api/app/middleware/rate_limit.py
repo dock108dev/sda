@@ -1,13 +1,15 @@
 """In-memory rate limiting middleware with per-path tiers.
 
-Provides two tiers:
-- **Global**: Default rate limit for all endpoints (configurable via
-  ``RATE_LIMIT_REQUESTS`` / ``RATE_LIMIT_WINDOW_SECONDS``).
-- **Auth-strict**: Tighter limit for authentication endpoints that are
+Provides three tiers:
+- **Admin**: Tighter limit for `/api/admin/` routes (default 20 req/min).
+  Configurable via ``ADMIN_RATE_LIMIT_REQUESTS`` / ``ADMIN_RATE_LIMIT_WINDOW_SECONDS``.
+- **Global**: Default rate limit for all other non-exempt endpoints (configurable
+  via ``RATE_LIMIT_REQUESTS`` / ``RATE_LIMIT_WINDOW_SECONDS``).
+- **Auth-strict**: Tightest limit for authentication endpoints that are
   vulnerable to brute-force attacks (login, signup, forgot-password,
   magic-link, reset-password).
 
-Both tiers use a sliding-window counter keyed by client IP. This is
+All tiers use a sliding-window counter keyed by client IP. This is
 an in-memory implementation suitable for single-instance deployments.
 For horizontal scaling, replace with a Redis-backed limiter.
 """
@@ -40,6 +42,8 @@ _AUTH_STRICT_PREFIXES = (
 # 10 requests per 60 seconds for auth endpoints.
 _AUTH_STRICT_LIMIT = 10
 _AUTH_STRICT_WINDOW = 60
+
+_ADMIN_PREFIX = "/api/admin/"
 _FAIRBET_PREFIX = "/api/fairbet/odds"
 
 
@@ -52,6 +56,8 @@ class RateLimitMiddleware:
         self._requests: dict[str, deque[float]] = defaultdict(deque)
         # Auth-specific buckets (keyed by "ip:path_prefix").
         self._auth_requests: dict[str, deque[float]] = defaultdict(deque)
+        # Admin-specific buckets (keyed by client IP).
+        self._admin_requests: dict[str, deque[float]] = defaultdict(deque)
 
     async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
         if scope["type"] != "http":
@@ -85,7 +91,29 @@ class RateLimitMiddleware:
 
             auth_times.append(now)
 
-        # --- Global tier ---
+        # --- Admin tier (separate from global; does not fall through) ---
+        if path.startswith(_ADMIN_PREFIX):
+            admin_limit = settings.admin_rate_limit_requests
+            admin_window = settings.admin_rate_limit_window_seconds
+
+            admin_times = self._admin_requests[client_ip]
+            while admin_times and admin_times[0] <= now - admin_window:
+                admin_times.popleft()
+
+            if len(admin_times) >= admin_limit:
+                response = JSONResponse(
+                    {"detail": "Rate limit exceeded"},
+                    status_code=429,
+                    headers={"Retry-After": str(admin_window)},
+                )
+                await response(scope, receive, send)
+                return
+
+            admin_times.append(now)
+            await self.app(scope, receive, send)
+            return
+
+        # --- Global tier (consumer + all other routes) ---
         if settings.fairbet_redis_limiter_enabled and path.startswith(_FAIRBET_PREFIX):
             allowed, retry_after = await asyncio.to_thread(
                 redis_allow_request,

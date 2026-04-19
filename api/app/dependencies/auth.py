@@ -62,6 +62,24 @@ async def verify_api_key(
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
+    # Scope check: if a separate CONSUMER_API_KEY is configured, reject it here.
+    # This prevents consumer keys from accessing admin routes.
+    consumer_key = settings.consumer_api_key
+    if consumer_key and secrets.compare_digest(api_key, consumer_key):
+        # Only reject if it's NOT also the admin key (single-key setups are fine).
+        if not settings.api_key or not secrets.compare_digest(api_key, settings.api_key):
+            logger.warning(
+                "Consumer API key used on admin route",
+                extra={
+                    "client_ip": request.client.host if request.client else "unknown",
+                    "path": request.url.path,
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Consumer API key is not authorized for admin routes",
+            )
+
     # Constant-time comparison to prevent timing attacks
     if not secrets.compare_digest(api_key, settings.api_key):
         logger.warning(

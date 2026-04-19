@@ -637,7 +637,7 @@ def _map_tournament_status(dg_status: str) -> str:
     if s in ("in progress", "in_progress", "live"):
         return "in_progress"
     if s in ("canceled", "cancelled"):
-        return "canceled"
+        return "cancelled"
     return "scheduled"
 
 

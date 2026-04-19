@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from starlette.responses import JSONResponse
@@ -21,6 +21,7 @@ from app.realtime.poller import db_poller
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
 from app.routers import auth, fairbet, preferences, simulator, social, sports
+from app.routers.v1 import router as v1_router
 from app.routers.model_odds import router as model_odds_router
 from app.routers.golf import router as golf_router
 from app.routers.admin import (
@@ -47,11 +48,25 @@ async def lifespan(app: FastAPI):
     await db_poller.stop()
 
 
+_is_prod = settings.environment in {"production", "staging"}
+
 app = FastAPI(
     title="sports-data-admin",
     version="1.0.0",
     lifespan=lifespan,
+    # Disable interactive docs in production to reduce attack surface.
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
     openapi_tags=[
+        {
+            "name": "v1",
+            "description": (
+                "**Consumer API v1** — Public read-only endpoints. "
+                "Requires a valid ``X-API-Key`` header. Per-IP rate limiting applies. "
+                "Response shapes are consumer-safe (pipeline internals omitted)."
+            ),
+        },
         {
             "name": "auth",
             "description": (
@@ -95,9 +110,21 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
+
+
+@app.exception_handler(Exception)
+async def _global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception(
+        "unhandled_exception",
+        extra={"path": request.url.path, "method": request.method},
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 # ---------------------------------------------------------------------------
 # Admin-internal API key dependency (used by admin UI routers)
@@ -109,6 +136,12 @@ auth_dependency = [Depends(verify_api_key)]
 # ---------------------------------------------------------------------------
 user_dependency = [Depends(verify_api_key), Depends(require_user)]
 admin_dependency = [Depends(verify_api_key), Depends(require_admin)]
+
+# ---------------------------------------------------------------------------
+# Consumer v1 API — read-only endpoints, per-IP rate limited.
+# Auth (verify_consumer_api_key) is applied at the router level in v1/__init__.py.
+# ---------------------------------------------------------------------------
+app.include_router(v1_router)
 
 # ---------------------------------------------------------------------------
 # Auth — public (no API key needed for signup/login/me)

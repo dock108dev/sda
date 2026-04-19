@@ -197,7 +197,7 @@ def _cancel_phantom_finals(session: Session) -> int:
     )
 
     for game in games:
-        game.status = db_models.GameStatus.canceled.value
+        game.status = db_models.GameStatus.CANCELLED.value
         game.end_time = None
         game.updated_at = now
         canceled += 1
@@ -205,9 +205,9 @@ def _cancel_phantom_finals(session: Session) -> int:
             "game_state_transition",
             game_id=game.id,
             from_status="final",
-            to_status="canceled",
+            to_status="cancelled",
             game_date=str(game.game_date),
-            reason="phantom_final_canceled",
+            reason="phantom_final_cancelled",
         )
 
     return canceled
@@ -293,7 +293,7 @@ def _promote_stale_to_final(session: Session) -> int:
             never_played = _is_phantom_game(game)
 
             if never_played:
-                game.status = db_models.GameStatus.canceled.value
+                game.status = db_models.GameStatus.CANCELLED.value
                 game.end_time = None
                 game.updated_at = now
                 promoted += 1
@@ -302,9 +302,9 @@ def _promote_stale_to_final(session: Session) -> int:
                     game_id=game.id,
                     league=league_code,
                     from_status=old_status,
-                    to_status="canceled",
+                    to_status="cancelled",
                     game_date=str(game.game_date),
-                    reason="phantom_game_canceled",
+                    reason="phantom_game_cancelled",
                 )
             else:
                 game.status = db_models.GameStatus.final.value

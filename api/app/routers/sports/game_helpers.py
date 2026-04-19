@@ -55,7 +55,7 @@ def apply_game_filters(
 ) -> Select[tuple[SportsGame]]:
     """Apply filtering options for list endpoints."""
     if not include_canceled:
-        _EXCLUDED_STATUSES = (GameStatus.canceled.value, GameStatus.postponed.value)
+        _EXCLUDED_STATUSES = (GameStatus.CANCELLED.value, GameStatus.postponed.value)
         stmt = stmt.where(SportsGame.status.notin_(_EXCLUDED_STATUSES))
 
     if final_only:
@@ -328,9 +328,6 @@ def summarize_game(
         home_team_color_dark=matchup_colors["homeDarkHex"],
         away_team_color_light=matchup_colors["awayLightHex"],
         away_team_color_dark=matchup_colors["awayDarkHex"],
-        is_live=status_flags["is_live"],
-        is_final=status_flags["is_final"],
-        is_pregame=status_flags["is_pregame"],
         is_truly_completed=status_flags["is_truly_completed"],
         read_eligible=status_flags["read_eligible"],
         current_period_label=current_period_label,

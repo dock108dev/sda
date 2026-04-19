@@ -5,13 +5,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from .ev_annotation import BookOdds
 
 
 class ExplanationDetailRow(BaseModel):
     """A single key-value row in an explanation step."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     label: str
     value: str
@@ -21,6 +24,8 @@ class ExplanationDetailRow(BaseModel):
 class ExplanationStep(BaseModel):
     """One step in the math walkthrough for derived fair odds."""
 
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     step_number: int
     title: str
     description: str
@@ -29,6 +34,8 @@ class ExplanationStep(BaseModel):
 
 class BetDefinition(BaseModel):
     """A unique bet definition with odds from all books."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     game_id: int
     league_code: str
@@ -71,6 +78,8 @@ class BetDefinition(BaseModel):
 
 class FairbetOddsResponse(BaseModel):
     """Paginated FairBet odds response with compatibility fields."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     bets: list[BetDefinition]
     items: list[BetDefinition] = []

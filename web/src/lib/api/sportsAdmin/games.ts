@@ -1,6 +1,6 @@
 import { request } from "./client";
 import type { AdminGameDetail, GameFilters, GameListResponse, JobResponse } from "./types";
-import type { GameFlowResponse } from "./gameFlowTypes";
+import type { FlowStatusResponse, GameFlowResponse } from "./gameFlowTypes";
 
 export async function listGames(filters: GameFilters): Promise<GameListResponse> {
   const query = new URLSearchParams();
@@ -43,14 +43,16 @@ export const resyncOdds = resyncGame;
 
 /**
  * Fetch the game flow for a game.
- * Returns null if no flow exists (404).
+ * Returns null only on 404 (game not found).
+ * Returns FlowStatusResponse when the flow is not yet available (RECAP_PENDING, PREGAME, etc.).
+ * Returns GameFlowResponse when the flow is available.
  */
-export async function fetchGameFlow(gameId: number): Promise<GameFlowResponse | null> {
+export async function fetchGameFlow(
+  gameId: number,
+): Promise<GameFlowResponse | FlowStatusResponse | null> {
   try {
     return await request(`/api/admin/sports/games/${gameId}/flow`);
   } catch (err) {
-    // Return null for 404 (no flow exists)
-    // Error format is: "Request failed (404): {...}"
     if (err instanceof Error && err.message.startsWith("Request failed (404)")) {
       return null;
     }

@@ -238,7 +238,7 @@ class NCAABLiveFeedClient:
         elif status_raw.lower() in ["postponed"]:
             status = "postponed"
         elif status_raw.lower() in ["canceled", "cancelled"]:
-            status = "canceled"
+            status = "cancelled"
         else:
             status = "scheduled"
 

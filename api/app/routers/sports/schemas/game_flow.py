@@ -5,7 +5,27 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class ScoreObject(BaseModel):
+    """Score as a structured {home, away} object.
+
+    Accepts a [home, away] list during ingestion so the model
+    can be constructed directly from pipeline JSON without an intermediate helper.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, frozen=True)
+
+    home: int = Field(..., alias="home")
+    away: int = Field(..., alias="away")
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_list(cls, v: Any) -> Any:
+        if isinstance(v, (list, tuple)) and len(v) >= 2:
+            return {"home": v[0], "away": v[1]}
+        return v
 
 
 class MomentPlayerStat(BaseModel):
@@ -75,8 +95,8 @@ class GameFlowMoment(BaseModel):
     period: int
     start_clock: str | None = Field(None, alias="startClock")
     end_clock: str | None = Field(None, alias="endClock")
-    score_before: list[int] = Field(..., alias="scoreBefore")
-    score_after: list[int] = Field(..., alias="scoreAfter")
+    score_before: ScoreObject = Field(..., alias="scoreBefore")
+    score_after: ScoreObject = Field(..., alias="scoreAfter")
     narrative: str | None = None  # Narrative is in blocks_json, not moments_json
     cumulative_box_score: MomentBoxScore | None = Field(None, alias="cumulativeBoxScore")
 
@@ -131,8 +151,8 @@ class GameFlowBlock(BaseModel):
     moment_indices: list[int] = Field(..., alias="momentIndices")
     period_start: int = Field(..., alias="periodStart")
     period_end: int = Field(..., alias="periodEnd")
-    score_before: list[int] = Field(..., alias="scoreBefore")
-    score_after: list[int] = Field(..., alias="scoreAfter")
+    score_before: ScoreObject = Field(..., alias="scoreBefore")
+    score_after: ScoreObject = Field(..., alias="scoreAfter")
     play_ids: list[int] = Field(..., alias="playIds")
     key_play_ids: list[int] = Field(..., alias="keyPlayIds")
     narrative: str | None = None
@@ -171,6 +191,44 @@ class GameFlowResponse(BaseModel):
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
     league_code: str | None = Field(None, alias="leagueCode")
+
+
+class ConsumerGameFlowResponse(BaseModel):
+    """Consumer-safe Game Flow response for GET /api/v1/games/{id}/flow.
+
+    Blocks are the consumer contract. Moments are pipeline-internal and
+    not exposed here. Admin tooling uses GameFlowResponse instead.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    game_id: int = Field(..., alias="gameId")
+    plays: list[GameFlowPlay]
+    blocks: list[GameFlowBlock] = Field(default_factory=list)
+    total_words: int | None = Field(None, alias="totalWords")
+    home_team: str | None = Field(None, alias="homeTeam")
+    away_team: str | None = Field(None, alias="awayTeam")
+    home_team_abbr: str | None = Field(None, alias="homeTeamAbbr")
+    away_team_abbr: str | None = Field(None, alias="awayTeamAbbr")
+    home_team_color_light: str | None = Field(None, alias="homeTeamColorLight")
+    home_team_color_dark: str | None = Field(None, alias="homeTeamColorDark")
+    away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
+    away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
+    league_code: str | None = Field(None, alias="leagueCode")
+
+
+class FlowStatusResponse(BaseModel):
+    """Returned when a flow is not yet available for a game.
+
+    RECAP_PENDING: game is FINAL but flow generation is in progress.
+    PREGAME / IN_PROGRESS / POSTPONED / CANCELED: non-final game states.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    game_id: int = Field(..., alias="gameId")
+    status: str  # RECAP_PENDING | IN_PROGRESS | PREGAME | SCHEDULED | POSTPONED | CANCELED
+    eta_minutes: int | None = Field(None, alias="etaMinutes")
 
 
 class TimelineArtifactResponse(BaseModel):

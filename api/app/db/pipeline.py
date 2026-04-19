@@ -25,33 +25,7 @@ from sqlalchemy.sql import text
 
 from .base import Base
 from .sports import SportsGame
-
-
-class PipelineStage(str, Enum):
-    """Pipeline stages for game processing."""
-
-    NORMALIZE_PBP = "NORMALIZE_PBP"
-    GENERATE_MOMENTS = "GENERATE_MOMENTS"
-    VALIDATE_MOMENTS = "VALIDATE_MOMENTS"
-    ANALYZE_DRAMA = "ANALYZE_DRAMA"
-    GROUP_BLOCKS = "GROUP_BLOCKS"
-    RENDER_BLOCKS = "RENDER_BLOCKS"
-    VALIDATE_BLOCKS = "VALIDATE_BLOCKS"
-    FINALIZE_MOMENTS = "FINALIZE_MOMENTS"
-
-    @classmethod
-    def ordered_stages(cls) -> list[PipelineStage]:
-        """Return stages in execution order."""
-        return [
-            cls.NORMALIZE_PBP,
-            cls.GENERATE_MOMENTS,
-            cls.VALIDATE_MOMENTS,
-            cls.ANALYZE_DRAMA,
-            cls.GROUP_BLOCKS,
-            cls.RENDER_BLOCKS,
-            cls.VALIDATE_BLOCKS,
-            cls.FINALIZE_MOMENTS,
-        ]
+from ..services.pipeline.models import PipelineStage  # noqa: F401 — single source of truth
 
 
 class PipelineRunStatus(str, Enum):

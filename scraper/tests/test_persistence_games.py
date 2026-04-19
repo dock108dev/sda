@@ -196,16 +196,16 @@ class TestNormalizeStatusPostponedCanceled:
         assert _normalize_status("postponed") == "postponed"
 
     def test_normalizes_canceled(self):
-        """Normalizes 'canceled' → 'canceled'."""
-        assert _normalize_status("canceled") == "canceled"
+        """Normalizes 'canceled' → 'cancelled' (canonical double-L)."""
+        assert _normalize_status("canceled") == "cancelled"
 
     def test_normalizes_uppercase_postponed(self):
         """Case insensitive: 'POSTPONED' → 'postponed'."""
         assert _normalize_status("POSTPONED") == "postponed"
 
     def test_normalizes_uppercase_canceled(self):
-        """Case insensitive: 'CANCELED' → 'canceled'."""
-        assert _normalize_status("CANCELED") == "canceled"
+        """Case insensitive: 'CANCELED' → 'cancelled' (canonical double-L)."""
+        assert _normalize_status("CANCELED") == "cancelled"
 
 
 class TestResolveStatusTransitionPostponedCanceled:
@@ -216,8 +216,8 @@ class TestResolveStatusTransitionPostponedCanceled:
         assert resolve_status_transition("scheduled", "postponed") == "postponed"
 
     def test_canceled_passes_through(self):
-        """Scheduled → canceled is accepted."""
-        assert resolve_status_transition("scheduled", "canceled") == "canceled"
+        """Scheduled → canceled is accepted (normalizes to canonical 'cancelled')."""
+        assert resolve_status_transition("scheduled", "canceled") == "cancelled"
 
 
 class TestNormalizeStatusCaseInsensitive:

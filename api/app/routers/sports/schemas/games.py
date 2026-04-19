@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from .common import (
     LiveSnapshot,
@@ -44,6 +44,8 @@ from .nhl_advanced import (
     NHLGoalieAdvancedStats,
     NHLSkaterAdvancedStats,
 )
+
+from ....services.game_status import compute_status_flags
 
 
 class GameSummary(BaseModel):
@@ -84,14 +86,26 @@ class GameSummary(BaseModel):
     home_team_color_dark: str | None = Field(None, alias="homeTeamColorDark")
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
-    is_live: bool | None = Field(None, alias="isLive")
-    is_final: bool | None = Field(None, alias="isFinal")
-    is_pregame: bool | None = Field(None, alias="isPregame")
     is_truly_completed: bool | None = Field(None, alias="isTrulyCompleted")
     read_eligible: bool | None = Field(None, alias="readEligible")
     current_period_label: str | None = Field(None, alias="currentPeriodLabel")
     live_snapshot: LiveSnapshot | None = Field(None, alias="liveSnapshot")
     date_section: str | None = Field(None, alias="dateSection")
+
+    @computed_field(alias="isLive")  # type: ignore[misc]
+    @property
+    def is_live(self) -> bool:
+        return compute_status_flags(self.status)["is_live"]
+
+    @computed_field(alias="isFinal")  # type: ignore[misc]
+    @property
+    def is_final(self) -> bool:
+        return compute_status_flags(self.status)["is_final"]
+
+    @computed_field(alias="isPregame")  # type: ignore[misc]
+    @property
+    def is_pregame(self) -> bool:
+        return compute_status_flags(self.status)["is_pregame"]
 
 
 class GameListResponse(BaseModel):
@@ -152,13 +166,25 @@ class GameMeta(BaseModel):
     home_team_color_dark: str | None = Field(None, alias="homeTeamColorDark")
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
-    is_live: bool | None = Field(None, alias="isLive")
-    is_final: bool | None = Field(None, alias="isFinal")
-    is_pregame: bool | None = Field(None, alias="isPregame")
     is_truly_completed: bool | None = Field(None, alias="isTrulyCompleted")
     read_eligible: bool | None = Field(None, alias="readEligible")
     current_period_label: str | None = Field(None, alias="currentPeriodLabel")
     live_snapshot: LiveSnapshot | None = Field(None, alias="liveSnapshot")
+
+    @computed_field(alias="isLive")  # type: ignore[misc]
+    @property
+    def is_live(self) -> bool:
+        return compute_status_flags(self.status)["is_live"]
+
+    @computed_field(alias="isFinal")  # type: ignore[misc]
+    @property
+    def is_final(self) -> bool:
+        return compute_status_flags(self.status)["is_final"]
+
+    @computed_field(alias="isPregame")  # type: ignore[misc]
+    @property
+    def is_pregame(self) -> bool:
+        return compute_status_flags(self.status)["is_pregame"]
 
 
 class GameDetailResponse(BaseModel):

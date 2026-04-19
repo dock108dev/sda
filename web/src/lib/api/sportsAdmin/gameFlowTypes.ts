@@ -7,6 +7,19 @@
  */
 
 // =============================================================================
+// Shared primitive types
+// =============================================================================
+
+/**
+ * Score as a structured object.
+ * Replaces the deprecated [int, int] tuple convention.
+ */
+export type ScoreObject = {
+  home: number;
+  away: number;
+};
+
+// =============================================================================
 // Game Flow API Types (GET /games/{game_id}/flow)
 // =============================================================================
 
@@ -72,8 +85,8 @@ export type GameFlowMoment = {
   period: number;
   startClock: string | null;
   endClock: string | null;
-  scoreBefore: number[];
-  scoreAfter: number[];
+  scoreBefore: ScoreObject;
+  scoreAfter: ScoreObject;
   narrative: string | null;  // Narrative is in blocks, not moments
   cumulativeBoxScore?: MomentBoxScore | null;
 };
@@ -201,8 +214,8 @@ export type NarrativeBlock = {
   momentIndices: number[];
   periodStart: number;
   periodEnd: number;
-  scoreBefore: number[];
-  scoreAfter: number[];
+  scoreBefore: ScoreObject;
+  scoreAfter: ScoreObject;
   playIds: number[];
   keyPlayIds: number[];
   narrative: string | null;
@@ -234,6 +247,21 @@ export type SocialPostsByPhase = {
   pregame: CategorizedSocialPost[];
   inGame: Record<string, CategorizedSocialPost[]>; // Keyed by segment (q1, q2, etc.)
   postgame: CategorizedSocialPost[];
+};
+
+/**
+ * Returned when a flow is not yet available for a game.
+ *
+ * status values:
+ * - RECAP_PENDING: game is FINAL, generation in progress
+ * - IN_PROGRESS: game is live
+ * - PREGAME: game has not started
+ * - POSTPONED / CANCELED: terminal non-final states
+ */
+export type FlowStatusResponse = {
+  gameId: number;
+  status: "RECAP_PENDING" | "IN_PROGRESS" | "PREGAME" | "SCHEDULED" | "POSTPONED" | "CANCELED";
+  etaMinutes?: number | null;
 };
 
 /**

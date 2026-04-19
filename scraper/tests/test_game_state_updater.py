@@ -377,7 +377,7 @@ class TestPromoteStaleToFinal:
 
         result = _promote_stale_to_final(session)
         assert result == 1
-        assert game.status == "canceled"
+        assert game.status == "cancelled"
 
     @patch(f"{_MOD}.LEAGUE_CONFIG")
     @patch(f"{_MOD}.now_utc", return_value=_utc_now())
@@ -402,7 +402,7 @@ class TestPromoteStaleToFinal:
         result = _promote_stale_to_final(session)
         assert result == 3
         assert games[0].status == "final"
-        assert games[1].status == "canceled"
+        assert games[1].status == "cancelled"
         assert games[2].status == "final"
 
     @patch(f"{_MOD}.LEAGUE_CONFIG")
@@ -606,7 +606,7 @@ class TestCancelPhantomFinals:
 
         result = _cancel_phantom_finals(session)
         assert result == 1
-        assert game.status == "canceled"
+        assert game.status == "cancelled"
         assert game.end_time is None
         assert game.updated_at == now
 
@@ -632,4 +632,4 @@ class TestCancelPhantomFinals:
         result = _cancel_phantom_finals(session)
         assert result == 2
         for g in games:
-            assert g.status == "canceled"
+            assert g.status == "cancelled"

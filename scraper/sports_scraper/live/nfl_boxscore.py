@@ -62,7 +62,7 @@ class NFLBoxscoreFetcher:
 
         # Cache if final
         game_status = self._extract_game_status(payload)
-        is_final = game_status in ("final", "canceled")
+        is_final = game_status in ("final", "cancelled")
         boxscore_data = payload.get("boxscore", {})
         has_data = bool(boxscore_data.get("players"))
         if should_cache_final(has_data, "OFF" if is_final else "LIVE"):

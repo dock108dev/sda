@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import logging
+import math
+from datetime import timedelta, timezone
+from datetime import datetime as dt
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -10,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from ...db import AsyncSession, get_db
 from ...db.flow import SportsGameFlow, SportsGameTimelineArtifact
-from ...db.sports import SportsGame, SportsGamePlay
+from ...db.sports import GameStatus, SportsGame, SportsGamePlay
 from ...services.team_colors import get_matchup_colors
 from ...services.timeline_generator import (
     TimelineGenerationError,
@@ -18,26 +21,48 @@ from ...services.timeline_generator import (
 )
 from ...services.timeline_types import DEFAULT_TIMELINE_VERSION
 from .schemas import (
+    FlowStatusResponse,
     GameFlowBlock,
     GameFlowContent,
     GameFlowMoment,
     GameFlowPlay,
     GameFlowResponse,
+    ScoreObject,
     TimelineArtifactResponse,
 )
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Flow version identifier (DB filter value — "v2-moments")
-FLOW_VERSION = "v2-moments"
+# Flow version identifiers. See docs/gameflow/version-semantics.md.
+FLOW_VERSION = "v2-blocks"
+_LEGACY_FLOW_VERSION = "v2-moments"  # deprecated; accepted on read during transition window
+
+_GAME_STATUS_TO_FLOW_STATUS: dict[str, str] = {
+    GameStatus.live.value: "IN_PROGRESS",
+    GameStatus.pregame.value: "PREGAME",
+    GameStatus.scheduled.value: "PREGAME",
+    GameStatus.postponed.value: "POSTPONED",
+    GameStatus.CANCELLED.value: "CANCELED",
+    GameStatus.archived.value: "RECAP_PENDING",
+}
 
 
-def _swap_score(raw: list | None) -> list[int]:
-    """Convert [home, away] → [away, home] with safe fallback."""
+def _compute_eta_minutes(game: SportsGame) -> int:
+    """Minutes until recap is expected (clamped to 0 when overdue)."""
+    now = dt.now(timezone.utc)
+    end = game.end_time
+    if end is not None and end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    eta_dt = (end if end else now) + timedelta(minutes=15)
+    return max(0, math.ceil((eta_dt - now).total_seconds() / 60))
+
+
+def _to_score(raw: list | None) -> ScoreObject:
+    """Convert [home, away] list from pipeline JSON to ScoreObject."""
     if raw and len(raw) >= 2:
-        return [raw[1], raw[0]]
-    return [0, 0]
+        return ScoreObject(home=raw[0], away=raw[1])
+    return ScoreObject(home=0, away=0)
 
 
 def _block_clock(
@@ -118,43 +143,61 @@ async def generate_game_timeline(
     )
 
 
-@router.get("/games/{game_id}/flow", response_model=GameFlowResponse)
+@router.get(
+    "/games/{game_id}/flow",
+    deprecated=True,
+    summary="Get game flow (admin — deprecated, use /api/v1/games/{id}/flow)",
+)
 async def get_game_flow(
     game_id: int,
     session: AsyncSession = Depends(get_db),
-) -> GameFlowResponse:
+) -> GameFlowResponse | FlowStatusResponse:
     """Get the persisted Game Flow for a game.
 
-    Returns the Game Flow exactly as persisted - no transformation, no aggregation.
+    .. deprecated::
+        Use ``GET /api/v1/games/{game_id}/flow`` instead. This admin endpoint
+        returns pipeline-internal fields (validationPassed, validationErrors)
+        and will be removed in a future release.
 
-    Game Flow Contract:
-    - moments: Ordered list of condensed moments with narratives
-    - plays: Only plays referenced by moments
-    - validation_passed: Whether validation passed
-    - validation_errors: Any validation errors (empty if passed)
-    - blocks: 4-7 narrative blocks (consumer-facing output)
-    - total_words: Total word count across all block narratives
+    When a flow is not yet available:
+    - FINAL game with no flow → 200 with {status: RECAP_PENDING, etaMinutes: N}
+    - Non-final game → 200 with {status: PREGAME | IN_PROGRESS | ...}
+    - Unknown game → 404
 
     Returns:
-        GameFlowResponse with moments, plays, blocks, and validation status
+        GameFlowResponse with moments, plays, blocks, and validation status,
+        or FlowStatusResponse when the flow is not yet available.
 
     Raises:
-        HTTPException 404: If no Game Flow exists for this game
+        HTTPException 404: If the game does not exist
     """
     flow_result = await session.execute(
         select(SportsGameFlow).where(
             SportsGameFlow.game_id == game_id,
-            SportsGameFlow.story_version == FLOW_VERSION,
+            SportsGameFlow.story_version.in_([FLOW_VERSION, _LEGACY_FLOW_VERSION]),
             SportsGameFlow.moments_json.isnot(None),
         )
     )
     flow_record = flow_result.scalar_one_or_none()
 
     if not flow_record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No Game Flow found for game {game_id}",
+        game_result = await session.execute(
+            select(SportsGame).where(SportsGame.id == game_id)
         )
+        game_row = game_result.scalar_one_or_none()
+        if not game_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Game {game_id} not found",
+            )
+        if game_row.status == GameStatus.final.value:
+            return FlowStatusResponse(
+                gameId=game_id,
+                status="RECAP_PENDING",
+                etaMinutes=_compute_eta_minutes(game_row),
+            )
+        flow_status = _GAME_STATUS_TO_FLOW_STATUS.get(game_row.status, game_row.status.upper())
+        return FlowStatusResponse(gameId=game_id, status=flow_status)
 
     # Load game with teams and league for color/metadata fields
     game_result = await session.execute(
@@ -203,9 +246,8 @@ async def get_game_flow(
             period=moment.get("period", 1),
             startClock=moment.get("start_clock"),
             endClock=moment.get("end_clock"),
-            # Internal format is [home, away], API contract is [away, home]
-            scoreBefore=_swap_score(moment.get("score_before")),
-            scoreAfter=_swap_score(moment.get("score_after")),
+            scoreBefore=_to_score(moment.get("score_before")),
+            scoreAfter=_to_score(moment.get("score_after")),
             narrative=moment.get("narrative"),
             cumulativeBoxScore=moment.get("cumulative_box_score"),
         )
@@ -252,9 +294,8 @@ async def get_game_flow(
                     momentIndices=block.get("moment_indices", []),
                     periodStart=block.get("period_start", 1),
                     periodEnd=block.get("period_end", 1),
-                    # Internal format is [home, away], API contract is [away, home]
-                    scoreBefore=_swap_score(block.get("score_before")),
-                    scoreAfter=_swap_score(block.get("score_after")),
+                    scoreBefore=_to_score(block.get("score_before")),
+                    scoreAfter=_to_score(block.get("score_after")),
                     playIds=block.get("play_ids", []),
                     keyPlayIds=block.get("key_play_ids", []),
                     narrative=block.get("narrative"),

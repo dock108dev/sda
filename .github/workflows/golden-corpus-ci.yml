@@ -1,0 +1,64 @@
+name: Golden Corpus Pipeline Gate
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scraper/sports_scraper/pipeline/**"
+      - "api/app/services/pipeline/**"
+      - "scraper/tests/test_golden_corpus.py"
+      - "scraper/tests/fixtures/corpus/**"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "scraper/sports_scraper/pipeline/**"
+      - "api/app/services/pipeline/**"
+      - "scraper/tests/test_golden_corpus.py"
+      - "scraper/tests/fixtures/corpus/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test-golden-corpus:
+    name: Pipeline · Golden Corpus (50 fixtures)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+      REDIS_URL: redis://localhost:6379/0
+      # No OPENAI_API_KEY — analyze_drama falls back to default weights.
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (api + scraper)
+        run: |
+          uv venv --python 3.12
+          uv pip install -r api/requirements.txt
+          uv pip install -e ./scraper
+          uv pip install pytest pytest-timeout
+
+      - name: Run golden corpus pipeline gate
+        # Hard 5-minute wall-clock limit per the acceptance criteria.
+        run: |
+          source .venv/bin/activate
+          pytest scraper/tests/test_golden_corpus.py \
+            -k "TestPipelineExecution or TestCoverageFields" \
+            --timeout=300 \
+            -v \
+            --tb=short \
+            -x
+        env:
+          PYTHONPATH: api

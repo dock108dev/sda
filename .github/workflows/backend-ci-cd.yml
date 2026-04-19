@@ -104,10 +104,34 @@ jobs:
         working-directory: web
         run: pnpm lint
 
+  lint-no-swap-score:
+    name: Lint · No _swap_score
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Ensure _swap_score is not re-introduced
+        run: |
+          if grep -r '_swap_score' api/ scraper/ --include='*.py' -l; then
+            echo "ERROR: _swap_score found in Python sources. This helper was removed in ISSUE-016; use ScoreObject {home, away} instead."
+            exit 1
+          fi
+          echo "OK: _swap_score not found."
+
+  lint-camel-case-schemas:
+    name: Lint · camelCase response schemas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Check all Pydantic response models have camelCase aliases
+        run: python scripts/lint_camel_case_schemas.py
+
   compile:
     name: Compile
     runs-on: ubuntu-latest
-    needs: [test-scraper, test-api, lint-web]
+    needs: [test-scraper, test-api, lint-web, lint-no-swap-score, lint-camel-case-schemas]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6

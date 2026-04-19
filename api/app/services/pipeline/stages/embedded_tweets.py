@@ -79,6 +79,8 @@ __all__ = [
     "apply_embedded_tweets_to_blocks",
     "select_and_assign_embedded_tweets",
     "load_and_attach_embedded_tweets",
+    # Validation
+    "validate_embedded_tweet_ids",
 ]
 
 
@@ -353,3 +355,45 @@ async def load_and_attach_embedded_tweets(
         tweet_lag_seconds=tweet_lag_seconds,
     )
     return updated_blocks, selection
+
+
+# =============================================================================
+# DB-SIDE VALIDATION
+# =============================================================================
+
+
+async def validate_embedded_tweet_ids(
+    session: "AsyncSession",
+    blocks: list[dict[str, Any]],
+) -> None:
+    """Verify all non-null embedded_social_post_id values exist in TeamSocialPost.
+
+    Raises ValueError listing any dangling IDs so callers can abort before
+    writing a blocks_json blob with broken references.
+
+    Args:
+        session: Async database session.
+        blocks: Block dicts to validate.
+
+    Raises:
+        ValueError: If any embedded_social_post_id references a non-existent row.
+    """
+    from ....db.social import TeamSocialPost
+
+    post_ids: set[int] = {
+        b["embedded_social_post_id"]
+        for b in blocks
+        if b.get("embedded_social_post_id") is not None
+    }
+    if not post_ids:
+        return
+
+    result = await session.execute(
+        select(TeamSocialPost.id).where(TeamSocialPost.id.in_(post_ids))
+    )
+    found_ids: set[int] = {row[0] for row in result}
+    missing = post_ids - found_ids
+    if missing:
+        raise ValueError(
+            f"embedded_social_post_id values not found in team_social_posts: {sorted(missing)}"
+        )

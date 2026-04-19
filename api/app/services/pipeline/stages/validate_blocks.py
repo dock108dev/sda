@@ -13,12 +13,16 @@ VALIDATION RULES
 7. Score continuity across block boundaries
 8. Total word count <= 600
 9. Each narrative has 1-5 sentences
+10. Narrative coverage: final score, winning team, OT presence
+11. mini_box population: cumulative stats for both teams + segment deltas
 
 GUARANTEES
 ==========
 - All constraints validated before returning success
 - Detailed error messages for each violation
 - Warnings for soft limit violations
+- Coverage failures produce REGENERATE decision (FALLBACK after max retries)
+- mini_box failures produce REGENERATE decision (FALLBACK after max retries)
 """
 
 from __future__ import annotations
@@ -45,6 +49,21 @@ logger = logging.getLogger(__name__)
 MIN_SENTENCES_PER_BLOCK = 1  # RESOLUTION blocks may be a single powerful sentence
 MAX_SENTENCES_PER_BLOCK = 5  # DECISION_POINT blocks may need more detail
 
+# Coverage validation
+MAX_REGEN_ATTEMPTS = 2  # After 2 failed regen attempts, fall back to template
+
+# Terms that indicate overtime in generated text; padded with spaces for word-boundary matching
+OT_TERMS = frozenset([
+    "overtime",
+    " ot ",
+    "ot.",
+    "ot,",
+    "extra time",
+    "sudden death",
+    "double overtime",
+    "triple overtime",
+])
+
 # Common abbreviations that contain periods but don't end sentences
 # Used to avoid false sentence breaks in _count_sentences
 COMMON_ABBREVIATIONS = [
@@ -52,6 +71,101 @@ COMMON_ABBREVIATIONS = [
     "St.", "Ave.", "Blvd.", "Rd.", "Mt.", "Ft.",  # Addresses
     "Jan.", "Feb.", "Mar.", "Apr.", "Aug.", "Sept.", "Oct.", "Nov.", "Dec.",
 ]
+
+
+def _normalize_text(text: str) -> str:
+    """Lowercase and collapse whitespace for coverage matching."""
+    return re.sub(r"\s+", " ", text.lower().strip())
+
+
+def _check_score_present(text: str, home: int, away: int) -> bool:
+    """Return True if the score (either order) appears in text.
+
+    Handles hyphens, en/em dashes, and written-out 'X to Y' forms.
+    """
+    norm = _normalize_text(text)
+    sep = r"\s*[-\u2013\u2014]\s*|\s+to\s+"
+    patterns = [
+        rf"\b{home}(?:{sep}){away}\b",
+        rf"\b{away}(?:{sep}){home}\b",
+    ]
+    return any(re.search(p, norm) for p in patterns)
+
+
+def _check_team_present(text: str, team: str) -> bool:
+    """Return True if the team name (or its nickname) appears in text."""
+    norm = _normalize_text(text)
+    parts = team.split()
+    variants = [_normalize_text(team)]
+    if len(parts) > 1:
+        variants.append(parts[-1].lower())
+    return any(v in norm for v in variants)
+
+
+def _check_ot_present(text: str) -> bool:
+    """Return True if any overtime indicator appears in text."""
+    norm = _normalize_text(text)
+    # Pad to allow leading/trailing OT_TERMS like " ot "
+    padded = f" {norm} "
+    return any(term in padded for term in OT_TERMS)
+
+
+def _validate_coverage(
+    blocks: list[dict[str, Any]],
+    home_team: str,
+    away_team: str,
+    home_score: int,
+    away_score: int,
+    has_overtime: bool,
+) -> tuple[list[str], list[str]]:
+    """Validate that narrative coverage includes required game facts.
+
+    Checks for: final score, winning team name, overtime mention (if applicable).
+
+    Args:
+        blocks: Rendered narrative blocks.
+        home_team: Home team name.
+        away_team: Away team name.
+        home_score: Final home score.
+        away_score: Final away score.
+        has_overtime: Whether the game went to overtime.
+
+    Returns:
+        Tuple of (errors, warnings).
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    full_text = " ".join(
+        b.get("narrative", "") for b in blocks if b.get("narrative")
+    ).strip()
+
+    if not full_text:
+        errors.append("Coverage: No narrative text to validate")
+        return errors, warnings
+
+    # Skip score/winner checks when no score data is available (both default to 0)
+    if home_score == 0 and away_score == 0:
+        warnings.append("Coverage: Score data unavailable, skipping score/winner checks")
+    else:
+        if not _check_score_present(full_text, home_score, away_score):
+            errors.append(
+                f"Coverage: Final score {home_score}-{away_score} not mentioned in narrative"
+            )
+
+        if home_score != away_score:
+            winning_team = home_team if home_score > away_score else away_team
+            if winning_team and not _check_team_present(full_text, winning_team):
+                errors.append(
+                    f"Coverage: Winning team '{winning_team}' not mentioned in narrative"
+                )
+
+    if has_overtime and not _check_ot_present(full_text):
+        errors.append(
+            "Coverage: Game went to overtime but no OT mention found in narrative"
+        )
+
+    return errors, warnings
 
 
 def _count_sentences(text: str) -> int:
@@ -272,6 +386,41 @@ def _validate_key_plays(blocks: list[dict[str, Any]]) -> tuple[list[str], list[s
     return errors, warnings
 
 
+def _validate_mini_box(blocks: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+    """Validate each block has a populated mini_box with cumulative and delta stats.
+
+    Each block must carry:
+    - mini_box.cumulative.home — cumulative home stats up to this block
+    - mini_box.cumulative.away — cumulative away stats up to this block
+    - mini_box.delta           — stats for just this block's time window
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    for block in blocks:
+        block_idx = block.get("block_index", "?")
+        mini_box = block.get("mini_box")
+
+        if not mini_box or not isinstance(mini_box, dict):
+            errors.append(f"Block {block_idx}: mini_box is missing or empty")
+            continue
+
+        cumulative = mini_box.get("cumulative")
+        if not cumulative or not isinstance(cumulative, dict):
+            errors.append(f"Block {block_idx}: mini_box missing cumulative stats")
+        else:
+            if not cumulative.get("home"):
+                errors.append(f"Block {block_idx}: mini_box cumulative missing home stats")
+            if not cumulative.get("away"):
+                errors.append(f"Block {block_idx}: mini_box cumulative missing away stats")
+
+        delta = mini_box.get("delta")
+        if not delta or not isinstance(delta, dict):
+            errors.append(f"Block {block_idx}: mini_box missing segment delta stats")
+
+    return errors, warnings
+
+
 async def _attach_embedded_tweets(
     session: AsyncSession,
     game_id: int,
@@ -358,6 +507,23 @@ async def execute_validate_blocks(
 
     output.add_log(f"Validating {len(blocks)} blocks covering {total_moments} moments")
 
+    # Extract coverage-relevant game context
+    ctx = stage_input.game_context or {}
+    home_team = ctx.get("home_team", "")
+    away_team = ctx.get("away_team", "")
+    has_overtime = bool(ctx.get("has_overtime", False))
+    regen_attempt = int(ctx.get("regen_attempt", 0))
+
+    # Derive final score: prefer explicit context values, fall back to last block
+    home_score_ctx = ctx.get("home_score")
+    if home_score_ctx is None and blocks:
+        last_score = blocks[-1].get("score_after", [0, 0])
+        home_score = int(last_score[0]) if last_score else 0
+        away_score = int(last_score[1]) if last_score else 0
+    else:
+        home_score = int(home_score_ctx or 0)
+        away_score = int(ctx.get("away_score") or 0)
+
     # Run all validations
     all_errors: list[str] = []
     all_warnings: list[str] = []
@@ -422,18 +588,49 @@ async def execute_validate_blocks(
     else:
         output.add_log("Rule 6 PASSED")
 
+    # 7. mini_box population
+    output.add_log("Checking Rule 7: mini_box population")
+    errors, warnings = _validate_mini_box(blocks)
+    all_errors.extend(errors)
+    all_warnings.extend(warnings)
+    if errors:
+        output.add_log(f"Rule 7 FAILED: {errors}", level="error")
+    else:
+        output.add_log("Rule 7 PASSED")
+
+    # 8. Narrative coverage (final score, winning team, OT presence)
+    output.add_log("Checking Rule 8: Narrative coverage")
+    coverage_errors, coverage_warnings = _validate_coverage(
+        blocks, home_team, away_team, home_score, away_score, has_overtime
+    )
+    all_warnings.extend(coverage_warnings)
+    if coverage_errors:
+        output.add_log(f"Rule 8 FAILED: {coverage_errors}", level="error")
+    else:
+        output.add_log("Rule 8 PASSED")
+
     # Calculate total words
     total_words = sum(len(b.get("narrative", "").split()) for b in blocks)
 
-    # Determine pass/fail
-    # Errors are hard failures, warnings are acceptable
+    # Structural pass/fail (Rules 1–7); coverage tracked separately
     passed = len(all_errors) == 0
+    coverage_passed = len(coverage_errors) == 0
 
-    if passed:
+    has_any_failure = not passed or not coverage_passed
+    if not has_any_failure:
+        decision = "PUBLISH"
+    elif regen_attempt < MAX_REGEN_ATTEMPTS:
+        decision = "REGENERATE"
+    else:
+        decision = "FALLBACK"
+
+    if passed and coverage_passed:
         output.add_log(f"VALIDATE_BLOCKS PASSED with {len(all_warnings)} warnings")
     else:
+        total_errors = len(all_errors) + len(coverage_errors)
         output.add_log(
-            f"VALIDATE_BLOCKS FAILED with {len(all_errors)} errors, {len(all_warnings)} warnings",
+            f"VALIDATE_BLOCKS FAILED with {total_errors} errors, "
+            f"{len(all_warnings)} warnings → decision={decision}",
             level="error",
         )
 
@@ -449,6 +646,9 @@ async def execute_validate_blocks(
 
     output.data = {
         "blocks_validated": passed,
+        "coverage_passed": coverage_passed,
+        "coverage_errors": coverage_errors,
+        "decision": decision,
         "blocks": blocks,
         "block_count": len(blocks),
         "total_words": total_words,

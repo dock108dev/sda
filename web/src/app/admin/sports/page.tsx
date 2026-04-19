@@ -133,9 +133,9 @@ export default function AdminDashboardPage() {
                 <div className={`${styles.runStatus} ${getStatusClassName(run.status)}`} />
                 <div className={styles.runInfo}>
                   <div className={styles.runTitle}>
-                    {run.league_code} {run.season} — {run.status}
+                    {run.leagueCode} {run.season} — {run.status}
                   </div>
-                  <div className={styles.runMeta}>{run.start_date} to {run.end_date}</div>
+                  <div className={styles.runMeta}>{run.startDate} to {run.endDate}</div>
                 </div>
               </Link>
             ))}

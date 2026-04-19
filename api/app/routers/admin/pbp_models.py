@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class PlaySummary(BaseModel):
     """Summary of a single play for listing."""
+
+    model_config = _ALIAS_CFG
 
     play_index: int
     quarter: int | None
@@ -27,6 +32,8 @@ class PlaySummary(BaseModel):
 
 class PlayDetail(BaseModel):
     """Full detail of a single play."""
+
+    model_config = _ALIAS_CFG
 
     play_index: int
     quarter: int | None
@@ -48,6 +55,8 @@ class PlayDetail(BaseModel):
 class GamePBPResponse(BaseModel):
     """Current PBP data for a game from sports_game_plays table."""
 
+    model_config = _ALIAS_CFG
+
     game_id: int
     game_date: str
     home_team: str
@@ -62,6 +71,8 @@ class GamePBPResponse(BaseModel):
 
 class GamePBPDetailResponse(BaseModel):
     """Detailed PBP data with full play information."""
+
+    model_config = _ALIAS_CFG
 
     game_id: int
     game_date: str
@@ -81,6 +92,8 @@ class GamePBPDetailResponse(BaseModel):
 class PBPSnapshotSummary(BaseModel):
     """Summary of a PBP snapshot."""
 
+    model_config = _ALIAS_CFG
+
     snapshot_id: int
     game_id: int
     snapshot_type: str
@@ -94,6 +107,8 @@ class PBPSnapshotSummary(BaseModel):
 
 class PBPSnapshotDetail(BaseModel):
     """Full detail of a PBP snapshot."""
+
+    model_config = _ALIAS_CFG
 
     snapshot_id: int
     game_id: int
@@ -112,6 +127,8 @@ class PBPSnapshotDetail(BaseModel):
 class GamePBPSnapshotsResponse(BaseModel):
     """All PBP snapshots for a game."""
 
+    model_config = _ALIAS_CFG
+
     game_id: int
     game_date: str
     home_team: str
@@ -125,6 +142,8 @@ class GamePBPSnapshotsResponse(BaseModel):
 
 class PipelineRunPBPResponse(BaseModel):
     """PBP data associated with a specific pipeline run."""
+
+    model_config = _ALIAS_CFG
 
     run_id: int
     run_uuid: str
@@ -143,6 +162,8 @@ class PipelineRunPBPResponse(BaseModel):
 
 class PBPComparisonResponse(BaseModel):
     """Compare PBP between current and snapshot."""
+
+    model_config = _ALIAS_CFG
 
     game_id: int
     comparison_type: str

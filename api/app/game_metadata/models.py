@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class TeamRatings(BaseModel):
+    model_config = _ALIAS_CFG
+
     team_id: str
     conference: str
     elo: float
@@ -16,6 +21,8 @@ class TeamRatings(BaseModel):
 
 
 class StandingsEntry(BaseModel):
+    model_config = _ALIAS_CFG
+
     team_id: str
     conference_rank: int
     wins: int
@@ -23,6 +30,8 @@ class StandingsEntry(BaseModel):
 
 
 class GameContext(BaseModel):
+    model_config = _ALIAS_CFG
+
     game_id: str
     home_team: str
     away_team: str

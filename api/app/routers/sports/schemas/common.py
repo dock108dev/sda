@@ -159,6 +159,7 @@ class GamePhase(str, Enum):
     pregame = "pregame"
     in_game = "in_game"
     postgame = "postgame"
+    unknown = "unknown"
 
 
 class SocialPostEntry(BaseModel):

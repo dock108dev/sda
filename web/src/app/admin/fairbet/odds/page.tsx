@@ -46,50 +46,50 @@ function BetCard({
   derivationRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const bestBook = getBestOdds(bet.books);
-  const bestBookEv = bestBook != null ? (bestBook.display_ev ?? bestBook.ev_percent) : null;
+  const bestBookEv = bestBook != null ? (bestBook.displayEv ?? bestBook.evPercent) : null;
   const bestBookHasPositiveEv = bestBook != null && bestBookEv != null && bestBookEv > 0;
 
   return (
     <div className={styles.betCard}>
       <div className={styles.betHeader}>
         <div className={styles.betHeaderLeft}>
-          <span className={styles.leagueBadge}>{bet.league_code}</span>
-          {bet.market_category && bet.market_category !== "mainline" && (
+          <span className={styles.leagueBadge}>{bet.leagueCode}</span>
+          {bet.marketCategory && bet.marketCategory !== "mainline" && (
             <span className={styles.categoryBadge}>
-              {formatMarketCategory(bet.market_category)}
+              {formatMarketCategory(bet.marketCategory)}
             </span>
           )}
         </div>
         <span className={styles.gameDate}>
-          {formatGameDate(bet.game_date)}
+          {formatGameDate(bet.gameDate)}
         </span>
       </div>
 
       <div className={styles.matchup}>
-        {bet.away_team} @ {bet.home_team}
+        {bet.awayTeam} @ {bet.homeTeam}
       </div>
 
-      {bet.player_name && (
-        <div className={styles.playerName}>{bet.player_name}</div>
+      {bet.playerName && (
+        <div className={styles.playerName}>{bet.playerName}</div>
       )}
 
       <div className={styles.betType}>
         <span className={styles.marketType}>
-          {formatMarketKey(bet.market_key)}
+          {formatMarketKey(bet.marketKey)}
         </span>
         <span className={styles.selection}>
-          {formatSelectionKey(bet.selection_key)}
-          {formatLineValue(bet.line_value, bet.market_key) && (
+          {formatSelectionKey(bet.selectionKey)}
+          {formatLineValue(bet.lineValue, bet.marketKey) && (
             <span className={styles.line}>
               {" "}
-              {formatLineValue(bet.line_value, bet.market_key)}
+              {formatLineValue(bet.lineValue, bet.marketKey)}
             </span>
           )}
         </span>
       </div>
 
       <div className={styles.booksGrid}>
-        {bet.true_prob !== null && bet.true_prob !== undefined ? (
+        {bet.trueProb !== null && bet.trueProb !== undefined ? (
           <div
             className={`${styles.bookOdds} ${styles.fairOddsCard} ${styles.fairOddsClickable}`}
             onClick={() => setOpenDerivation(openDerivation === idx ? null : idx)}
@@ -97,33 +97,33 @@ function BetCard({
           >
             <span className={styles.bookName}>Fair</span>
             <span className={styles.bookPrice}>
-              {formatOdds(trueProbToAmerican(bet.true_prob))}
+              {formatOdds(trueProbToAmerican(bet.trueProb))}
             </span>
             <span className={styles.fairProb}>
-              {(bet.true_prob * 100).toFixed(1)}%
+              {(bet.trueProb * 100).toFixed(1)}%
             </span>
-            {bet.ev_confidence_tier && (
+            {bet.evConfidenceTier && (
               <span className={`${styles.confidenceBadge} ${
-                styles[`confidence_${bet.ev_confidence_tier}` as keyof typeof styles] ?? ""
+                styles[`confidence_${bet.evConfidenceTier}` as keyof typeof styles] ?? ""
               }`}>
-                {bet.ev_confidence_tier}
+                {bet.evConfidenceTier}
               </span>
             )}
             {openDerivation === idx &&
-              ((bet.reference_price !== null &&
-                bet.opposite_reference_price !== null) ||
-                bet.ev_method === "median_consensus") && (
+              ((bet.referencePrice !== null &&
+                bet.oppositeReferencePrice !== null) ||
+                bet.evMethod === "median_consensus") && (
                 <DerivationContent
-                  referencePrice={bet.reference_price}
-                  oppositeReferencePrice={bet.opposite_reference_price}
-                  trueProb={bet.true_prob}
-                  evMethod={bet.ev_method}
-                  estimatedSharpPrice={bet.estimated_sharp_price}
-                  extrapolationRefLine={bet.extrapolation_ref_line}
-                  extrapolationDistance={bet.extrapolation_distance}
-                  perBookFairProbs={bet.per_book_fair_probs}
-                  consensusIqr={bet.consensus_iqr}
-                  consensusBookCount={bet.consensus_book_count}
+                  referencePrice={bet.referencePrice}
+                  oppositeReferencePrice={bet.oppositeReferencePrice}
+                  trueProb={bet.trueProb}
+                  evMethod={bet.evMethod}
+                  estimatedSharpPrice={bet.estimatedSharpPrice}
+                  extrapolationRefLine={bet.extrapolationRefLine}
+                  extrapolationDistance={bet.extrapolationDistance}
+                  perBookFairProbs={bet.perBookFairProbs}
+                  consensusIqr={bet.consensusIqr}
+                  consensusBookCount={bet.consensusBookCount}
                 />
               )}
           </div>
@@ -134,15 +134,15 @@ function BetCard({
               ?
               <div className={styles.fairOddsPopover}>
                 <strong>
-                  {formatDisabledReason(bet.ev_disabled_reason).title}
+                  {formatDisabledReason(bet.evDisabledReason).title}
                 </strong>
-                <p>{formatDisabledReason(bet.ev_disabled_reason).detail}</p>
+                <p>{formatDisabledReason(bet.evDisabledReason).detail}</p>
               </div>
             </span>
           </div>
         )}
         {bet.books.map((bookOdds, bookIdx) => {
-          const displayEv = bookOdds.display_ev ?? bookOdds.ev_percent;
+          const displayEv = bookOdds.displayEv ?? bookOdds.evPercent;
           const evColor = getEvColor(displayEv);
           return (
             <div
@@ -151,11 +151,11 @@ function BetCard({
                 bestBookHasPositiveEv && bookOdds.book === bestBook.book
                   ? styles.bestOdds
                   : ""
-              } ${bookOdds.is_sharp ? styles.sharpBook : ""}`}
+              } ${bookOdds.isSharp ? styles.sharpBook : ""}`}
             >
               <span className={styles.bookName}>
                 {bookOdds.book}
-                {bookOdds.is_sharp && (
+                {bookOdds.isSharp && (
                   <span className={styles.sharpBadge}>S</span>
                 )}
               </span>
@@ -235,9 +235,9 @@ function PreGameTab() {
 
       const response = await fetchFairbetOdds(filters);
       setBets(response.bets);
-      setBooksAvailable(response.books_available);
-      setMarketCategoriesAvailable(response.market_categories_available);
-      setGamesAvailable(response.games_available);
+      setBooksAvailable(response.booksAvailable);
+      setMarketCategoriesAvailable(response.marketCategoriesAvailable);
+      setGamesAvailable(response.gamesAvailable);
       setTotal(response.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -252,9 +252,9 @@ function PreGameTab() {
     try {
       const runs = await listScrapeRuns({ status: "completed" });
       const oddsRun = runs.find(
-        (run: ScrapeRunResponse) => run.config?.odds === true && run.finished_at
+        (run: ScrapeRunResponse) => run.config?.odds === true && run.finishedAt
       );
-      if (oddsRun?.finished_at) setLastOddsSync(oddsRun.finished_at);
+      if (oddsRun?.finishedAt) setLastOddsSync(oddsRun.finishedAt);
     } catch (err) {
       console.error("Failed to load last odds sync time:", err);
     }
@@ -330,7 +330,7 @@ function PreGameTab() {
           <label className={styles.filterLabel}>Game</label>
           <select className={styles.filterSelect} value={selectedGame} onChange={(e) => { setSelectedGame(e.target.value); setOffset(0); }}>
             <option value="">All Games</option>
-            {gamesAvailable.map((g) => <option key={g.game_id} value={g.game_id.toString()}>{g.matchup}</option>)}
+            {gamesAvailable.map((g) => <option key={g.gameId} value={g.gameId.toString()}>{g.matchup}</option>)}
           </select>
         </div>
         <div className={styles.filterGroup}>

@@ -47,7 +47,7 @@ class GameStatus(str, Enum):
     final = "final"
     archived = "archived"  # Data complete, flows generated, >7 days old
     postponed = "postponed"
-    canceled = "canceled"
+    CANCELLED = "cancelled"
 
 
 class SportsLeague(Base):

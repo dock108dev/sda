@@ -22,70 +22,70 @@ function buildHeaders(): HeadersInit {
 export interface BookOdds {
   book: string;
   price: number;
-  observed_at: string;
-  ev_percent: number | null;
-  display_ev: number | null;
-  implied_prob: number | null;
-  is_sharp: boolean;
-  ev_method: string | null;
-  ev_confidence_tier: string | null;
+  observedAt: string;
+  evPercent: number | null;
+  displayEv: number | null;
+  impliedProb: number | null;
+  isSharp: boolean;
+  evMethod: string | null;
+  evConfidenceTier: string | null;
 }
 
 export interface BetDefinition {
-  game_id: number;
-  league_code: string;
-  home_team: string;
-  away_team: string;
-  game_date: string;
-  market_key: string;
-  selection_key: string;
-  line_value: number;
-  market_category: string | null;
-  player_name: string | null;
+  gameId: number;
+  leagueCode: string;
+  homeTeam: string;
+  awayTeam: string;
+  gameDate: string;
+  marketKey: string;
+  selectionKey: string;
+  lineValue: number;
+  marketCategory: string | null;
+  playerName: string | null;
   description: string | null;
-  true_prob: number | null;
-  reference_price: number | null;
-  opposite_reference_price: number | null;
-  ev_confidence_tier: string | null;
-  ev_disabled_reason: string | null;
-  ev_method: string | null;
-  has_fair: boolean;
+  trueProb: number | null;
+  referencePrice: number | null;
+  oppositeReferencePrice: number | null;
+  evConfidenceTier: string | null;
+  evDisabledReason: string | null;
+  evMethod: string | null;
+  hasFair: boolean;
   confidence: number | null;
-  confidence_flags: string[];
+  confidenceFlags: string[];
   books: BookOdds[];
-  estimated_sharp_price: number | null;
-  extrapolation_ref_line: number | null;
-  extrapolation_distance: number | null;
-  consensus_book_count: number | null;
-  consensus_iqr: number | null;
-  per_book_fair_probs: Record<string, number> | null;
+  estimatedSharpPrice: number | null;
+  extrapolationRefLine: number | null;
+  extrapolationDistance: number | null;
+  consensusBookCount: number | null;
+  consensusIqr: number | null;
+  perBookFairProbs: Record<string, number> | null;
 }
 
 export interface GameOption {
-  game_id: number;
+  gameId: number;
   matchup: string;
-  game_date: string | null;
+  gameDate: string | null;
 }
 
 export interface FairbetOddsResponse {
   bets: BetDefinition[];
   total: number;
-  books_available: string[];
-  market_categories_available: string[];
-  games_available: GameOption[];
+  booksAvailable: string[];
+  marketCategoriesAvailable: string[];
+  gamesAvailable: GameOption[];
 }
 
 export interface FairbetLiveResponse {
-  game_id: number;
-  league_code: string;
-  home_team: string;
-  away_team: string;
+  gameId: number;
+  leagueCode: string;
+  homeTeam: string;
+  awayTeam: string;
   bets: BetDefinition[];
   total: number;
-  books_available: string[];
-  market_categories_available: string[];
-  last_updated_at: string | null;
-  ev_diagnostics: Record<string, number>;
+  booksAvailable: string[];
+  marketCategoriesAvailable: string[];
+  lastUpdatedAt: string | null;
+  evDiagnostics: Record<string, number>;
 }
 
 export interface FairbetOddsFilters {
@@ -140,11 +140,11 @@ export async function fetchFairbetOdds(
 }
 
 export interface LiveGameInfo {
-  game_id: number;
-  league_code: string;
-  home_team: string;
-  away_team: string;
-  game_date: string | null;
+  gameId: number;
+  leagueCode: string;
+  homeTeam: string;
+  awayTeam: string;
+  gameDate: string | null;
   status: string | null;
 }
 

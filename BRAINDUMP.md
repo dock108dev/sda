@@ -23,8 +23,9 @@ What is transitional:
 
 What is legacy:
 - The timeline artifact system. There are two parallel output paths: `SportsGameFlow` (moments + blocks) and `SportsGameTimelineArtifact` (timeline JSON). The flow path is the real one now. The timeline artifact feels like a v1 that hasn't been cleaned up. The frontend doesn't use it for the primary game flow view.
-- GameStatus enum has a duplicated `cancelled` entry (UK spelling alias pointing to same value). Not harmful but sloppy.
 - The `external_ids` and `external_codes` JSONB fields on games and teams have no schema enforcement. They're catch-all bags with no documentation. This is fine until someone depends on a key that only sometimes exists.
+
+> **Resolved in `aidlc_1`:** `GameStatus` duplicate `canceled` entry standardized to `CANCELLED`. `PipelineStage` enum now has a single SSOT in `api/app/services/pipeline/models.py`. Score tuple convention replaced with `ScoreObject {home, away}` on consumer endpoint. Moments removed from the consumer API (`/api/v1/`); blocks are the only consumer output.
 
 ---
 
@@ -266,17 +267,17 @@ What this means concretely:
 - **Build a golden game corpus.** 10 games per sport, human-validated narrative outputs. Run every pipeline change against this corpus. This is the single most impactful testing investment.
 - **Add coverage validation.** Every generated flow must mention: the final score, the winning team, and any overtime. Key play coverage should be tracked even if not enforced.
 - **Add LLM-based output grading.** Use a separate model call to score narratives on coherence and information density. Expensive, but this is the product.
-- **Align backend and frontend block count constraints.** Backend MIN_BLOCKS = 3 (blowouts), frontend MIN_BLOCKS = 4. Either change the frontend to accept 3-block blowout flows or change the backend to always produce 4+.
+- ~~**Align backend and frontend block count constraints.**~~ Both now use MIN_BLOCKS = 3; verified in sync (see `docs/audits/ssot-cleanup.md`).
 - **Guarantee mini_box population.** Verify that the pipeline actually populates `mini_box` with cumulative stats and deltas for all sports. Add a validation check in `validate_blocks.py`.
 
 ### Priority 2: Contract hardening
 
-- **Move scores from tuples to objects.** `{home: int, away: int}` everywhere. Kill the swap convention.
+- ~~**Move scores from tuples to objects.**~~ `ScoreObject {home, away}` is now the wire contract on the consumer endpoint. Remaining admin endpoints still return tuples; migrate on touch.
 - **Make state predicates non-nullable.** `isLive`, `isFinal`, `isPregame` should be computed booleans, never null.
 - **Fix camelCase aliasing gaps.** Audit all response schemas for missing Field aliases.
-- **Single PipelineStage enum.** One definition, imported by both DB and service layers.
-- **Define consumer vs admin API boundaries.** Namespace them. Different routers, different auth, different rate limits.
-- **Document score convention.** If tuples stay (they shouldn't), make the convention explicit in a shared module, not per-endpoint.
+- ~~**Single PipelineStage enum.**~~ Done: `api/app/services/pipeline/models.py` is the SSOT; DB layer re-exports.
+- **Define consumer vs admin API boundaries.** Consumer game flow is live at `/api/v1/`; remaining endpoints need migration. Different routers, different auth, different rate limits.
+- ~~**Document score convention.**~~ `ScoreObject` is self-documenting. The `_swap_score` per-endpoint pattern is gone.
 
 ### Priority 3: Social stabilization
 

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { NarrativeBlock, BlockMiniBox, BlockPlayerStat } from "@/lib/api/sportsAdmin/gameFlowTypes";
-import { validateBlocksPreRender, type GuardrailResult } from "@/lib/guardrails";
+import { validateBlocksPreRender } from "@/lib/guardrails";
 import { formatPeriodRange } from "@/lib/utils/periodLabels";
 import styles from "./CollapsedGameFlow.module.css";
 
@@ -71,21 +71,6 @@ function getRoleBadgeClass(role: string): string {
     RESOLUTION: styles.roleResolution,
   };
   return roleColors[role] || "";
-}
-
-/**
- * Format player stat with optional delta.
- */
-function formatStatWithDelta(
-  value: number | undefined,
-  delta: number | undefined,
-  label: string
-): string | null {
-  if (!value && value !== 0) return null;
-  if (delta && delta > 0) {
-    return `${value} ${label} (+${delta})`;
-  }
-  return `${value} ${label}`;
 }
 
 /**
@@ -202,15 +187,11 @@ function BlockCard({
   showDebug?: boolean;
 }) {
   const hasScoreChange =
-    block.scoreBefore[0] !== block.scoreAfter[0] ||
-    block.scoreBefore[1] !== block.scoreAfter[1];
+    block.scoreBefore.home !== block.scoreAfter.home ||
+    block.scoreBefore.away !== block.scoreAfter.away;
 
-  const formatScore = (score: number[]) => {
-    if (score.length >= 2) {
-      return `${score[0]}-${score[1]}`;
-    }
-    return "—";
-  };
+  const formatScore = (score: { home: number; away: number }) =>
+    `${score.away}-${score.home}`;
 
   return (
     <div className={styles.blockCard}>

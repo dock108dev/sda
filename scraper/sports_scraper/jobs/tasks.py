@@ -23,6 +23,8 @@ from .flow_tasks import (
     run_scheduled_nhl_flow_generation,
 )
 from .flow_trigger_tasks import (
+    backfill_missing_flows,
+    sweep_missing_flows,
     trigger_flow_for_game,
 )
 from .golf_tasks import (  # noqa: F401
@@ -76,6 +78,9 @@ from .timeline_tasks import (
 from .utility_tasks import (
     clear_scraper_cache_task,
 )
+from .session_health_task import (  # noqa: F401
+    check_playwright_session_health,
+)
 
 __all__ = [
     "run_scrape_job",
@@ -100,6 +105,7 @@ __all__ = [
     "update_game_states_task",
     "poll_live_pbp_task",
     "trigger_flow_for_game",
+    "backfill_missing_flows",
     "run_daily_sweep",
     "clear_scraper_cache_task",
     "live_orchestrator_tick",

@@ -3,6 +3,20 @@
  * These should stay in sync with packages/py-core/py_core/schemas/theory.py
  */
 
+// =============================================================================
+// Sports shared primitives
+// =============================================================================
+
+/** Score as a structured {home, away} object. Replaces deprecated [int, int] tuple. */
+export type ScoreObject = {
+  home: number;
+  away: number;
+};
+
+// =============================================================================
+// Theory / strategy types
+// =============================================================================
+
 export type Domain = "bets" | "crypto" | "stocks" | "conspiracies" | "playlist";
 
 export interface TheoryRequest {

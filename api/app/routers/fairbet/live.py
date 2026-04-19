@@ -16,7 +16,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 
 from app.db import get_db
@@ -92,6 +93,8 @@ def _build_selection_key(selection_name: str, market_key: str, line: float | Non
 class LiveBetDefinition(BaseModel):
     """A live bet with EV annotation — same shape as pre-game BetDefinition."""
 
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     game_id: int
     league_code: str
     home_team: str
@@ -129,6 +132,9 @@ class LiveBetDefinition(BaseModel):
 
 class LiveGameInfo(BaseModel):
     """A game that currently has live odds in Redis."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     game_id: int
     league_code: str
     home_team: str
@@ -192,6 +198,8 @@ async def fairbet_live_games(
 
 class FairbetLiveResponse(BaseModel):
     """Response with EV-annotated live odds."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     game_id: int
     league_code: str

@@ -67,7 +67,7 @@ class NFLPbpFetcher:
 
         # Check if game is final for caching
         game_status = self._extract_game_status(payload)
-        is_final = game_status in ("final", "canceled")
+        is_final = game_status in ("final", "cancelled")
         if should_cache_final(bool(plays), "OFF" if is_final else "LIVE"):
             self._cache.put(cache_key, payload)
             logger.info("nfl_pbp_cached", game_id=game_id, play_count=len(plays))

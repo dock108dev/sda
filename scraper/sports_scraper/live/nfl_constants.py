@@ -31,7 +31,7 @@ NFL_STATUS_MAP: dict[str, str] = {
     "STATUS_FINAL": "final",
     "STATUS_FINAL_OVERTIME": "final",
     "STATUS_POSTPONED": "postponed",
-    "STATUS_CANCELED": "canceled",
+    "STATUS_CANCELED": "cancelled",
     "STATUS_DELAYED": "live",
 }
 

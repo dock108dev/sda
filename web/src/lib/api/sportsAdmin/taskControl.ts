@@ -22,8 +22,8 @@ export async function setHoldStatus(held: boolean): Promise<HoldStatus> {
 
 export interface TriggerTaskResponse {
   status: string;
-  task_name: string;
-  task_id: string;
+  taskName: string;
+  taskId: string;
 }
 
 export async function triggerTask(
@@ -65,23 +65,23 @@ export interface BulkBackfillParams {
 }
 
 export interface BulkBackfillChunk {
-  league_code: string;
-  start_date: string;
-  end_date: string;
-  run_id?: number | null;
-  job_id?: string | null;
+  leagueCode: string;
+  startDate: string;
+  endDate: string;
+  runId?: number | null;
+  jobId?: string | null;
   error?: string | null;
 }
 
 export interface BulkBackfillResponse {
-  total_chunks: number;
-  chunks_dispatched: number;
+  totalChunks: number;
+  chunksDispatched: number;
   chunks: BulkBackfillChunk[];
 }
 
 export async function previewBulkBackfill(
   params: BulkBackfillParams
-): Promise<{ total_chunks: number; chunks: BulkBackfillChunk[] }> {
+): Promise<{ totalChunks: number; chunks: BulkBackfillChunk[] }> {
   return request("/api/admin/sports/scraper/runs/bulk-preview", {
     method: "POST",
     body: JSON.stringify(params),

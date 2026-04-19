@@ -6,7 +6,8 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy import Select, desc, select
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +19,8 @@ from ...db.sports import SportsLeague
 from ...utils.datetime_utils import date_to_utc_datetime, now_utc
 from .common import get_league, serialize_run
 from .schemas import ScrapeRunCreateRequest, ScrapeRunResponse
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 router = APIRouter()
 
@@ -354,6 +357,8 @@ class BulkBackfillRequest(BaseModel):
 
 
 class BulkBackfillChunk(BaseModel):
+    model_config = _ALIAS_CFG
+
     league_code: str
     start_date: str
     end_date: str
@@ -363,6 +368,8 @@ class BulkBackfillChunk(BaseModel):
 
 
 class BulkBackfillResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
     total_chunks: int
     chunks_dispatched: int
     chunks: list[BulkBackfillChunk]

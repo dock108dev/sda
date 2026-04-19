@@ -5,13 +5,16 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from ..db import AsyncSession, get_db
 from ..db.social import TeamSocialAccount, TeamSocialPost
 from ..db.sports import SportsGame, SportsLeague, SportsTeam
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 router = APIRouter(prefix="/api/social", tags=["social"])
 
@@ -23,6 +26,8 @@ router = APIRouter(prefix="/api/social", tags=["social"])
 
 class SocialPostResponse(BaseModel):
     """Single social post for timeline display."""
+
+    model_config = _ALIAS_CFG
 
     id: int
     game_id: int

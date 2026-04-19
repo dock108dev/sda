@@ -10,8 +10,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.api.analytics_routes import _predict_with_game_model
@@ -27,6 +28,8 @@ from app.db import get_db
 
 from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS
 from app.routers.simulator_models import ScoreFrequency
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +152,8 @@ class MLBSimulationRequest(BaseModel):
 class TeamPAProbabilities(BaseModel):
     """Plate-appearance event probabilities derived from a team's rolling profile."""
 
+    model_config = _ALIAS_CFG
+
     strikeout: float = Field(..., description="Probability of a strikeout per PA")
     walk: float = Field(..., description="Probability of a walk per PA")
     single: float = Field(..., description="Probability of a single per PA")
@@ -163,6 +168,8 @@ class MLBSimulationResponse(BaseModel):
     Contains win probabilities, expected scores, most common final
     scores, and the PA probabilities derived from each team's profile.
     """
+
+    model_config = _ALIAS_CFG
 
     home_team: str = Field(..., description="Home team abbreviation")
     away_team: str = Field(..., description="Away team abbreviation")
@@ -219,6 +226,8 @@ class MLBSimulationResponse(BaseModel):
 
 class MLBTeamInfo(BaseModel):
     """A team available for simulation."""
+
+    model_config = _ALIAS_CFG
 
     abbreviation: str = Field(..., description="Team abbreviation (e.g. NYY)")
     name: str = Field(..., description="Full team name (e.g. New York Yankees)")

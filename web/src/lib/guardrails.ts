@@ -30,8 +30,13 @@ import type { NarrativeBlock } from "./api/sportsAdmin/gameFlowTypes";
 /** Maximum number of narrative blocks per game */
 export const MAX_BLOCKS = 7;
 
-/** Minimum number of narrative blocks per game */
-export const MIN_BLOCKS = 4;
+/**
+ * Minimum number of narrative blocks per game.
+ * Floor is 3, not 4: blowout games produce fewer distinct narrative segments
+ * (SETUP → DECISION_POINT → RESOLUTION) and 3 is a valid, complete arc.
+ * Canonical value is shared with backend validate_blocks.py MIN_BLOCKS = 3.
+ */
+export const MIN_BLOCKS = 3;
 
 /** Maximum embedded tweets per game */
 export const MAX_EMBEDDED_TWEETS = 5;

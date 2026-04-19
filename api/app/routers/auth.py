@@ -18,11 +18,13 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings as _settings
 from app.db import get_db
 from app.db.users import User
 from app.dependencies.roles import (
@@ -34,9 +36,10 @@ from app.dependencies.roles import (
     require_user,
     resolve_role,
 )
-from app.config import settings as _settings
 from app.security import pwd_context as _pwd_ctx
 from app.services.email import send_magic_link_email, send_password_reset_email
+
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +62,8 @@ class LoginRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field(default="bearer")
     role: str = Field(..., description="User role")

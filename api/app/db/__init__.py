@@ -2,7 +2,8 @@
 
 Import models from their respective modules:
     from app.db.sports import SportsGame, SportsTeam
-    from app.db.pipeline import GamePipelineRun, PipelineStage
+    from app.db.pipeline import GamePipelineRun
+    from app.services.pipeline.models import PipelineStage  # canonical definition
 
 Session management:
     from app.db import AsyncSession, get_db
@@ -17,6 +18,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from .base import Base
+from . import hooks as _hooks  # noqa: F401 — registers ORM event listeners
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine

@@ -1,8 +1,16 @@
 """Models for social media post collection."""
 
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, Field
+
+
+class GamePhase(str, Enum):
+    pregame = "pregame"
+    in_game = "in_game"
+    postgame = "postgame"
+    unknown = "unknown"
 
 
 class CollectedPost(BaseModel):

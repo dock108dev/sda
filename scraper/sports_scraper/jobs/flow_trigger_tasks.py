@@ -4,8 +4,13 @@ Instead of generating flows on a fixed schedule hours after ingestion,
 we trigger flow generation as soon as a game transitions live → final
 and has sufficient PBP data.
 
-The daily sweep (sweep_tasks.py) serves as a fallback for games that
-were missed by the edge trigger.
+sweep_missing_flows() is the safety-net: a daily task that finds any
+FINAL games from the past 24 h with no flow artifact and re-enqueues
+trigger_flow_for_game for each (the NX lock prevents double-dispatch).
+
+backfill_missing_flows() is a one-shot Phase-1 deploy task that covers
+the past N days (default 7). Safe to re-run: the NX lock inside
+trigger_flow_for_game prevents double-dispatch.
 """
 
 from __future__ import annotations
@@ -42,7 +47,14 @@ def trigger_flow_for_game(game_id: int) -> dict:
 
     from ..db import db_models
     from ..services.job_runs import complete_job_run, start_job_run
-    from ..utils.redis_lock import LOCK_TIMEOUT_5MIN, acquire_redis_lock, release_redis_lock
+    from ..utils.redis_lock import LOCK_TIMEOUT_30MIN, acquire_redis_lock, release_redis_lock
+
+    # Acquire lock before any pipeline work — key is stable and namespaced by game
+    lock_name = f"flow:lock:{game_id}"
+    lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_30MIN)
+    if not lock_token:
+        logger.info("flow_trigger_skipped_locked", game_id=game_id)
+        return {"game_id": game_id, "status": "skipped", "reason": "locked"}
 
     with get_session() as session:
         game = session.query(db_models.SportsGame).get(game_id)
@@ -72,16 +84,8 @@ def trigger_flow_for_game(game_id: int) -> dict:
                 "flow_trigger_no_pbp",
                 game_id=game_id,
             )
-            # Retry will kick in via Celery's autoretry
+            # Retry will kick in via Celery's autoretry; TTL expiry releases the lock
             raise Exception(f"Game {game_id} has no PBP data yet — will retry")
-
-        # Acquire per-game lock to prevent races between edge-trigger,
-        # daily sweep, and scheduled batch flow gen
-        lock_name = f"lock:flow_gen:{game_id}"
-        lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_5MIN)
-        if not lock_token:
-            logger.info("flow_trigger_skipped_locked", game_id=game_id)
-            return {"game_id": game_id, "status": "skipped", "reason": "locked"}
 
     job_run_id = start_job_run("trigger_flow", [])
     try:
@@ -101,6 +105,7 @@ def trigger_flow_for_game(game_id: int) -> dict:
                     status="success",
                     summary_data={"game_id": game_id, "skipped": "immutable"},
                 )
+                release_redis_lock(lock_name, lock_token)
                 return {"game_id": game_id, "status": "skipped", "reason": "immutable"}
 
             # Get league code for the API call
@@ -115,12 +120,12 @@ def trigger_flow_for_game(game_id: int) -> dict:
             summary_data={"game_id": game_id, "league": league_code},
             error_summary=result.get("error"),
         )
+        # Release only on success; on failure TTL expiry is the safety net
+        release_redis_lock(lock_name, lock_token)
         return result
     except Exception as exc:
         complete_job_run(job_run_id, status="error", error_summary=str(exc)[:500])
         raise
-    finally:
-        release_redis_lock(lock_name, lock_token)
 
 
 def _call_pipeline_api(game_id: int, league_code: str) -> dict:
@@ -186,3 +191,144 @@ def _call_pipeline_api(game_id: int, league_code: str) -> dict:
             error=str(exc),
         )
         raise  # Let Celery retry
+
+
+@shared_task(name="sweep_missing_flows")
+def sweep_missing_flows() -> dict:
+    """Safety-net sweep: enqueue flow generation for FINAL games with no artifact.
+
+    Runs daily after ingestion. Covers games where the ORM hook (ISSUE-001)
+    misfired (e.g. worker restart during transition). The NX lock inside
+    trigger_flow_for_game prevents double-dispatch if the hook already ran.
+
+    Returns:
+        dict with count of game IDs enqueued.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import not_
+    from sqlalchemy import exists as sa_exists
+
+    from ..db import db_models
+    from ..utils.redis_lock import LOCK_TIMEOUT_5MIN, acquire_redis_lock, release_redis_lock
+
+    SWEEP_LOCK = "flow:sweep:lock"
+    lock_token = acquire_redis_lock(SWEEP_LOCK, timeout=LOCK_TIMEOUT_5MIN)
+    if not lock_token:
+        logger.info("sweep_missing_flows_skipped_locked")
+        return {"status": "skipped", "reason": "locked"}
+
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+        with get_session() as session:
+            games = (
+                session.query(db_models.SportsGame)
+                .filter(
+                    db_models.SportsGame.status == db_models.GameStatus.final.value,
+                    db_models.SportsGame.game_date >= cutoff,
+                    not_(
+                        sa_exists().where(
+                            db_models.SportsGameTimelineArtifact.game_id
+                            == db_models.SportsGame.id
+                        )
+                    ),
+                )
+                .all()
+            )
+            game_ids = [g.id for g in games]
+
+        for game_id in game_ids:
+            trigger_flow_for_game.delay(game_id)
+            logger.info("sweep_missing_flows_enqueued", game_id=game_id)
+
+        logger.info("sweep_missing_flows_complete", enqueued=len(game_ids))
+        return {"status": "success", "enqueued": len(game_ids)}
+    finally:
+        release_redis_lock(SWEEP_LOCK, lock_token)
+
+
+# Stagger interval between enqueued backfill tasks (seconds)
+_BACKFILL_STAGGER_SECONDS = 30
+
+
+@shared_task(name="backfill_missing_flows")
+def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
+    """One-shot backfill: enqueue flow generation for FINAL games missing a flow.
+
+    Designed for Phase 1 deploy. Safe to re-run — the NX lock inside
+    trigger_flow_for_game prevents double-dispatch.
+
+    Args:
+        dry_run: When True, log the games that would be enqueued but do not enqueue.
+        days: Look-back window in days (default 7).
+
+    Returns:
+        dict with ``found``, ``enqueued`` (or ``would_enqueue`` in dry-run), and ``status``.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import not_
+    from sqlalchemy import exists as sa_exists
+
+    from ..db import db_models
+    from ..utils.redis_lock import LOCK_TIMEOUT_10MIN, acquire_redis_lock, release_redis_lock
+
+    BACKFILL_LOCK = "flow:backfill:lock"
+    lock_token = acquire_redis_lock(BACKFILL_LOCK, timeout=LOCK_TIMEOUT_10MIN)
+    if not lock_token:
+        logger.info("backfill_missing_flows_skipped_locked", dry_run=dry_run, days=days)
+        return {"status": "skipped", "reason": "locked"}
+
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+        with get_session() as session:
+            games = (
+                session.query(db_models.SportsGame)
+                .filter(
+                    db_models.SportsGame.status == db_models.GameStatus.final.value,
+                    db_models.SportsGame.game_date >= cutoff,
+                    not_(
+                        sa_exists().where(
+                            db_models.SportsGameTimelineArtifact.game_id
+                            == db_models.SportsGame.id
+                        )
+                    ),
+                )
+                .all()
+            )
+            game_ids = [g.id for g in games]
+
+        logger.info(
+            "backfill_missing_flows_found",
+            found=len(game_ids),
+            dry_run=dry_run,
+            days=days,
+        )
+
+        if dry_run:
+            logger.info(
+                "backfill_missing_flows_dry_run",
+                game_ids=game_ids,
+                would_enqueue=len(game_ids),
+            )
+            return {"status": "dry_run", "found": len(game_ids), "would_enqueue": len(game_ids)}
+
+        for idx, game_id in enumerate(game_ids):
+            countdown = idx * _BACKFILL_STAGGER_SECONDS
+            trigger_flow_for_game.apply_async(args=[game_id], countdown=countdown)
+            logger.info(
+                "backfill_missing_flows_enqueued",
+                game_id=game_id,
+                countdown_seconds=countdown,
+            )
+
+        logger.info(
+            "backfill_missing_flows_complete",
+            found=len(game_ids),
+            enqueued=len(game_ids),
+        )
+        return {"status": "success", "found": len(game_ids), "enqueued": len(game_ids)}
+    finally:
+        release_redis_lock(BACKFILL_LOCK, lock_token)

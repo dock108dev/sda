@@ -14,6 +14,7 @@ from ..logging import logger
 # Named lock timeout constants — use these instead of bare integers
 LOCK_TIMEOUT_5MIN = 300
 LOCK_TIMEOUT_10MIN = 600
+LOCK_TIMEOUT_30MIN = 1800
 LOCK_TIMEOUT_1HOUR = 3600
 
 # Lua script: compare-and-delete (atomic on Redis server)

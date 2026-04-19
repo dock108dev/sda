@@ -71,4 +71,5 @@
 | [Deployment](ops/deployment.md) | Server setup, deploy flow, edge routing, rollbacks |
 | [Infrastructure & Local Dev](ops/infra.md) | Docker configuration, local setup, environment variables |
 | [Production Audit](AUDIT_REPORT.md) | Error handling, security, and resilience audit with remediation plan |
+| [Docs Consolidation Audit](audits/docs-consolidation.md) | 2026-04-18 doc review: what was fixed, what was audited, known gaps |
 | [Changelog](changelog.md) | Recent changes and releases |
