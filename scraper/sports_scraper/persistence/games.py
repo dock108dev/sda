@@ -41,7 +41,7 @@ def _notify_game_update(session: Session | None, game_id: int) -> None:
             text("SELECT pg_notify('game_score_update', :p)"), {"p": payload}
         )
     except Exception:
-        pass
+        logger.debug("pg_notify_game_update_failed", extra={"game_id": game_id}, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -420,7 +420,7 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
     - archived is terminal (never regresses from archived)
     - final never regresses (except to archived)
     - Generally, status only moves forward in the lifecycle
-    - Non-lifecycle statuses (postponed, canceled) are accepted as-is
+    - Non-lifecycle statuses (postponed, cancelled) are accepted as-is
     """
     current = _normalize_status(current_status)
     incoming = _normalize_status(incoming_status)
@@ -444,7 +444,7 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
             return current  # Don't regress
         return incoming
 
-    # Non-lifecycle statuses (postponed, canceled) pass through
+    # Non-lifecycle statuses (postponed, cancelled) pass through
     return incoming
 
 

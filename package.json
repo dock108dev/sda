@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "test": "PYTHONPATH=api:scraper .venv/bin/pytest api/tests/test_game_status_hook.py api/tests/test_validate_blocks.py api/tests/test_otel.py api/tests/test_listen_notify.py api/tests/test_realtime_backfill.py scraper/tests/test_flow_trigger_lock.py scraper/tests/test_flow_sweep.py scraper/tests/test_golden_corpus.py scraper/tests/test_bluesky_collector.py scraper/tests/test_telemetry.py scraper/tests/test_social_metrics.py scraper/tests/test_templates.py --no-cov",
+    "build": "pnpm --filter web build",
+    "test": "PYTHONPATH=api:scraper .venv/bin/pytest api/tests/test_game_status_hook.py api/tests/test_validate_blocks.py api/tests/test_otel.py api/tests/test_listen_notify.py api/tests/test_realtime_backfill.py api/tests/test_regen_context.py scraper/tests/test_flow_trigger_lock.py scraper/tests/test_flow_sweep.py scraper/tests/test_golden_corpus.py scraper/tests/test_bluesky_collector.py scraper/tests/test_telemetry.py scraper/tests/test_social_metrics.py scraper/tests/test_templates.py scraper/tests/test_grader.py scraper/tests/test_grade_gate.py --no-cov",
     "load-test": ".venv/bin/python tests/load/sse_load_test.py"
   },
   "pnpm": {

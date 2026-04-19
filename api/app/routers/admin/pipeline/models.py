@@ -106,6 +106,22 @@ class RunFullPipelineRequest(BaseModel):
         default="admin",
         description="Who triggered the run",
     )
+    regen_attempt: int = Field(
+        default=0,
+        description=(
+            "Quality-gate regen counter. 0 = first pipeline pass; "
+            "1 = first regen (triggers template_fallback on second gate failure). "
+            "Set automatically by grade_gate_regen triggers."
+        ),
+    )
+    failure_reasons: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Structured failure reasons from the previous grade_flow_task. "
+            "Injected into game_context so the next RENDER_BLOCKS pass can "
+            "address specific quality weaknesses."
+        ),
+    )
 
 
 # =============================================================================

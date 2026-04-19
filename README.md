@@ -24,8 +24,9 @@ Local endpoints:
 ## Repository Layout
 
 - `api/` FastAPI backend and services
-- `scraper/` ingestion workers and pipelines
+- `scraper/` Celery ingestion workers and narrative pipeline
 - `web/` Next.js admin UI
+- `packages/` shared TypeScript types and UI primitives
 - `infra/` Docker and deployment assets
 - `docs/` full technical documentation
 

@@ -1,4 +1,4 @@
-"""Quality review queue model — human review escalation for low-scoring flows."""
+"""Quality review queue and audit log models for human review escalation."""
 
 from __future__ import annotations
 
@@ -57,3 +57,25 @@ class QualityReviewQueue(Base):
         Index("idx_quality_review_queue_status", "status"),
         Index("idx_quality_review_queue_sport", "sport"),
     )
+
+
+class QualityReviewAction(Base):
+    """Audit log for admin actions taken on quality review queue items.
+
+    Persists every approve/reject/regenerate action with actor and timestamp.
+    queue_id is nullable: queue rows may be deleted (reject/regenerate path) but
+    the audit record is kept for history.
+    """
+
+    __tablename__ = "quality_review_action"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    queue_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    flow_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    actor: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (Index("idx_quality_review_action_flow_id", "flow_id"),)

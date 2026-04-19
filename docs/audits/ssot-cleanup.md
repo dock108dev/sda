@@ -163,3 +163,78 @@ to silently test the wrong code path:
 `db_poller = DBPoller()` carried `# Singleton — kept for backwards-compat with main.py imports`.
 The module-level instance is the live runtime object imported by `main.py`; it is not a compat shim.
 Comment deleted.
+
+---
+
+## Destructive Cleanup Pass — 2026-04-19 (second sweep)
+
+### 9. Docstrings / comments updated: "canceled" → "cancelled" for GameStatus consistency
+
+**Problem:** Four comment strings in scraper code used the old single-l spelling as a concept
+name — inconsistent with the canonical `GameStatus.CANCELLED = "cancelled"` and the migration
+`20260418_000032_standardize_game_status_cancelled.py`.
+
+**Files changed:**
+
+| File | Location | Change |
+|------|----------|--------|
+| `scraper/sports_scraper/persistence/games.py` | `resolve_status_transition` docstring | "canceled" → "cancelled" |
+| `scraper/sports_scraper/persistence/games.py` | Inline comment `# Non-lifecycle statuses (postponed, canceled) pass through` | "canceled" → "cancelled" |
+| `scraper/scripts/audit_data.py` | `fix_stuck_games` docstring | "canceled" → "cancelled" |
+| `scraper/scripts/audit_data.py` | `print(f"  Marked {fixed} stuck games as canceled …")` | "canceled" → "cancelled" |
+
+**Retained (intentional):**
+- `games.py:_normalize_status` line 400: `if status_normalized in {db_models.GameStatus.CANCELLED.value, "canceled"}` — this is a **boundary guard** that accepts the old external-provider spelling and normalises it to the canonical value. The Alembic migration only converts historical DB rows; live sports data providers may still emit either spelling. This guard is not a backward-compat shim for our own code.
+- `game_state_updater.py:45`: `"phantom_canceled"` — a Prometheus/structlog **metric key name**. Renaming it would break existing dashboards and alert rules without gaining type-safety. Scope: operational concern, not an SSOT violation.
+
+---
+
+## SSOT Verification (final)
+
+| Domain | Authoritative Source | Current Value |
+|--------|---------------------|---------------|
+| `PipelineStage` enum | `api/app/services/pipeline/models.py` | re-exported from `api/app/db/pipeline.py` |
+| `GameStatus` enum | `api/app/db/sports.py` | `CANCELLED = "cancelled"` |
+| `MIN_BLOCKS` | `api/app/services/pipeline/stages/block_types.py` | `3` — in sync with `web/src/lib/guardrails.ts` |
+| Flow version strings | `api/app/routers/sports/game_timeline.py` | `FLOW_VERSION = "v2-blocks"`, `_LEGACY_FLOW_VERSION = "v2-moments"` |
+| Score on wire | `ScoreObject {home, away}` in `api/app/routers/sports/schemas/game_flow.py` | No tuple returns in v1 |
+| Consumer game flow contract | `ConsumerGameFlowResponse` | Blocks only — no `moments` field |
+| `_swap_score` | Deleted | `grep -r "_swap_score" .` → 0 results |
+| `BRIANDUMP.md` | Deleted / never existed | `ls BRIANDUMP.md` → no such file |
+
+---
+
+## Sanity Check (2026-04-19 sweep)
+
+```
+# No stale "canceled" in GameStatus comparisons (only the intentional boundary guard remains)
+grep -rn '"canceled"' scraper/sports_scraper/persistence/games.py
+  → line 400 only (_normalize_status boundary guard — intentional)
+
+# No "canceled" docstrings referencing game status remain
+grep -n "canceled" scraper/sports_scraper/persistence/games.py
+  → 0 results (all updated to "cancelled")
+
+# No _swap_score usages
+grep -r "_swap_score" --include="*.py" .
+  → 0 results
+
+# MIN_BLOCKS is 3 on both sides
+grep -n "MIN_BLOCKS\s*=" api/app/services/pipeline/stages/block_types.py
+  → MIN_BLOCKS = 3
+grep -n "MIN_BLOCKS\s*=" web/src/lib/guardrails.ts
+  → export const MIN_BLOCKS = 3;
+
+# No moments in v1 consumer response schema
+grep -n "moments" api/app/routers/v1/games.py
+  → 0 results
+
+# PipelineStage defined only once
+grep -rn "^class PipelineStage" --include="*.py" .
+  → api/app/services/pipeline/models.py only
+
+# BRIANDUMP.md references in non-aidlc code
+grep -r "BRIANDUMP" --include="*.md" --include="*.py" --include="*.ts" . \
+  | grep -v "\.aidlc\|docs/audits"
+  → 0 results
+```

@@ -7,8 +7,9 @@ Pure computational helpers are in render_prompt_helpers.py.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from .regen_context import RegenFailureContext
 from .render_helpers import detect_overtime_info
 from .render_prompt_helpers import (
     _build_period_label,
@@ -52,6 +53,7 @@ Return JSON: {"blocks": [{"i": block_index, "n": "revised narrative"}]}"""
 def build_game_flow_pass_prompt(
     blocks: list[dict[str, Any]],
     game_context: dict[str, str],
+    regen_context: RegenFailureContext | None = None,
 ) -> str:
     """Build prompt for game-level flow pass.
 
@@ -61,6 +63,8 @@ def build_game_flow_pass_prompt(
     Args:
         blocks: List of block dicts with narratives already generated
         game_context: Team names and context
+        regen_context: Optional quality-gate failure breakdown for regen runs.
+            Injected into the volatile/data layer only.
 
     Returns:
         Prompt string for the flow pass
@@ -96,6 +100,13 @@ def build_game_flow_pass_prompt(
             f"\nNOTE: Comeback game (peak margin: {game_peak_margin}, final: {final_margin}). "
             f"A team led by {game_peak_margin} at one point — narrate the swing."
         )
+
+    # Inject regen quality feedback into the data layer when this is a regen run.
+    if regen_context is not None and regen_context.has_failures():
+        prompt_parts.extend([
+            "",
+            regen_context.render_for_prompt(),
+        ])
 
     prompt_parts.extend([
         "",
@@ -143,6 +154,7 @@ def build_block_prompt(
     blocks: list[dict[str, Any]],
     game_context: dict[str, str],
     pbp_events: list[dict[str, Any]],
+    regen_context: RegenFailureContext | None = None,
 ) -> str:
     """Build the prompt for generating block narratives.
 
@@ -150,6 +162,8 @@ def build_block_prompt(
         blocks: List of block dicts (without narratives)
         game_context: Team names and other context
         pbp_events: PBP events for play descriptions
+        regen_context: Optional quality-gate failure breakdown for regen runs.
+            Injected into the volatile/data layer only; identity layer unchanged.
 
     Returns:
         Prompt string for OpenAI
@@ -381,6 +395,15 @@ def build_block_prompt(
             "  'sending the game to OT', 'requiring overtime to decide'",
             "- For NHL shootouts, mention 'heading to a shootout' or 'the shootout'",
             "- This is MANDATORY - do NOT skip mentioning overtime when it occurs",
+            "",
+        ])
+
+    # Inject regen quality feedback into the data layer when this is a regen run.
+    # The stable identity/guardrail layers above are never modified.
+    if regen_context is not None and regen_context.has_failures():
+        prompt_parts.extend([
+            "",
+            regen_context.render_for_prompt(),
             "",
         ])
 

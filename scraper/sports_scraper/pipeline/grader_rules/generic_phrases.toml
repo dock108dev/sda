@@ -74,3 +74,15 @@ narrative_filler = [
     "stole the show",
     "sparked by the energy",
 ]
+
+[density]
+# Token Jaccard similarity threshold per sport; range [0, 1], lower = stricter.
+# Flows whose entity-stripped narrative meets or exceeds this similarity with the
+# sport fallback template are flagged as content-free (template regurgitation).
+# Calibrated against 5 synthetic samples: 3 high-density narratives (pass) and
+# 2 template-derived content-free samples (fail). See ISSUE-056.
+default = 0.60
+nfl = 0.60
+nba = 0.60
+mlb = 0.60
+nhl = 0.60

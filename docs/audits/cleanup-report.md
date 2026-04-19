@@ -1,6 +1,6 @@
 # Code Quality Cleanup Report
 
-> Run: 2026-04-18. Branch: aidlc_1. Updated: 2026-04-19 (Round 2 — analytics layer sweep).
+> Run: 2026-04-18. Branch: aidlc_1. Updated: 2026-04-19 (Round 3 — TS formatting helpers + Python unused imports).
 
 ## Summary
 
@@ -178,3 +178,44 @@ Recommend consolidating into `scraper/sports_scraper/utils/` in a future pass.
 - `_parse_team_players()` — NBA, MLB, NHL
 
 A `BaseSportParser` in `scraper/sports_scraper/live/base.py` could absorb the shared mechanics.
+
+---
+
+## Round 3 — TS Formatting Helpers + Python Unused Imports (2026-04-19)
+
+### Dead Imports Removed (Python)
+
+| File | Removed |
+|------|---------|
+| `api/app/routers/admin/quality_review.py` | `from typing import Literal` (never referenced) |
+| `api/app/routers/admin/coverage_report.py` | `Any` from `from typing import Any, Optional` |
+
+### Duplicate TS Helpers Consolidated
+
+`fmtPct` — format a 0–1 decimal as `"42.3%"` — was copy-pasted identically into five
+`*AdvancedStatsSection.tsx` files. Extracted to `web/src/lib/utils/formatting.ts`.
+
+`fmtNum` — format a float with configurable precision — was duplicated in MLB and NHL with
+the same `decimals=1` default. Moved to `formatting.ts`; MLB and NHL import from there.
+
+| File | Change |
+|------|--------|
+| `web/src/lib/utils/formatting.ts` | Added `fmtPct`, `fmtNum` exports |
+| `NBAAdvancedStatsSection.tsx` | Removed local `fmtPct`; imports shared |
+| `MLBAdvancedStatsSection.tsx` | Removed local `fmtPct` and `fmtNum`; imports shared |
+| `NHLAdvancedStatsSection.tsx` | Removed local `fmtPct` and `fmtNum`; imports shared |
+| `NFLAdvancedStatsSection.tsx` | Removed local `fmtPct`; imports shared |
+| `NCAABAdvancedStatsSection.tsx` | Removed local `fmtPct`; imports shared. Keeps local `fmtNum(decimals=0)` — default differs from shared version |
+
+**Not consolidated (behavioral differences):**
+- NFL `fmtNum` uses `String(v)` (native JS precision), not `.toFixed()` — different semantics.
+- `formatDuration` / `formatTime` / `formatDate` in `RunsDrawer.tsx` and `PipelineRunsSection.tsx` have diverged signatures; consolidation would require adapting callers.
+
+### Remaining Duplicates Identified (Not Fixed — Scope)
+
+| Pattern | Files | Notes |
+|---------|-------|-------|
+| `buildHeaders()` | `sportsAdmin/client.ts`, `fairbet/index.ts` | Same env var, different signatures |
+| `formatMetricValue` name collision | `formatting.ts`, `gameDetailUtils.tsx` | Different signatures — rename `gameDetailUtils` version to `formatOutcomeValue` |
+| `progress_from_index()` exact duplicate | `timeline_events.py`, `normalize_pbp_helpers.py` | Pipeline residue; audit before removing |
+| `normalize_probabilities` name collision | `probability_provider.py`, `mlb/matchup.py` | Different semantics — rename MLB version |

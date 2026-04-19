@@ -268,7 +268,7 @@ def fix_empty_stub_games(session, league_code: str | None = None):
 
 
 def fix_stuck_games(session, league_code: str | None = None):
-    """Mark games stuck in scheduled/pregame for >48h as canceled."""
+    """Mark games stuck in scheduled/pregame for >48h as cancelled."""
     cutoff = datetime.now(UTC) - timedelta(hours=48)
     q = (
         session.query(SportsGame)
@@ -389,7 +389,7 @@ def main():
             deleted = fix_empty_stub_games(session, league)
             print(f"  Deleted {deleted} empty stub games (final, 0 score, no data)")
             fixed = fix_stuck_games(session, league)
-            print(f"  Marked {fixed} stuck games as canceled (scheduled/pregame >48h ago)")
+            print(f"  Marked {fixed} stuck games as cancelled (scheduled/pregame >48h ago)")
 
     if args.clear_caches:
         print("\n--- CACHE CLEARING ---")

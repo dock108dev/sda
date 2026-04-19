@@ -184,3 +184,48 @@ These are known gaps that would require code-level investigation to resolve — 
 2. **WebSocket/SSE protocol spec** — sequence tracking, boot epoch, reconnect + backfill behavior are described in `DESIGN.md` conventions and the research doc but there is no authoritative message format spec.
 3. **NCAAB fuzzy team matching algorithm** — referenced in `docs/architecture.md` (Levenshtein distance) but not documented in a dedicated doc.
 4. **`v2-moments` → `v2-blocks` migration status** — `docs/gameflow/version-semantics.md` says to remove `_LEGACY_FLOW_VERSION` after all rows are migrated, but there is no ops procedure for confirming when that is complete.
+
+---
+
+## Review Pass 3 — 2026-04-19
+
+Full documentation consolidation pass. All 47 docs re-audited. Five targeted changes applied.
+
+### Files Changed
+
+#### `docs/AUDIT_REPORT.md`
+
+**Problem:** File contained the original April 8 error-handling audit findings — identical scope and content now covered by `docs/audits/abend-handling.md` (Apr 19, exhaustive), `docs/audits/security-audit.md`, and `docs/audits/ssot-cleanup.md`. Keeping it caused confusion about which was authoritative.
+
+**Fix:** Replaced content with an index table redirecting to the four audit files in `docs/audits/`. Original findings are preserved in `abend-handling.md`.
+
+#### `docs/index.md`
+
+**Problem:** Operations table linked to stale `AUDIT_REPORT.md` with description "Production Audit" — the old file. New audit docs in `docs/audits/` were not individually linked from the index.
+
+**Fix:** Replaced single "Production Audit" row with four specific rows (error handling, security, SSOT cleanup, docs consolidation). Added `phase6-validation.md` under Game Flow Generation — it existed but was absent from the index.
+
+#### `README.md`
+
+**Problem:** Repo layout listed `api/`, `scraper/`, `web/`, `infra/`, `docs/` but omitted `packages/` which contains `js-core` (shared TS types), `ui`, and `ui-kit`. These are a first-class runtime concern consumed by `web/`.
+
+**Fix:** Added `packages/` with description.
+
+#### `AIDLC_FUTURES.md` (root → `docs/aidlc-futures.md`)
+
+**Problem:** Auto-generated AIDLC process file (run stats, next-run checklist, tips) was sitting at the repo root alongside `ARCHITECTURE.md`, `DESIGN.md`, and `ROADMAP.md`. It is not developer documentation and is not referenced by `CLAUDE.md`.
+
+**Fix:** Moved to `docs/aidlc-futures.md`. Root is now clean: only `ARCHITECTURE.md`, `BRAINDUMP.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`, `ROADMAP.md`.
+
+### Files Audited and Unchanged (this pass)
+
+All 42 remaining docs verified against current codebase state. No further issues found. All root docs (`ARCHITECTURE.md`, `DESIGN.md`, `ROADMAP.md`, `BRAINDUMP.md`, `CLAUDE.md`) are accurate as of the Pass 1 and Pass 2 fixes.
+
+### Remaining Documentation Gaps (carried forward)
+
+Same four gaps from Pass 2 remain open — they require code-level investigation and are not addressable in a doc-only pass:
+
+1. Celery full task graph (dispatch chain, retry policies, hold mechanism)
+2. WebSocket/SSE message format spec
+3. NCAAB fuzzy team matching algorithm
+4. `v2-blocks` migration completion procedure

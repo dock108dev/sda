@@ -1,18 +1,11 @@
 "use client";
 
 import type { NHLAdvancedTeamStats, NHLSkaterAdvancedStats, NHLGoalieAdvancedStats } from "@/lib/api/sportsAdmin/types";
+import { fmtPct, fmtNum } from "@/lib/utils/formatting";
 import { CollapsibleSection } from "./CollapsibleSection";
 import styles from "./styles.module.css";
 
-function fmtPct(v: number | null | undefined): string {
-  return v != null ? `${(v * 100).toFixed(1)}%` : "—";
-}
-
 function fmtRating(v: number | null | undefined, decimals = 2): string {
-  return v != null ? v.toFixed(decimals) : "—";
-}
-
-function fmtNum(v: number | null | undefined, decimals = 1): string {
   return v != null ? v.toFixed(decimals) : "—";
 }
 

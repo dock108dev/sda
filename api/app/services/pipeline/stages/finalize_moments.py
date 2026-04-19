@@ -299,9 +299,11 @@ async def execute_finalize_moments(
     else:
         new_flow.flow_source = _flow_source  # type: ignore[possibly-undefined]
 
-    # Dispatch async quality grader (Tier 1 + Tier 2) — fire-and-forget.
-    # Template-fallback flows set fallback_used=True in previous_output so the
-    # grader can skip them without performing DB or LLM work.
+    # Dispatch the quality grader (Tier 1 + Tier 2) which also acts as the
+    # publish gate (ISSUE-053).  Template-fallback flows are skipped by the
+    # grader.  regen_attempt is threaded through so the gate can decide
+    # between regen and template_fallback on the second pass.
+    _regen_attempt = int((stage_input.game_context or {}).get("regen_attempt", 0))
     try:
         from ....celery_app import celery_app as _celery_app
 
@@ -312,6 +314,7 @@ async def execute_finalize_moments(
                 "sport": sport,
                 "game_id": game_id,
                 "is_template_fallback": _is_fallback,
+                "regen_attempt": _regen_attempt,
             },
             queue="sports-scraper",
         )

@@ -10,12 +10,14 @@
 
 The codebase has a **solid security foundation**: bcrypt password hashing, constant-time API key comparison, JWT algorithm pinning, strong production-config validation, structured log redaction, and proper consumer/admin key isolation.
 
-Six confirmed vulnerabilities (two High, four Medium) were fixed in-place during this audit. Additional hardening opportunities and areas for manual verification are documented below.
+This document covers two audit passes. The initial pass found and fixed eight confirmed vulnerabilities (two High, six Medium/Low). The second pass (2026-04-19) found three additional issues fixed in-place plus one remaining medium requiring manual action.
 
 | Severity | Confirmed | Fixed In-Place | Remaining |
 |----------|-----------|---------------|-----------|
-| High | 2 | 2 | 0 |
-| Medium | 4 | 4 | 0 |
+| Critical | 1 | 1 | 0 |
+| High | 3 | 3 | 0 |
+| Medium | 5 | 5 | 0 |
+| Medium (open) | 1 | 0 | 1 |
 | Medium (hardening) | 4 | 0 | 4 |
 | Low | 7 | 0 | 7 |
 | Informational | 6 | — | — |
@@ -23,6 +25,83 @@ Six confirmed vulnerabilities (two High, four Medium) were fixed in-place during
 ---
 
 ## 1. Confirmed Vulnerabilities — Fixed In-Place
+
+### V8 · Next.js admin middleware existed but was never wired up — FIXED (2026-04-19)
+**Severity:** Critical  
+**Files:** `web/src/proxy.ts`, `web/src/middleware.ts` (created)
+
+`web/src/proxy.ts` contains a complete, correctly-implemented Basic Auth middleware — constant-time password comparison via Web Crypto SHA-256, fail-closed on missing `ADMIN_PASSWORD`, and a `config.matcher` that correctly excludes static assets and API routes. No `middleware.ts` file existed, so Next.js never loaded it. All pages under `/admin/*` were accessible without authentication.
+
+**Exploit scenario:** Any network-reachable browser navigates to `/admin/pipeline`. The page loads and all client-side API calls route through `/api/proxy/[...path]`, which injects `SPORTS_API_KEY` server-side. The attacker gains full admin capability — triggering pipeline runs, reading game data, managing users — without supplying any credentials.
+
+**Fix applied:** Created `web/src/middleware.ts`:
+```typescript
+export { proxy as middleware, config } from "./proxy";
+```
+
+**Prerequisite:** `ADMIN_PASSWORD` must be set as a strong, independent secret in the production environment. The docker-compose passes `ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-}`; if unset, the middleware returns HTTP 500 (fail-closed). Do not share this password with `POSTGRES_PASSWORD`.
+
+---
+
+### V9 · `/auth/me/*` account endpoints exempt from all rate limiting — FIXED (2026-04-19)
+**Severity:** High  
+**File:** `api/app/middleware/rate_limit.py:31`
+
+```python
+# Before
+_EXEMPT_PREFIXES = ("/v1/sse", "/auth/me")
+```
+
+The `/v1/sse` exemption is correct (SSE connections must not be rate-limited). The `/auth/me` prefix exemption was too broad — it also silently disabled rate limiting on:
+
+- `PATCH /auth/me/email` — change account email address
+- `PATCH /auth/me/password` — change account password
+- `DELETE /auth/me` — delete account
+
+**Exploit scenario:** An attacker with a valid user JWT (legitimately obtained) can brute-force `PATCH /auth/me/password` unlimited times. The auth-strict tier (10 req/60s) that protects login was entirely bypassed for password change.
+
+**Fix applied:**
+```python
+_EXEMPT_PREFIXES = ("/v1/sse",)
+```
+All `/auth/me/*` endpoints now fall through to the global tier (120 req/60s by default), which is sufficient for legitimate usage.
+
+---
+
+### V10 · PostgreSQL port bound to all interfaces in docker-compose — FIXED (2026-04-19)
+**Severity:** Medium  
+**File:** `infra/docker-compose.yml:23`
+
+```yaml
+# Before
+ports:
+  - "${POSTGRES_PORT:-5432}:5432"
+```
+
+Although postgres is on the `internal: true` Docker network (blocking inter-container routing from external), the `ports` directive punches a host port mapping independent of network membership. On a host without a strict external firewall, port 5432 would be reachable from the internet.
+
+**Fix applied:**
+```yaml
+# After
+ports:
+  - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+```
+
+---
+
+### V11 · `ADMIN_PASSWORD` defaults to `POSTGRES_PASSWORD` — OPEN
+**Severity:** Medium  
+**File:** `infra/docker-compose.yml:350`
+
+```yaml
+ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-}
+```
+
+The web admin UI password is tied to the database password. A single leaked credential compromises both. If `POSTGRES_PASSWORD` remains at the default (`sports`), `ADMIN_PASSWORD` is `sports`. Additionally, Grafana's admin password shares the same default (line 447: `GF_SECURITY_ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-sports}`).
+
+**Required manual action:** Set `ADMIN_PASSWORD` and `GF_SECURITY_ADMIN_PASSWORD` as independent secrets in `.env`. Update `.env.example` to reflect the three distinct required values.
+
+---
 
 ### V0 · Privilege escalation via proxy: any authenticated user could access admin endpoints — FIXED
 **Severity:** High  
@@ -300,8 +379,10 @@ The proxy falls back to `NEXT_PUBLIC_SPORTS_API_URL` if `SPORTS_API_INTERNAL_URL
 
 | Priority | Item | Owner |
 |----------|------|-------|
+| **Critical** | **Set independent `ADMIN_PASSWORD` and `GF_SECURITY_ADMIN_PASSWORD` in production .env (V11)** | Ops |
 | High | Extend Redis-backed rate limiter to auth endpoints (H1) | API |
 | High | Add Redis auth validation to production config (H2) | Infra |
+| Medium | Route Grafana through Caddy TLS — remove direct port 3001 exposure | Infra |
 | Medium | Per-endpoint `require_admin` dependency for defense-in-depth (H3) | API |
 | Medium | Per-task argument validation in task trigger endpoint (H4) | API |
 | Low | Dummy bcrypt call on missing user to prevent timing enum (H5) | API |

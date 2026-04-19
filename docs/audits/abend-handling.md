@@ -463,3 +463,113 @@ Zero logging on exception. Production query failures are invisible; only "table 
 | `api/app/tasks/_training_helpers.py` | 205 | `ImportError` | Optional LightGBM import | L6 — correct |
 | `api/app/routers/sports/common.py` | 188 | `(ValueError, TypeError)` | Stat int conversion | L7 — correct |
 | `infra/log-relay/server.py` | 152 | `KeyboardInterrupt` | Server shutdown | L10 — correct |
+
+---
+
+## Third-Pass Findings (2026-04-19)
+
+Comprehensive re-audit covering pipeline stages, grader, grade-gate, regen flow, quality-review router, and realtime listener. Three fixed in-place.
+
+### H-3P-1 — `api/app/realtime/listener.py:131` — Silent `break` on keepalive ping failure (**Fixed**)
+
+```python
+try:
+    await conn.execute("SELECT 1")
+except Exception:
+    break   # ← no log
+```
+
+When the keepalive SELECT 1 fails, the inner loop silently breaks and triggers a reconnect. With no log entry at break-time, it is impossible to distinguish a clean idle reconnect from a sustained DB connectivity issue causing a reconnect storm. The reconnect itself logs the new connection attempt but not why the previous one dropped.
+
+**Fix:** Added `logger.warning("listen_notify_keepalive_failed", exc_info=True)` immediately before `break`.
+
+---
+
+### H-3P-2 — `scraper/sports_scraper/persistence/games.py:43` — Truly silent `pass` on `pg_notify` (**Fixed**)
+
+```python
+except Exception:
+    pass   # ← zero observability
+```
+
+The function docstring says "best-effort — never raises", which is the correct contract. However a silent `pass` means `pg_notify` failures are completely invisible in logs — impossible to diagnose during a LISTEN/NOTIFY outage investigation. The prior second-pass noted cache helper fixes at lines 69/81/92 but missed this one at line 43.
+
+**Fix:** Changed to `logger.debug("pg_notify_game_update_failed", extra={"game_id": game_id}, exc_info=True)`.
+
+---
+
+### M-3P-1 — `scraper/sports_scraper/jobs/grader_task.py:156` — OTel metric emit logged at `debug` (**Fixed**)
+
+```python
+except Exception:
+    logger.debug("grade_flow_task_otel_emit_failed", exc_info=True)
+```
+
+OTel metric emission failures are invisible in production (debug is filtered). A systematic instrumentation failure — broken metrics import, misconfigured exporter — would produce no visible signal while quality score histograms silently go dark.
+
+**Fix:** Upgraded to `logger.warning("grade_flow_task_otel_emit_failed", exc_info=True)`.
+
+---
+
+### M-3P-2 — `scraper/sports_scraper/pipeline/grader.py:372` — LLM failure returns neutral 50.0
+
+```python
+except Exception:
+    logger.warning("grader_t2_llm_call_failed", exc_info=True, ...)
+    score = 50.0
+    rubric = {}
+```
+
+Individual failures are logged at `warning` with `exc_info=True` — visibility is adequate. The risk is **systematic**: a prolonged Anthropic API outage causes every flow to receive `score=50.0`, which may pass or fail the grade gate for the wrong reasons. There is no counter or alert threshold to detect this condition.
+
+**Risk:** Data integrity during LLM outage. No fix applied (logged correctly).
+
+**Recommendation:** Add `tier2_grader_failed` OTel counter so an alert fires if failure rate exceeds threshold over a rolling window.
+
+---
+
+### M-3P-3 — `api/app/routers/admin/quality_review.py` — Regen enqueue failure after status write
+
+```python
+try:
+    _enqueue_flow_regen(game_id)
+except Exception:
+    logger.warning("quality_review_reject_enqueue_failed", exc_info=True, ...)
+```
+
+The `QualityReviewQueue` row is committed with status `approved`/`rejected` before this call. If `_enqueue_flow_regen` fails, the row is permanently marked but no regen task runs — the flow stays in its current low-quality state with no UI signal. Logged at warning.
+
+**Recommendation:** Make enqueue transactional with the status write, or return a 500 to force operator retry.
+
+---
+
+### M-3P-4 — `api/app/services/pipeline/stages/finalize_moments.py:307` — Celery `grade_flow_task` dispatch failure swallowed
+
+```python
+except Exception:
+    logger.warning("grade_flow_task_dispatch_failed", exc_info=True, ...)
+```
+
+If Celery/Redis is unavailable when the pipeline finalizes, `grade_flow_task` is never dispatched. The flow is published but never graded — quality gate does not run. Stage still returns success. Logged at warning.
+
+**Recommendation:** On dispatch failure, insert a `pending_grade` DB row that a sweep task drains.
+
+---
+
+### L-3P-1 — `api/app/realtime/listener.py:98,154` — Silent `pass` in shutdown/cleanup paths
+
+Cleanup operations (`conn.close()` during `stop()`, listener removal in `finally`) catch and discard exceptions. Runs during shutdown or connection teardown only; reconnect loop covers any connection leaks.
+
+**Verdict:** Acceptable. Upgrade to `logger.debug` if tracing reconnect issues becomes necessary.
+
+---
+
+### Note — New well-designed patterns confirmed (third pass)
+
+| Pattern | File | Assessment |
+|---------|------|-----------|
+| Stage executor `except Exception → logger.error(exc_info=True) + StageResult(success=False)` | `executor.py` | Failure recorded in DB; caller gets typed result |
+| Router `PipelineExecutionError → 400`, `Exception → logger.exception + 500` | `run_endpoints.py` | Correct HTTP error mapping; internals not leaked |
+| Regen task `HTTPStatusError 4xx → return`, `5xx → raise` | `regen_flow_task.py` | Correct retry discrimination |
+| `get_async_session` commit-on-success, rollback+reraise-on-exception | `api/app/db/__init__.py` | Verified: `autocommit=False`; explicit commit at context exit |
+| Cache parse `(JSONDecodeError, KeyError, ValueError) → warning + fallthrough` | `grader.py:319` | Specific types; LLM call is authoritative fallback |

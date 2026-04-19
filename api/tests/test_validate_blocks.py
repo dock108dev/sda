@@ -17,9 +17,11 @@ from app.services.pipeline.stages.block_types import (
 )
 from app.services.pipeline.stages.validate_blocks import (
     _check_ot_present,
+    _check_resolution_specificity,
     _check_score_present,
     _check_team_present,
     _count_sentences,
+    _get_final_window_plays,
     _validate_block_count,
     _validate_coverage,
     _validate_key_plays,
@@ -1508,3 +1510,449 @@ class TestGenericPhraseDensity:
         blocks = [self._block(i, dense) for i in range(5)]
         errors, warnings = self._check(blocks)
         assert errors == []
+
+
+# ── RESOLUTION specificity ────────────────────────────────────────────────────
+
+
+def _make_pbp_event(
+    quarter: int,
+    game_clock: str,
+    player_name: str | None = None,
+    home_score: int = 100,
+    away_score: int = 95,
+) -> dict:
+    return {
+        "quarter": quarter,
+        "game_clock": game_clock,
+        "player_name": player_name,
+        "home_score": home_score,
+        "away_score": away_score,
+        "description": "play description",
+    }
+
+
+def _resolution_block(narrative: str, block_index: int = 3) -> dict:
+    return {
+        "block_index": block_index,
+        "role": SemanticRole.RESOLUTION.value,
+        "narrative": narrative,
+    }
+
+
+def _setup_block(narrative: str = "A strong opening set the tone.") -> dict:
+    return {"block_index": 0, "role": SemanticRole.SETUP.value, "narrative": narrative}
+
+
+class TestGetFinalWindowPlays:
+    """Unit tests for _get_final_window_plays."""
+
+    def test_nba_last_2_min_q4(self) -> None:
+        """NBA: returns Q4 plays with clock ≤ 2:00."""
+        events = [
+            _make_pbp_event(4, "3:00"),   # outside window
+            _make_pbp_event(4, "2:00"),   # exactly at boundary — included
+            _make_pbp_event(4, "1:30"),   # inside window
+            _make_pbp_event(3, "0:30"),   # Q3 — excluded
+        ]
+        result = _get_final_window_plays(events, "NBA")
+        clocks = {e["game_clock"] for e in result}
+        assert "1:30" in clocks
+        assert "2:00" in clocks
+        assert "3:00" not in clocks
+        assert "0:30" not in clocks
+
+    def test_nba_ot_plays_always_included(self) -> None:
+        """NBA OT plays (quarter > 4) are always in the final window."""
+        events = [
+            _make_pbp_event(4, "3:00"),
+            _make_pbp_event(5, "4:00"),   # OT
+        ]
+        result = _get_final_window_plays(events, "NBA")
+        quarters = {e["quarter"] for e in result}
+        assert 5 in quarters
+        assert 4 not in quarters
+
+    def test_nfl_mirrors_nba_logic(self) -> None:
+        """NFL uses the same Q4 / 2-min rule as NBA."""
+        events = [
+            _make_pbp_event(4, "1:00"),
+            _make_pbp_event(4, "5:00"),
+        ]
+        result = _get_final_window_plays(events, "NFL")
+        assert len(result) == 1
+        assert result[0]["game_clock"] == "1:00"
+
+    def test_nhl_returns_period_3_and_ot(self) -> None:
+        """NHL: 3rd period and any OT are in the final window."""
+        events = [
+            _make_pbp_event(1, "10:00"),
+            _make_pbp_event(2, "10:00"),
+            _make_pbp_event(3, "10:00"),
+            _make_pbp_event(4, "3:00"),   # OT
+        ]
+        result = _get_final_window_plays(events, "NHL")
+        quarters = {e["quarter"] for e in result}
+        assert 3 in quarters
+        assert 4 in quarters
+        assert 1 not in quarters
+        assert 2 not in quarters
+
+    def test_ncaab_returns_2nd_half(self) -> None:
+        """NCAAB: 2nd half (quarter=2) and OT are in the final window."""
+        events = [
+            _make_pbp_event(1, "10:00"),
+            _make_pbp_event(2, "5:00"),
+            _make_pbp_event(3, "2:00"),   # OT
+        ]
+        result = _get_final_window_plays(events, "NCAAB")
+        quarters = {e["quarter"] for e in result}
+        assert 2 in quarters
+        assert 3 in quarters
+        assert 1 not in quarters
+
+    def test_mlb_returns_last_inning(self) -> None:
+        """MLB: only plays in the highest inning are in the final window."""
+        events = [
+            _make_pbp_event(7, "0:00"),
+            _make_pbp_event(8, "0:00"),
+            _make_pbp_event(9, "0:00"),
+            _make_pbp_event(9, "0:00"),
+        ]
+        result = _get_final_window_plays(events, "MLB")
+        assert all(e["quarter"] == 9 for e in result)
+        assert len(result) == 2
+
+    def test_empty_events_returns_empty(self) -> None:
+        """Empty PBP list returns empty list for all sports."""
+        for sport in ("NBA", "NFL", "NHL", "NCAAB", "MLB"):
+            assert _get_final_window_plays([], sport) == []
+
+    def test_unknown_sport_returns_last_20_pct(self) -> None:
+        """Unknown sport falls back to last 20% of events."""
+        events = [_make_pbp_event(1, "0:00") for _ in range(10)]
+        result = _get_final_window_plays(events, "UNKNOWN_SPORT")
+        assert len(result) == 2  # 10 // 5 = 2
+
+
+class TestCheckResolutionSpecificity:
+    """Unit tests for _check_resolution_specificity."""
+
+    def _blocks(self, resolution_narrative: str) -> list[dict]:
+        return [_setup_block(), _resolution_block(resolution_narrative)]
+
+    # ── passes ───────────────────────────────────────────────────────────────
+
+    def test_player_name_present_passes(self) -> None:
+        """RESOLUTION block naming a final-window player produces no warning."""
+        pbp = [_make_pbp_event(4, "1:00", player_name="LeBron James")]
+        blocks = self._blocks("LeBron James sealed the game with a clutch basket.")
+        errors, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert errors == []
+        assert warnings == []
+        # Flag must NOT be set on the block
+        assert not blocks[-1].get("resolution_specificity_warning")
+
+    def test_score_match_passes(self) -> None:
+        """RESOLUTION block with a matching final-window score produces no warning."""
+        pbp = [_make_pbp_event(4, "0:30", home_score=107, away_score=98)]
+        blocks = self._blocks("The Lakers finished strong to win 107-98.")
+        errors, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert errors == []
+        assert warnings == []
+
+    def test_no_resolution_block_skips_check(self) -> None:
+        """If no RESOLUTION block exists the check is a no-op."""
+        pbp = [_make_pbp_event(4, "1:00", player_name="LeBron James")]
+        blocks = [_setup_block()]
+        errors, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert errors == []
+        assert warnings == []
+
+    def test_non_resolution_block_not_checked(self) -> None:
+        """The rule only applies to the RESOLUTION block; other roles are ignored."""
+        pbp = [_make_pbp_event(4, "1:00", player_name="LeBron James")]
+        # SETUP block with a generic narrative, RESOLUTION has player name
+        blocks = [
+            _setup_block("The team gave it their all from start to finish."),
+            _resolution_block("LeBron James hit the game-winner at the buzzer."),
+        ]
+        errors, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert warnings == []
+
+    def test_no_pbp_events_skips_check(self) -> None:
+        """Missing PBP data skips the check (no false positive)."""
+        blocks = self._blocks("A generic ending to the game.")
+        errors, warnings = _check_resolution_specificity(blocks, [], "NBA")
+        assert warnings == []
+
+    def test_no_final_window_plays_skips_check(self) -> None:
+        """If no PBP events fall in the final window the check is skipped."""
+        # All events in Q1 — no Q4 plays for NBA
+        pbp = [_make_pbp_event(1, "10:00", player_name="LeBron James")]
+        blocks = self._blocks("A generic ending to the game.")
+        errors, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert warnings == []
+
+    # ── warns ────────────────────────────────────────────────────────────────
+
+    def test_generic_narrative_warns(self) -> None:
+        """RESOLUTION with only generic text and no score reference produces warning."""
+        pbp = [_make_pbp_event(4, "0:30", player_name="LeBron James")]
+        blocks = self._blocks(
+            "The team gave it everything they had and came away with the victory."
+        )
+        errors, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert errors == []
+        assert len(warnings) == 1
+        assert "RESOLUTION" in warnings[0]
+        # Flag must be stamped on the block for the grader to read
+        assert blocks[-1].get("resolution_specificity_warning") is True
+
+    def test_warning_is_structured(self) -> None:
+        """Warning message includes sport and window play count."""
+        pbp = [_make_pbp_event(4, "1:00", player_name="Player Name")]
+        blocks = self._blocks("The home team held on for a hard-fought victory.")
+        _, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert "NBA" in warnings[0]
+
+    def test_partial_name_match_passes(self) -> None:
+        """Player last name appearing alone in narrative is a valid reference."""
+        pbp = [_make_pbp_event(4, "0:45", player_name="Stephen Curry")]
+        blocks = self._blocks("Curry drained the dagger three to ice the game.")
+        errors, warnings = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert warnings == []
+
+    def test_mlb_last_inning_check(self) -> None:
+        """MLB check uses the last inning, not a clock threshold."""
+        pbp = [
+            _make_pbp_event(8, "0:00", player_name="Judge"),
+            _make_pbp_event(9, "0:00", player_name="Ohtani"),
+        ]
+        blocks = self._blocks("Judge hit the go-ahead homer in the eighth.")
+        _, warnings = _check_resolution_specificity(blocks, pbp, "MLB")
+        # "Judge" is in inning 8, not the last inning (9), so no match
+        assert len(warnings) == 1
+        assert blocks[-1].get("resolution_specificity_warning") is True
+
+    def test_mlb_last_inning_player_passes(self) -> None:
+        """MLB: player from the last inning present in narrative passes."""
+        pbp = [
+            _make_pbp_event(8, "0:00", player_name="Judge"),
+            _make_pbp_event(9, "0:00", player_name="Ohtani"),
+        ]
+        blocks = self._blocks("Ohtani delivered the walk-off hit in the ninth inning.")
+        _, warnings = _check_resolution_specificity(blocks, pbp, "MLB")
+        assert warnings == []
+
+    def test_errors_always_empty(self) -> None:
+        """The check never produces errors — only warnings."""
+        pbp = [_make_pbp_event(4, "0:30", player_name="Player")]
+        blocks = self._blocks("Generic text with no specific reference whatsoever.")
+        errors, _ = _check_resolution_specificity(blocks, pbp, "NBA")
+        assert errors == []
+
+
+# ── Information density ───────────────────────────────────────────────────────
+
+
+class TestInformationDensity:
+    """Tests for check_information_density in density.py.
+
+    Five samples: 3 human-validated high-density narratives (should pass) and
+    2 content-free synthetic samples derived from the sport templates (should fail).
+    """
+
+    def _check(self, blocks, sport, home="HomeTeam", away="AwayTeam"):
+        from app.services.pipeline.stages.density import check_information_density
+
+        return check_information_density(blocks, sport, home_team=home, away_team=away)
+
+    def _blocks(self, *narratives: str) -> list[dict]:
+        return [{"narrative": n} for n in narratives]
+
+    # ── high-density samples (pass) ───────────────────────────────────────────
+
+    def test_nba_specific_narrative_passes(self) -> None:
+        """NBA narrative with player-specific plays, stats, and game moments passes."""
+        blocks = self._blocks(
+            "Williams rattled home a pull-up jumper from the elbow to give the home "
+            "side a seven-point cushion with ninety seconds remaining. Back-to-back "
+            "stops on the defensive end allowed the offense to run down the clock, and "
+            "the guard's late three-pointer iced the contest in the final minute.",
+            "The perimeter defense held the visitors to just three baskets across the "
+            "fourth quarter, forcing seven turnovers and converting four fast-break "
+            "opportunities. The final margin of twelve points was flattering given "
+            "how close the game was through three quarters of sustained competition.",
+            "Davis posted twenty-two points and eleven rebounds in thirty-six minutes, "
+            "controlling the paint on both ends throughout the second half. His "
+            "back-to-back rejections in the closing ninety seconds ended the visitors' "
+            "last rally and sealed the outcome on the road.",
+            "The home side secured the result with a composed fourth-quarter execution, "
+            "holding possession for consecutive offensive sets while their opponents "
+            "fouled desperately. Free-throw accuracy proved decisive — nine of ten "
+            "converted in the final two minutes cemented a hard-earned victory.",
+        )
+        score, passed, warnings = self._check(blocks, "NBA", "Hornets", "Raptors")
+        assert passed, (
+            f"High-density NBA narrative should pass density check, "
+            f"got jaccard={score:.3f}, warnings={warnings}"
+        )
+        assert warnings == []
+
+    def test_nfl_specific_narrative_passes(self) -> None:
+        """NFL narrative with quarterback plays, yardage, and drive descriptions passes."""
+        blocks = self._blocks(
+            "A forty-seven-yard field goal attempt at the two-minute warning "
+            "gave the offense a chance to extend their advantage. The quarterback's "
+            "scramble on third-and-eight converted for a first down and burned "
+            "forty-three seconds off the clock before the kicker split the uprights.",
+            "The defensive line pressured the pocket on six consecutive snaps in the "
+            "third quarter, forcing three incompletions and a fumble that was recovered "
+            "at the twenty-two yard line. That turnover directly led to a seven-play "
+            "scoring drive capped by a two-yard plunge from the running back.",
+            "A final punt with eighteen seconds remaining left the trailing team "
+            "only a desperation heave, which fell incomplete in the end zone as the "
+            "cornerback broke up the fade route. The final gun confirmed a hard-fought "
+            "twelve-point victory for the home side on a cold afternoon.",
+            "Fourth-quarter production told the full story: the offense totalled "
+            "one hundred and fourteen yards on three drives while the defense allowed "
+            "just thirty-eight yards and forced two punts. Clock management and "
+            "red-zone precision were the decisive factors in the outcome.",
+        )
+        score, passed, warnings = self._check(blocks, "NFL", "Falcons", "Jaguars")
+        assert passed, (
+            f"High-density NFL narrative should pass density check, "
+            f"got jaccard={score:.3f}, warnings={warnings}"
+        )
+        assert warnings == []
+
+    def test_nhl_specific_narrative_passes(self) -> None:
+        """NHL narrative with goaltender saves, power plays, and period details passes."""
+        blocks = self._blocks(
+            "The power play unit converted on the man advantage after a hooking "
+            "penalty, wiring a one-timer past the blocker side from the left circle. "
+            "The goaltender made seventeen saves in the third period alone, including "
+            "a sprawling pad stop on a two-on-one rush with four minutes remaining.",
+            "An empty-net goal with forty seconds left sealed the two-point victory. "
+            "The penalty kill went three for three on the night, clearing five "
+            "zone entries while shorthanded and preventing any sustained pressure "
+            "from the visitors throughout the final period.",
+            "The centreman's backhanded redirection off a point shot gave the home "
+            "side their first lead of the evening midway through the second period. "
+            "That goal opened a three-goal run across eleven minutes as the visitors "
+            "struggled to adjust their defensive structure.",
+            "Forty-two combined saves over sixty minutes reflected the tight nature "
+            "of the game. The home team's goaltender was the difference maker, "
+            "stopping nine high-danger attempts including a breakaway in overtime "
+            "before his teammates converted on the deciding power play.",
+        )
+        score, passed, warnings = self._check(blocks, "NHL", "Senators", "Ducks")
+        assert passed, (
+            f"High-density NHL narrative should pass density check, "
+            f"got jaccard={score:.3f}, warnings={warnings}"
+        )
+        assert warnings == []
+
+    # ── content-free synthetic samples (fail) ────────────────────────────────
+
+    def test_nba_template_text_fails(self) -> None:
+        """NBA template-rendered narrative (nearly verbatim) fails the density check."""
+        from app.services.pipeline.stages.templates import GameMiniBox, TemplateEngine
+
+        mb = GameMiniBox(
+            home_team="HomeTeam",
+            away_team="AwayTeam",
+            home_score=107,
+            away_score=98,
+            sport="NBA",
+            has_overtime=False,
+            total_moments=8,
+        )
+        blocks = TemplateEngine.render("NBA", mb)
+        score, passed, warnings = self._check(
+            blocks, "NBA", home="HomeTeam", away="AwayTeam"
+        )
+        assert not passed, (
+            f"Content-free NBA template should fail density check, "
+            f"got jaccard={score:.3f}"
+        )
+        assert len(warnings) == 1
+        assert "content-free" in warnings[0].lower() or "template" in warnings[0].lower()
+
+    def test_nfl_template_text_fails(self) -> None:
+        """NFL template-rendered narrative (nearly verbatim) fails the density check."""
+        from app.services.pipeline.stages.templates import GameMiniBox, TemplateEngine
+
+        mb = GameMiniBox(
+            home_team="HomeTeam",
+            away_team="AwayTeam",
+            home_score=24,
+            away_score=17,
+            sport="NFL",
+            has_overtime=False,
+            total_moments=8,
+        )
+        blocks = TemplateEngine.render("NFL", mb)
+        score, passed, warnings = self._check(
+            blocks, "NFL", home="HomeTeam", away="AwayTeam"
+        )
+        assert not passed, (
+            f"Content-free NFL template should fail density check, "
+            f"got jaccard={score:.3f}"
+        )
+        assert len(warnings) == 1
+
+    # ── edge cases ────────────────────────────────────────────────────────────
+
+    def test_empty_blocks_passes(self) -> None:
+        """Empty block list does not trigger a warning."""
+        score, passed, warnings = self._check([], "NBA")
+        assert passed
+        assert warnings == []
+
+    def test_empty_narrative_blocks_passes(self) -> None:
+        """Blocks with no narrative text do not trigger a warning."""
+        blocks = [{"narrative": ""}, {"narrative": None}]
+        score, passed, warnings = self._check(blocks, "NBA")
+        assert passed
+        assert warnings == []
+
+    def test_returns_no_errors_ever(self) -> None:
+        """check_information_density never raises — warnings only."""
+        from app.services.pipeline.stages.density import check_information_density
+
+        # Intentionally malformed input
+        blocks = [{"narrative": "x" * 1000}]
+        score, passed, warnings = check_information_density(blocks, "NBA")
+        assert isinstance(score, float)
+        assert isinstance(passed, bool)
+        assert isinstance(warnings, list)
+
+    def test_score_is_bounded(self) -> None:
+        """Similarity score is always in [0.0, 1.0]."""
+        from app.services.pipeline.stages.templates import GameMiniBox, TemplateEngine
+
+        for sport in ("NBA", "NFL", "MLB", "NHL"):
+            mb = GameMiniBox(
+                home_team="HomeTeam", away_team="AwayTeam",
+                home_score=100, away_score=90, sport=sport,
+            )
+            blocks = TemplateEngine.render(sport, mb)
+            score, _, _ = self._check(blocks, sport)
+            assert 0.0 <= score <= 1.0, f"{sport}: score {score} out of bounds"
+
+    def test_warning_contains_sport_and_threshold(self) -> None:
+        """Warning message includes sport code and threshold value."""
+        from app.services.pipeline.stages.templates import GameMiniBox, TemplateEngine
+
+        mb = GameMiniBox(
+            home_team="HomeTeam", away_team="AwayTeam",
+            home_score=100, away_score=90, sport="NBA",
+        )
+        blocks = TemplateEngine.render("NBA", mb)
+        _, passed, warnings = self._check(blocks, "NBA", "HomeTeam", "AwayTeam")
+        if not passed:
+            assert len(warnings) == 1
+            assert "NBA" in warnings[0]
+            assert "threshold" in warnings[0].lower() or "0.60" in warnings[0]

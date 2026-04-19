@@ -579,3 +579,70 @@ class TestGenericPhrasesModule:
         text = "They gave it their all over the course of tonight."
         density = phrase_density(text)
         assert density > 0.0
+
+
+# ── Tier 1: resolution_specificity ───────────────────────────────────────────
+
+
+class TestTier1ResolutionSpecificity:
+    """Tests for the resolution_specificity named dimension in grade_tier1."""
+
+    _NARRATIVE = (
+        "The Lakers opened with a 10-5 run behind strong defense and sharp shooting "
+        "from the perimeter, setting the tone for the rest of the game. "
+        "They defeated the Celtics 10-5."
+    )
+
+    def _blocks_with_flag(self, flag: bool) -> list[dict]:
+        """Build blocks where the RESOLUTION block carries (or not) the specificity flag."""
+        return [
+            {
+                "block_index": 0,
+                "role": "SETUP",
+                "narrative": self._NARRATIVE,
+                "resolution_specificity_warning": False,
+            },
+            {
+                "block_index": 1,
+                "role": "RESOLUTION",
+                "narrative": self._NARRATIVE,
+                "resolution_specificity_warning": flag,
+            },
+        ]
+
+    def test_no_warning_flag_passes_check(self) -> None:
+        """RESOLUTION block without the flag has resolution_specificity=True."""
+        blocks = self._blocks_with_flag(False)
+        result = grade_tier1(blocks, _game_data(home_score=10, away_score=5))
+        assert result.checks.get("resolution_specificity") is True
+        assert not any("resolution_specificity" in f for f in result.failures)
+
+    def test_warning_flag_fails_check(self) -> None:
+        """RESOLUTION block with the flag has resolution_specificity=False and a failure."""
+        blocks = self._blocks_with_flag(True)
+        result = grade_tier1(blocks, _game_data(home_score=10, away_score=5))
+        assert result.checks.get("resolution_specificity") is False
+        assert any("resolution_specificity" in f for f in result.failures)
+
+    def test_no_resolution_block_skips_check(self) -> None:
+        """When no RESOLUTION block exists the check is absent from the checks dict."""
+        blocks = [
+            {"block_index": 0, "role": "SETUP", "narrative": self._NARRATIVE},
+            {"block_index": 1, "role": "RESPONSE", "narrative": self._NARRATIVE},
+        ]
+        result = grade_tier1(blocks, _game_data(home_score=10, away_score=5))
+        assert "resolution_specificity" not in result.checks
+
+    def test_check_appears_as_named_dimension(self) -> None:
+        """resolution_specificity is a named key in checks (not buried in generic log)."""
+        blocks = self._blocks_with_flag(False)
+        result = grade_tier1(blocks, _game_data(home_score=10, away_score=5))
+        assert "resolution_specificity" in result.checks
+
+    def test_flagged_resolution_lowers_score(self) -> None:
+        """A flow with the specificity flag set must score lower than one without."""
+        clean_blocks = self._blocks_with_flag(False)
+        flagged_blocks = self._blocks_with_flag(True)
+        clean_result = grade_tier1(clean_blocks, _game_data(home_score=10, away_score=5))
+        flagged_result = grade_tier1(flagged_blocks, _game_data(home_score=10, away_score=5))
+        assert clean_result.score > flagged_result.score

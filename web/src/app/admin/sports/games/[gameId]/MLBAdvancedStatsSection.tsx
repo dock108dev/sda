@@ -2,19 +2,12 @@
 
 import { useMemo } from "react";
 import type { MLBAdvancedTeamStats, MLBAdvancedPlayerStats, MLBPitcherGameStat } from "@/lib/api/sportsAdmin/types";
+import { fmtPct, fmtNum } from "@/lib/utils/formatting";
 import { CollapsibleSection } from "./CollapsibleSection";
 import styles from "./styles.module.css";
 
-function fmtPct(v: number | null | undefined): string {
-  return v != null ? `${(v * 100).toFixed(1)}%` : "—";
-}
-
 function fmtVelo(v: number | null | undefined): string {
   return v != null ? `${v.toFixed(1)} mph` : "—";
-}
-
-function fmtNum(v: number | null | undefined, decimals = 1): string {
-  return v != null ? v.toFixed(decimals) : "—";
 }
 
 export function MLBAdvancedStatsSection({

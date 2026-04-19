@@ -1,35 +1,54 @@
 name: Golden Corpus Pipeline Gate
 
+# Required status check on all PRs targeting main.
+# Branch protection rule: Settings → Branches → main → Require status checks:
+#   "Pipeline · Golden Corpus Gate"
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "scraper/sports_scraper/pipeline/**"
-      - "api/app/services/pipeline/**"
-      - "scraper/tests/test_golden_corpus.py"
-      - "scraper/tests/fixtures/corpus/**"
   pull_request:
     branches: ["main"]
-    paths:
-      - "scraper/sports_scraper/pipeline/**"
-      - "api/app/services/pipeline/**"
-      - "scraper/tests/test_golden_corpus.py"
-      - "scraper/tests/fixtures/corpus/**"
+  push:
+    branches: ["main"]
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
 jobs:
-  test-golden-corpus:
-    name: Pipeline · Golden Corpus (50 fixtures)
+  golden-corpus:
+    name: Pipeline · Golden Corpus Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 9
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
       REDIS_URL: redis://localhost:6379/0
-      # No OPENAI_API_KEY — analyze_drama falls back to default weights.
+      GOLDEN_PASS_THRESHOLD: "95"
+      PYTHONPATH: api
 
     steps:
       - uses: actions/checkout@v6
@@ -51,14 +70,13 @@ jobs:
           uv pip install pytest pytest-timeout
 
       - name: Run golden corpus pipeline gate
-        # Hard 5-minute wall-clock limit per the acceptance criteria.
+        # Collects all failures rather than stopping on first (-x removed).
+        # TestPassRateGate runs last and fails the job if pass rate < GOLDEN_PASS_THRESHOLD.
+        # Per-sport summary is written to $GITHUB_STEP_SUMMARY by the conftest plugin.
         run: |
           source .venv/bin/activate
           pytest scraper/tests/test_golden_corpus.py \
-            -k "TestPipelineExecution or TestCoverageFields" \
+            -k "TestPipelineExecution or TestCoverageFields or TestPassRateGate" \
             --timeout=300 \
             -v \
-            --tb=short \
-            -x
-        env:
-          PYTHONPATH: api
+            --tb=short

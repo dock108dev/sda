@@ -51,6 +51,7 @@ from typing import Any
 
 from ...openai_client import get_openai_client
 from ..models import StageInput, StageOutput
+from .regen_context import RegenFailureContext
 from .render_helpers import (
     check_overtime_mention,
     detect_overtime_info,
@@ -67,6 +68,7 @@ async def _apply_game_level_flow_pass(
     game_context: dict[str, str],
     openai_client: Any,
     output: StageOutput,
+    regen_context: RegenFailureContext | None = None,
 ) -> list[dict[str, Any]]:
     """Apply game-level flow pass to smooth transitions across blocks.
 
@@ -78,6 +80,7 @@ async def _apply_game_level_flow_pass(
         game_context: Team names and context
         openai_client: OpenAI client instance
         output: StageOutput for logging
+        regen_context: Optional quality-gate failure context for regen runs.
 
     Returns:
         Blocks with smoothed narratives (or original if pass fails)
@@ -88,7 +91,7 @@ async def _apply_game_level_flow_pass(
 
     output.add_log(f"Applying game-level flow pass to {len(blocks)} blocks")
 
-    prompt = build_game_flow_pass_prompt(blocks, game_context)
+    prompt = build_game_flow_pass_prompt(blocks, game_context, regen_context=regen_context)
 
     try:
         # Low temperature for consistency, ~100 tokens per block
@@ -193,6 +196,20 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     pbp_events = previous_output.get("pbp_events", [])
     game_context = stage_input.game_context
 
+    # Build typed regen context from game_context when this is a regen run.
+    # grade_gate_failures is threaded in by PipelineExecutor._get_game_context()
+    # when failure_reasons were passed to run_full_pipeline().
+    regen_context: RegenFailureContext | None = None
+    raw_failures: list[str] = game_context.get("grade_gate_failures", [])  # type: ignore[assignment]
+    regen_attempt: int = game_context.get("regen_attempt", 0)  # type: ignore[assignment]
+    if raw_failures:
+        regen_context = RegenFailureContext.from_failure_reasons(
+            raw_failures, regen_attempt=max(regen_attempt, 1)
+        )
+        output.add_log(
+            f"Regen attempt {regen_attempt}: injecting {len(raw_failures)} failure dimensions into prompt"
+        )
+
     output.add_log(f"Rendering narratives for {len(blocks)} blocks")
 
     # Get blowout metrics from previous stage
@@ -201,8 +218,8 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     if is_blowout:
         output.add_log("Processing blowout game with compressed narratives")
 
-    # Build prompt and call OpenAI
-    prompt = build_block_prompt(blocks, game_context, pbp_events)
+    # Build prompt and call OpenAI; inject typed regen context into data layer.
+    prompt = build_block_prompt(blocks, game_context, pbp_events, regen_context=regen_context)
 
     try:
         # Estimate tokens: ~200 per block for 2-4 sentences
@@ -289,7 +306,7 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     # Game-level flow pass: smooth transitions across all blocks
     # This is a second OpenAI call that sees all blocks at once
     blocks = await _apply_game_level_flow_pass(
-        blocks, game_context, openai_client, output
+        blocks, game_context, openai_client, output, regen_context=regen_context
     )
 
     # Post-flow-pass: Ensure OT mentions weren't lost during flow pass

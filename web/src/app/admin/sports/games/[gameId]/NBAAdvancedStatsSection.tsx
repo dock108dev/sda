@@ -1,12 +1,9 @@
 "use client";
 
 import type { NBAAdvancedTeamStats, NBAAdvancedPlayerStats } from "@/lib/api/sportsAdmin/types";
+import { fmtPct } from "@/lib/utils/formatting";
 import { CollapsibleSection } from "./CollapsibleSection";
 import styles from "./styles.module.css";
-
-function fmtPct(v: number | null | undefined): string {
-  return v != null ? `${(v * 100).toFixed(1)}%` : "—";
-}
 
 function fmtRating(v: number | null | undefined): string {
   return v != null ? v.toFixed(1) : "—";

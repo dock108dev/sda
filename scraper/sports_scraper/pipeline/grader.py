@@ -263,6 +263,20 @@ def grade_tier1(blocks: list[dict], game_data: dict) -> TierOneResult:
     else:
         checks["score_consistency"] = True
 
+    # 7. RESOLUTION specificity: validate_blocks stamps the flag when the RESOLUTION
+    # block has no traceable final-window play reference. Read it from persisted
+    # blocks_json so the grader doesn't need PBP access at grade time.
+    resolution_block = next(
+        (b for b in reversed(blocks) if b.get("role") == "RESOLUTION"), None
+    )
+    if resolution_block is not None:
+        ok = not resolution_block.get("resolution_specificity_warning", False)
+        checks["resolution_specificity"] = ok
+        if not ok:
+            failures.append(
+                "resolution_specificity: RESOLUTION block lacks traceable final-window play reference"
+            )
+
     n = len(checks)
     base_score = round((sum(1 for v in checks.values() if v) / n) * 100, 1) if n else 100.0
 

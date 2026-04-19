@@ -44,6 +44,7 @@ from .block_types import (
     MIN_WORDS_PER_BLOCK,
     SemanticRole,
 )
+from .density import check_information_density
 from .embedded_tweets import load_and_attach_embedded_tweets
 
 logger = logging.getLogger(__name__)
@@ -186,6 +187,173 @@ def _check_generic_phrase_density(
             )
 
     return [], warnings
+
+
+# ── RESOLUTION specificity ────────────────────────────────────────────────────
+
+# Final-window definitions per sport.
+# Each value is checked in _get_final_window_plays.
+# NBA/NFL: last 2 min of Q4 (120 s on clock); OT plays included.
+# NHL: 3rd period or any OT period.
+# NCAAB: 2nd half or any OT period.
+# MLB: last inning (max quarter value across all events).
+_FINAL_WINDOW_MIN_PERIOD: dict[str, int] = {
+    "NHL": 3,
+    "NCAAB": 2,
+}
+_CLOCK_SPORT_FINAL_QUARTER: dict[str, tuple[int, int]] = {
+    "NBA": (4, 120),
+    "NFL": (4, 120),
+}
+
+
+def _parse_game_clock_seconds(clock: str | None) -> int | None:
+    """Parse 'MM:SS' or 'SS' game-clock string to total seconds. Returns None on failure."""
+    if not clock:
+        return None
+    clock = clock.strip()
+    try:
+        if ":" in clock:
+            parts = clock.split(":", 1)
+            return int(parts[0]) * 60 + int(parts[1])
+        return int(clock)
+    except (ValueError, IndexError):
+        return None
+
+
+def _get_final_window_plays(
+    pbp_events: list[dict[str, Any]], sport: str
+) -> list[dict[str, Any]]:
+    """Return PBP events from the final game window for the given sport.
+
+    Window definitions:
+    - NBA/NFL: last 2 minutes of Q4 (clock ≤ 120 s), plus any OT plays.
+    - NHL: 3rd period or later.
+    - NCAAB: 2nd half or later.
+    - MLB: last inning (max quarter value in the event set).
+    - Unknown sport: last 20% of events by position.
+    """
+    if not pbp_events:
+        return []
+
+    sport_upper = sport.upper()
+
+    if sport_upper in _CLOCK_SPORT_FINAL_QUARTER:
+        final_quarter, threshold_secs = _CLOCK_SPORT_FINAL_QUARTER[sport_upper]
+        result = []
+        for ev in pbp_events:
+            q = ev.get("quarter", 0)
+            if q > final_quarter:
+                result.append(ev)
+            elif q == final_quarter:
+                secs = _parse_game_clock_seconds(ev.get("game_clock"))
+                if secs is not None and secs <= threshold_secs:
+                    result.append(ev)
+        return result
+
+    if sport_upper in _FINAL_WINDOW_MIN_PERIOD:
+        min_period = _FINAL_WINDOW_MIN_PERIOD[sport_upper]
+        return [ev for ev in pbp_events if (ev.get("quarter") or 0) >= min_period]
+
+    if sport_upper == "MLB":
+        max_inning = max((ev.get("quarter") or 1) for ev in pbp_events)
+        return [ev for ev in pbp_events if ev.get("quarter") == max_inning]
+
+    # Unknown sport — last 20% of events
+    n = max(1, len(pbp_events) // 5)
+    return pbp_events[-n:]
+
+
+def _check_resolution_specificity(
+    blocks: list[dict[str, Any]],
+    pbp_events: list[dict[str, Any]],
+    sport: str,
+) -> tuple[list[str], list[str]]:
+    """Warn when the RESOLUTION block has no traceable reference to a final-window play.
+
+    A traceable reference is:
+    (a) A player name from a final-window play appearing in the narrative, OR
+    (b) A score matching a PBP event in the final window.
+
+    This is a soft check: failures produce warnings only (not errors).
+    When the check fails the flag ``resolution_specificity_warning=True`` is
+    written into the RESOLUTION block dict so the Tier 1 grader can read it
+    from the persisted ``blocks_json`` without re-running PBP analysis.
+    """
+    # Find the RESOLUTION block (use last one if duplicates exist — structural
+    # errors are caught by _validate_role_constraints).
+    resolution_block: dict[str, Any] | None = None
+    for block in blocks:
+        if block.get("role") == SemanticRole.RESOLUTION.value:
+            resolution_block = block
+
+    if resolution_block is None:
+        return [], []
+
+    narrative = resolution_block.get("narrative", "")
+    if not narrative:
+        return [], []
+
+    final_plays = _get_final_window_plays(pbp_events, sport)
+    if not final_plays:
+        # No PBP data for the final window — skip the check rather than
+        # penalise flows that legitimately lack PBP coverage.
+        return [], []
+
+    norm_narrative = _normalize_text(narrative)
+
+    # (a) Player name (full or last name) present in narrative
+    player_names = {
+        ev["player_name"].strip()
+        for ev in final_plays
+        if ev.get("player_name") and ev["player_name"].strip()
+    }
+    player_found = False
+    for name in player_names:
+        if len(name) <= 1:
+            continue
+        norm_name = _normalize_text(name)
+        if norm_name in norm_narrative:
+            player_found = True
+            break
+        # Also accept last name alone (e.g. "Curry" matches "Stephen Curry")
+        parts = norm_name.split()
+        if len(parts) >= 2 and parts[-1] in norm_narrative:
+            player_found = True
+            break
+
+    # (b) A score from the final window appears in the narrative
+    score_found = False
+    if not player_found:
+        for ev in final_plays:
+            h = ev.get("home_score")
+            a = ev.get("away_score")
+            if h is not None and a is not None and (int(h) or int(a)):
+                if _check_score_present(narrative, int(h), int(a)):
+                    score_found = True
+                    break
+
+    if player_found or score_found:
+        return [], []
+
+    block_idx = resolution_block.get("block_index", "?")
+    msg = (
+        f"Block {block_idx} (RESOLUTION): no traceable play reference from the "
+        f"final game window (sport={sport}, window_plays={len(final_plays)}) — "
+        "narrative may be generic"
+    )
+    logger.warning(
+        "resolution_specificity_check_failed",
+        extra={
+            "block_index": block_idx,
+            "sport": sport,
+            "final_window_play_count": len(final_plays),
+            "player_names_available": len(player_names),
+        },
+    )
+    # Persist the flag so the Tier 1 grader can read it from blocks_json.
+    resolution_block["resolution_specificity_warning"] = True
+    return [], [msg]
 
 
 def _normalize_text(text: str) -> str:
@@ -628,6 +796,7 @@ async def execute_validate_blocks(
     away_team = ctx.get("away_team", "")
     has_overtime = bool(ctx.get("has_overtime", False))
     regen_attempt = int(ctx.get("regen_attempt", 0))
+    sport = ctx.get("sport", "UNKNOWN")
 
     # Derive final score: prefer explicit context values, fall back to last block
     home_score_ctx = ctx.get("home_score")
@@ -735,6 +904,37 @@ async def execute_validate_blocks(
     else:
         output.add_log("Rule 9 PASSED")
 
+    # 10. RESOLUTION specificity: must reference ≥1 final-window play (soft check)
+    pbp_events_for_check = previous_output.get("pbp_events", [])
+    sport_for_check = (stage_input.game_context or {}).get("sport", "")
+    _, specificity_warnings = _check_resolution_specificity(blocks, pbp_events_for_check, sport_for_check)
+    all_warnings.extend(specificity_warnings)
+    if specificity_warnings:
+        output.add_log(
+            "Rule 10 WARNING: RESOLUTION block lacks traceable final-window play reference",
+            level="warning",
+        )
+    else:
+        output.add_log("Rule 10 PASSED")
+
+    # 11. Information density: entity-stripped narrative must differ from sport template
+    #     (soft check — warning only, never causes REGENERATE/FALLBACK by itself)
+    density_score, density_passed, density_warnings = check_information_density(
+        blocks,
+        sport=sport,
+        home_team=home_team,
+        away_team=away_team,
+    )
+    all_warnings.extend(density_warnings)
+    if density_warnings:
+        output.add_log(
+            f"Rule 11 WARNING: information density check failed "
+            f"(jaccard={density_score:.2f}) — narrative may be template regurgitation",
+            level="warning",
+        )
+    else:
+        output.add_log(f"Rule 11 PASSED (jaccard={density_score:.2f})")
+
     # Calculate total words
     total_words = sum(len(b.get("narrative", "").split()) for b in blocks)
 
@@ -742,7 +942,6 @@ async def execute_validate_blocks(
     passed = len(all_errors) == 0
     coverage_passed = len(coverage_errors) == 0
 
-    sport = (stage_input.game_context or {}).get("sport", "UNKNOWN")
     has_any_failure = not passed or not coverage_passed
     if not has_any_failure:
         decision = "PUBLISH"
@@ -816,6 +1015,8 @@ async def execute_validate_blocks(
         "errors": all_errors,
         "warnings": all_warnings,
         "fallback_used": fallback_used,
+        "information_density_score": round(density_score, 4),
+        "information_density_warning": not density_passed,
         # Embedded tweet metadata
         "embedded_tweet_selection": (
             embedded_tweet_selection.to_dict() if embedded_tweet_selection else None

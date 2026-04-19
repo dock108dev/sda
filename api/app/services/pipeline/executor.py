@@ -68,6 +68,9 @@ class PipelineExecutor:
             session: Async database session
         """
         self.session = session
+        # Set by run_full_pipeline when dispatched via the quality gate regen path.
+        self._regen_attempt: int = 0
+        self._failure_reasons: list[str] = []
 
     async def start_pipeline(
         self,
@@ -210,7 +213,7 @@ class PipelineExecutor:
         # Maps "D. Mitchell" -> "Donovan Mitchell"
         player_names = await self._build_player_name_mapping(game_id)
 
-        return {
+        ctx: dict[str, Any] = {
             "sport": game.league.code if game.league else "NBA",
             "home_team_name": game.home_team.name if game.home_team else "Home",
             "away_team_name": game.away_team.name if game.away_team else "Away",
@@ -222,6 +225,15 @@ class PipelineExecutor:
             else "AWAY",
             "player_names": player_names,
         }
+        # Thread quality-gate regen context from run_full_pipeline into every
+        # stage via game_context so finalize_moments can pass regen_attempt to
+        # grade_flow_task, and render_blocks can optionally surface failure
+        # reasons in its system prompt.
+        if self._regen_attempt:
+            ctx["regen_attempt"] = self._regen_attempt
+        if self._failure_reasons:
+            ctx["grade_gate_failures"] = self._failure_reasons
+        return ctx
 
     async def _build_player_name_mapping(self, game_id: int) -> dict[str, str]:
         """Build mapping from abbreviated names to full names.
@@ -489,6 +501,8 @@ class PipelineExecutor:
         self,
         game_id: int,
         triggered_by: str = "prod_auto",
+        regen_attempt: int = 0,
+        failure_reasons: list[str] | None = None,
     ) -> GamePipelineRun:
         """Run the complete pipeline for a game.
 
@@ -498,10 +512,18 @@ class PipelineExecutor:
         Args:
             game_id: Game to process
             triggered_by: Who triggered the run
+            regen_attempt: How many quality-gate regen attempts have already
+                run for this game.  Threaded into game_context so
+                execute_finalize_moments can pass it to grade_flow_task.
+            failure_reasons: Structured failure list from the previous
+                grade_flow_task invocation.  Threaded into game_context so
+                render_blocks can optionally surface them as prompt context.
 
         Returns:
             Completed GamePipelineRun record
         """
+        self._regen_attempt = regen_attempt
+        self._failure_reasons = failure_reasons or []
         # Start pipeline
         run = await self.start_pipeline(game_id, triggered_by, auto_chain=True)
 

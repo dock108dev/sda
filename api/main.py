@@ -35,6 +35,7 @@ from app.routers.admin import (
     odds_sync,
     pbp,
     pipeline,
+    quality_review,
     quality_summary,
     resolution,
     task_control,
@@ -280,6 +281,12 @@ app.include_router(
 )
 app.include_router(
     quality_summary.router,
+    prefix="/api/admin",
+    tags=["admin", "quality"],
+    dependencies=admin_dependency,
+)
+app.include_router(
+    quality_review.router,
     prefix="/api/admin",
     tags=["admin", "quality"],
     dependencies=admin_dependency,

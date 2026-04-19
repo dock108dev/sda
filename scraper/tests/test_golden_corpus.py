@@ -7,7 +7,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -703,4 +703,50 @@ class TestCoverageFields:
         assert blocks, (
             f"{fixture_path.name}: no blocks produced; "
             f"quality too low vs reference baseline {baseline:.1f}"
+        )
+
+
+# ===========================================================================
+# ISSUE-050: Golden corpus pass-rate gate
+#
+# This class intentionally comes last in the file so that pytest (which runs
+# test classes in file order) executes it only after TestPipelineExecution and
+# TestCoverageFields have fully completed.  The conftest plugin accumulates
+# pass/fail outcomes via pytest_runtest_logreport; by the time
+# test_golden_pass_rate_meets_threshold runs, all 50 fixtures have been
+# exercised and the tally is final.
+# ===========================================================================
+
+
+@_pipeline
+class TestPassRateGate:
+    """Fails the CI job when overall golden corpus pass rate < GOLDEN_PASS_THRESHOLD.
+
+    The threshold is read from the GOLDEN_PASS_THRESHOLD environment variable
+    (default: 95).  The error message names every failing fixture so regressions
+    are immediately identifiable without digging through pytest output.
+    """
+
+    def test_golden_pass_rate_meets_threshold(
+        self, golden_corpus_outcomes: Callable[[], dict]
+    ) -> None:
+        outcomes = golden_corpus_outcomes()
+        total = outcomes["total_total"]
+        passed = outcomes["total_passed"]
+        threshold = int(os.environ.get("GOLDEN_PASS_THRESHOLD", "95"))
+
+        if total == 0:
+            pytest.skip("No pipeline fixtures were executed")
+
+        rate = passed / total * 100
+        failed_fixtures = outcomes["failed_fixtures"]
+
+        failure_lines = [
+            f"  {fid}: {', '.join(sorted(tests))}"
+            for fid, tests in sorted(failed_fixtures.items())
+        ]
+        assert rate >= threshold, (
+            f"Golden corpus pass rate {rate:.1f}% ({passed}/{total} fixtures) "
+            f"is below threshold {threshold}%.\n"
+            "Failed fixtures:\n" + ("\n".join(failure_lines) or "  (none recorded)")
         )

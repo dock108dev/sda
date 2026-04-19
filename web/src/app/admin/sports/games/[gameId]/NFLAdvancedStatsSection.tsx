@@ -2,15 +2,12 @@
 
 import { useMemo } from "react";
 import type { NFLAdvancedTeamStats, NFLAdvancedPlayerStats } from "@/lib/api/sportsAdmin/types";
+import { fmtPct } from "@/lib/utils/formatting";
 import { CollapsibleSection } from "./CollapsibleSection";
 import styles from "./styles.module.css";
 
 function fmtEpa(v: number | null | undefined): string {
   return v != null ? v.toFixed(1) : "—";
-}
-
-function fmtPct(v: number | null | undefined): string {
-  return v != null ? `${(v * 100).toFixed(1)}%` : "—";
 }
 
 function fmtCpoe(v: number | null | undefined): string {

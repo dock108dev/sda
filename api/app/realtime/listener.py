@@ -131,6 +131,7 @@ class ListenNotifyListener:
                     try:
                         await conn.execute("SELECT 1")
                     except Exception:
+                        logger.warning("listen_notify_keepalive_failed", exc_info=True)
                         break
 
             except asyncio.CancelledError:

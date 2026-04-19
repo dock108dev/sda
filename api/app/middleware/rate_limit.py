@@ -28,7 +28,7 @@ from app.config import settings
 from app.services.fairbet_runtime import redis_allow_request
 
 
-_EXEMPT_PREFIXES = ("/v1/sse", "/auth/me")
+_EXEMPT_PREFIXES = ("/v1/sse",)
 
 # Auth endpoints with stricter limits to prevent brute-force attacks.
 _AUTH_STRICT_PREFIXES = (

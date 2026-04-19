@@ -29,6 +29,7 @@
 | [Game Flow Contract](gameflow/contract.md) | **Authoritative:** Block-based narrative model (3-7 blocks per game) |
 | [Game Flow Pipeline](gameflow/pipeline.md) | 8-stage pipeline from PBP to narratives |
 | [PBP Game Flow Assumptions](gameflow/pbp-assumptions.md) | Technical assumptions about PBP data |
+| [Phase 6 Validation](phase6-validation.md) | End-to-end validation of quality grader, sport templates, anti-generic detector |
 
 ## Timeline System
 
@@ -70,6 +71,8 @@
 | [Operator Runbook](ops/runbook.md) | Production operations and monitoring |
 | [Deployment](ops/deployment.md) | Server setup, deploy flow, edge routing, rollbacks |
 | [Infrastructure & Local Dev](ops/infra.md) | Docker configuration, local setup, environment variables |
-| [Production Audit](AUDIT_REPORT.md) | Error handling, security, and resilience audit with remediation plan |
-| [Docs Consolidation Audit](audits/docs-consolidation.md) | 2026-04-18 doc review: what was fixed, what was audited, known gaps |
+| [Error Handling Audit](audits/abend-handling.md) | 188 exception blocks audited; all Critical/High findings fixed |
+| [Security Audit](audits/security-audit.md) | Auth, secrets, injection surface review |
+| [SSOT Cleanup](audits/ssot-cleanup.md) | PipelineStage, GameStatus, story_version consolidation |
+| [Docs Consolidation](audits/docs-consolidation.md) | Documentation audit passes — what was fixed and what was verified |
 | [Changelog](changelog.md) | Recent changes and releases |

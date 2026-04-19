@@ -294,6 +294,8 @@ async def run_full_pipeline(
         run = await executor.run_full_pipeline(
             game_id=game_id,
             triggered_by=request.triggered_by,
+            regen_attempt=request.regen_attempt,
+            failure_reasons=request.failure_reasons,
         )
         await session.commit()
 
