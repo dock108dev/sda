@@ -24,9 +24,36 @@ import pytest
 # Must happen before any import of sports_scraper.*.
 # ---------------------------------------------------------------------------
 
+_MISSING = object()
+_ORIG_MODULES: dict[str, object] = {}
+
+
+def _remember_module(name: str) -> None:
+    if name not in _ORIG_MODULES:
+        _ORIG_MODULES[name] = sys.modules.get(name, _MISSING)
+
+
+def _set_module(name: str, module: object) -> object:
+    _remember_module(name)
+    sys.modules[name] = module
+    return module
+
+
+def _restore_stubbed_modules() -> None:
+    for name, original in _ORIG_MODULES.items():
+        if original is _MISSING:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
+
+
+def _force_magic(name: str) -> None:
+    _set_module(name, MagicMock())
+
+
 def _stub(name: str) -> MagicMock:
     m = MagicMock()
-    sys.modules[name] = m
+    _set_module(name, m)
     return m
 
 
@@ -35,14 +62,14 @@ def _pkg(name: str) -> types.ModuleType:
     m = types.ModuleType(name)
     m.__path__ = []          # marks it as a package
     m.__package__ = name
-    sys.modules[name] = m
+    _set_module(name, m)
     return m
 
 
 # Heavy third-party deps
 for _dep in ["structlog", "celery", "celery.app", "sqlalchemy", "sqlalchemy.orm",
              "pydantic", "pydantic_settings", "redis", "httpx"]:
-    sys.modules.setdefault(_dep, MagicMock())
+    _force_magic(_dep)
 
 # shared_task must be a pass-through decorator so the task function remains callable
 def _passthrough_shared_task(*args, **kwargs):
@@ -108,6 +135,7 @@ _task_mod = _ilu.module_from_spec(_spec)
 _task_mod.__package__ = "sports_scraper.jobs"
 sys.modules["sports_scraper.jobs.flow_trigger_tasks"] = _task_mod
 _spec.loader.exec_module(_task_mod)
+_restore_stubbed_modules()
 
 
 # ---------------------------------------------------------------------------
@@ -149,8 +177,8 @@ def _run_task(*, lock_token, db_ctx=None, pipeline_result=None, pipeline_exc=Non
 
     pipeline_result = pipeline_result or {"status": "success"}
 
-    redis_lock_mod = sys.modules["sports_scraper.utils.redis_lock"]
-    job_runs_mod = sys.modules["sports_scraper.services.job_runs"]
+    redis_lock_mod = _ss_redis
+    job_runs_mod = _ss_jobs_runs
 
     with (
         patch.object(_task_mod, "get_session", return_value=db_ctx),

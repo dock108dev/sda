@@ -19,7 +19,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic.alias_generators import to_camel
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +84,11 @@ class MomentEntrySchema(BaseModel):
     shape may evolve across pipeline versions.
     """
 
-    model_config = {"extra": "allow"}
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        extra="allow",
+    )
 
     play_ids: list[int]
     explicitly_narrated_play_ids: list[int] = Field(default_factory=list)
@@ -101,7 +106,11 @@ class MomentsJsonSchema(RootModel[list[MomentEntrySchema]]):
 class BlockEntrySchema(BaseModel):
     """A single narrative block within blocks_json."""
 
-    model_config = {"extra": "allow"}
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        extra="allow",
+    )
 
     block_index: int = Field(ge=0, le=6)
     role: str

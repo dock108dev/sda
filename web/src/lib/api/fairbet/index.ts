@@ -199,7 +199,7 @@ export function formatOdds(price: number): string {
 /**
  * Get the best odds (highest for positive, lowest magnitude for negative)
  */
-export function getBestOdds(books: BookOdds[]): BookOdds | null {
+export function getBestOdds<T extends { price: number }>(books: T[]): T | null {
   if (books.length === 0) return null;
 
   return books.reduce((best, current) => {

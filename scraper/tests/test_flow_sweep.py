@@ -42,9 +42,36 @@ class _ColMock:
 # Minimal stubs — same pattern as test_flow_trigger_lock.py
 # ---------------------------------------------------------------------------
 
+_MISSING = object()
+_ORIG_MODULES: dict[str, object] = {}
+
+
+def _remember_module(name: str) -> None:
+    if name not in _ORIG_MODULES:
+        _ORIG_MODULES[name] = sys.modules.get(name, _MISSING)
+
+
+def _set_module(name: str, module: object) -> object:
+    _remember_module(name)
+    sys.modules[name] = module
+    return module
+
+
+def _restore_stubbed_modules() -> None:
+    for name, original in _ORIG_MODULES.items():
+        if original is _MISSING:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
+
+
+def _force_magic(name: str) -> None:
+    _set_module(name, MagicMock())
+
+
 def _stub(name: str) -> MagicMock:
     m = MagicMock()
-    sys.modules[name] = m
+    _set_module(name, m)
     return m
 
 
@@ -52,7 +79,7 @@ def _pkg(name: str) -> types.ModuleType:
     m = types.ModuleType(name)
     m.__path__ = []
     m.__package__ = name
-    sys.modules[name] = m
+    _set_module(name, m)
     return m
 
 
@@ -61,7 +88,7 @@ for _dep in [
     "sqlalchemy", "sqlalchemy.orm",
     "pydantic", "pydantic_settings", "redis", "httpx",
 ]:
-    sys.modules.setdefault(_dep, MagicMock())
+    _force_magic(_dep)
 
 # shared_task must be a pass-through decorator
 def _passthrough_shared_task(*args, **kwargs):
@@ -135,6 +162,7 @@ _task_mod = _ilu.module_from_spec(_spec)
 _task_mod.__package__ = "sports_scraper.jobs"
 sys.modules["sports_scraper.jobs.flow_trigger_tasks"] = _task_mod
 _spec.loader.exec_module(_task_mod)
+_restore_stubbed_modules()
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +195,7 @@ def _run_sweep(*, lock_token="sweep-tok", game_ids=None):
         game_ids = GAME_IDS_MISSING
 
     db_ctx = _db_ctx_with_games(game_ids)
-    redis_lock_mod = sys.modules["sports_scraper.utils.redis_lock"]
+    redis_lock_mod = _ss_redis
 
     with (
         patch.object(_task_mod, "get_session", return_value=db_ctx),
@@ -206,7 +234,7 @@ class TestSweepMissingFlows:
 
     def test_skips_when_sweep_lock_held(self):
         """If another sweep is running (lock held), skip without querying DB."""
-        redis_lock_mod = sys.modules["sports_scraper.utils.redis_lock"]
+        redis_lock_mod = _ss_redis
 
         with (
             patch.object(redis_lock_mod, "acquire_redis_lock", return_value=None) as m_acquire,
@@ -227,7 +255,7 @@ class TestSweepMissingFlows:
 
     def test_sweep_lock_always_released(self):
         """Lock must be released even if an exception occurs mid-sweep."""
-        redis_lock_mod = sys.modules["sports_scraper.utils.redis_lock"]
+        redis_lock_mod = _ss_redis
 
         broken_ctx = MagicMock()
         broken_ctx.__enter__ = MagicMock(side_effect=RuntimeError("db exploded"))
@@ -247,7 +275,7 @@ class TestSweepMissingFlows:
 class TestSweepIncludesRecapFailed:
     def test_or_filter_called_with_final_and_recap_failed(self):
         """Sweep must pass both final and recap_failed values to or_() filter."""
-        sa_stub = sys.modules["sqlalchemy"]
+        sa_stub = _sa_stub
 
         # Reset call history so we can inspect what this run produces
         sa_stub.or_.reset_mock()

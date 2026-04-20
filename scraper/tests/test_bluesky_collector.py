@@ -15,7 +15,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 import httpx
 
 # ---------------------------------------------------------------------------
@@ -36,11 +35,38 @@ os.environ.setdefault("ENVIRONMENT", "development")
 # chain that requires structlog (not installed in minimal test venv).
 # ---------------------------------------------------------------------------
 
+_MISSING = object()
+_ORIG_MODULES: dict[str, object] = {}
+
+
+def _remember_module(name: str) -> None:
+    if name not in _ORIG_MODULES:
+        _ORIG_MODULES[name] = sys.modules.get(name, _MISSING)
+
+
+def _set_module(name: str, module: types.ModuleType) -> None:
+    _remember_module(name)
+    sys.modules[name] = module
+
+
+def _setdefault_module(name: str, module: types.ModuleType) -> None:
+    _remember_module(name)
+    sys.modules.setdefault(name, module)
+
+
+def _restore_stubbed_modules() -> None:
+    for name, original in _ORIG_MODULES.items():
+        if original is _MISSING:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
+
+
 def _load_module(name: str, path: Path, package: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(name, path, submodule_search_locations=[])
     mod = importlib.util.module_from_spec(spec)
     mod.__package__ = package
-    sys.modules[name] = mod
+    _set_module(name, mod)
     spec.loader.exec_module(mod)
     return mod
 
@@ -49,7 +75,7 @@ def _load_module(name: str, path: Path, package: str) -> types.ModuleType:
 _social_pkg = types.ModuleType("sports_scraper.social")
 _social_pkg.__path__ = []
 _social_pkg.__package__ = "sports_scraper.social"
-sys.modules.setdefault("sports_scraper.social", _social_pkg)
+_setdefault_module("sports_scraper.social", _social_pkg)
 
 _models_mod = _load_module(
     "sports_scraper.social.models",
@@ -71,6 +97,10 @@ _build_post_url = _bc_mod._build_post_url
 _extract_media = _bc_mod._extract_media
 _parse_at_uri = _bc_mod._parse_at_uri
 _to_utc = _bc_mod._to_utc
+
+# Restore global module table so this test's import stubs do not affect
+# collection/imports in unrelated modules.
+_restore_stubbed_modules()
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +429,6 @@ class TestBlueSkyCollectorCollectPosts:
 class TestFeatureFlag:
     def _fresh_settings(self, overrides: dict) -> object:
         """Load a fresh Settings instance without triggering validate_env."""
-        import importlib
         # Clear cached module so we get a fresh class without lru_cache singleton
         for key in list(sys.modules):
             if key in ("sports_scraper.config", "sports_scraper.validate_env"):

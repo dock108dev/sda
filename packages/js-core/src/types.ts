@@ -187,6 +187,19 @@ export interface ConspiraciesResponse extends TheoryResponse {
   fuels_today: string[];
 }
 
+// FastAPI/Pydantic validation error shapes (shared across API endpoints).
+export interface ApiValidationErrorItem {
+  loc: Array<string | number>;
+  msg: string;
+  type: string;
+  input?: unknown;
+  ctx?: Record<string, unknown>;
+}
+
+export interface ApiErrorResponse {
+  detail: string | ApiValidationErrorItem[];
+}
+
 // API Error types
 export class APIError extends Error {
   constructor(

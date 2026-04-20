@@ -76,7 +76,7 @@ export default function PoolDetailPage() {
     setOpMessage(null);
     try {
       const res = await rescorePool(poolId);
-      setOpMessage(`Rescore triggered. Task ID: ${res.task_id ?? "submitted"}`);
+      setOpMessage(`Rescore triggered. Task ID: ${res.taskId ?? "submitted"}`);
     } catch (err) {
       setOpMessage(`Rescore failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {

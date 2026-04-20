@@ -13,7 +13,7 @@
     "@dock108/js-core": "file:../packages/js-core",
     "@dock108/ui": "file:../packages/ui",
     "@dock108/ui-kit": "file:../packages/ui-kit",
-    "next": "16.2.3",
+    "next": "16.2.4",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "recharts": "^3.8.0"
@@ -25,9 +25,9 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.3",
+    "eslint-config-next": "16.2.4",
     "jsdom": "^26.1.0",
-    "typescript": "^5",
+    "typescript": "6.0.3",
     "vitest": "^3.2.4"
   }
 }

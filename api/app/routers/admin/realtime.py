@@ -5,7 +5,8 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic.alias_generators import to_camel
 
 from app.realtime.manager import realtime_manager
 from app.realtime.models import is_valid_channel
@@ -27,6 +28,8 @@ class TestEmitRequest(BaseModel):
 
 
 class TestEmitResponse(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     channel: str
     event_type: str
     seq: int

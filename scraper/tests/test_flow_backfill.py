@@ -23,6 +23,33 @@ import pytest
 # Stubs — same boilerplate as test_flow_sweep.py
 # ---------------------------------------------------------------------------
 
+_MISSING = object()
+_ORIG_MODULES: dict[str, object] = {}
+
+
+def _remember_module(name: str) -> None:
+    if name not in _ORIG_MODULES:
+        _ORIG_MODULES[name] = sys.modules.get(name, _MISSING)
+
+
+def _set_module(name: str, module: object) -> object:
+    _remember_module(name)
+    sys.modules[name] = module
+    return module
+
+
+def _restore_stubbed_modules() -> None:
+    for name, original in _ORIG_MODULES.items():
+        if original is _MISSING:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
+
+
+def _force_magic(name: str) -> None:
+    _set_module(name, MagicMock())
+
+
 class _ColMock:
     """Minimal stand-in for a SQLAlchemy column expression."""
     def __eq__(self, other): return MagicMock()  # noqa: PLR0206
@@ -36,7 +63,7 @@ class _ColMock:
 
 def _stub(name: str) -> MagicMock:
     m = MagicMock()
-    sys.modules[name] = m
+    _set_module(name, m)
     return m
 
 
@@ -44,7 +71,7 @@ def _pkg(name: str) -> types.ModuleType:
     m = types.ModuleType(name)
     m.__path__ = []
     m.__package__ = name
-    sys.modules[name] = m
+    _set_module(name, m)
     return m
 
 
@@ -53,7 +80,7 @@ for _dep in [
     "sqlalchemy", "sqlalchemy.orm",
     "pydantic", "pydantic_settings", "redis", "httpx",
 ]:
-    sys.modules.setdefault(_dep, MagicMock())
+    _force_magic(_dep)
 
 
 def _passthrough_shared_task(*args, **kwargs):
@@ -121,6 +148,7 @@ _task_mod = _ilu.module_from_spec(_spec)
 _task_mod.__package__ = "sports_scraper.jobs"
 sys.modules["sports_scraper.jobs.flow_trigger_tasks"] = _task_mod
 _spec.loader.exec_module(_task_mod)
+_restore_stubbed_modules()
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +182,7 @@ def _run_backfill(*, lock_token="backfill-tok", game_ids=None, dry_run=False, da
         game_ids = GAME_IDS
 
     db_ctx = _db_ctx_with_games(game_ids)
-    redis_lock_mod = sys.modules["sports_scraper.utils.redis_lock"]
+    redis_lock_mod = _ss_redis
 
     with (
         patch.object(_task_mod, "get_session", return_value=db_ctx),
@@ -202,7 +230,7 @@ class TestBackfillMissingFlows:
 
     def test_skips_when_lock_held(self):
         """If another backfill is running (lock held), return skipped immediately."""
-        redis_lock_mod = sys.modules["sports_scraper.utils.redis_lock"]
+        redis_lock_mod = _ss_redis
 
         with (
             patch.object(redis_lock_mod, "acquire_redis_lock", return_value=None) as m_acquire,
@@ -223,7 +251,7 @@ class TestBackfillMissingFlows:
 
     def test_lock_always_released(self):
         """Lock must be released even if an exception occurs mid-backfill."""
-        redis_lock_mod = sys.modules["sports_scraper.utils.redis_lock"]
+        redis_lock_mod = _ss_redis
 
         broken_ctx = MagicMock()
         broken_ctx.__enter__ = MagicMock(side_effect=RuntimeError("db exploded"))
