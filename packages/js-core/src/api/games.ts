@@ -24,6 +24,13 @@ export type GameFlowPlay = {
   score: ScoreObject | null;
 };
 
+/** Mini box score returned in a narrative block. home/away are flexible dicts per the API contract. */
+export type BlockMiniBox = {
+  home: Record<string, unknown>;
+  away: Record<string, unknown>;
+  blockStars: string[];
+};
+
 export type NarrativeBlock = {
   blockIndex: number;
   role: string;
@@ -36,7 +43,7 @@ export type NarrativeBlock = {
   keyPlayIds: number[];
   narrative: string | null;
   embeddedSocialPostId?: number | null;
-  miniBox?: unknown | null;
+  miniBox?: BlockMiniBox | null;
   startClock?: string | null;
   endClock?: string | null;
 };

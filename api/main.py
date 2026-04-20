@@ -37,6 +37,7 @@ from app.routers.admin import (
     pipeline,
     quality_review,
     quality_summary,
+    realtime as admin_realtime,
     resolution,
     task_control,
     timeline_jobs,
@@ -304,6 +305,12 @@ app.include_router(
     users.router,
     prefix="/api/admin",
     tags=["admin", "users"],
+    dependencies=admin_dependency,
+)
+app.include_router(
+    admin_realtime.router,
+    prefix="/api/admin",
+    tags=["admin", "realtime"],
     dependencies=admin_dependency,
 )
 

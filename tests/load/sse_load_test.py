@@ -48,7 +48,7 @@ _CHANNEL_COUNT = 10
 TEST_CHANNELS = [f"game:{9000 + i}:summary" for i in range(_CHANNEL_COUNT)]
 
 # ── Acceptance-criteria thresholds ───────────────────────────────────────────
-P99_LATENCY_BUDGET_MS = 750.0
+P99_LATENCY_BUDGET_MS = 200.0
 MAX_DROPS = 0
 MAX_DUPLICATES = 0
 

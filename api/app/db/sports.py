@@ -147,7 +147,7 @@ class SportsPlayer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     league_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("sports_leagues.id"),
+        ForeignKey("sports_leagues.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -157,7 +157,7 @@ class SportsPlayer(Base):
     sweater_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     team_id: Mapped[int | None] = mapped_column(
         Integer,
-        ForeignKey("sports_teams.id"),
+        ForeignKey("sports_teams.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -495,13 +495,13 @@ class SportsGamePlay(Base):
     play_index: Mapped[int] = mapped_column(Integer, nullable=False)
     play_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     team_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sports_teams.id"), nullable=True
+        Integer, ForeignKey("sports_teams.id", ondelete="SET NULL"), nullable=True
     )
     player_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     player_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     player_ref_id: Mapped[int | None] = mapped_column(
         Integer,
-        ForeignKey("sports_players.id"),
+        ForeignKey("sports_players.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

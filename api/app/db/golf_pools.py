@@ -70,7 +70,7 @@ class GolfPoolBucketPlayer(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     bucket_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_pool_buckets.id", ondelete="CASCADE"), nullable=False)
-    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id"), nullable=False)
+    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False)
     player_name_snapshot: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -27,7 +27,6 @@ from sqlalchemy.sql import text
 
 from .base import Base
 from .sports import SportsGame
-from ..services.pipeline.models import PipelineStage  # noqa: F401 — single source of truth
 
 
 class PipelineRunStatus(str, Enum):
@@ -262,3 +261,30 @@ class PipelineCoverageReport(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class PipelineCoverageReportEntry(Base):
+    """Per-game pipeline coverage entry written by the daily coverage report task."""
+
+    __tablename__ = "pipeline_coverage_report"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    sport: Mapped[str] = mapped_column(Text, nullable=False)
+    game_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    has_flow: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Human-readable reason when has_flow is False (e.g. "no_pipeline_run", "pipeline_failed")
+    gap_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("report_date", "game_id", name="uq_coverage_report_date_game"),
+    )
+
+
+# Re-export so callers can do `from app.db.pipeline import PipelineStage`.
+# Placed at the bottom to avoid circular import: pipeline.py -> services.pipeline ->
+# executor -> pipeline.py (classes not yet defined if imported at top of file).
+from ..services.pipeline.models import PipelineStage  # noqa: F401 — single source of truth

@@ -8,6 +8,7 @@ export { HighlightsAPI } from "./highlights";
 export { StrategyAPI } from "./strategy";
 export {
   fetchGameFlow,
+  type BlockMiniBox,
   type ConsumerGameFlowResponse,
   type FlowStatusResponse,
   type GameFlowPlay,

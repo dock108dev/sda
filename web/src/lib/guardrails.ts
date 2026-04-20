@@ -1,8 +1,13 @@
 /**
  * Guardrails & Invariant Enforcement (Frontend)
  *
- * This module enforces hard invariants at render time.
- * Violations are CORRECTNESS BUGS, not stylistic issues.
+ * CANONICAL SOURCE OF TRUTH: api/app/services/pipeline/stages/validate_blocks.py
+ * (numeric constants from api/app/services/pipeline/stages/block_types.py)
+ *
+ * Every constant and enumeration in this file must mirror the backend Python files.
+ * Do NOT change values here without updating the backend canonical source first.
+ * CI enforces this contract via scripts/check_guardrails_sync.py — divergence
+ * causes a failing check on every PR that touches either file.
  *
  * INVARIANTS (Non-negotiable)
  * ===========================
@@ -61,10 +66,14 @@ export const MAX_READ_TIME_SECONDS = 60;
 /** Words per minute for read time calculation */
 export const WORDS_PER_MINUTE = 250;
 
-/** Maximum words derived from read time */
-export const MAX_TOTAL_WORDS = Math.floor(
-  (MAX_READ_TIME_SECONDS / 60) * WORDS_PER_MINUTE
-);
+/**
+ * Maximum total words across all blocks.
+ * Matches MAX_TOTAL_WORDS = 600 in block_types.py.
+ * The backend enforces this as a warning-level check; frontend mirrors it.
+ * Value is intentionally higher than (MAX_READ_TIME_SECONDS/60)*WORDS_PER_MINUTE
+ * to accommodate richer narratives (see block_types.py comment).
+ */
+export const MAX_TOTAL_WORDS = 600;
 
 // =============================================================================
 // FLOW SOURCE CONSTANTS

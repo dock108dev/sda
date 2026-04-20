@@ -48,7 +48,12 @@ async def _run_coverage_report(report_date_str: str | None) -> dict:
     import app.db.odds  # noqa: F401
     import app.db.social  # noqa: F401
     from app.db.flow import SportsGameFlow
-    from app.db.pipeline import GamePipelineRun, GamePipelineStage, PipelineCoverageReport
+    from app.db.pipeline import (
+        GamePipelineRun,
+        GamePipelineStage,
+        PipelineCoverageReport,
+        PipelineCoverageReportEntry,
+    )
     from app.db.sports import SportsGame, SportsLeague
 
     if report_date_str:
@@ -196,6 +201,50 @@ async def _run_coverage_report(report_date_str: str | None) -> dict:
                         avg_quality_score=overall_avg_q,
                     )
                 )
+
+            # ── 6. Upsert per-game entries ─────────────────────────────────────
+            existing_entries_stmt = select(
+                PipelineCoverageReportEntry.game_id
+            ).where(PipelineCoverageReportEntry.report_date == report_date)
+            existing_game_ids: set[int] = {
+                r.game_id
+                for r in (await db.execute(existing_entries_stmt)).all()
+            }
+
+            for gid, sport in sport_by_game.items():
+                has_flow = gid in flow_game_ids
+                gap_reason: str | None = None
+                if not has_flow:
+                    # Determine why: check if a pipeline run exists at all
+                    any_run_stmt = select(GamePipelineRun.id).where(
+                        GamePipelineRun.game_id == gid
+                    ).limit(1)
+                    run_row = (await db.execute(any_run_stmt)).first()
+                    gap_reason = "pipeline_failed" if run_row else "no_pipeline_run"
+
+                if gid in existing_game_ids:
+                    update_stmt = (
+                        select(PipelineCoverageReportEntry)
+                        .where(
+                            PipelineCoverageReportEntry.report_date == report_date,
+                            PipelineCoverageReportEntry.game_id == gid,
+                        )
+                    )
+                    entry = (await db.execute(update_stmt)).scalar_one_or_none()
+                    if entry:
+                        entry.has_flow = has_flow
+                        entry.gap_reason = gap_reason
+                else:
+                    db.add(
+                        PipelineCoverageReportEntry(
+                            report_date=report_date,
+                            sport=sport,
+                            game_id=gid,
+                            has_flow=has_flow,
+                            gap_reason=gap_reason,
+                        )
+                    )
+
             await db.commit()
 
     logger.info(

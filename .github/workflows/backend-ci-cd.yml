@@ -153,6 +153,28 @@ jobs:
           source .venv/bin/activate
           python scripts/lint_router_namespaces.py
 
+  lint-fk-ondelete:
+    name: Lint · FK ondelete declarations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Check all ForeignKey() calls declare ondelete=
+        run: python scripts/lint_fk_ondelete.py
+
+  lint-guardrails-sync:
+    name: Lint · guardrails.ts ↔ validate_blocks.py sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Check guardrails.ts mirrors validate_blocks.py constants
+        run: python scripts/check_guardrails_sync.py
+
   lint-api-schema:
     name: Lint · camelCase fields in /api/v1/ OpenAPI schema
     runs-on: ubuntu-latest
@@ -178,6 +200,31 @@ jobs:
           source .venv/bin/activate
           python scripts/lint_openapi_camel_case.py
 
+  lint-js-core-sync:
+    name: Lint · js-core types sync with /api/v1/ schema
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install API dependencies
+        run: |
+          uv venv --python 3.12
+          uv pip install -r api/requirements.txt
+      - name: Check js-core types cover all /api/v1/ response fields
+        run: |
+          source .venv/bin/activate
+          python scripts/check_js_core_sync.py
+
   compile:
     name: Compile
     runs-on: ubuntu-latest
@@ -189,6 +236,9 @@ jobs:
       - lint-camel-case-schemas
       - lint-router-namespaces
       - lint-api-schema
+      - lint-guardrails-sync
+      - lint-fk-ondelete
+      - lint-js-core-sync
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6

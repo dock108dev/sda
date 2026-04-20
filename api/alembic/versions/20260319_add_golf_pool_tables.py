@@ -60,7 +60,7 @@ def upgrade() -> None:
         "golf_pool_bucket_players",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("bucket_id", sa.Integer, sa.ForeignKey("golf_pool_buckets.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id"), nullable=False),
+        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False),
         sa.Column("player_name_snapshot", sa.String(200), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.UniqueConstraint("bucket_id", "dg_id", name="uq_golf_pool_bucket_player"),

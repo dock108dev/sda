@@ -76,7 +76,7 @@ class GolfTournamentField(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False)
-    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id"), nullable=False)
+    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False)
     player_name: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(30), default="active")
     tee_time_r1: Mapped[str | None] = mapped_column(String(20))
@@ -98,7 +98,7 @@ class GolfLeaderboard(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False)
-    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id"), nullable=False)
+    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False)
     player_name: Mapped[str | None] = mapped_column(String(200))
     position: Mapped[int | None] = mapped_column(Integer)
     total_score: Mapped[int | None] = mapped_column(Integer)
@@ -130,7 +130,7 @@ class GolfRound(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False)
-    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id"), nullable=False)
+    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False)
     round_num: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[int | None] = mapped_column(Integer)
     strokes: Mapped[int | None] = mapped_column(Integer)
@@ -156,7 +156,7 @@ class GolfPlayerStats(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id"), nullable=False)
+    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False)
     period: Mapped[str] = mapped_column(String(30), default="current")
     sg_total: Mapped[float | None] = mapped_column(Float)
     sg_ott: Mapped[float | None] = mapped_column(Float)
@@ -180,7 +180,7 @@ class GolfTournamentOdds(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False)
-    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id"), nullable=False)
+    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False)
     player_name: Mapped[str | None] = mapped_column(String(200))
     book: Mapped[str] = mapped_column(String(50), nullable=False)
     market: Mapped[str] = mapped_column(String(30), nullable=False)
@@ -199,7 +199,7 @@ class GolfDFSProjection(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False)
-    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id"), nullable=False)
+    dg_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False)
     player_name: Mapped[str | None] = mapped_column(String(200))
     site: Mapped[str] = mapped_column(String(30), nullable=False)
     salary: Mapped[int | None] = mapped_column(Integer)

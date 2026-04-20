@@ -8,20 +8,24 @@ on:
         required: false
         default: "500"
       duration:
-        description: "Test duration in seconds (600 = 10 min)"
+        description: "Test duration in seconds (120 = k6 default, 600 = Python full test)"
         required: false
-        default: "600"
+        default: "120"
       rate:
-        description: "Events per second per channel"
+        description: "Events per second per channel (Python harness only)"
         required: false
         default: "5"
+      harness:
+        description: "Which harness to run: 'k6', 'python', or 'both'"
+        required: false
+        default: "both"
 
 permissions:
   contents: read
 
 jobs:
   load-test:
-    name: SSE Load Test (${{ github.event.inputs.clients || '500' }} clients, ${{ github.event.inputs.duration || '600' }}s)
+    name: SSE Load Test (${{ github.event.inputs.clients || '500' }} clients, ${{ github.event.inputs.duration || '120' }}s)
     runs-on: ubuntu-latest
 
     services:
@@ -55,25 +59,35 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       LOAD_TEST_URL: http://localhost:8000
       LOAD_TEST_CLIENTS: ${{ github.event.inputs.clients || '500' }}
-      LOAD_TEST_DURATION: ${{ github.event.inputs.duration || '600' }}
+      LOAD_TEST_DURATION: ${{ github.event.inputs.duration || '120' }}
       LOAD_TEST_RATE: ${{ github.event.inputs.rate || '5' }}
+      HARNESS: ${{ github.event.inputs.harness || 'both' }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           uv venv --python 3.12
           uv pip install -r api/requirements.txt
+
+      - name: Install k6
+        if: env.HARNESS == 'k6' || env.HARNESS == 'both'
+        run: |
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update -q
+          sudo apt-get install -y k6
 
       - name: Run Alembic migrations
         working-directory: api
@@ -103,7 +117,17 @@ jobs:
           echo "API did not become healthy"
           exit 1
 
-      - name: Run SSE load test
+      - name: Run k6 SSE load test
+        if: env.HARNESS == 'k6' || env.HARNESS == 'both'
+        run: |
+          k6 run tests/load/sse_concurrent.js \
+            -e BASE_URL="$LOAD_TEST_URL" \
+            -e TEST_DURATION="$LOAD_TEST_DURATION" \
+            --out json=tests/load/results/k6-$(date +%Y%m%d_%H%M%S).json \
+            --summary-export tests/load/results/k6-summary-$(date +%Y%m%d_%H%M%S).json
+
+      - name: Run Python SSE load test
+        if: env.HARNESS == 'python' || env.HARNESS == 'both'
         run: |
           source .venv/bin/activate
           python tests/load/sse_load_test.py \
@@ -120,7 +144,7 @@ jobs:
             kill "$(cat /tmp/api.pid)" 2>/dev/null || true
           fi
 
-      - name: Upload load test report
+      - name: Upload load test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:

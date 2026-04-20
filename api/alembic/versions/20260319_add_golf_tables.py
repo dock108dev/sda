@@ -66,7 +66,7 @@ def upgrade() -> None:
         "golf_tournament_fields",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("tournament_id", sa.Integer, sa.ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id"), nullable=False),
+        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False),
         sa.Column("player_name", sa.String(200)),
         sa.Column("status", sa.String(30), default="active"),  # active, cut, wd, dq
         sa.Column("tee_time_r1", sa.String(20)),
@@ -86,7 +86,7 @@ def upgrade() -> None:
         "golf_leaderboard",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("tournament_id", sa.Integer, sa.ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id"), nullable=False),
+        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False),
         sa.Column("player_name", sa.String(200)),
         sa.Column("position", sa.Integer),
         sa.Column("total_score", sa.Integer),  # Relative to par
@@ -119,7 +119,7 @@ def upgrade() -> None:
         "golf_rounds",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("tournament_id", sa.Integer, sa.ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id"), nullable=False),
+        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False),
         sa.Column("round_num", sa.Integer, nullable=False),
         sa.Column("score", sa.Integer),  # Relative to par
         sa.Column("strokes", sa.Integer),
@@ -143,7 +143,7 @@ def upgrade() -> None:
     op.create_table(
         "golf_player_stats",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id"), nullable=False),
+        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False),
         sa.Column("period", sa.String(30), default="current"),  # "current", "long_term", "recent"
         sa.Column("sg_total", sa.Float),
         sa.Column("sg_ott", sa.Float),
@@ -164,7 +164,7 @@ def upgrade() -> None:
         "golf_tournament_odds",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("tournament_id", sa.Integer, sa.ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id"), nullable=False),
+        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False),
         sa.Column("player_name", sa.String(200)),
         sa.Column("book", sa.String(50), nullable=False),
         sa.Column("market", sa.String(30), nullable=False),  # win, top_5, top_10, make_cut
@@ -182,7 +182,7 @@ def upgrade() -> None:
         "golf_dfs_projections",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("tournament_id", sa.Integer, sa.ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id"), nullable=False),
+        sa.Column("dg_id", sa.Integer, sa.ForeignKey("golf_players.dg_id", ondelete="CASCADE"), nullable=False),
         sa.Column("player_name", sa.String(200)),
         sa.Column("site", sa.String(30), nullable=False),  # draftkings, fanduel, yahoo
         sa.Column("salary", sa.Integer),
