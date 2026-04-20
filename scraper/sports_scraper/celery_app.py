@@ -423,6 +423,15 @@ def on_worker_ready(sender=None, **kwargs):
     clear_all_locks()
     mark_stale_runs_interrupted()
 
+    # Run an immediate health probe on startup so circuit breaker state is
+    # populated before the first beat-scheduled probe fires at :10/:40.
+    # Dispatch async so it doesn't block worker initialisation.
+    try:
+        app.send_task("check_playwright_session_health", queue=SOCIAL_QUEUE)
+        logger.info("playwright_session_health_startup_probe_dispatched")
+    except Exception:
+        logger.warning("playwright_session_health_startup_probe_dispatch_failed", exc_info=True)
+
 
 @signals.worker_shutting_down.connect
 def on_worker_shutting_down(sender=None, **kwargs):

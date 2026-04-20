@@ -18,7 +18,9 @@ from ..celery_app import SOCIAL_QUEUE
 from ..config import settings
 from ..logging import logger
 from ..social.session_health import (
+    CIRCUIT_BREAKER_THRESHOLD,
     get_cached_health,
+    get_consecutive_failures,
     probe_session_health,
     record_health,
 )
@@ -46,14 +48,17 @@ def check_playwright_session_health() -> dict:
 
     result = probe_session_health()
 
+    newly_tripped = False
     try:
         r = _redis_mod.from_url(settings.redis_url, decode_responses=True)
-        record_health(r, result)
+        newly_tripped = record_health(r, result)
+        consecutive = get_consecutive_failures(r)
     except Exception:
         logger.warning(
             "playwright_session_health_redis_write_failed",
             exc_info=True,
         )
+        consecutive = 0
 
     if result.is_valid:
         logger.info(
@@ -67,6 +72,16 @@ def check_playwright_session_health() -> dict:
             checked_at=result.checked_at,
             auth_token_present=result.auth_token_present,
             ct0_present=result.ct0_present,
+            consecutive_failures=consecutive,
+        )
+
+    if newly_tripped:
+        logger.error(
+            "playwright_circuit_breaker_tripped",
+            reason=result.failure_reason,
+            consecutive_failures=CIRCUIT_BREAKER_THRESHOLD,
+            action="social_scraping_suspended",
+            alert=True,
         )
 
     return {
@@ -75,4 +90,6 @@ def check_playwright_session_health() -> dict:
         "failure_reason": result.failure_reason,
         "auth_token_present": result.auth_token_present,
         "ct0_present": result.ct0_present,
+        "consecutive_failures": consecutive,
+        "circuit_newly_tripped": newly_tripped,
     }

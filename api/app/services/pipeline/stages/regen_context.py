@@ -8,7 +8,8 @@ The stable identity layer (narrative rules, style, guardrails) is never touched.
 """
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 
 class RegenFailureContext(BaseModel):
@@ -18,6 +19,8 @@ class RegenFailureContext(BaseModel):
     rubric entries are prefixed with ``tier2_``. The model partitions them so
     the prompt builder renders each dimension individually and cannot omit any.
     """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     tier1_failures: list[str] = Field(default_factory=list)
     tier2_rubric_failures: list[str] = Field(default_factory=list)

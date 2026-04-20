@@ -64,7 +64,7 @@ class DataGolfClient:
                 from ..config import settings
                 self._api_key = getattr(settings, "datagolf_api_key", "") or ""
             except Exception:
-                pass
+                _log().warning("datagolf_settings_load_failed", exc_info=True)
         self._client = httpx.Client(
             timeout=30.0,
             headers={"User-Agent": "sports-data-admin/1.0"},

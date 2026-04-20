@@ -174,8 +174,8 @@ function MomentCard({ moment, momentIndex, plays, leagueCode }: MomentCardProps)
                     <td>{play.playType ?? "—"}</td>
                     <td>{play.description ?? "—"}</td>
                     <td>
-                      {play.homeScore !== null && play.awayScore !== null
-                        ? `${play.awayScore}-${play.homeScore}`
+                      {play.score != null
+                        ? `${play.score.away}-${play.score.home}`
                         : "—"}
                     </td>
                   </tr>

@@ -112,7 +112,13 @@ def sample_nba_play():
 # $GITHUB_STEP_SUMMARY so it appears in the PR Checks UI.
 # ---------------------------------------------------------------------------
 
-_GOLDEN_PIPELINE_CLASSES = frozenset(["TestPipelineExecution", "TestCoverageFields"])
+_GOLDEN_PIPELINE_CLASSES = frozenset([
+    "TestPipelineExecution",
+    "TestCoverageFields",
+    "TestBlockCountRegression",
+    "TestRequiredBlockTypes",
+    "TestQualityScoreRegression",
+])
 
 # fixture_id (e.g. "nba_standard_win") → set of short test names that failed
 _fixture_failures: dict[str, set[str]] = defaultdict(set)

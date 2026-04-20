@@ -6,7 +6,34 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class ScoreObject(BaseModel):
+    """Score as a structured {home, away} object.
+
+    Accepts a [home, away] list/tuple during ingestion so the model
+    can be constructed directly from pipeline JSON without an intermediate helper.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, frozen=True)
+
+    home: int = Field(..., alias="home")
+    away: int = Field(..., alias="away")
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_list(cls, v: Any) -> Any:
+        if isinstance(v, (list, tuple)) and len(v) >= 2:
+            return {"home": v[0], "away": v[1]}
+        return v
+
+
+def _score_obj(home: int | None, away: int | None) -> "ScoreObject | None":
+    """Build a ScoreObject from nullable ints; returns None if both are None."""
+    if home is None and away is None:
+        return None
+    return ScoreObject(home=home or 0, away=away or 0)
 
 
 class NormalizedStat(BaseModel):
@@ -182,7 +209,7 @@ class SocialPostEntry(BaseModel):
     image_url: str | None = Field(None, alias="imageUrl")
     source_handle: str | None = Field(None, alias="sourceHandle")
     media_type: MediaType | None = Field(None, alias="mediaType")
-    game_phase: GamePhase | None = Field(None, alias="gamePhase")
+    game_phase: GamePhase = Field(GamePhase.unknown, alias="gamePhase")
 
 
 class LiveSnapshot(BaseModel):
@@ -192,8 +219,7 @@ class LiveSnapshot(BaseModel):
 
     period_label: str | None = Field(None, alias="periodLabel")
     time_label: str | None = Field(None, alias="timeLabel")
-    home_score: int | None = Field(None, alias="homeScore")
-    away_score: int | None = Field(None, alias="awayScore")
+    score: ScoreObject | None = None
     current_period: int | None = Field(None, alias="currentPeriod")
     game_clock: str | None = Field(None, alias="gameClock")
 
@@ -212,14 +238,12 @@ class PlayEntry(BaseModel):
     team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     player_name: str | None = Field(None, alias="playerName")
     description: str | None = None
-    home_score: int | None = Field(None, alias="homeScore")
-    away_score: int | None = Field(None, alias="awayScore")
+    score: ScoreObject | None = None
     tier: int | None = None
     score_changed: bool | None = Field(None, alias="scoreChanged")
     scoring_team_abbr: str | None = Field(None, alias="scoringTeamAbbr")
     points_scored: int | None = Field(None, alias="pointsScored")
-    home_score_before: int | None = Field(None, alias="homeScoreBefore")
-    away_score_before: int | None = Field(None, alias="awayScoreBefore")
+    score_before: ScoreObject | None = Field(None, alias="scoreBefore")
     phase: str | None = None
 
 

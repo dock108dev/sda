@@ -105,12 +105,12 @@ export function PbpSection({ plays, groupedPlays, leagueCode }: PbpSectionProps)
         }
         if (group.length >= 2) {
           const playTypes = [...new Set(group.map((p) => p.playType).filter(Boolean))] as string[];
-          const scores = group.filter((p) => p.homeScore !== null && p.awayScore !== null);
+          const scores = group.filter((p) => p.score != null);
           const firstScore = scores[0];
           const lastScore = scores[scores.length - 1];
           const scoreRange =
-            firstScore && lastScore
-              ? `${firstScore.awayScore}-${firstScore.homeScore} → ${lastScore.awayScore}-${lastScore.homeScore}`
+            firstScore?.score && lastScore?.score
+              ? `${firstScore.score.away}-${firstScore.score.home} → ${lastScore.score.away}-${lastScore.score.home}`
               : "—";
           rows.push({ type: "group", plays: group, playTypes, scoreRange });
         } else {
@@ -183,7 +183,7 @@ export function PbpSection({ plays, groupedPlays, leagueCode }: PbpSectionProps)
                       <th><span className={styles.fieldLabel} title="API field: teamAbbreviation">Team</span></th>
                       <th>Player</th>
                       <th>Description</th>
-                      <th><span className={styles.fieldLabel} title="API field: homeScore / awayScore">Score</span></th>
+                      <th><span className={styles.fieldLabel} title="API field: score.away / score.home">Score</span></th>
                       <th><span className={styles.fieldLabel} title="API field: tier">Tier</span></th>
                     </tr>
                   </thead>
@@ -198,8 +198,8 @@ export function PbpSection({ plays, groupedPlays, leagueCode }: PbpSectionProps)
                             <td>{play.playerName ?? "—"}</td>
                             <td className={styles.pbpDescription}>{play.description ?? "—"}</td>
                             <td>
-                              {play.awayScore !== null && play.homeScore !== null
-                                ? `${play.awayScore}-${play.homeScore}`
+                              {play.score != null
+                                ? `${play.score.away}-${play.score.home}`
                                 : "—"}
                             </td>
                             <td><TierBadge tier={play.tier} /></td>
@@ -236,8 +236,8 @@ export function PbpSection({ plays, groupedPlays, leagueCode }: PbpSectionProps)
                                       <td>{play.playerName ?? "—"}</td>
                                       <td className={styles.pbpDescription}>{play.description ?? "—"}</td>
                                       <td>
-                                        {play.awayScore !== null && play.homeScore !== null
-                                          ? `${play.awayScore}-${play.homeScore}`
+                                        {play.score != null
+                                          ? `${play.score.away}-${play.score.home}`
                                           : "—"}
                                       </td>
                                       <td><TierBadge tier={play.tier} /></td>

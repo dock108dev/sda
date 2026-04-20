@@ -7,6 +7,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from app.routers.sports.schemas.common import ScoreObject
+
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
@@ -25,8 +27,7 @@ class PlaySummary(BaseModel):
     player_name: str | None
     player_id: str | None
     description: str | None
-    home_score: int | None
-    away_score: int | None
+    score: ScoreObject | None
     has_raw_data: bool
 
 
@@ -45,8 +46,7 @@ class PlayDetail(BaseModel):
     player_name: str | None
     player_id: str | None
     description: str | None
-    home_score: int | None
-    away_score: int | None
+    score: ScoreObject | None
     raw_data: dict[str, Any]
     created_at: str
     updated_at: str

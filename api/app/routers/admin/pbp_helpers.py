@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ...db.sports import SportsGamePlay
+from ...routers.sports.schemas.common import _score_obj
 from .pbp_models import PlayDetail, PlaySummary
 
 
@@ -57,8 +58,7 @@ def play_to_summary(play: SportsGamePlay) -> PlaySummary:
         player_name=play.player_name,
         player_id=play.player_id,
         description=play.description,
-        home_score=play.home_score,
-        away_score=play.away_score,
+        score=_score_obj(play.home_score, play.away_score),
         has_raw_data=bool(play.raw_data),
     )
 
@@ -76,8 +76,7 @@ def play_to_detail(play: SportsGamePlay) -> PlayDetail:
         player_name=play.player_name,
         player_id=play.player_id,
         description=play.description,
-        home_score=play.home_score,
-        away_score=play.away_score,
+        score=_score_obj(play.home_score, play.away_score),
         raw_data=play.raw_data or {},
         created_at=play.created_at.isoformat(),
         updated_at=play.updated_at.isoformat(),

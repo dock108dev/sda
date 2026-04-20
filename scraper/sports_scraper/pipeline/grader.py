@@ -47,6 +47,12 @@ logger = logging.getLogger(__name__)
 ESCALATION_THRESHOLD: float = 60.0
 TIER2_CACHE_TTL: int = 604800  # 7 days in seconds
 
+# Sonnet escalation: Haiku scores in this band trigger a Sonnet re-grade.
+# Below LOW → fail fast (skip Sonnet). Above HIGH → pass fast (skip Sonnet).
+SONNET_AMBIGUOUS_BAND_LOW: float = 40.0
+SONNET_AMBIGUOUS_BAND_HIGH: float = 60.0
+SONNET_MODEL: str = "claude-sonnet-4-6"
+
 # Block count bounds (mirror validate_blocks.py constants)
 MIN_BLOCKS: int = 3
 MAX_BLOCKS: int = 7
@@ -117,6 +123,47 @@ Rubric:
 - no_generic_filler (0-25): Concrete and specific to this game (not generic sports clichés)?
 """
 
+# Sonnet prompt uses chain-of-thought reasoning before scoring; same output schema.
+_LLM_RUBRIC_SONNET_PROMPT = """\
+You are a sports narrative quality evaluator. Score the following game recap using \
+step-by-step reasoning before each score.
+
+Game context:
+- Sport: {sport}
+- Teams: {away_team} @ {home_team}
+- Final score: {home_team} {home_score}, {away_team} {away_score}
+
+Narrative (all blocks combined):
+---
+{narrative}
+---
+
+For EACH dimension: quote the relevant passage, compare to game context, identify issues, \
+then assign a score.
+
+BIAS WARNING: default to 15/25; only award >20 with specific quoted evidence; \
+only award <10 on clear failure.
+
+Output ONLY valid JSON with this exact shape:
+{{
+  "factual_accuracy": <0-25>,
+  "factual_accuracy_reasoning": "<one sentence>",
+  "sport_specific_voice": <0-25>,
+  "sport_specific_voice_reasoning": "<one sentence>",
+  "narrative_coherence": <0-25>,
+  "narrative_coherence_reasoning": "<one sentence>",
+  "no_generic_filler": <0-25>,
+  "no_generic_filler_reasoning": "<one sentence>",
+  "reasoning": "<overall one sentence>"
+}}
+
+Rubric:
+- factual_accuracy (0-25): Do scores, team names, and player references match the game context?
+- sport_specific_voice (0-25): Does the language use {sport}-appropriate terminology? Reads like a professional recap?
+- narrative_coherence (0-25): Clear arc from setup to resolution? Logical transitions between blocks?
+- no_generic_filler (0-25): Concrete and specific to this game (not generic sports clichés)?
+"""
+
 # ── Data classes ──────────────────────────────────────────────────────────────
 
 
@@ -150,6 +197,9 @@ class GraderResult:
     combined_score: float
     escalated: bool
     is_template_fallback: bool = False
+    # Sonnet escalation fields (populated only when Haiku score was ambiguous)
+    tier2_sonnet: TierTwoResult | None = None
+    haiku_ambiguous: bool = False
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -388,6 +438,102 @@ def grade_tier2_cached(
     return result
 
 
+def grade_tier2_sonnet_cached(
+    flow_id: int,
+    blocks: list[dict],
+    game_data: dict,
+    redis_client: object,
+) -> TierTwoResult:
+    """Run Sonnet-based Tier 2 scoring with Redis caching.
+
+    Called only when Haiku score falls within the ambiguous band
+    [SONNET_AMBIGUOUS_BAND_LOW, SONNET_AMBIGUOUS_BAND_HIGH].
+    Uses chain-of-thought reasoning for higher accuracy on borderline cases.
+
+    Args:
+        flow_id: PK of the SportsGameFlow record; used in the cache key.
+        blocks: Block dicts from the flow.
+        game_data: Dict with keys: sport, home_team, away_team, home_score, away_score.
+        redis_client: Connected redis.Redis instance.
+
+    Returns:
+        TierTwoResult. cache_hit=True when result is served from cache.
+    """
+    prompt_hash = _compute_prompt_hash(blocks, game_data)
+    cache_key = f"grader:t2s:{flow_id}:{prompt_hash}"  # 't2s' = tier2 sonnet
+
+    cached = redis_client.get(cache_key)  # type: ignore[union-attr]
+    if cached:
+        try:
+            data = json.loads(cached)
+            return TierTwoResult(
+                score=float(data["score"]),
+                rubric=data.get("rubric", {}),
+                cache_hit=True,
+                model=SONNET_MODEL,
+            )
+        except (json.JSONDecodeError, KeyError, ValueError):
+            logger.warning(
+                "grader_t2s_cache_parse_error",
+                exc_info=True,
+                extra={"flow_id": flow_id},
+            )
+
+    import anthropic
+
+    narrative = _all_block_narratives(blocks)
+    prompt = _LLM_RUBRIC_SONNET_PROMPT.format(
+        sport=game_data.get("sport", ""),
+        home_team=game_data.get("home_team", ""),
+        away_team=game_data.get("away_team", ""),
+        home_score=game_data.get("home_score", ""),
+        away_score=game_data.get("away_score", ""),
+        narrative=narrative,
+    )
+
+    rubric: dict[str, float] = {}
+    score = 0.0
+    try:
+        client = anthropic.Anthropic()
+        message = client.messages.create(
+            model=SONNET_MODEL,
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("` \n")
+        parsed = json.loads(raw)
+        dims = ["factual_accuracy", "sport_specific_voice", "narrative_coherence", "no_generic_filler"]
+        for dim in dims:
+            rubric[dim] = float(min(max(parsed.get(dim, 0), 0), 25))
+        score = round(sum(rubric.values()), 1)
+    except Exception:
+        logger.warning(
+            "grader_t2s_llm_call_failed",
+            exc_info=True,
+            extra={"flow_id": flow_id, "model": SONNET_MODEL},
+        )
+        # Neutral score on LLM failure; pipeline is not blocked
+        score = 50.0
+        rubric = {}
+
+    result = TierTwoResult(score=score, rubric=rubric, cache_hit=False, model=SONNET_MODEL)
+    try:
+        redis_client.setex(  # type: ignore[union-attr]
+            cache_key,
+            TIER2_CACHE_TTL,
+            json.dumps({"score": score, "rubric": rubric}),
+        )
+    except Exception:
+        logger.warning(
+            "grader_t2s_cache_write_failed",
+            exc_info=True,
+            extra={"flow_id": flow_id},
+        )
+    return result
+
+
 # ── Combined ──────────────────────────────────────────────────────────────────
 
 
@@ -409,8 +555,15 @@ def grade_flow(
     redis_client: object,
     is_template_fallback: bool = False,
     threshold: float = ESCALATION_THRESHOLD,
+    sonnet_band_low: float = SONNET_AMBIGUOUS_BAND_LOW,
+    sonnet_band_high: float = SONNET_AMBIGUOUS_BAND_HIGH,
 ) -> GraderResult | None:
     """Run the full 3-tier grader on a flow record.
+
+    Tier 1 (rule-based) always runs.
+    Tier 2 Haiku always runs.
+    Tier 2 Sonnet runs only when Haiku score is in [sonnet_band_low, sonnet_band_high]
+    (the ambiguous band); otherwise Haiku result is used directly.
 
     Args:
         flow_id: PK of the SportsGameFlow record.
@@ -423,6 +576,8 @@ def grade_flow(
             template path (not the LLM). Grading would not produce a meaningful
             quality signal; returns None so the caller skips DB writes entirely.
         threshold: Combined score below which Tier 3 escalation fires (default 60).
+        sonnet_band_low: Lower bound of Haiku ambiguous band (default 40.0).
+        sonnet_band_high: Upper bound of Haiku ambiguous band (default 60.0).
 
     Returns:
         GraderResult, or None when is_template_fallback=True.
@@ -432,13 +587,34 @@ def grade_flow(
         return None
 
     t1 = grade_tier1(blocks, game_data)
-    t2 = grade_tier2_cached(flow_id, blocks, game_data, redis_client)
-    combined = compute_combined_score(t1, t2)
+    t2_haiku = grade_tier2_cached(flow_id, blocks, game_data, redis_client)
+
+    # Sonnet escalation: only when Haiku is uncertain (in the ambiguous band).
+    t2_sonnet: TierTwoResult | None = None
+    haiku_ambiguous = sonnet_band_low <= t2_haiku.score <= sonnet_band_high
+    if haiku_ambiguous:
+        logger.info(
+            "grader_sonnet_escalation",
+            extra={
+                "flow_id": flow_id,
+                "haiku_score": t2_haiku.score,
+                "band_low": sonnet_band_low,
+                "band_high": sonnet_band_high,
+            },
+        )
+        t2_sonnet = grade_tier2_sonnet_cached(flow_id, blocks, game_data, redis_client)
+
+    # Combined score uses Sonnet when available (more accurate for ambiguous cases).
+    effective_t2 = t2_sonnet if t2_sonnet is not None else t2_haiku
+    combined = compute_combined_score(t1, effective_t2)
+
     return GraderResult(
         flow_id=flow_id,
         sport=sport,
         tier1=t1,
-        tier2=t2,
+        tier2=t2_haiku,
         combined_score=combined,
         escalated=combined < threshold,
+        tier2_sonnet=t2_sonnet,
+        haiku_ambiguous=haiku_ambiguous,
     )

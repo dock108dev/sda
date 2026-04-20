@@ -37,8 +37,8 @@ export default function GameDetailClient() {
   // Always call the hook (Rules of Hooks); only use its output for live games.
   const liveScore = useLiveGameScore(gameIdParam);
   const isLive = game?.game.status === "live";
-  const displayHomeScore = (isLive && liveScore.score != null) ? liveScore.score.home : game?.game.homeScore;
-  const displayAwayScore = (isLive && liveScore.score != null) ? liveScore.score.away : game?.game.awayScore;
+  const displayHomeScore = (isLive && liveScore.score != null) ? liveScore.score.home : game?.game.score?.home ?? null;
+  const displayAwayScore = (isLive && liveScore.score != null) ? liveScore.score.away : game?.game.score?.away ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);

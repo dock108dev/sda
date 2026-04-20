@@ -86,6 +86,7 @@ from .schemas import (
     NHLSkaterStat,
     OddsEntry,
 )
+from .schemas.common import _score_obj
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -325,8 +326,7 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         meta_live_snapshot = LiveSnapshot(
             period_label=meta_period_label,
             time_label=time_label(meta_current_period, meta_game_clock, league_code),
-            home_score=game.home_score,
-            away_score=game.away_score,
+            score=_score_obj(game.home_score, game.away_score),
             current_period=meta_current_period,
             game_clock=meta_game_clock,
         )
@@ -341,8 +341,7 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         away_team=game.away_team.name if game.away_team else "Unknown",
         home_team_id=game.home_team.id if game.home_team else None,
         away_team_id=game.away_team.id if game.away_team else None,
-        home_score=game.home_score,
-        away_score=game.away_score,
+        score=_score_obj(game.home_score, game.away_score),
         status=game.status,
         scrape_version=getattr(game, "scrape_version", None),
         last_scraped_at=game.last_scraped_at,

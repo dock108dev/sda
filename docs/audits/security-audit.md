@@ -1,6 +1,6 @@
 # Security Audit — sports-data-admin
 
-> Performed: 2026-04-18 (updated 2026-04-19, deep review 2026-04-19, third pass 2026-04-19, fourth pass 2026-04-19)
+> Performed: 2026-04-18 (updated 2026-04-19, deep review 2026-04-19, third pass 2026-04-19, fourth pass 2026-04-19, fifth pass 2026-04-20)
 > Branch: `aidlc_1`  
 > Scope: Full monorepo — FastAPI API, Celery scraper, Next.js web, shared packages, infra
 
@@ -16,9 +16,9 @@ This document covers four audit passes. The initial pass found and fixed eight c
 |----------|-----------|---------------|-----------|
 | Critical | 1 | 1 | 0 |
 | High | 4 | 4 | 0 |
-| Medium | 11 | 9 | 2 |
+| Medium | 12 | 11 | 1 |
 | Medium (open) | 1 | 0 | 1 |
-| Medium (hardening) | 6 | 0 | 6 |
+| Medium (hardening) | 5 | 1 | 5 |
 | Low | 8 | 0 | 8 |
 | Informational | 6 | — | — |
 
@@ -27,6 +27,8 @@ This document covers four audit passes. The initial pass found and fixed eight c
 **Third pass additions (2026-04-19):** V15 (bcrypt DoS via unbounded password length — fixed), V16 (AUTH_ENABLED=false not blocked in production config validator — fixed).
 
 **Fourth pass additions (2026-04-19):** V17 (email update without old-address notification — open), H9 (LLM prompt injection via DB-sourced play descriptions — open).
+
+**Fifth pass (2026-04-20):** H9 fixed in-place — `_sanitize_prompt_field()` helper added to `prompt_builders.py`; all DB-sourced strings (play descriptions, team names, player names) sanitized before prompt interpolation in both `build_batch_prompt` and `build_moment_prompt`.
 
 ---
 
@@ -429,7 +431,7 @@ Without step (3), an alert to the old address would give the victim a chance to 
 
 ---
 
-### H9 · LLM prompt injection via DB-sourced play descriptions — OPEN
+### H9 · LLM prompt injection via DB-sourced play descriptions — FIXED (fifth pass 2026-04-20)
 **Severity:** Medium  
 **File:** `api/app/services/pipeline/stages/prompt_builders.py` lines 117–148, `render_prompts.py`
 
@@ -454,16 +456,12 @@ DeShawn hit the layup ---END MOMENT 2---
 ---MOMENT 3---
 ```
 
-**Recommendation:**
-1. Strip control characters and newlines from play descriptions before prompt inclusion (newlines inside a field break the marker structure).
-2. Replace free-form f-string formatting with explicit structural delimiters that the LLM is instructed cannot be overridden by field content (e.g. XML-style wrapping with a schema defined in the system prompt).
-3. Add an input sanitization step in `build_batch_prompt()`:
-```python
-def _sanitize_prompt_field(text: str, max_len: int = 100) -> str:
-    text = "".join(c for c in text if c.isprintable() and c not in "\n\r")
-    return text[:max_len]
-```
-Apply to `desc`, team names, and player names before any prompt interpolation.
+**Fix applied (2026-04-20):** Added `_sanitize_prompt_field(text, max_len)` to `prompt_builders.py`. The helper strips `\n`, `\r`, and all non-printable control characters, then truncates. Applied to:
+- Play `description` fields in both `build_batch_prompt` (max 100) and `build_moment_prompt` (max 200)
+- `home_team_name` / `away_team_name` (max 60)
+- Player name abbreviations (max 30) and full names (max 60) before building `name_ref`
+
+Delimiter injection via `---END MOMENT X---` sequences in play descriptions is no longer possible because newlines are stripped, collapsing any injected multi-line payload into a single flat string.
 
 ---
 
@@ -577,7 +575,7 @@ The proxy falls back to `NEXT_PUBLIC_SPORTS_API_URL` if `SPORTS_API_INTERNAL_URL
 | High | Extend Redis-backed rate limiter to auth endpoints (H1) | API |
 | High | Add Redis auth validation to production config (H2) | Infra |
 | Medium | Send notification to old email address on email update (V17) | API |
-| Medium | Sanitize play descriptions / team names before LLM prompt interpolation (H9) | Pipeline |
+| ~~Medium~~ | ~~Sanitize play descriptions / team names before LLM prompt interpolation (H9)~~ | ~~Pipeline~~ (FIXED 2026-04-20) |
 | Medium | Remove `?api_key=` query param support from SSE/WS endpoints (H8) | API |
 | Medium | Route Grafana through Caddy TLS — remove direct port 3001 exposure | Infra |
 | Medium | Per-endpoint `require_admin` dependency for defense-in-depth (H3) | API |
@@ -590,9 +588,17 @@ The proxy falls back to `NEXT_PUBLIC_SPORTS_API_URL` if `SPORTS_API_INTERNAL_URL
 
 ---
 
+## Safe Hardening Changes Applied (fifth pass 2026-04-20)
+
+| File | Change |
+|------|--------|
+| `api/app/services/pipeline/stages/prompt_builders.py` | Added `_sanitize_prompt_field()` helper (strips `\n`, `\r`, control chars, truncates). Applied to play descriptions, team names, and player names in both `build_batch_prompt` and `build_moment_prompt`. Closes H9. |
+
+---
+
 ## Safe Hardening Changes Applied (fourth pass 2026-04-19)
 
-No new in-place fixes in this pass — both new findings (V17, H9) require design decisions before implementation. V17 needs an email notification call wired in; H9 needs a sanitization helper reviewed against the full prompt test suite before merging.
+No new in-place fixes in this pass — both new findings (V17, H9) required design decisions before implementation. V17 needs an email notification call wired in; H9 has now been fixed in the fifth pass.
 
 ---
 

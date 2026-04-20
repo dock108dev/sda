@@ -6,7 +6,7 @@ Two-phase collection architecture:
 - tweet_mapper: Assign unmapped tweets to games (map)
 """
 
-from .bluesky_collector import BlueSkyCollector
+from .bluesky_collector import BlueSkyCollector, persist_bluesky_posts
 from .cache import SocialRequestCache
 from .exceptions import SocialRateLimitError, XCircuitBreakerError
 from .models import CollectedPost
@@ -17,6 +17,7 @@ from .tweet_mapper import get_game_window, get_mapping_stats, map_unmapped_tweet
 
 __all__ = [
     "BlueSkyCollector",
+    "persist_bluesky_posts",
     "CollectedPost",
     "PlaywrightXCollector",
     "SocialRateLimitError",

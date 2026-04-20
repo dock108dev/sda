@@ -177,7 +177,7 @@ class TestPreWriteScoreMismatch:
 
         with patch(
             "app.services.pipeline.stages.finalize_moments.validate_embedded_tweet_ids",
-            new=AsyncMock(),
+            new=AsyncMock(return_value=blocks),
         ):
             result = _run(session, _make_stage_input(blocks))
 
@@ -193,7 +193,7 @@ class TestPreWriteScoreMismatch:
 
         with patch(
             "app.services.pipeline.stages.finalize_moments.validate_embedded_tweet_ids",
-            new=AsyncMock(),
+            new=AsyncMock(return_value=blocks),
         ):
             result = _run(session, _make_stage_input(blocks))
 
@@ -250,7 +250,7 @@ class TestPostWriteScoreMismatch:
 
         with patch(
             "app.services.pipeline.stages.finalize_moments.validate_embedded_tweet_ids",
-            new=AsyncMock(),
+            new=AsyncMock(return_value=blocks),
         ), patch(
             "app.services.pipeline.stages.finalize_moments.increment_score_mismatch",
             side_effect=lambda sport: mock_counter.add(1, attributes={"sport": sport}),

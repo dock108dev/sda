@@ -23,6 +23,7 @@ from app.routers.sports.schemas import (
     GameFlowBlock,
     GameFlowPlay,
 )
+from app.routers.sports.schemas.common import _score_obj
 from app.db.sports import GameStatus
 from app.services.team_colors import get_matchup_colors
 
@@ -129,8 +130,7 @@ async def get_game_flow(
             clock=play.game_clock,
             playType=play.play_type,
             description=play.description,
-            homeScore=play.home_score,
-            awayScore=play.away_score,
+            score=_score_obj(play.home_score, play.away_score),
         )
         for play_index in sorted(all_play_ids)
         if (play := play_lookup.get(play_index))

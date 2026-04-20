@@ -1,3 +1,5 @@
+import type { ScoreObject } from "./gameFlowTypes";
+
 export type ScrapeRunConfig = {
   leagueCode?: string;
   season?: number;
@@ -38,8 +40,7 @@ export type GameSummary = {
   gameDate: string;
   homeTeam: string;
   awayTeam: string;
-  homeScore: number | null;
-  awayScore: number | null;
+  score: ScoreObject | null;
   hasBoxscore: boolean;
   hasPlayerStats: boolean;
   hasOdds: boolean;
@@ -463,8 +464,8 @@ export type PlayEntry = {
   teamAbbreviation: string | null;
   playerName: string | null;
   description: string | null;
-  homeScore: number | null;
-  awayScore: number | null;
+  score: ScoreObject | null;
+  scoreBefore: ScoreObject | null;
   tier: number | null;
 };
 
@@ -486,8 +487,7 @@ export type AdminGameDetail = {
     awayTeam: string;
     homeTeamId: number | null;
     awayTeamId: number | null;
-    homeScore: number | null;
-    awayScore: number | null;
+    score: ScoreObject | null;
     status: string;
     scrapeVersion: number | null;
     lastScrapedAt: string | null;

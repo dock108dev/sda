@@ -250,9 +250,10 @@ class RealtimeManager:
                 dead.append(conn)
                 self._error_count += 1
             except Exception:
-                logger.debug(
+                logger.warning(
                     "realtime_send_failed",
                     extra={"conn": conn.id, "channel": channel},
+                    exc_info=True,
                 )
                 dead.append(conn)
                 self._error_count += 1

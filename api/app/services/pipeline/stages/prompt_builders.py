@@ -5,6 +5,7 @@ This module builds prompts for the OpenAI API to generate moment narratives.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .game_stats_helpers import (
@@ -12,6 +13,20 @@ from .game_stats_helpers import (
     compute_running_player_stats,
     format_player_stat_hint,
 )
+
+
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _sanitize_prompt_field(text: str, max_len: int = 200) -> str:
+    """Strip control characters and newlines before inserting into an LLM prompt.
+
+    Prevents injected delimiter sequences (---MOMENT X--- / ---END MOMENT X---) or
+    instruction overrides embedded in DB-sourced strings from escaping their field slot.
+    """
+    text = text.replace("\n", " ").replace("\r", " ")
+    text = _CONTROL_CHARS_RE.sub("", text)
+    return text[:max_len]
 
 
 def _format_period(period: int, league_code: str = "NBA") -> str:
@@ -70,8 +85,8 @@ def build_batch_prompt(
     Returns:
         Prompt string for OpenAI to generate all narratives in the batch
     """
-    home_team = game_context.get("home_team_name", "Home")
-    away_team = game_context.get("away_team_name", "Away")
+    home_team = _sanitize_prompt_field(game_context.get("home_team_name", "Home"), 60)
+    away_team = _sanitize_prompt_field(game_context.get("away_team_name", "Away"), 60)
     player_names = game_context.get("player_names", {})
     league_code = game_context.get("sport", "NBA")
 
@@ -79,7 +94,9 @@ def build_batch_prompt(
     name_mappings = []
     for abbrev, full in player_names.items():
         if ". " in abbrev:  # Only abbreviated forms like "D. Mitchell"
-            name_mappings.append(f"{abbrev}={full}")
+            safe_abbrev = _sanitize_prompt_field(abbrev, 30)
+            safe_full = _sanitize_prompt_field(full, 60)
+            name_mappings.append(f"{safe_abbrev}={safe_full}")
 
     # Limit to avoid bloating prompt
     name_ref = ", ".join(name_mappings[:40]) if name_mappings else ""
@@ -119,9 +136,7 @@ def build_batch_prompt(
             play_index = play.get("play_index")
             is_explicit = play_index in explicitly_narrated
             star = "*" if is_explicit else ""
-            desc = play.get("description") or ""
-            if len(desc) > 100:
-                desc = desc[:97] + "..."
+            desc = _sanitize_prompt_field(play.get("description") or "", 100)
             plays_compact.append(f"{star}{desc}")
 
         plays_str = "; ".join(plays_compact)
@@ -227,8 +242,8 @@ def build_moment_prompt(
     Returns:
         Prompt string for OpenAI
     """
-    home_team = game_context.get("home_team_name", "Home")
-    away_team = game_context.get("away_team_name", "Away")
+    home_team = _sanitize_prompt_field(game_context.get("home_team_name", "Home"), 60)
+    away_team = _sanitize_prompt_field(game_context.get("away_team_name", "Away"), 60)
     player_names = game_context.get("player_names", {})
     league_code = game_context.get("sport", "NBA")
 
@@ -249,7 +264,7 @@ def build_moment_prompt(
         play_index = play.get("play_index")
         is_explicit = play_index in explicitly_narrated
         marker = "*" if is_explicit else ""
-        desc = play.get("description") or "No description"
+        desc = _sanitize_prompt_field(play.get("description") or "No description", 200)
         plays_desc.append(f"  {marker}{desc}")
 
     plays_block = "\n".join(plays_desc)
@@ -258,7 +273,9 @@ def build_moment_prompt(
     name_mappings = []
     for abbrev, full in player_names.items():
         if ". " in abbrev:
-            name_mappings.append(f"{abbrev}={full}")
+            safe_abbrev = _sanitize_prompt_field(abbrev, 30)
+            safe_full = _sanitize_prompt_field(full, 60)
+            name_mappings.append(f"{safe_abbrev}={safe_full}")
     name_ref = ", ".join(name_mappings[:30]) if name_mappings else ""
 
     name_rule = "Use FULL NAME on first mention, LAST NAME only after."

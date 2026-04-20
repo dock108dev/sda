@@ -1,6 +1,7 @@
 """Tests for app.services.play_tiers."""
 
 from app.routers.sports.schemas import PlayEntry
+from app.routers.sports.schemas.common import ScoreObject, _score_obj
 from app.services.play_tiers import classify_all_tiers, enrich_play_entries, group_tier3_plays
 
 
@@ -18,8 +19,7 @@ def _play(
         quarter=quarter,
         game_clock=game_clock,
         play_type=play_type,
-        home_score=home_score,
-        away_score=away_score,
+        score=_score_obj(home_score, away_score),
     )
 
 
@@ -315,10 +315,12 @@ class TestEnrichPlayEntries:
             _play(2, quarter=1, home_score=3, away_score=0),
         ]
         enrich_play_entries(plays, "NBA", "BOS", "NYK")
-        assert plays[0].home_score_before == 0
-        assert plays[0].away_score_before == 0
-        assert plays[1].home_score_before == 0
-        assert plays[1].away_score_before == 0
+        assert plays[0].score_before is not None
+        assert plays[0].score_before.home == 0
+        assert plays[0].score_before.away == 0
+        assert plays[1].score_before is not None
+        assert plays[1].score_before.home == 0
+        assert plays[1].score_before.away == 0
 
     def test_phase_nba(self):
         plays = [

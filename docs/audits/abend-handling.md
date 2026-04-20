@@ -358,9 +358,9 @@ The comment is accurate: alert refresh is background enrichment. The warn log sa
 - [x] H3 — Add `console.error` to empty outer `.catch` in `experiments/page.tsx`
 
 ### Short-term (next sprint)
-- [ ] M1 — Upgrade `model_service.py:210` pass → `logger.warning` with path and exc_info
-- [ ] M2 — Add `logger.warning` to `golf/client.py` settings load failure
-- [ ] M3 — Add `logger.debug` to NBA PBP probe miss; `logger.warning` on early abort
+- [x] M1 — Upgrade `model_service.py:210` pass → `logger.warning` with path and exc_info
+- [x] M2 — Add `logger.warning` to `golf/client.py` settings load failure
+- [x] M3 — Add `logger.debug` to NBA PBP probe miss; `logger.warning` on early abort
 
 ### Medium-term
 - [ ] M5 — Add circuit breaker ceiling to realtime poller (max 20 failures before alert)
@@ -573,3 +573,59 @@ Cleanup operations (`conn.close()` during `stop()`, listener removal in `finally
 | Regen task `HTTPStatusError 4xx → return`, `5xx → raise` | `regen_flow_task.py` | Correct retry discrimination |
 | `get_async_session` commit-on-success, rollback+reraise-on-exception | `api/app/db/__init__.py` | Verified: `autocommit=False`; explicit commit at context exit |
 | Cache parse `(JSONDecodeError, KeyError, ValueError) → warning + fallthrough` | `grader.py:319` | Specific types; LLM call is authoritative fallback |
+
+---
+
+## Fourth-Pass Findings (2026-04-20)
+
+Cleared all short-term and second-pass pending items. Six fixes applied in-place.
+
+### M1 → Fixed — `api/app/analytics/services/model_service.py:210`
+
+`(JSONDecodeError, OSError): pass` upgraded to `logger.warning("training_metadata_load_failed", extra={"path": path}, exc_info=True)`. Corrupt or missing training metadata sidecar files are now visible in logs.
+
+---
+
+### M2 → Fixed — `scraper/sports_scraper/golf/client.py:66`
+
+`except Exception: pass` in DataGolf settings lazy-load upgraded to `_log().warning("datagolf_settings_load_failed", exc_info=True)`. Settings misconfiguration (wrong import path, missing attribute) is now diagnosable at init time rather than at the first auth-failing API call.
+
+---
+
+### M3 → Fixed — `scraper/sports_scraper/services/pbp_nba.py:151`
+
+Added `logger.debug("nba_game_id_probe_parse_error", exc_info=True, extra={"game_id": game_id})` on each parse exception and `logger.warning("nba_game_id_probe_early_abort", ...)` when the 50-consecutive-miss threshold fires. Distinguishes legitimate end-of-season from parse failures that cause a truncated lookup table.
+
+---
+
+### M-NEW-1 → Fixed — `api/app/realtime/manager.py:253`
+
+`_dispatch_local` send failure upgraded from `logger.debug` to `logger.warning` with `exc_info=True`. Sustained delivery failures (dead connections draining slowly) now produce visible signals in production log streams.
+
+---
+
+### M-NEW-2 → Fixed — `api/app/analytics/services/mlb_player_profiles.py:189`
+
+`except Exception: return None` (zero logging) upgraded to `logger.warning("pitcher_statcast_query_failed", exc_info=True)`. DB query failures on the pitcher statcast table (schema drift, permissions) are now distinguishable from the expected "table not yet populated" case.
+
+---
+
+### M-NEW-3 → Fixed — `scraper/sports_scraper/live_odds/redis_store.py:161`
+
+`except Exception: return []` (zero logging) upgraded to `logger.debug("live_odds_redis_scan_failed", extra={"game_id": game_id}, exc_info=True)`. Redis scan failures that silently return an empty key list are now visible at debug level (appropriate since this is a debugging helper, not a production data path).
+
+---
+
+### Remaining Open Items (from prior passes)
+
+| ID | File | Description | Priority |
+|----|------|-------------|----------|
+| M5 | `api/app/realtime/poller.py` | No hard ceiling on consecutive DB failures; poller can loop indefinitely | Medium-term |
+| M-3P-2 | `scraper/sports_scraper/pipeline/grader.py:372` | LLM outage causes every flow to receive neutral score=50.0 with no OTel counter alert | Medium-term |
+| M-3P-3 | `api/app/routers/admin/quality_review.py` | Regen enqueue failure after status row commit — flow stuck in low-quality state | Medium-term |
+| M-3P-4 | `api/app/services/pipeline/stages/finalize_moments.py:319` | Celery grade_flow_task dispatch failure swallowed — flow published but never graded | Medium-term |
+| M7 | `scraper/sports_scraper/persistence/games.py` | Date parse silences → `logger.debug` | Low |
+
+### Note — Pipeline stage `output.add_log` pattern (fourth pass)
+
+`normalize_pbp.py` uses `output.add_log(f"Warning: ...", "warning")` for non-fatal stage failures (entity resolution persist, PBP snapshot create). This routes to the DB-persisted stage output log, not the application log stream. Acceptable: the stage executor captures and records all stage output, and these are best-effort instrumentation writes. If structured application log visibility is needed, add a parallel `logger.warning` call alongside `output.add_log`.

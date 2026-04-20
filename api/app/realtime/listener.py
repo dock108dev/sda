@@ -248,8 +248,7 @@ class ListenNotifyListener:
 
         payload_patch = {
             "status": row.status,
-            "homeScore": row.home_score,
-            "awayScore": row.away_score,
+            "score": {"home": row.home_score, "away": row.away_score},
         }
 
         # Determine event type: phase_change when status transitions, patch otherwise.
@@ -334,10 +333,8 @@ class ListenNotifyListener:
             }
             if p.raw_data:
                 event["payload"] = p.raw_data
-            if p.home_score is not None:
-                event["homeScore"] = p.home_score
-            if p.away_score is not None:
-                event["awayScore"] = p.away_score
+            if p.home_score is not None or p.away_score is not None:
+                event["score"] = {"home": p.home_score, "away": p.away_score}
             if p.quarter is not None:
                 event["period"] = p.quarter
             if p.game_clock:

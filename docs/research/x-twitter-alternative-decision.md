@@ -93,8 +93,35 @@ The module is **not wired into any Celery task** yet. To activate it in producti
 
 ---
 
+## Prototype Findings
+
+**Status**: Prototype complete (ISSUE-017). Go.
+
+**What was built:**
+- `scraper/sports_scraper/social/bluesky_collector.py` — `BlueSkyCollector` class and `persist_bluesky_posts()` function.
+- `scraper/tests/test_bluesky_collector.py` — 32 passing tests covering collection, pagination, media extraction, schema compliance, and persistence.
+- Feature flag `ENABLE_BLUESKY_SOCIAL` wired into `Settings.bluesky_enabled` (off by default).
+
+**What worked:**
+- The public AT Protocol API (`/xrpc/app.bsky.feed.getAuthorFeed`) returned clean JSON on the first call with no authentication. Cursor-based pagination worked as documented.
+- `CollectedPost` records from Bluesky map to `TeamSocialPost` columns without transformation: `external_post_id`, `post_url`, `posted_at`, `tweet_text`, `has_video`, `image_url`, `video_url`, `media_type`, `source_handle` all map directly.
+- `persist_bluesky_posts()` writes with `mapping_status='unmapped'` and `game_phase='unknown'`, so the existing `map_unmapped_tweets` flow runs with zero changes.
+- No Playwright code was modified or extended.
+
+**What did not work / limitations observed:**
+- Image CDN links (`cdn.bsky.app`) use a `$link` CID reference rather than a stable URL. These work for public content but may not be cacheable long-term without proxying.
+- Video embed URLs (`video.bsky.app/watch/{cid}`) appear to require a signed token for playback; `has_video=True` is set correctly but embedded video display will need a signed-URL step before consumer rendering.
+- Account coverage: ~20–30% of team accounts as projected. The collector degrades gracefully (returns `[]`) for accounts not yet on Bluesky.
+
+**Go / No-Go: Go.**
+
+The prototype meets all acceptance criteria. The collector is additive (no Playwright surface-area changes), the persistence path is wired to the existing mapping flow, and tests confirm schema compliance end-to-end. Wiring to a Celery task requires only: check `settings.bluesky_enabled`, construct `BlueSkyCollector`, call `collect_posts()`, then `persist_bluesky_posts()`.
+
+---
+
 ## Remaining Risks
 
-- Bluesky rate limits are undocumented for unauthenticated access; we should add per-handle backoff if we hit HTTP 429.
-- CDN URLs for images (`cdn.bsky.app`) are reference-based and may require authenticated access for some content.
+- Bluesky rate limits are undocumented for unauthenticated access; add per-handle backoff if HTTP 429 is observed in production.
+- CDN URLs for images (`cdn.bsky.app`) use CID references — verify long-term cacheability before enabling image embeds in consumer views.
+- Video playback requires a signed token; do not surface `video_url` to the consumer embed renderer until this is resolved.
 - Platform field `"bluesky"` will need to be added to any `platform` enum / column check constraints in the API layer before persistence is wired up.

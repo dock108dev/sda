@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape OTel Collector metrics endpoint (pipeline, social, odds counters/gauges).
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: otel-collector

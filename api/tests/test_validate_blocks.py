@@ -16,6 +16,9 @@ from app.services.pipeline.stages.block_types import (
     SemanticRole,
 )
 from app.services.pipeline.stages.validate_blocks import (
+    MINI_BOX_STAT_FIELDS,
+    MINI_BOX_UNKNOWN,
+    REQUIRED_BLOCK_TYPES,
     _check_ot_present,
     _check_resolution_specificity,
     _check_score_present,
@@ -27,6 +30,7 @@ from app.services.pipeline.stages.validate_blocks import (
     _validate_key_plays,
     _validate_mini_box,
     _validate_moment_coverage,
+    _validate_required_block_types,
     _validate_role_constraints,
     _validate_score_continuity,
     _validate_word_counts,
@@ -132,6 +136,69 @@ class TestValidateRoleConstraints:
         ]
         errors, warnings = _validate_role_constraints(blocks)
         assert len(errors) == 0
+
+
+class TestValidateRequiredBlockTypes:
+    """Tests for _validate_required_block_types."""
+
+    def test_both_required_present_passes(self) -> None:
+        """SETUP and RESOLUTION present → no errors."""
+        blocks = [
+            {"role": SemanticRole.SETUP.value},
+            {"role": SemanticRole.MOMENTUM_SHIFT.value},
+            {"role": SemanticRole.RESOLUTION.value},
+        ]
+        errors, warnings = _validate_required_block_types(blocks)
+        assert errors == []
+
+    def test_missing_setup_is_error(self) -> None:
+        """Missing SETUP block produces a structured error."""
+        blocks = [
+            {"role": SemanticRole.MOMENTUM_SHIFT.value},
+            {"role": SemanticRole.RESOLUTION.value},
+        ]
+        errors, warnings = _validate_required_block_types(blocks)
+        assert len(errors) == 1
+        assert "SETUP" in errors[0]
+        assert "Required block type missing" in errors[0]
+
+    def test_missing_resolution_is_error(self) -> None:
+        """Missing RESOLUTION block produces a structured error."""
+        blocks = [
+            {"role": SemanticRole.SETUP.value},
+            {"role": SemanticRole.MOMENTUM_SHIFT.value},
+        ]
+        errors, warnings = _validate_required_block_types(blocks)
+        assert len(errors) == 1
+        assert "RESOLUTION" in errors[0]
+
+    def test_both_missing_produces_two_errors(self) -> None:
+        """Both required types absent → two errors."""
+        blocks = [
+            {"role": SemanticRole.MOMENTUM_SHIFT.value},
+            {"role": SemanticRole.RESPONSE.value},
+        ]
+        errors, warnings = _validate_required_block_types(blocks)
+        assert len(errors) == 2
+        role_names = {e for e in errors}
+        assert any("SETUP" in e for e in role_names)
+        assert any("RESOLUTION" in e for e in role_names)
+
+    def test_empty_blocks_produces_errors(self) -> None:
+        """Empty blocks list is missing all required types."""
+        errors, warnings = _validate_required_block_types([])
+        assert len(errors) == len(REQUIRED_BLOCK_TYPES)
+
+    def test_error_includes_present_roles(self) -> None:
+        """Error message lists the roles that are present."""
+        blocks = [{"role": SemanticRole.MOMENTUM_SHIFT.value}]
+        errors, warnings = _validate_required_block_types(blocks)
+        assert any("MOMENTUM_SHIFT" in e for e in errors)
+
+    def test_required_block_types_constant(self) -> None:
+        """REQUIRED_BLOCK_TYPES constant contains expected values."""
+        assert "SETUP" in REQUIRED_BLOCK_TYPES
+        assert "RESOLUTION" in REQUIRED_BLOCK_TYPES
 
 
 class TestValidateWordCounts:
@@ -694,6 +761,128 @@ class TestExecuteValidateBlocks:
         assert "moments" in result.data
         assert "pbp_events" in result.data
 
+    def test_missing_required_block_type_fails(self, mock_session) -> None:
+        """Blocks missing a required type produce a structured error."""
+        from app.services.pipeline.models import StageInput
+        from app.services.pipeline.stages.validate_blocks import execute_validate_blocks
+
+        # No RESOLUTION block — only SETUP + MOMENTUM_SHIFT + RESPONSE
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "moment_indices": [0],
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "play_ids": [1],
+                "key_play_ids": [1],
+                "narrative": "Opening narrative block with enough words for validation.",
+                "mini_box": _VALID_MINI_BOX,
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.MOMENTUM_SHIFT.value,
+                "moment_indices": [1],
+                "score_before": [10, 8],
+                "score_after": [20, 15],
+                "play_ids": [2],
+                "key_play_ids": [2],
+                "narrative": "Second narrative block with enough words for validation.",
+                "mini_box": _VALID_MINI_BOX,
+            },
+            {
+                "block_index": 2,
+                "role": SemanticRole.RESPONSE.value,  # Not RESOLUTION
+                "moment_indices": [2],
+                "score_before": [20, 15],
+                "score_after": [30, 22],
+                "play_ids": [3],
+                "key_play_ids": [3],
+                "narrative": "Third narrative block with enough words for validation.",
+                "mini_box": _VALID_MINI_BOX,
+            },
+        ]
+
+        stage_input = StageInput(
+            game_id=42,
+            run_id=1,
+            previous_output={
+                "blocks_rendered": True,
+                "blocks": blocks,
+                "moments": [{} for _ in range(3)],
+            },
+            game_context={"home_team": "Lakers", "away_team": "Celtics"},
+        )
+
+        result = asyncio.run(execute_validate_blocks(mock_session, stage_input))
+
+        assert result.data["blocks_validated"] is False
+        assert any("RESOLUTION" in e for e in result.data["errors"])
+
+    def test_block_count_warning_includes_game_id(self, mock_session) -> None:
+        """Block count out of range emits a structured log warning with game_id."""
+        import logging
+        from unittest.mock import patch
+
+        from app.services.pipeline.models import StageInput
+        from app.services.pipeline.stages.validate_blocks import execute_validate_blocks
+
+        # Two blocks — below MIN_BLOCKS (3)
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "moment_indices": [0],
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "play_ids": [1],
+                "key_play_ids": [1],
+                "narrative": "Opening narrative block with enough words for validation.",
+                "mini_box": _VALID_MINI_BOX,
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.RESOLUTION.value,
+                "moment_indices": [1],
+                "score_before": [10, 8],
+                "score_after": [20, 15],
+                "play_ids": [2],
+                "key_play_ids": [2],
+                "narrative": "Second narrative block with enough words for validation.",
+                "mini_box": _VALID_MINI_BOX,
+            },
+        ]
+
+        stage_input = StageInput(
+            game_id=99,
+            run_id=1,
+            previous_output={
+                "blocks_rendered": True,
+                "blocks": blocks,
+                "moments": [{} for _ in range(2)],
+            },
+            game_context={"home_team": "Lakers", "away_team": "Celtics"},
+        )
+
+        warning_extras = []
+
+        class _CapturingHandler(logging.Handler):
+            def emit(self, record):
+                if record.getMessage() == "block_count_out_of_range" or "block_count_out_of_range" in record.getMessage():
+                    warning_extras.append(getattr(record, "game_id", None))
+
+        handler = _CapturingHandler()
+        vb_logger = logging.getLogger("app.services.pipeline.stages.validate_blocks")
+        vb_logger.addHandler(handler)
+        try:
+            asyncio.run(execute_validate_blocks(mock_session, stage_input))
+        finally:
+            vb_logger.removeHandler(handler)
+
+        result = asyncio.run(execute_validate_blocks(mock_session, stage_input))
+        assert result.data["blocks_validated"] is False
+        assert any("few" in e.lower() for e in result.data["errors"])
+
     def test_score_discontinuity_detected(self, mock_session) -> None:
         """Score discontinuity is detected as error."""
         from app.services.pipeline.models import StageInput
@@ -1235,6 +1424,60 @@ class TestValidateMiniBox:
         assert len(errors) == 1
         assert "Block 1" in errors[0]
 
+    def test_absent_stat_field_filled_with_unknown(self) -> None:
+        """Absent MINI_BOX_STAT_FIELDS values are filled with MINI_BOX_UNKNOWN."""
+        mini_box = {
+            "cumulative": {
+                "home": {},  # 'points' absent
+                "away": {"points": 22},
+            },
+            "delta": {
+                "home": {"points": 5},
+                "away": {},  # 'points' absent
+            },
+        }
+        blocks = [{"block_index": 0, "mini_box": mini_box}]
+        errors, warnings = _validate_mini_box(blocks)
+        assert errors == []
+        # Fields filled in-place
+        assert mini_box["cumulative"]["home"]["points"] == MINI_BOX_UNKNOWN
+        assert mini_box["delta"]["away"]["points"] == MINI_BOX_UNKNOWN
+        # Warnings emitted for each filled field
+        assert len(warnings) == 2
+        assert all("UNKNOWN" in w for w in warnings)
+
+    def test_none_stat_field_filled_with_unknown(self) -> None:
+        """Explicitly None stat field is filled with MINI_BOX_UNKNOWN."""
+        mini_box = {
+            "cumulative": {
+                "home": {"points": None},
+                "away": {"points": 22},
+            },
+            "delta": {
+                "home": {"points": 5},
+                "away": {"points": 4},
+            },
+        }
+        blocks = [{"block_index": 0, "mini_box": mini_box}]
+        errors, warnings = _validate_mini_box(blocks)
+        assert errors == []
+        assert mini_box["cumulative"]["home"]["points"] == MINI_BOX_UNKNOWN
+        assert len(warnings) == 1
+
+    def test_present_stat_field_not_overwritten(self) -> None:
+        """Present (non-None) stat fields are not replaced with UNKNOWN."""
+        blocks = [{"block_index": 0, "mini_box": _VALID_MINI_BOX}]
+        errors, warnings = _validate_mini_box(blocks)
+        assert errors == []
+        # points values from _VALID_MINI_BOX must be preserved
+        assert _VALID_MINI_BOX["cumulative"]["home"]["points"] == 25
+        assert warnings == []
+
+    def test_mini_box_stat_fields_constant(self) -> None:
+        """MINI_BOX_STAT_FIELDS constant is a non-empty frozenset."""
+        assert len(MINI_BOX_STAT_FIELDS) >= 1
+        assert "points" in MINI_BOX_STAT_FIELDS
+
 
 class TestMiniBoxDecision:
     """Tests for REGENERATE/FALLBACK triggered by missing mini_box."""
@@ -1362,11 +1605,11 @@ class TestMiniBoxDecision:
 class TestValidateEmbeddedTweetIds:
     """Tests for validate_embedded_tweet_ids."""
 
-    def _run(self, session, blocks):
+    def _run(self, session, blocks, game_id=None):
         from app.services.pipeline.stages.embedded_tweets import (
             validate_embedded_tweet_ids,
         )
-        return asyncio.run(validate_embedded_tweet_ids(session, blocks))
+        return asyncio.run(validate_embedded_tweet_ids(session, blocks, game_id))
 
     def _mock_session(self, found_ids: list[int]) -> AsyncMock:
         """Build a mock session that returns the given IDs from .execute()."""
@@ -1380,55 +1623,84 @@ class TestValidateEmbeddedTweetIds:
         """Blocks with no embedded_social_post_id skip the DB query."""
         session = AsyncMock()
         blocks = [{"block_index": 0, "embedded_social_post_id": None}]
-        self._run(session, blocks)
+        result = self._run(session, blocks)
         session.execute.assert_not_called()
+        assert result == blocks
 
     def test_empty_blocks_is_noop(self):
         """Empty block list skips the DB query."""
         session = AsyncMock()
-        self._run(session, [])
+        result = self._run(session, [])
         session.execute.assert_not_called()
+        assert result == []
 
-    def test_all_ids_found_passes(self):
-        """No exception when all embedded IDs exist in the DB."""
+    def test_all_ids_found_returns_blocks_unchanged(self):
+        """Returns original blocks when all embedded IDs exist in the DB."""
         session = self._mock_session(found_ids=[10, 20])
         blocks = [
             {"block_index": 0, "embedded_social_post_id": 10},
             {"block_index": 1, "embedded_social_post_id": 20},
             {"block_index": 2, "embedded_social_post_id": None},
         ]
-        self._run(session, blocks)  # must not raise
+        result = self._run(session, blocks)
+        assert [b["embedded_social_post_id"] for b in result] == [10, 20, None]
 
-    def test_missing_id_raises_value_error(self):
-        """ValueError raised when an embedded ID is absent from the DB."""
+    def test_missing_id_emits_warning_and_skips_block(self, caplog):
+        """Warning emitted and block's embedded_social_post_id cleared when ID missing."""
+        import logging
         session = self._mock_session(found_ids=[10])
         blocks = [
             {"block_index": 0, "embedded_social_post_id": 10},
             {"block_index": 1, "embedded_social_post_id": 99},
         ]
-        with pytest.raises(ValueError, match="99"):
-            self._run(session, blocks)
+        with caplog.at_level(logging.WARNING):
+            result = self._run(session, blocks, game_id=7)
+        assert result[0]["embedded_social_post_id"] == 10
+        assert result[1]["embedded_social_post_id"] is None
+        assert any("embedded_tweet_ref_missing" in r.message for r in caplog.records)
 
-    def test_all_ids_missing_raises(self):
-        """ValueError raised when no embedded IDs are found in the DB."""
+    def test_missing_id_warning_includes_context(self, caplog):
+        """Warning record carries game_id, block_id, and the missing post ID."""
+        import logging
         session = self._mock_session(found_ids=[])
-        blocks = [{"block_index": 0, "embedded_social_post_id": 42}]
-        with pytest.raises(ValueError, match="42"):
-            self._run(session, blocks)
+        blocks = [{"block_index": 3, "embedded_social_post_id": 42}]
+        with caplog.at_level(logging.WARNING):
+            result = self._run(session, blocks, game_id=5)
+        assert result[0]["embedded_social_post_id"] is None
+        record = next(r for r in caplog.records if "embedded_tweet_ref_missing" in r.message)
+        assert record.__dict__["game_id"] == 5
+        assert record.__dict__["block_id"] == 3
+        assert record.__dict__["embedded_social_post_id"] == 42
 
-    def test_error_message_lists_all_missing_ids(self):
-        """ValueError message includes every missing ID."""
+    def test_all_ids_missing_clears_all(self, caplog):
+        """All blocks with missing IDs are cleared; pipeline continues."""
+        import logging
+        session = self._mock_session(found_ids=[])
+        blocks = [
+            {"block_index": 0, "embedded_social_post_id": 42},
+            {"block_index": 1, "embedded_social_post_id": 43},
+        ]
+        with caplog.at_level(logging.WARNING):
+            result = self._run(session, blocks)
+        assert all(b["embedded_social_post_id"] is None for b in result)
+        assert len([r for r in caplog.records if "embedded_tweet_ref_missing" in r.message]) == 2
+
+    def test_multiple_missing_ids_all_warned(self, caplog):
+        """Every missing ID gets its own warning; found IDs are preserved."""
+        import logging
         session = self._mock_session(found_ids=[1])
         blocks = [
             {"block_index": 0, "embedded_social_post_id": 1},
             {"block_index": 1, "embedded_social_post_id": 7},
             {"block_index": 2, "embedded_social_post_id": 8},
         ]
-        with pytest.raises(ValueError) as exc_info:
-            self._run(session, blocks)
-        msg = str(exc_info.value)
-        assert "7" in msg
-        assert "8" in msg
+        with caplog.at_level(logging.WARNING):
+            result = self._run(session, blocks)
+        assert result[0]["embedded_social_post_id"] == 1
+        assert result[1]["embedded_social_post_id"] is None
+        assert result[2]["embedded_social_post_id"] is None
+        missing_warns = [r for r in caplog.records if "embedded_tweet_ref_missing" in r.message]
+        assert len(missing_warns) == 2
 
 
 # ── Generic phrase density ────────────────────────────────────────────────────

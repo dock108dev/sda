@@ -862,6 +862,25 @@ ALL_SHAPES: dict[str, dict[str, dict[str, Any]]] = {
     "NHL": _NHL_SHAPES,
 }
 
+# Expected block role sequences per game shape.
+# Roles: SETUP (always first), MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION (always last).
+# These represent the ideal LLM pipeline output for each narrative arc.
+_EXPECTED_BLOCKS: dict[str, list[str]] = {
+    "standard_win":     ["SETUP", "MOMENTUM_SHIFT", "RESPONSE", "RESOLUTION"],
+    "blowout":          ["SETUP", "MOMENTUM_SHIFT", "RESOLUTION"],
+    "comeback":         ["SETUP", "MOMENTUM_SHIFT", "RESPONSE", "DECISION_POINT", "RESOLUTION"],
+    "overtime":         ["SETUP", "MOMENTUM_SHIFT", "DECISION_POINT", "RESOLUTION"],
+    "double_overtime":  ["SETUP", "MOMENTUM_SHIFT", "RESPONSE", "DECISION_POINT", "RESOLUTION"],
+    "incomplete_pbp":   ["SETUP", "RESPONSE", "RESOLUTION"],
+    "postponement":     ["SETUP"],
+    "defensive_battle": ["SETUP", "DECISION_POINT", "RESOLUTION"],
+    "high_scorer":      ["SETUP", "MOMENTUM_SHIFT", "RESPONSE", "RESOLUTION"],
+    "playoff":          ["SETUP", "MOMENTUM_SHIFT", "DECISION_POINT", "RESOLUTION"],
+    "buzzer_beater":    ["SETUP", "MOMENTUM_SHIFT", "DECISION_POINT", "RESOLUTION"],
+    "template_fallback":["SETUP", "MOMENTUM_SHIFT", "RESPONSE", "RESOLUTION"],
+    "tight_finish":     ["SETUP", "MOMENTUM_SHIFT", "DECISION_POINT", "RESOLUTION"],
+}
+
 # ---------------------------------------------------------------------------
 # Play description builders
 # ---------------------------------------------------------------------------
@@ -977,6 +996,15 @@ def _block_count_range(shape_data: dict[str, Any]) -> list[int]:
     return [3, 7]
 
 
+def _expected_block_type_counts(shape: str) -> dict[str, int]:
+    """Return per-role counts derived from _EXPECTED_BLOCKS for the given shape."""
+    roles = _EXPECTED_BLOCKS.get(shape, ["SETUP", "RESOLUTION"])
+    counts: dict[str, int] = {}
+    for role in roles:
+        counts[role] = counts.get(role, 0) + 1
+    return counts
+
+
 def build_fixture(
     sport: str,
     shape: str,
@@ -991,6 +1019,7 @@ def build_fixture(
 
     corpus_id = f"{sport.lower()}_{shape}"
     plays = _build_plays(sport, shape_data["events"], home_abbrev, away_abbrev)
+    expected_blocks = _EXPECTED_BLOCKS.get(shape, ["SETUP", "RESOLUTION"])
 
     fixture: dict[str, Any] = {
         "corpus_id": corpus_id,
@@ -1004,6 +1033,8 @@ def build_fixture(
         "home_team": home,
         "away_team": away,
         "final_score": shape_data["final"],
+        "expected_blocks": expected_blocks,
+        "expected_block_type_counts": _expected_block_type_counts(shape),
         "expected_flow_skeleton": {
             "block_count_range": _block_count_range(shape_data),
             "roles_required": ["SETUP", "RESOLUTION"],

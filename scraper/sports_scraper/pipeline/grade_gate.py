@@ -65,10 +65,13 @@ def apply_grade_gate(
 
     failures: list[str] = list(grader_result.tier1.failures)
 
-    # Include low-scoring Tier 2 rubric dimensions in the failure list so the
-    # regen prompt can address specific weaknesses.
-    if grader_result.tier2 and grader_result.tier2.rubric:
-        for dim, score in grader_result.tier2.rubric.items():
+    # Use Sonnet rubric when available (more accurate for ambiguous cases);
+    # fall back to Haiku rubric otherwise.
+    effective_t2 = (
+        getattr(grader_result, "tier2_sonnet", None) or grader_result.tier2
+    )
+    if effective_t2 and effective_t2.rubric:
+        for dim, score in effective_t2.rubric.items():
             if score < 12:  # below 48 % of the 25-point max per dimension
                 failures.append(f"tier2_{dim}_low_score:{score:.0f}/25")
 

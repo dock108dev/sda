@@ -4,9 +4,14 @@ Instead of generating flows on a fixed schedule hours after ingestion,
 we trigger flow generation as soon as a game transitions live → final
 and has sufficient PBP data.
 
+State machine:
+  FINAL → RECAP_PENDING  (on dispatch / task start)
+  RECAP_PENDING → RECAP_READY   (on pipeline success)
+  RECAP_PENDING → RECAP_FAILED  (on error; eligible for sweep retry)
+
 sweep_missing_flows() is the safety-net: a daily task that finds any
-FINAL games from the past 24 h with no flow artifact and re-enqueues
-trigger_flow_for_game for each (the NX lock prevents double-dispatch).
+FINAL or RECAP_FAILED games from the past 24 h with no flow artifact
+and re-enqueues trigger_flow_for_game for each.
 
 backfill_missing_flows() is a one-shot Phase-1 deploy task that covers
 the past N days (default 7). Safe to re-run: the NX lock inside
@@ -19,6 +24,22 @@ from celery import shared_task
 
 from ..db import get_session
 from ..logging import logger
+
+# Valid statuses for flow dispatch: newly final, already in-progress, or previously failed.
+_VALID_DISPATCH_STATUSES = frozenset({"final", "recap_pending", "recap_failed"})
+
+
+def _set_game_status(game_id: int, status: str) -> None:
+    """Update game.status in a new DB session; errors are logged, not raised."""
+    from ..db import db_models
+
+    try:
+        with get_session() as session:
+            game = session.query(db_models.SportsGame).get(game_id)
+            if game:
+                game.status = status
+    except Exception:
+        logger.exception("set_game_status_failed", game_id=game_id, status=status)
 
 
 @shared_task(
@@ -33,9 +54,10 @@ def trigger_flow_for_game(game_id: int) -> dict:
     """Generate flows for a single game that just went final.
 
     Steps:
-    1. Verify game is final and has PBP data
-    2. Call the API pipeline endpoint for a single game
-    3. If PBP incomplete, Celery retry handles backoff
+    1. Verify game is in a dispatchable status (final / recap_pending / recap_failed)
+    2. Mark status as RECAP_PENDING (in-progress signal)
+    3. Call the API pipeline endpoint
+    4. Mark RECAP_READY on success, RECAP_FAILED on error
 
     Args:
         game_id: The sports_games.id to generate flows for
@@ -47,11 +69,11 @@ def trigger_flow_for_game(game_id: int) -> dict:
 
     from ..db import db_models
     from ..services.job_runs import complete_job_run, start_job_run
-    from ..utils.redis_lock import LOCK_TIMEOUT_30MIN, acquire_redis_lock, release_redis_lock
+    from ..utils.redis_lock import LOCK_TIMEOUT_1HOUR, acquire_redis_lock, release_redis_lock
 
-    # Acquire lock before any pipeline work — key is stable and namespaced by game
-    lock_name = f"flow:lock:{game_id}"
-    lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_30MIN)
+    # Acquire lock before any pipeline work — key format: pipeline_lock:{task_type}:{game_id}
+    lock_name = f"pipeline_lock:trigger_flow_for_game:{game_id}"
+    lock_token = acquire_redis_lock(lock_name, timeout=LOCK_TIMEOUT_1HOUR)
     if not lock_token:
         logger.info("flow_trigger_skipped_locked", game_id=game_id)
         return {"game_id": game_id, "status": "skipped", "reason": "locked"}
@@ -63,15 +85,16 @@ def trigger_flow_for_game(game_id: int) -> dict:
             logger.warning("flow_trigger_game_not_found", game_id=game_id)
             return {"game_id": game_id, "status": "not_found"}
 
-        if game.status != db_models.GameStatus.final.value:
+        if game.status not in _VALID_DISPATCH_STATUSES:
             logger.info(
-                "flow_trigger_skip_not_final",
+                "flow_trigger_skip_not_eligible",
                 game_id=game_id,
                 status=game.status,
             )
-            return {"game_id": game_id, "status": "skipped", "reason": "not_final"}
+            return {"game_id": game_id, "status": "skipped", "reason": "not_eligible"}
 
-        # Capture scalar before session closes — game object will be detached
+        # Mark in-progress atomically in the same session block
+        game.status = db_models.GameStatus.recap_pending.value
         league_id = game.league_id
 
         # Check if game has PBP data
@@ -105,6 +128,7 @@ def trigger_flow_for_game(game_id: int) -> dict:
                     status="success",
                     summary_data={"game_id": game_id, "skipped": "immutable"},
                 )
+                _set_game_status(game_id, db_models.GameStatus.recap_ready.value)
                 release_redis_lock(lock_name, lock_token)
                 return {"game_id": game_id, "status": "skipped", "reason": "immutable"}
 
@@ -120,11 +144,13 @@ def trigger_flow_for_game(game_id: int) -> dict:
             summary_data={"game_id": game_id, "league": league_code},
             error_summary=result.get("error"),
         )
+        _set_game_status(game_id, db_models.GameStatus.recap_ready.value)
         # Release only on success; on failure TTL expiry is the safety net
         release_redis_lock(lock_name, lock_token)
         return result
     except Exception as exc:
         complete_job_run(job_run_id, status="error", error_summary=str(exc)[:500])
+        _set_game_status(game_id, db_models.GameStatus.recap_failed.value)
         raise
 
 
@@ -195,18 +221,17 @@ def _call_pipeline_api(game_id: int, league_code: str) -> dict:
 
 @shared_task(name="sweep_missing_flows")
 def sweep_missing_flows() -> dict:
-    """Safety-net sweep: enqueue flow generation for FINAL games with no artifact.
+    """Safety-net sweep: enqueue flow generation for eligible games with no artifact.
 
-    Runs daily after ingestion. Covers games where the ORM hook (ISSUE-001)
-    misfired (e.g. worker restart during transition). The NX lock inside
-    trigger_flow_for_game prevents double-dispatch if the hook already ran.
+    Targets FINAL games (hook may have misfired) and RECAP_FAILED games (prior
+    attempt failed; NX lock has since expired). Runs daily.
 
     Returns:
         dict with count of game IDs enqueued.
     """
     from datetime import datetime, timedelta, timezone
 
-    from sqlalchemy import not_
+    from sqlalchemy import not_, or_
     from sqlalchemy import exists as sa_exists
 
     from ..db import db_models
@@ -225,7 +250,10 @@ def sweep_missing_flows() -> dict:
             games = (
                 session.query(db_models.SportsGame)
                 .filter(
-                    db_models.SportsGame.status == db_models.GameStatus.final.value,
+                    or_(
+                        db_models.SportsGame.status == db_models.GameStatus.final.value,
+                        db_models.SportsGame.status == db_models.GameStatus.recap_failed.value,
+                    ),
                     db_models.SportsGame.game_date >= cutoff,
                     not_(
                         sa_exists().where(
@@ -254,7 +282,7 @@ _BACKFILL_STAGGER_SECONDS = 30
 
 @shared_task(name="backfill_missing_flows")
 def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
-    """One-shot backfill: enqueue flow generation for FINAL games missing a flow.
+    """One-shot backfill: enqueue flow generation for FINAL/RECAP_FAILED games missing a flow.
 
     Designed for Phase 1 deploy. Safe to re-run — the NX lock inside
     trigger_flow_for_game prevents double-dispatch.
@@ -268,7 +296,7 @@ def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
     """
     from datetime import datetime, timedelta, timezone
 
-    from sqlalchemy import not_
+    from sqlalchemy import not_, or_
     from sqlalchemy import exists as sa_exists
 
     from ..db import db_models
@@ -287,7 +315,10 @@ def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
             games = (
                 session.query(db_models.SportsGame)
                 .filter(
-                    db_models.SportsGame.status == db_models.GameStatus.final.value,
+                    or_(
+                        db_models.SportsGame.status == db_models.GameStatus.final.value,
+                        db_models.SportsGame.status == db_models.GameStatus.recap_failed.value,
+                    ),
                     db_models.SportsGame.game_date >= cutoff,
                     not_(
                         sa_exists().where(

@@ -32,6 +32,8 @@ from sports_scraper.pipeline.grader import (
     MAX_WORDS_PER_BLOCK,
     MIN_BLOCKS,
     MIN_WORDS_PER_BLOCK,
+    SONNET_AMBIGUOUS_BAND_HIGH,
+    SONNET_AMBIGUOUS_BAND_LOW,
     GraderResult,
     TierOneResult,
     TierTwoResult,
@@ -39,6 +41,7 @@ from sports_scraper.pipeline.grader import (
     grade_flow,
     grade_tier1,
     grade_tier2_cached,
+    grade_tier2_sonnet_cached,
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -646,3 +649,201 @@ class TestTier1ResolutionSpecificity:
         clean_result = grade_tier1(clean_blocks, _game_data(home_score=10, away_score=5))
         flagged_result = grade_tier1(flagged_blocks, _game_data(home_score=10, away_score=5))
         assert clean_result.score > flagged_result.score
+
+
+# ── Sonnet escalation path ────────────────────────────────────────────────────
+
+
+def _make_redis_cached(score: float, rubric: dict | None = None) -> MagicMock:
+    """Return a Redis mock that serves a cached tier2 result."""
+    r = MagicMock()
+    r.get.return_value = json.dumps({"score": score, "rubric": rubric or {}})
+    return r
+
+
+def _make_llm_mock(dims: dict) -> tuple[MagicMock, MagicMock]:
+    """Return (mock_content, mock_anthropic_module) for an LLM response."""
+    content = MagicMock()
+    content.text = json.dumps({**dims, "reasoning": "test"})
+    msg = MagicMock()
+    msg.content = [content]
+    client = MagicMock()
+    client.messages.create.return_value = msg
+    mod = MagicMock()
+    mod.Anthropic.return_value = client
+    return client, mod
+
+
+class TestSonnetAmbiguousPath:
+    """Sonnet is invoked iff Haiku score is in the ambiguous band."""
+
+    def test_haiku_below_band_skips_sonnet(self):
+        """Haiku score below the band → fail fast, no Sonnet call."""
+        haiku_score = SONNET_AMBIGUOUS_BAND_LOW - 1  # clearly bad
+        redis = _make_redis_cached(haiku_score)
+        blocks = _make_blocks(n=3)
+
+        result = grade_flow(
+            flow_id=1,
+            sport="NBA",
+            blocks=blocks,
+            game_data=_game_data(),
+            redis_client=redis,
+        )
+        assert result is not None
+        assert result.tier2_sonnet is None
+        assert result.haiku_ambiguous is False
+
+    def test_haiku_above_band_skips_sonnet(self):
+        """Haiku score above the band → pass fast, no Sonnet call."""
+        haiku_score = SONNET_AMBIGUOUS_BAND_HIGH + 1  # clearly good
+        redis = _make_redis_cached(haiku_score)
+        blocks = _make_blocks(n=3)
+
+        result = grade_flow(
+            flow_id=2,
+            sport="NBA",
+            blocks=blocks,
+            game_data=_game_data(),
+            redis_client=redis,
+        )
+        assert result is not None
+        assert result.tier2_sonnet is None
+        assert result.haiku_ambiguous is False
+
+    def test_haiku_in_band_invokes_sonnet(self):
+        """Haiku score in [LOW, HIGH] → Sonnet is called."""
+        haiku_score = (SONNET_AMBIGUOUS_BAND_LOW + SONNET_AMBIGUOUS_BAND_HIGH) / 2
+        redis = MagicMock()
+        # Haiku cache hit, Sonnet cache miss → LLM call
+        sonnet_dims = {
+            "factual_accuracy": 20,
+            "sport_specific_voice": 18,
+            "narrative_coherence": 19,
+            "no_generic_filler": 17,
+        }
+
+        def redis_get(key: str):
+            if key.startswith("grader:t2:"):
+                return json.dumps({"score": haiku_score, "rubric": {}})
+            return None  # Sonnet cache miss
+
+        redis.get.side_effect = redis_get
+
+        _, mock_anthro = _make_llm_mock(sonnet_dims)
+        blocks = _make_blocks(n=3)
+
+        with patch.dict(sys.modules, {"anthropic": mock_anthro}):
+            result = grade_flow(
+                flow_id=3,
+                sport="NBA",
+                blocks=blocks,
+                game_data=_game_data(),
+                redis_client=redis,
+            )
+
+        assert result is not None
+        assert result.haiku_ambiguous is True
+        assert result.tier2_sonnet is not None
+        assert result.tier2_sonnet.score == sum(sonnet_dims.values())
+
+    def test_haiku_ambiguous_combined_score_uses_sonnet(self):
+        """When Haiku is ambiguous, combined score is T1 + Sonnet (not Haiku)."""
+        haiku_score = 50.0  # ambiguous
+        sonnet_score = 80.0  # clearly good — would publish
+
+        redis = MagicMock()
+
+        def redis_get(key: str):
+            if key.startswith("grader:t2:"):
+                return json.dumps({"score": haiku_score, "rubric": {}})
+            if key.startswith("grader:t2s:"):
+                return json.dumps({"score": sonnet_score, "rubric": {}})
+            return None
+
+        redis.get.side_effect = redis_get
+        blocks = _make_blocks(n=3)
+
+        result = grade_flow(
+            flow_id=4,
+            sport="NBA",
+            blocks=blocks,
+            game_data=_game_data(),
+            redis_client=redis,
+        )
+        assert result is not None
+        assert result.haiku_ambiguous is True
+        # Combined score: T1 * 0.4 + Sonnet * 0.6 (NOT Haiku)
+        from sports_scraper.pipeline.grader import _TIER1_WEIGHT, _TIER2_WEIGHT
+
+        expected = round(_TIER1_WEIGHT * result.tier1.score + _TIER2_WEIGHT * sonnet_score, 1)
+        assert result.combined_score == expected
+
+    def test_haiku_at_band_boundaries_treated_as_ambiguous(self):
+        """Boundary values (exactly LOW or HIGH) are inclusive → Sonnet is invoked."""
+        for boundary in (SONNET_AMBIGUOUS_BAND_LOW, SONNET_AMBIGUOUS_BAND_HIGH):
+            redis = MagicMock()
+            redis.get.return_value = json.dumps({"score": boundary, "rubric": {}})
+            blocks = _make_blocks(n=3)
+
+            result = grade_flow(
+                flow_id=5,
+                sport="NBA",
+                blocks=blocks,
+                game_data=_game_data(),
+                redis_client=redis,
+            )
+            assert result is not None
+            assert result.haiku_ambiguous is True, f"Expected ambiguous at score={boundary}"
+
+    def test_sonnet_cache_hit_skips_llm_call(self):
+        """When both Haiku and Sonnet have cache hits, no LLM calls are made."""
+        haiku_score = 50.0
+        sonnet_score = 75.0
+
+        redis = MagicMock()
+
+        def redis_get(key: str):
+            if key.startswith("grader:t2:"):
+                return json.dumps({"score": haiku_score, "rubric": {}})
+            if key.startswith("grader:t2s:"):
+                return json.dumps({"score": sonnet_score, "rubric": {}})
+            return None
+
+        redis.get.side_effect = redis_get
+
+        mock_client = MagicMock()
+        mock_anthro = MagicMock()
+        mock_anthro.Anthropic.return_value = mock_client
+        blocks = _make_blocks(n=3)
+
+        with patch.dict(sys.modules, {"anthropic": mock_anthro}):
+            result = grade_tier2_sonnet_cached(
+                flow_id=6, blocks=blocks, game_data=_game_data(), redis_client=redis
+            )
+
+        assert result.cache_hit is True
+        assert result.score == sonnet_score
+        mock_client.messages.create.assert_not_called()
+
+    def test_sonnet_llm_failure_returns_neutral_50(self):
+        """Sonnet LLM failure returns neutral 50 without blocking pipeline."""
+        redis = MagicMock()
+        redis.get.return_value = None  # cache miss
+
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = RuntimeError("Sonnet API down")
+        mock_anthro = MagicMock()
+        mock_anthro.Anthropic.return_value = mock_client
+
+        with patch.dict(sys.modules, {"anthropic": mock_anthro}):
+            result = grade_tier2_sonnet_cached(
+                flow_id=7,
+                blocks=_make_blocks(n=3),
+                game_data=_game_data(),
+                redis_client=redis,
+            )
+
+        assert result.score == 50.0
+        assert result.rubric == {}
+        assert result.cache_hit is False

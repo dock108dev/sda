@@ -206,3 +206,53 @@ class BlueSkyCollector:
         resp.raise_for_status()
         data = resp.json()
         return data.get("feed", []), data.get("cursor")
+
+
+def persist_bluesky_posts(
+    session: Any,
+    team_id: int,
+    posts: list[CollectedPost],
+) -> int:
+    """Persist Bluesky CollectedPost records to TeamSocialPost via upsert.
+
+    Sets mapping_status='unmapped' and game_phase='unknown' so the existing
+    tweet_mapper flow can assign game context without modification.
+    Duplicate external_post_id rows are silently ignored.
+
+    Args:
+        session: Synchronous SQLAlchemy Session.
+        team_id: ID of the team in sports_teams.
+        posts: Records from BlueSkyCollector.collect_posts().
+
+    Returns:
+        Count of newly inserted rows.
+    """
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from ..db import db_models
+
+    new_count = 0
+    for post in posts:
+        stmt = (
+            pg_insert(db_models.TeamSocialPost)
+            .values(
+                team_id=team_id,
+                platform="bluesky",
+                external_post_id=post.external_post_id,
+                post_url=post.post_url,
+                posted_at=post.posted_at,
+                tweet_text=post.text,
+                has_video=post.has_video,
+                video_url=post.video_url,
+                image_url=post.image_url,
+                media_type=post.media_type or "none",
+                source_handle=post.author_handle,
+                mapping_status="unmapped",
+                game_phase="unknown",
+            )
+            .on_conflict_do_nothing(index_elements=["external_post_id"])
+        )
+        result = session.execute(stmt)
+        if result.rowcount:
+            new_count += 1
+    return new_count

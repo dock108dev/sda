@@ -75,7 +75,7 @@ def _instruments():
 def record_stage_duration(stage_name: str, sport: str, duration_ms: float) -> None:
     """Record how long a pipeline stage took to execute."""
     hist, _, _, _, _ = _instruments()
-    hist.record(duration_ms, attributes={"stage_name": stage_name, "sport": sport})
+    hist.record(duration_ms, attributes={"stage": stage_name, "sport": sport})
 
 
 def increment_regen(sport: str, reason: str) -> None:
@@ -89,10 +89,10 @@ def increment_regen(sport: str, reason: str) -> None:
     counter.add(1, attributes={"sport": sport, "reason": reason})
 
 
-def increment_fallback(sport: str) -> None:
+def increment_fallback(sport: str, reason: str = "max_regen_exceeded") -> None:
     """Increment the FALLBACK decision counter (template substitution path)."""
     _, _, counter, _, _ = _instruments()
-    counter.add(1, attributes={"sport": sport})
+    counter.add(1, attributes={"sport": sport, "reason": reason})
 
 
 def increment_published(sport: str) -> None:

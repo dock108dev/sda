@@ -186,7 +186,7 @@ async def _pitcher_profile_from_statcast(
         if not isinstance(getattr(first_row, "batters_faced", None), (int, float, type(None))):
             return None
     except Exception:
-        # Table may not exist yet or query failed — fall back
+        logger.warning("pitcher_statcast_query_failed", exc_info=True)
         return None
 
     game_dates = [gd for _, gd in rows]

@@ -49,6 +49,7 @@ _TIER_2_TYPES: dict[str, frozenset[str]] = {
 # Import here so the module can be used without circular-import issues at
 # module level; the actual schema type is only needed for the return value.
 from ..routers.sports.schemas import PlayEntry, TieredPlayGroup  # noqa: E402
+from ..routers.sports.schemas.common import ScoreObject  # noqa: E402
 
 
 def classify_all_tiers(
@@ -73,8 +74,8 @@ def classify_all_tiers(
     last_home, last_away = 0, 0
     for p in plays:
         before = (last_home, last_away)
-        h = p.home_score if p.home_score is not None else last_home
-        a = p.away_score if p.away_score is not None else last_away
+        h = p.score.home if p.score is not None else last_home
+        a = p.score.away if p.score is not None else last_away
         after = (h, a)
         score_pairs.append((before, after))
         last_home, last_away = h, a
@@ -178,8 +179,8 @@ def enrich_play_entries(
 ) -> None:
     """Enrich play entries in-place with score deltas and phase info.
 
-    Adds scoreChanged, scoringTeamAbbr, pointsScored, homeScoreBefore,
-    awayScoreBefore, and phase to each PlayEntry.
+    Adds scoreChanged, scoringTeamAbbr, pointsScored, scoreBefore, and
+    phase to each PlayEntry.
 
     Args:
         plays: List of PlayEntry objects (mutated in-place).
@@ -194,11 +195,10 @@ def enrich_play_entries(
     last_away = 0
 
     for play in plays:
-        cur_home = play.home_score if play.home_score is not None else last_home
-        cur_away = play.away_score if play.away_score is not None else last_away
+        cur_home = play.score.home if play.score is not None else last_home
+        cur_away = play.score.away if play.score is not None else last_away
 
-        play.home_score_before = last_home
-        play.away_score_before = last_away
+        play.score_before = ScoreObject(home=last_home, away=last_away)
 
         home_diff = cur_home - last_home
         away_diff = cur_away - last_away

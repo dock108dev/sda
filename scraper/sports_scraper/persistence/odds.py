@@ -152,6 +152,12 @@ def upsert_odds(session: Session, snapshot: NormalizedOddsSnapshot) -> OddsUpser
     if game and game.status == db_models.GameStatus.live.value:
         return OddsUpsertResult.SKIPPED_LIVE
 
+    # Backfill typed column from JSONB if not yet set
+    if game is not None and not game.odds_api_event_id:
+        odds_id = external_ids.get("odds_api_event_id")
+        if odds_id:
+            game.odds_api_event_id = str(odds_id)
+
     # Write odds records
     side_value = snapshot.side if snapshot.side else None
     _execute_odds_upsert(session, game_id, snapshot, side_value)

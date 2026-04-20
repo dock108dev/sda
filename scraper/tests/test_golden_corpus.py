@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import re
 from pathlib import Path
@@ -379,6 +380,7 @@ _CORPUS_LIMITATION_ERROR_FRAGMENTS = frozenset([
     "Too many blocks",
     "Last block must be RESOLUTION",
     "First block must be SETUP",
+    "Required block type missing",  # abbreviated PBP may not yield all required roles
     "mini_box",
 ])
 
@@ -391,6 +393,15 @@ _ALL_FIXTURES = sorted(
     f for f in CORPUS_DIR.glob("*_*.json")
     if f.name != "corpus_metadata.json"
 )
+
+# Golden corpus fixtures (ISSUE-003) — richer schema with expected_blocks,
+# quality_score_floor, and expected_flow_skeleton used by regression tests.
+_GOLDEN_DIR = Path(__file__).resolve().parents[2] / "tests" / "golden"
+_GOLDEN_FIXTURES: list[Path] = []
+for _gf_sport in ("nfl", "nba", "mlb", "nhl"):
+    _gf_dir = _GOLDEN_DIR / _gf_sport
+    if _gf_dir.is_dir():
+        _GOLDEN_FIXTURES.extend(sorted(_gf_dir.glob("*.json")))
 
 
 def _build_game_context(fixture: dict[str, Any]) -> dict[str, str]:
@@ -750,3 +761,141 @@ class TestPassRateGate:
             f"is below threshold {threshold}%.\n"
             "Failed fixtures:\n" + ("\n".join(failure_lines) or "  (none recorded)")
         )
+
+
+# ===========================================================================
+# ISSUE-004: Golden corpus regression gate
+#
+# Three test classes run the pipeline against the richer ISSUE-003 golden
+# corpus (tests/golden/) which carries expected_blocks, quality_score_floor,
+# and expected_flow_skeleton with roles_required.
+#
+# All three classes are guarded by @_pipeline so they skip when the API
+# pipeline modules are not installed (same guard as TestPipelineExecution).
+# ===========================================================================
+
+
+@_pipeline
+class TestBlockCountRegression:
+    """Block count must not exceed expected_blocks baseline by >10% (ISSUE-004).
+
+    Abbreviated CI PBP naturally produces fewer blocks than production, so only
+    upward bloat (block_count > ceil(baseline * 1.10)) is treated as a
+    regression.  A zero-block result is always a failure.
+    """
+
+    @pytest.mark.parametrize("fixture_path", _GOLDEN_FIXTURES, ids=_fixture_id)
+    def test_block_count_within_10pct_of_baseline(self, fixture_path: Path) -> None:
+        fixture = load_json(fixture_path)
+        game_shape = fixture.get("game_shape", "")
+        if game_shape in ("postponement",):
+            pytest.skip("Postponement fixture produces no pipeline output")
+        if fixture.get("flow_source") == "TEMPLATE":
+            pytest.skip("TEMPLATE fixture uses deterministic fallback; count fixed at 4")
+
+        expected_blocks = fixture.get("expected_blocks", [])
+        if not expected_blocks:
+            pytest.skip("No expected_blocks in fixture")
+
+        baseline = len(expected_blocks)
+        max_allowed = math.ceil(baseline * 1.10)
+
+        result = asyncio.run(_run_pipeline(fixture))
+        actual = result.get("_block_count", 0)
+
+        assert actual >= 1, (
+            f"{fixture_path.name}: pipeline produced 0 blocks "
+            f"(expected ~{baseline})"
+        )
+        assert actual <= max_allowed, (
+            f"{fixture_path.name}: block count {actual} exceeds baseline {baseline} "
+            f"by >{(actual - baseline) / baseline * 100:.1f}% "
+            f"(max allowed: {max_allowed})"
+        )
+
+
+@_pipeline
+class TestRequiredBlockTypes:
+    """Required semantic roles from fixture must appear in pipeline output (ISSUE-004).
+
+    roles_required from expected_flow_skeleton (always ["SETUP", "RESOLUTION"])
+    must be present in the output blocks.  Skipped when abbreviated PBP yields
+    fewer than 2 blocks.
+    """
+
+    @pytest.mark.parametrize("fixture_path", _GOLDEN_FIXTURES, ids=_fixture_id)
+    def test_required_roles_present_in_output(self, fixture_path: Path) -> None:
+        fixture = load_json(fixture_path)
+        if fixture.get("game_shape") == "postponement":
+            pytest.skip("Postponement fixture produces no pipeline output")
+
+        required = (
+            fixture.get("expected_flow_skeleton", {}).get("roles_required", [])
+        )
+        if not required:
+            pytest.skip("No roles_required in expected_flow_skeleton")
+
+        result = asyncio.run(_run_pipeline(fixture))
+        blocks = result.get("blocks", [])
+
+        if len(blocks) < 2:
+            pytest.skip(
+                f"{fixture_path.name}: abbreviated PBP produced only "
+                f"{len(blocks)} block(s) — role check requires ≥2 blocks"
+            )
+
+        actual_roles = {b.get("role") for b in blocks if b.get("role")}
+        missing = set(required) - actual_roles
+        assert not missing, (
+            f"{fixture_path.name}: required roles absent from pipeline output: "
+            f"{sorted(missing)}. "
+            f"Got roles: {sorted(actual_roles)}"
+        )
+
+
+@_pipeline
+class TestQualityScoreRegression:
+    """Quality score must not regress >5% below fixture quality_score_floor (ISSUE-004).
+
+    CI quality score = (1 - information_density_score) * 100, on a 0–100 scale
+    where higher means more unique content.  Regression triggers a diff report
+    showing floor, threshold, actual, and regression percentage.
+
+    TEMPLATE fixtures (quality_score_floor == 0) are skipped — their quality
+    is structural, not narrative.
+    """
+
+    @pytest.mark.parametrize("fixture_path", _GOLDEN_FIXTURES, ids=_fixture_id)
+    def test_quality_score_no_regression(self, fixture_path: Path) -> None:
+        fixture = load_json(fixture_path)
+        floor = fixture.get("quality_score_floor", 0)
+        if floor == 0:
+            pytest.skip("TEMPLATE fixture (quality_score_floor=0); no regression gate")
+        if fixture.get("game_shape") == "postponement":
+            pytest.skip("Postponement fixture produces no pipeline output")
+
+        result = asyncio.run(_run_pipeline(fixture))
+
+        # CI quality proxy: inverse of Jaccard similarity to fallback template.
+        # Lower density (more unique content) → higher quality score.
+        density = result.get("information_density_score", 0.0)
+        actual_score = round((1.0 - density) * 100, 1)
+        threshold = round(floor * 0.95, 1)  # 5% regression tolerance
+
+        if actual_score < threshold:
+            diff = {
+                "fixture": fixture_path.stem,
+                "quality_floor": floor,
+                "threshold_95pct": threshold,
+                "actual_score": actual_score,
+                "regression_pct": round(
+                    (floor - actual_score) / floor * 100, 1
+                ),
+                "information_density_score": round(density, 4),
+            }
+            pytest.fail(
+                f"{fixture_path.name}: quality score {actual_score} regressed "
+                f">{(floor - actual_score) / floor * 100:.1f}% "
+                f"below floor {floor}.\n"
+                f"Diff report: {diff}"
+            )

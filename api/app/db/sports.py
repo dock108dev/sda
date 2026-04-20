@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 class GameStatus(str, Enum):
     """Canonical game status lifecycle.
 
-    Happy path: scheduled → pregame → live → final → archived
+    Happy path: scheduled → pregame → live → final → recap_pending → recap_ready
     """
 
     scheduled = "scheduled"
@@ -48,6 +48,9 @@ class GameStatus(str, Enum):
     archived = "archived"  # Data complete, flows generated, >7 days old
     postponed = "postponed"
     CANCELLED = "cancelled"
+    recap_pending = "recap_pending"  # Flow generation dispatched and in progress
+    recap_ready = "recap_ready"      # Flow generated successfully
+    recap_failed = "recap_failed"    # Flow generation failed; eligible for retry via sweep
 
 
 class SportsLeague(Base):
@@ -233,6 +236,7 @@ class SportsGame(Base):
     external_ids: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
+    odds_api_event_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     social_scrape_1_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

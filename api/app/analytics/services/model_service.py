@@ -208,5 +208,5 @@ def _load_training_metadata(path: str) -> dict[str, Any] | None:
             with open(p) as f:
                 return json.load(f)
     except (json.JSONDecodeError, OSError):
-        pass
+        logger.warning("training_metadata_load_failed", extra={"path": path}, exc_info=True)
     return None

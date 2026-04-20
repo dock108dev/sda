@@ -71,8 +71,7 @@ class DBPoller:
         if row:
             patch = {
                 "status": row.status,
-                "homeScore": row.home_score,
-                "awayScore": row.away_score,
+                "score": {"home": row.home_score, "away": row.away_score},
             }
             await realtime_manager.publish(
                 f"game:{game_id}:summary",
@@ -104,8 +103,7 @@ class DBPoller:
         for row in rows:
             patch = {
                 "status": row.status,
-                "homeScore": row.home_score,
-                "awayScore": row.away_score,
+                "score": {"home": row.home_score, "away": row.away_score},
             }
             await realtime_manager.publish(
                 channel,

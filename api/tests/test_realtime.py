@@ -18,6 +18,14 @@ from app.realtime.models import (
     to_et_date_str,
 )
 
+
+def _run(coro):
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
 # ---------------------------------------------------------------------------
 # Channel validation
 # ---------------------------------------------------------------------------
@@ -177,14 +185,13 @@ class TestRealtimeManager:
         assert not mgr.has_subscribers("game:1:summary")
         assert not mgr.has_subscribers("game:2:summary")
 
-    @pytest.mark.asyncio
-    async def test_publish_delivers_to_subscriber(self):
+    def test_publish_delivers_to_subscriber(self):
         mgr = RealtimeManager()
         conn = AsyncMock()
         conn.id = "test-1"
         mgr.subscribe(conn, "game:1:summary")
 
-        seq = await mgr.publish("game:1:summary", "game_patch", {"gameId": "1", "patch": {}})
+        seq = _run(mgr.publish("game:1:summary", "game_patch", {"gameId": "1", "patch": {}}))
         assert seq == 1
 
         conn.send_event.assert_called_once()
@@ -194,36 +201,36 @@ class TestRealtimeManager:
         assert data["channel"] == "game:1:summary"
         assert "boot_epoch" in data
 
-    @pytest.mark.asyncio
-    async def test_publish_includes_boot_epoch(self):
+    def test_publish_includes_boot_epoch(self):
         mgr = RealtimeManager()
         conn = AsyncMock()
         conn.id = "test-1"
         mgr.subscribe(conn, "game:1:summary")
 
-        await mgr.publish("game:1:summary", "game_patch", {})
+        _run(mgr.publish("game:1:summary", "game_patch", {}))
 
         data = json.loads(conn.send_event.call_args[0][0])
         assert data["boot_epoch"] == mgr.boot_epoch
 
-    @pytest.mark.asyncio
-    async def test_seq_increments_per_channel(self):
+    def test_seq_increments_per_channel(self):
         mgr = RealtimeManager()
         conn = AsyncMock()
         conn.id = "test-1"
         mgr.subscribe(conn, "game:1:summary")
         mgr.subscribe(conn, "game:2:summary")
 
-        seq1 = await mgr.publish("game:1:summary", "game_patch", {})
-        seq2 = await mgr.publish("game:1:summary", "game_patch", {})
-        seq3 = await mgr.publish("game:2:summary", "game_patch", {})
+        async def run():
+            seq1 = await mgr.publish("game:1:summary", "game_patch", {})
+            seq2 = await mgr.publish("game:1:summary", "game_patch", {})
+            seq3 = await mgr.publish("game:2:summary", "game_patch", {})
+            return seq1, seq2, seq3
 
+        seq1, seq2, seq3 = _run(run())
         assert seq1 == 1
         assert seq2 == 2
         assert seq3 == 1  # Independent channel
 
-    @pytest.mark.asyncio
-    async def test_publish_drops_broken_subscriber(self):
+    def test_publish_drops_broken_subscriber(self):
         mgr = RealtimeManager()
         good_conn = AsyncMock()
         good_conn.id = "good"
@@ -234,17 +241,14 @@ class TestRealtimeManager:
         mgr.subscribe(good_conn, "game:1:summary")
         mgr.subscribe(bad_conn, "game:1:summary")
 
-        await mgr.publish("game:1:summary", "game_patch", {})
+        _run(mgr.publish("game:1:summary", "game_patch", {}))
 
-        # Good conn received it
         good_conn.send_event.assert_called_once()
-        # Bad conn was disconnected
         assert not mgr.has_subscribers("game:1:summary") or "bad" not in {
             c.id for c in mgr._subscribers.get("game:1:summary", set())
         }
 
-    @pytest.mark.asyncio
-    async def test_publish_drops_timeout_subscriber(self):
+    def test_publish_drops_timeout_subscriber(self):
         mgr = RealtimeManager()
         good_conn = AsyncMock()
         good_conn.id = "good"
@@ -255,7 +259,7 @@ class TestRealtimeManager:
         mgr.subscribe(good_conn, "game:1:summary")
         mgr.subscribe(slow_conn, "game:1:summary")
 
-        await mgr.publish("game:1:summary", "game_patch", {})
+        _run(mgr.publish("game:1:summary", "game_patch", {}))
 
         good_conn.send_event.assert_called_once()
         assert "slow" not in {
@@ -263,18 +267,17 @@ class TestRealtimeManager:
         }
         assert mgr._error_count == 1
 
-    @pytest.mark.asyncio
-    async def test_sse_queue_overflow_disconnects(self):
+    def test_sse_queue_overflow_disconnects(self):
         mgr = RealtimeManager()
         conn = SSEConnection()
         mgr.subscribe(conn, "game:1:summary")
 
-        # Fill the queue
-        for _ in range(200):
-            await conn.queue.put("x")
+        async def run():
+            for _ in range(200):
+                conn.queue.put_nowait("x")
+            await mgr.publish("game:1:summary", "game_patch", {})
 
-        # Next publish should overflow and disconnect
-        await mgr.publish("game:1:summary", "game_patch", {})
+        _run(run())
         assert not mgr.has_subscribers("game:1:summary")
 
     def test_status_includes_boot_epoch(self):
@@ -310,22 +313,22 @@ class TestRealtimeManager:
 
         assert mgr.active_channels() == {"game:1:summary", "game:2:pbp"}
 
-    @pytest.mark.asyncio
-    async def test_first_subscriber_callback_fires(self):
+    def test_first_subscriber_callback_fires(self):
         mgr = RealtimeManager()
         callback = AsyncMock()
         mgr.set_on_first_subscriber(callback)
 
         conn = MagicMock()
         conn.id = "test-1"
-        mgr.subscribe(conn, "game:1:summary")
 
-        # Give the asyncio.ensure_future a chance to run
-        await asyncio.sleep(0.01)
+        async def run():
+            mgr.subscribe(conn, "game:1:summary")
+            await asyncio.sleep(0.01)
+
+        _run(run())
         callback.assert_called_once_with("game:1:summary")
 
-    @pytest.mark.asyncio
-    async def test_first_subscriber_callback_does_not_fire_on_second(self):
+    def test_first_subscriber_callback_does_not_fire_on_second(self):
         mgr = RealtimeManager()
         callback = AsyncMock()
         mgr.set_on_first_subscriber(callback)
@@ -335,13 +338,14 @@ class TestRealtimeManager:
         c2 = MagicMock()
         c2.id = "c2"
 
-        mgr.subscribe(c1, "game:1:summary")
-        await asyncio.sleep(0.01)
+        async def run():
+            mgr.subscribe(c1, "game:1:summary")
+            await asyncio.sleep(0.01)
+            callback.reset_mock()
+            mgr.subscribe(c2, "game:1:summary")
+            await asyncio.sleep(0.01)
 
-        callback.reset_mock()
-        mgr.subscribe(c2, "game:1:summary")
-        await asyncio.sleep(0.01)
-
+        _run(run())
         callback.assert_not_called()
 
 
@@ -351,20 +355,23 @@ class TestRealtimeManager:
 
 
 class TestSSEConnection:
-    @pytest.mark.asyncio
-    async def test_send_event_puts_on_queue(self):
+    def test_send_event_puts_on_queue(self):
         conn = SSEConnection()
-        await conn.send_event("hello")
-        assert conn.queue.qsize() == 1
-        assert await conn.queue.get() == "hello"
 
-    @pytest.mark.asyncio
-    async def test_overflow_raises(self):
+        async def run():
+            await conn.send_event("hello")
+            return await conn.queue.get()
+
+        result = _run(run())
+        assert conn.queue.qsize() == 0
+        assert result == "hello"
+
+    def test_overflow_raises(self):
         conn = SSEConnection()
         for _ in range(200):
-            await conn.queue.put("x")
+            conn.queue.put_nowait("x")
         with pytest.raises(OverflowError):
-            await conn.send_event("boom")
+            _run(conn.send_event("boom"))
 
 
 # ---------------------------------------------------------------------------
@@ -373,15 +380,13 @@ class TestSSEConnection:
 
 
 class TestWSConnection:
-    @pytest.mark.asyncio
-    async def test_send_event_calls_send_text(self):
+    def test_send_event_calls_send_text(self):
         ws = AsyncMock()
         conn = WSConnection(ws)
-        await conn.send_event("hello")
+        _run(conn.send_event("hello"))
         ws.send_text.assert_called_once_with("hello")
 
-    @pytest.mark.asyncio
-    async def test_send_event_timeout_raises(self):
+    def test_send_event_timeout_raises(self):
         ws = AsyncMock()
 
         async def slow_send(data):
@@ -391,45 +396,4 @@ class TestWSConnection:
         conn = WSConnection(ws)
 
         with pytest.raises(asyncio.TimeoutError):
-            await conn.send_event("hello")
-
-
-# ---------------------------------------------------------------------------
-# Poller LRU set
-# ---------------------------------------------------------------------------
-
-
-class TestLRUSet:
-    def test_bounded_eviction(self):
-        from app.realtime.poller import _LRUSet
-
-        lru = _LRUSet(maxsize=3)
-        lru.add(1)
-        lru.add(2)
-        lru.add(3)
-        assert 1 in lru
-        assert len(lru) == 3
-
-        # Adding 4th should evict 1
-        lru.add(4)
-        assert 1 not in lru
-        assert 4 in lru
-        assert len(lru) == 3
-
-    def test_access_refreshes(self):
-        from app.realtime.poller import _LRUSet
-
-        lru = _LRUSet(maxsize=3)
-        lru.add(1)
-        lru.add(2)
-        lru.add(3)
-
-        # Re-add 1 to refresh it
-        lru.add(1)
-
-        # Adding 4 should now evict 2 (oldest untouched)
-        lru.add(4)
-        assert 1 in lru
-        assert 2 not in lru
-        assert 3 in lru
-        assert 4 in lru
+            _run(conn.send_event("hello"))

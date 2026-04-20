@@ -5,27 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
+from .common import ScoreObject
 
-class ScoreObject(BaseModel):
-    """Score as a structured {home, away} object.
-
-    Accepts a [home, away] list during ingestion so the model
-    can be constructed directly from pipeline JSON without an intermediate helper.
-    """
-
-    model_config = ConfigDict(populate_by_name=True, frozen=True)
-
-    home: int = Field(..., alias="home")
-    away: int = Field(..., alias="away")
-
-    @model_validator(mode="before")
-    @classmethod
-    def coerce_list(cls, v: Any) -> Any:
-        if isinstance(v, (list, tuple)) and len(v) >= 2:
-            return {"home": v[0], "away": v[1]}
-        return v
+__all__ = ["ScoreObject"]
 
 
 class MomentPlayerStat(BaseModel):
@@ -115,8 +99,7 @@ class GameFlowPlay(BaseModel):
     clock: str | None
     play_type: str | None = Field(None, alias="playType")
     description: str | None
-    home_score: int | None = Field(None, alias="homeScore")
-    away_score: int | None = Field(None, alias="awayScore")
+    score: ScoreObject | None = None
 
 
 class GameFlowContent(BaseModel):

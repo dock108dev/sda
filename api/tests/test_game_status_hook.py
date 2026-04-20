@@ -132,6 +132,7 @@ class TestDispatchFinalGameTasks:
             queue="sports-scraper",
             routing_key="sports-scraper",
             countdown=300,
+            expires=3600,
         )
 
     def test_clears_pending_after_dispatch(self):
@@ -173,6 +174,18 @@ class TestDispatchFinalGameTasks:
 
         _, kwargs = mock_celery.send_task.call_args
         assert kwargs["countdown"] == 300
+
+    def test_expires_is_set(self):
+        """Task must have an explicit expires to prevent zombie tasks in the queue."""
+        hooks._get_pending().append(55)
+        mock_celery = MagicMock()
+
+        with patch("app.celery_client.get_celery_app", return_value=mock_celery):
+            hooks._dispatch_final_game_tasks(MagicMock())
+
+        _, kwargs = mock_celery.send_task.call_args
+        assert "expires" in kwargs, "send_task must include expires"
+        assert kwargs["expires"] > 0
 
 
 class TestClearPendingOnRollback:

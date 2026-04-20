@@ -32,6 +32,8 @@ from typing import Any
 
 import pytest
 
+from tests.golden.loader import VALID_ROLES, load_all_fixtures, load_fixture, load_sport_fixtures
+
 GOLDEN_DIR = Path(__file__).parent
 SPORTS = ["nfl", "nba", "mlb", "nhl"]
 MIN_FIXTURES_PER_SPORT = 10
@@ -190,6 +192,8 @@ REQUIRED_FIXTURE_KEYS = frozenset(
         "game_date",
         "home_team",
         "away_team",
+        "expected_blocks",
+        "expected_block_type_counts",
         "expected_flow_skeleton",
         "pbp",
     }
@@ -451,6 +455,69 @@ class TestFixtureSchema:
                     f"{key}={val!r} must be a non-negative integer"
                 )
 
+    @pytest.mark.parametrize("fixture_path", _ALL_FIXTURES, ids=_fixture_id)
+    def test_expected_blocks_is_valid_role_list(self, fixture_path: Path) -> None:
+        data = load_fixture(fixture_path)
+        blocks = data.get("expected_blocks")
+        assert isinstance(blocks, list) and len(blocks) >= 1, (
+            f"{fixture_path.name}: expected_blocks must be a non-empty list"
+        )
+        for role in blocks:
+            assert role in VALID_ROLES, (
+                f"{fixture_path.name}: expected_blocks contains unknown role {role!r}; "
+                f"valid roles: {sorted(VALID_ROLES)}"
+            )
+        if len(blocks) >= 2:
+            assert blocks[0] == "SETUP", (
+                f"{fixture_path.name}: expected_blocks first role must be SETUP, got {blocks[0]!r}"
+            )
+            assert blocks[-1] == "RESOLUTION", (
+                f"{fixture_path.name}: expected_blocks last role must be RESOLUTION, "
+                f"got {blocks[-1]!r}"
+            )
+
+    @pytest.mark.parametrize("fixture_path", _ALL_FIXTURES, ids=_fixture_id)
+    def test_expected_block_type_counts_matches_expected_blocks(
+        self, fixture_path: Path
+    ) -> None:
+        data = load_fixture(fixture_path)
+        blocks: list[str] = data.get("expected_blocks", [])
+        counts: dict[str, int] = data.get("expected_block_type_counts", {})
+        # Recompute expected counts from the role list
+        computed: dict[str, int] = {}
+        for role in blocks:
+            computed[role] = computed.get(role, 0) + 1
+        assert counts == computed, (
+            f"{fixture_path.name}: expected_block_type_counts {counts} "
+            f"does not match counts derived from expected_blocks {computed}"
+        )
+
+
+class TestLoader:
+    """Smoke-tests for the loader utility (ISSUE-003 acceptance criterion)."""
+
+    def test_load_all_fixtures_returns_all(self) -> None:
+        fixtures = load_all_fixtures()
+        assert len(fixtures) >= 50, (
+            f"load_all_fixtures() returned {len(fixtures)} fixtures; expected ≥ 50"
+        )
+
+    @pytest.mark.parametrize("sport", [s.upper() for s in SPORTS])
+    def test_load_sport_fixtures_count(self, sport: str) -> None:
+        fixtures = load_sport_fixtures(sport)
+        assert len(fixtures) >= MIN_FIXTURES_PER_SPORT, (
+            f"load_sport_fixtures({sport!r}) returned {len(fixtures)}; "
+            f"expected ≥ {MIN_FIXTURES_PER_SPORT}"
+        )
+
+    @pytest.mark.parametrize("sport", [s.upper() for s in SPORTS])
+    def test_load_sport_fixtures_typed_fields_present(self, sport: str) -> None:
+        for fx in load_sport_fixtures(sport):
+            assert "corpus_id" in fx
+            assert "expected_blocks" in fx
+            assert "expected_block_type_counts" in fx
+            assert "pbp" in fx
+
 
 # ===========================================================================
 # Forbidden phrase tests (ISSUE-047 integration)
@@ -473,4 +540,112 @@ class TestForbiddenPhrases:
             f"from ISSUE-047:\n"
             + "\n".join(f"  - {p!r}" for p in found)
             + "\n\nRemove these phrases from the fixture text to fix this failure."
+        )
+
+
+# ===========================================================================
+# RESOLUTION specificity baseline (ISSUE-026)
+# ===========================================================================
+
+# Shapes with meaningful endings where the RESOLUTION specificity check must
+# have material to work with.  Postponed / incomplete games lack PBP data so
+# are excluded — the backend skips the check for those too.
+_SHAPES_REQUIRING_FINAL_WINDOW = frozenset(
+    {"standard_win", "blowout", "comeback", "overtime"}
+)
+
+# Final-window definitions must match validate_blocks._get_final_window_plays.
+# Maps sport → (min_quarter, clock_threshold_secs).  MLB uses max-inning logic.
+_CLOCK_SPORTS_FINAL_QUARTER: dict[str, tuple[int, int]] = {
+    "NBA": (4, 120),
+    "NFL": (4, 120),
+}
+_MIN_PERIOD_SPORTS: dict[str, int] = {
+    "NHL": 3,
+    "NCAAB": 2,
+}
+
+
+def _final_window_plays(plays: list[dict[str, Any]], sport: str) -> list[dict[str, Any]]:
+    """Mirror of validate_blocks._get_final_window_plays for golden corpus checks."""
+    if not plays:
+        return []
+    sport_upper = sport.upper()
+
+    if sport_upper in _CLOCK_SPORTS_FINAL_QUARTER:
+        final_q, threshold = _CLOCK_SPORTS_FINAL_QUARTER[sport_upper]
+        result = []
+        for ev in plays:
+            q = ev.get("quarter", 0)
+            if q > final_q:
+                result.append(ev)
+            elif q == final_q:
+                clock = ev.get("game_clock", "")
+                secs = _parse_clock(clock)
+                if secs is not None and secs <= threshold:
+                    result.append(ev)
+        return result
+
+    if sport_upper in _MIN_PERIOD_SPORTS:
+        min_p = _MIN_PERIOD_SPORTS[sport_upper]
+        return [ev for ev in plays if (ev.get("quarter") or 0) >= min_p]
+
+    if sport_upper == "MLB":
+        max_inn = max((ev.get("quarter") or 1) for ev in plays)
+        return [ev for ev in plays if ev.get("quarter") == max_inn]
+
+    # Unknown sport: last 20 %
+    n = max(1, len(plays) // 5)
+    return plays[-n:]
+
+
+def _parse_clock(clock: str | None) -> int | None:
+    if not clock:
+        return None
+    clock = clock.strip()
+    try:
+        if ":" in clock:
+            parts = clock.split(":", 1)
+            return int(parts[0]) * 60 + int(parts[1])
+        return int(clock)
+    except (ValueError, IndexError):
+        return None
+
+
+class TestResolutionSpecificity:
+    """ISSUE-026 baseline: all reference fixtures provide enough final-window
+    PBP data for the RESOLUTION specificity check to evaluate the narrative.
+
+    This does NOT run the full pipeline; it asserts that each standard fixture
+    has at least one named play in the final game window so that when the
+    pipeline runs on real data the RESOLUTION check has material to work with.
+    """
+
+    @pytest.mark.parametrize("fixture_path", _ALL_FIXTURES, ids=_fixture_id)
+    def test_standard_fixtures_have_named_final_window_plays(
+        self, fixture_path: Path
+    ) -> None:
+        data = load_fixture(fixture_path)
+        shape = data.get("game_shape", "")
+        if shape not in _SHAPES_REQUIRING_FINAL_WINDOW:
+            pytest.skip(f"Shape {shape!r} does not require final-window coverage")
+
+        sport = data.get("sport", "UNKNOWN")
+        plays: list[dict[str, Any]] = data.get("pbp", {}).get("plays", [])
+        if not plays:
+            pytest.skip("No plays in fixture")
+
+        final_plays = _final_window_plays(plays, sport)
+        assert final_plays, (
+            f"{fixture_path.name}: no plays found in the final game window for "
+            f"sport={sport}, shape={shape}. "
+            "Add at least one final-window play so the RESOLUTION specificity "
+            "check has material when the pipeline runs."
+        )
+
+        named = [p for p in final_plays if p.get("player_name", "").strip()]
+        assert named, (
+            f"{fixture_path.name}: final-window has {len(final_plays)} play(s) but "
+            "none have a player_name. Add at least one named final-window play so "
+            "the RESOLUTION specificity check can succeed."
         )

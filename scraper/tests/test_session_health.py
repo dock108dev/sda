@@ -48,8 +48,11 @@ spec.loader.exec_module(sh_mod)
 SessionHealthResult = sh_mod.SessionHealthResult
 HEALTH_KEY = sh_mod.HEALTH_KEY
 CIRCUIT_OPEN_KEY = sh_mod.CIRCUIT_OPEN_KEY
+CONSECUTIVE_FAILURES_KEY = sh_mod.CONSECUTIVE_FAILURES_KEY
+CIRCUIT_BREAKER_THRESHOLD = sh_mod.CIRCUIT_BREAKER_THRESHOLD
 record_health = sh_mod.record_health
 get_cached_health = sh_mod.get_cached_health
+get_consecutive_failures = sh_mod.get_consecutive_failures
 is_circuit_open = sh_mod.is_circuit_open
 probe_session_health = sh_mod.probe_session_health
 
@@ -91,35 +94,113 @@ def _make_redis():
     mock.set.side_effect = lambda key, val, ex=None: store.update({key: val})
     mock.get.side_effect = lambda key: store.get(key)
     mock.delete.side_effect = lambda key: store.pop(key, None)
+    mock.expire.side_effect = lambda key, ttl: None  # no-op in tests
+
+    def _incr(key):
+        current = int(store.get(key, 0))
+        store[key] = str(current + 1)
+        return current + 1
+
+    mock.incr.side_effect = _incr
     return mock, store
+
+
+def _invalid_result(reason="redirected to /login"):
+    return SessionHealthResult(
+        is_valid=False,
+        checked_at="2026-04-18T12:00:00+00:00",
+        failure_reason=reason,
+    )
+
+
+def _valid_result():
+    return SessionHealthResult(
+        is_valid=True,
+        checked_at="2026-04-18T12:00:00+00:00",
+        auth_token_present=True,
+        ct0_present=True,
+    )
 
 
 class TestRedisHelpers:
     def test_record_health_valid_clears_circuit(self):
         r, store = _make_redis()
         store[CIRCUIT_OPEN_KEY] = "1"
+        store[CONSECUTIVE_FAILURES_KEY] = "3"
 
-        record_health(r, SessionHealthResult(
-            is_valid=True,
-            checked_at="2026-04-18T12:00:00+00:00",
-            auth_token_present=True,
-            ct0_present=True,
-        ))
+        returned = record_health(r, _valid_result())
 
         assert json.loads(store[HEALTH_KEY])["is_valid"] is True
         assert CIRCUIT_OPEN_KEY not in store
+        assert CONSECUTIVE_FAILURES_KEY not in store
+        assert returned is False
 
-    def test_record_health_invalid_trips_circuit(self):
+    def test_record_health_single_failure_does_not_trip_circuit(self):
         r, store = _make_redis()
 
-        record_health(r, SessionHealthResult(
-            is_valid=False,
-            checked_at="2026-04-18T12:00:00+00:00",
-            failure_reason="redirected to /login",
-        ))
+        returned = record_health(r, _invalid_result())
 
         assert json.loads(store[HEALTH_KEY])["is_valid"] is False
+        assert CIRCUIT_OPEN_KEY not in store
+        assert int(store[CONSECUTIVE_FAILURES_KEY]) == 1
+        assert returned is False
+
+    def test_record_health_two_failures_do_not_trip_circuit(self):
+        r, store = _make_redis()
+
+        record_health(r, _invalid_result())
+        returned = record_health(r, _invalid_result())
+
+        assert CIRCUIT_OPEN_KEY not in store
+        assert int(store[CONSECUTIVE_FAILURES_KEY]) == 2
+        assert returned is False
+
+    def test_record_health_third_failure_trips_circuit(self):
+        r, store = _make_redis()
+
+        record_health(r, _invalid_result())
+        record_health(r, _invalid_result())
+        returned = record_health(r, _invalid_result())
+
         assert store.get(CIRCUIT_OPEN_KEY) == "1"
+        assert int(store[CONSECUTIVE_FAILURES_KEY]) == CIRCUIT_BREAKER_THRESHOLD
+        assert returned is True
+
+    def test_record_health_fourth_failure_does_not_re_trip(self):
+        """Circuit is already open — newly_tripped should be False after the 3rd."""
+        r, store = _make_redis()
+
+        for _ in range(CIRCUIT_BREAKER_THRESHOLD):
+            record_health(r, _invalid_result())
+
+        returned = record_health(r, _invalid_result())
+
+        assert store.get(CIRCUIT_OPEN_KEY) == "1"
+        assert returned is False  # only True on exactly the 3rd
+
+    def test_record_health_valid_after_failures_resets_counter(self):
+        r, store = _make_redis()
+
+        record_health(r, _invalid_result())
+        record_health(r, _invalid_result())
+        record_health(r, _valid_result())
+
+        assert CIRCUIT_OPEN_KEY not in store
+        assert CONSECUTIVE_FAILURES_KEY not in store
+
+    def test_get_consecutive_failures_returns_zero_when_absent(self):
+        r, _ = _make_redis()
+        assert get_consecutive_failures(r) == 0
+
+    def test_get_consecutive_failures_returns_count(self):
+        r, store = _make_redis()
+        store[CONSECUTIVE_FAILURES_KEY] = "2"
+        assert get_consecutive_failures(r) == 2
+
+    def test_get_consecutive_failures_handles_corrupted_value(self):
+        r, store = _make_redis()
+        store[CONSECUTIVE_FAILURES_KEY] = "not-a-number"
+        assert get_consecutive_failures(r) == 0
 
     def test_get_cached_health_returns_none_when_missing(self):
         r, _ = _make_redis()

@@ -180,15 +180,15 @@ def sync_prop_odds(league_code: str | None = None) -> dict:
                                 db_models.SportsGame.status.in_(["scheduled", "pregame"]),
                                 db_models.SportsGame.game_date >= today,
                                 db_models.SportsGame.game_date <= tomorrow,
-                                db_models.SportsGame.external_ids["odds_api_event_id"].astext.isnot(None),
+                                db_models.SportsGame.odds_api_event_id.isnot(None),
                             )
                         )
                         games = session.execute(stmt).scalars().all()
 
                         event_ids = [
-                            g.external_ids["odds_api_event_id"]
+                            g.odds_api_event_id
                             for g in games
-                            if g.external_ids.get("odds_api_event_id")
+                            if g.odds_api_event_id
                         ]
 
                     if event_ids:

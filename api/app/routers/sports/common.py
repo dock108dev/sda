@@ -29,6 +29,7 @@ from .schemas import (
     ScrapeRunResponse,
     TeamStat,
 )
+from .schemas.common import _score_obj
 
 
 def serialize_play_entry(play: SportsGamePlay, league_code: str | None = None) -> PlayEntry:
@@ -58,8 +59,7 @@ def serialize_play_entry(play: SportsGamePlay, league_code: str | None = None) -
         team_abbreviation=team_abbr,
         player_name=play.player_name,
         description=play.description,
-        home_score=play.home_score,
-        away_score=play.away_score,
+        score=_score_obj(play.home_score, play.away_score),
     )
 
 

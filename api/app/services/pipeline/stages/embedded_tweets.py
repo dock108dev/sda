@@ -365,18 +365,21 @@ async def load_and_attach_embedded_tweets(
 async def validate_embedded_tweet_ids(
     session: "AsyncSession",
     blocks: list[dict[str, Any]],
-) -> None:
-    """Verify all non-null embedded_social_post_id values exist in TeamSocialPost.
+    game_id: int | None = None,
+) -> list[dict[str, Any]]:
+    """Verify embedded_social_post_id values exist in TeamSocialPost before persist.
 
-    Raises ValueError listing any dangling IDs so callers can abort before
-    writing a blocks_json blob with broken references.
+    For each block whose embedded_social_post_id cannot be resolved, emits a
+    structured warning and clears the field to None so the pipeline can continue
+    without writing a dangling foreign-key reference.
 
     Args:
         session: Async database session.
-        blocks: Block dicts to validate.
+        blocks: Block dicts to validate (not mutated in place).
+        game_id: Game ID included in warning log entries for traceability.
 
-    Raises:
-        ValueError: If any embedded_social_post_id references a non-existent row.
+    Returns:
+        Blocks list with unresolvable embedded_social_post_id fields cleared to None.
     """
     from ....db.social import TeamSocialPost
 
@@ -386,14 +389,28 @@ async def validate_embedded_tweet_ids(
         if b.get("embedded_social_post_id") is not None
     }
     if not post_ids:
-        return
+        return blocks
 
     result = await session.execute(
         select(TeamSocialPost.id).where(TeamSocialPost.id.in_(post_ids))
     )
     found_ids: set[int] = {row[0] for row in result}
     missing = post_ids - found_ids
-    if missing:
-        raise ValueError(
-            f"embedded_social_post_id values not found in team_social_posts: {sorted(missing)}"
-        )
+    if not missing:
+        return blocks
+
+    cleaned: list[dict[str, Any]] = []
+    for block in blocks:
+        post_id = block.get("embedded_social_post_id")
+        if post_id in missing:
+            logger.warning(
+                "embedded_tweet_ref_missing",
+                extra={
+                    "game_id": game_id,
+                    "block_id": block.get("block_index"),
+                    "embedded_social_post_id": post_id,
+                },
+            )
+            block = {**block, "embedded_social_post_id": None}
+        cleaned.append(block)
+    return cleaned

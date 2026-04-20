@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
+from sports_scraper.social.models import GamePhase
 from sports_scraper.social.tweet_mapper import (
     _game_duration_hours,
     _search_dates_for_tweet,
@@ -314,6 +315,7 @@ class TestMapUnmappedTweets:
 
         assert result["no_game"] == 1
         assert tweet.mapping_status == "no_game"
+        assert tweet.game_phase == GamePhase.unknown
 
     @patch("sports_scraper.social.tweet_mapper.db_models", create=True)
     def test_empty_batch(self, mock_db):
@@ -420,6 +422,79 @@ class TestMapTweetsForTeam:
 
         assert result["no_game"] == 1
         assert tweet.mapping_status == "no_game"
+        assert tweet.game_phase == GamePhase.unknown
+
+
+# ---------------------------------------------------------------------------
+# GamePhase.unknown — no inferrable phase
+# ---------------------------------------------------------------------------
+class TestGamePhaseUnknownForUnresolvablePosts:
+    """Posts that cannot be matched to a game always get GamePhase.unknown."""
+
+    @patch("sports_scraper.social.tweet_mapper.now_utc", return_value=_utc(2025, 6, 15, 23, 0))
+    @patch("sports_scraper.social.tweet_mapper.db_models", create=True)
+    def test_no_game_in_window_emits_unknown_via_map_unmapped(self, mock_db, mock_now):
+        """map_unmapped_tweets: tweet outside every game window → GamePhase.unknown, never None."""
+        tweet = _make_tweet(
+            team_id=100,
+            posted_at=_utc(2025, 6, 15, 20, 0),
+        )
+        session = MagicMock()
+        session.query.return_value.filter.return_value.limit.return_value.all.side_effect = [
+            [tweet], []
+        ]
+        session.query.return_value.filter.return_value.all.return_value = []
+
+        with patch("sports_scraper.social.tweet_mapper.db_models", mock_db):
+            map_unmapped_tweets(session)
+
+        assert tweet.game_phase is not None
+        assert tweet.game_phase == GamePhase.unknown
+
+    @patch("sports_scraper.social.tweet_mapper.now_utc", return_value=_utc(2025, 6, 15, 23, 0))
+    @patch("sports_scraper.social.tweet_mapper.db_models", create=True)
+    def test_no_game_in_window_emits_unknown_via_map_for_team(self, mock_db, mock_now):
+        """map_tweets_for_team: tweet outside every game window → GamePhase.unknown, never None."""
+        tweet = _make_tweet(
+            team_id=100,
+            posted_at=_utc(2025, 6, 15, 20, 0),
+        )
+        session = MagicMock()
+        session.query.return_value.filter.return_value.all.return_value = [tweet]
+        session.query.return_value.filter.return_value.union.return_value.all.return_value = []
+
+        with patch("sports_scraper.social.tweet_mapper.db_models", mock_db):
+            map_tweets_for_team(session, team_id=100)
+
+        assert tweet.game_phase is not None
+        assert tweet.game_phase == GamePhase.unknown
+
+    @patch("sports_scraper.social.tweet_mapper.now_utc", return_value=_utc(2025, 6, 15, 23, 0))
+    @patch("sports_scraper.social.tweet_mapper.db_models", create=True)
+    def test_tweet_outside_all_candidate_windows_emits_unknown(self, mock_db, mock_now):
+        """Candidate games exist but tweet timestamp falls outside all windows → GamePhase.unknown."""
+        # Game on Jun 14; tweet posted Jun 15 — outside the postgame window
+        game = _make_game(
+            id=10,
+            game_date=_utc(2025, 6, 14, 19, 0),
+            home_team_id=100,
+        )
+        tweet = _make_tweet(
+            team_id=100,
+            # 30 hours after tip — well past any postgame window
+            posted_at=_utc(2025, 6, 16, 1, 0),
+        )
+        session = MagicMock()
+        session.query.return_value.filter.return_value.limit.return_value.all.side_effect = [
+            [tweet], []
+        ]
+        session.query.return_value.filter.return_value.all.return_value = [game]
+
+        with patch("sports_scraper.social.tweet_mapper.db_models", mock_db):
+            map_unmapped_tweets(session)
+
+        assert tweet.game_phase is not None
+        assert tweet.game_phase == GamePhase.unknown
 
 
 # ---------------------------------------------------------------------------

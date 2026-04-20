@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from .sports import GameStatus, SportsGame
 from . import external_id_validators as _ext_validators  # noqa: F401 — registers JSONB validators
+from . import jsonb_validators as _jsonb_validators  # noqa: F401 — registers JSONB validators
 
 _pending = threading.local()
 
@@ -60,6 +61,7 @@ def _dispatch_final_game_tasks(session: Session) -> None:
             queue="sports-scraper",
             routing_key="sports-scraper",
             countdown=300,  # 5-minute delay so PBP data settles before pipeline runs
+            expires=3600,  # drop task if not consumed within 1 hour; sweep handles recovery
         )
     pending.clear()
 

@@ -359,3 +359,80 @@ grep -rn "story_version.in_" --include="*.py" api/
 grep -n "MIN_BLOCKS" api/tests/pipeline/test_guardrails.py
   → line 78: # Below MIN_BLOCKS (3)
 ```
+
+---
+
+## Destructive Cleanup Pass — 2026-04-20 (fifth sweep)
+
+### 14. Admin flow endpoint: `moments_json` presence check replaced with `blocks_json`
+
+**Problem:** `api/app/routers/sports/game_timeline.py` deprecated admin flow endpoint (`GET /games/{id}/flow`)
+still used `SportsGameFlow.moments_json.isnot(None)` as the presence sentinel — inconsistent with the SSOT
+established in change #5, which designates `blocks_json` as the authoritative indicator that pipeline
+generation completed. For v2-blocks flows, `blocks_json` is always written; `moments_json` is a
+pipeline-internal artifact.
+
+**Change:** `moments_json.isnot(None)` → `blocks_json.isnot(None)` in the admin query filter.
+
+**File:** `api/app/routers/sports/game_timeline.py:178`
+
+---
+
+### 15. Backend backward-compat alias routes deleted from `games.py`
+
+**Problem:** `api/app/routers/sports/games.py` registered two hidden routes with `include_in_schema=False`:
+- `POST /games/{game_id}/rescrape` → alias for `/resync`
+- `POST /games/{game_id}/resync-odds` → alias for `/resync`
+
+Both carried the comment `# Keep old endpoints as aliases for backward compatibility`. No test, no
+frontend call, and no external documentation references either path. Per cleanup rules: "backward
+compatibility is not a goal" and "If prod usage cannot be proven, delete it."
+
+**Change:** Both alias route handlers deleted.
+
+**File:** `api/app/routers/sports/games.py:241–249`
+
+---
+
+### 16. Frontend legacy alias exports deleted from `games.ts`
+
+**Problem:** `web/src/lib/api/sportsAdmin/games.ts` exported two dead aliases:
+```ts
+// Legacy aliases
+export const rescrapeGame = resyncGame;
+export const resyncOdds = resyncGame;
+```
+No component, page, or test in the `web/` tree imports `rescrapeGame` or `resyncOdds`. These were
+client-side mirrors of the now-deleted server-side alias routes.
+
+**Change:** Both alias exports and their comment deleted.
+
+**File:** `web/src/lib/api/sportsAdmin/games.ts:40–42`
+
+---
+
+## SSOT Verification (final — 2026-04-20 fifth sweep)
+
+| Domain | Authoritative Source | Status |
+|--------|---------------------|--------|
+| Flow presence sentinel (admin endpoint) | `blocks_json.isnot(None)` | Consistent with v1 consumer endpoint |
+| `/rescrape`, `/resync-odds` routes | Deleted | 0 references in Python sources |
+| `rescrapeGame`, `resyncOdds` TS exports | Deleted | 0 import sites in `web/src/` |
+
+---
+
+## Sanity Check (2026-04-20 fifth sweep)
+
+```
+# blocks_json is now the presence check in both v1 and admin endpoints
+grep -n "moments_json.isnot\|blocks_json.isnot" api/app/routers/sports/game_timeline.py api/app/routers/v1/games.py
+  → blocks_json.isnot(None) in both files
+
+# Deleted server-side aliases are gone
+grep -rn "rescrape_game\|resync_game_odds\|rescrape\|resync-odds" api/app/routers/ --include="*.py"
+  → 0 results
+
+# Deleted frontend aliases are gone
+grep -rn "rescrapeGame\|resyncOdds" web/src/ --include="*.ts" --include="*.tsx"
+  → 0 results
+```

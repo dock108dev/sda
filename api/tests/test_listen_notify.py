@@ -272,8 +272,7 @@ class TestScoreUpdateSSEIntegration:
             assert parsed["gameId"] == "42"
             patch_data = parsed["patch"]
             assert patch_data["status"] == "live"
-            assert patch_data["homeScore"] == 78
-            assert patch_data["awayScore"] == 75
+            assert patch_data["score"] == {"home": 78, "away": 75}
         finally:
             loop.close()
 

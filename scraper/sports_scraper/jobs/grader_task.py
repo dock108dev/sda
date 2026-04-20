@@ -151,7 +151,9 @@ def grade_flow_task(
 
         record_flow_quality_score(sport=sport, tier="tier1", score=result.tier1.score)
         if result.tier2 is not None:
-            record_flow_quality_score(sport=sport, tier="tier2", score=result.tier2.score)
+            record_flow_quality_score(sport=sport, tier="tier2_haiku", score=result.tier2.score)
+        if result.tier2_sonnet is not None:
+            record_flow_quality_score(sport=sport, tier="tier2_sonnet", score=result.tier2_sonnet.score)
         record_flow_quality_score(sport=sport, tier="combined", score=result.combined_score)
     except Exception:
         logger.warning("grade_flow_task_otel_emit_failed", exc_info=True)
@@ -178,13 +180,27 @@ def grade_flow_task(
         )
         # Escalate to human review after template fallback; pass result for
         # tier breakdown even though the blocks have been replaced.
-        _escalate_flow(result, game_id=game_id)
+        _escalate_flow(result, game_id=game_id, reason="template_fallback")
     else:
         # gate.action == "publish": normal path.
         # Escalate for human review if score is below ESCALATION_THRESHOLD
         # even when the gate itself passes (monitors borderline flows).
         if result.escalated:
-            _escalate_flow(result, game_id=game_id)
+            _escalate_flow(result, game_id=game_id, reason="low_combined_score")
+
+    # Human review queue: Sonnet ambiguous after regen.
+    # When Haiku was uncertain (ambiguous band), Sonnet was invoked, and Sonnet is
+    # ALSO in the ambiguous band on a regen attempt — queue for human review
+    # regardless of gate action (the model couldn't resolve the quality signal).
+    from ..pipeline.grader import SONNET_AMBIGUOUS_BAND_HIGH, SONNET_AMBIGUOUS_BAND_LOW
+
+    if (
+        result.haiku_ambiguous
+        and result.tier2_sonnet is not None
+        and SONNET_AMBIGUOUS_BAND_LOW <= result.tier2_sonnet.score <= SONNET_AMBIGUOUS_BAND_HIGH
+        and regen_attempt >= 1
+    ):
+        _escalate_flow(result, game_id=game_id, reason="sonnet_ambiguous_after_regen")
 
     scraper_logger.info(
         "grade_flow_task_complete",
@@ -196,8 +212,11 @@ def grade_flow_task(
             "gate_action": gate.action,
             "regen_attempt": regen_attempt,
             "tier1_score": result.tier1.score,
-            "tier2_score": result.tier2.score if result.tier2 else None,
-            "cache_hit": result.tier2.cache_hit if result.tier2 else None,
+            "tier2_haiku_score": result.tier2.score if result.tier2 else None,
+            "tier2_haiku_cache_hit": result.tier2.cache_hit if result.tier2 else None,
+            "haiku_ambiguous": result.haiku_ambiguous,
+            "tier2_sonnet_score": result.tier2_sonnet.score if result.tier2_sonnet else None,
+            "tier2_sonnet_cache_hit": result.tier2_sonnet.cache_hit if result.tier2_sonnet else None,
         },
     )
 
@@ -206,8 +225,11 @@ def grade_flow_task(
         "sport": sport,
         "combined_score": result.combined_score,
         "tier1_score": result.tier1.score,
-        "tier2_score": result.tier2.score if result.tier2 else None,
-        "tier2_cache_hit": result.tier2.cache_hit if result.tier2 else None,
+        "tier2_haiku_score": result.tier2.score if result.tier2 else None,
+        "tier2_haiku_cache_hit": result.tier2.cache_hit if result.tier2 else None,
+        "haiku_ambiguous": result.haiku_ambiguous,
+        "tier2_sonnet_score": result.tier2_sonnet.score if result.tier2_sonnet else None,
+        "tier2_sonnet_cache_hit": result.tier2_sonnet.cache_hit if result.tier2_sonnet else None,
         "escalated": result.escalated,
         "gate_action": gate.action,
         "regen_attempt": regen_attempt,
@@ -215,21 +237,28 @@ def grade_flow_task(
     }
 
 
-def _escalate_flow(result: "GraderResult", game_id: int) -> None:
+def _escalate_flow(result: "GraderResult", game_id: int, reason: str = "low_combined_score") -> None:
     """Write a quality_review_queue row for a flow that scored below threshold."""
     from ..db import db_models, get_session
 
-    tier_breakdown = {
+    tier_breakdown: dict = {
         "tier1": {
             "score": result.tier1.score,
             "failures": result.tier1.failures,
             "checks": result.tier1.checks,
         },
-        "tier2": {
+        "tier2_haiku": {
             "score": result.tier2.score if result.tier2 else None,
             "rubric": result.tier2.rubric if result.tier2 else None,
             "cache_hit": result.tier2.cache_hit if result.tier2 else None,
         },
+        "tier2_sonnet": {
+            "score": result.tier2_sonnet.score if result.tier2_sonnet else None,
+            "rubric": result.tier2_sonnet.rubric if result.tier2_sonnet else None,
+            "cache_hit": result.tier2_sonnet.cache_hit if result.tier2_sonnet else None,
+        } if result.tier2_sonnet is not None else None,
+        "haiku_ambiguous": result.haiku_ambiguous,
+        "reason": reason,
     }
 
     try:

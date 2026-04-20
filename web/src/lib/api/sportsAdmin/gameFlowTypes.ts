@@ -107,8 +107,7 @@ export type GameFlowPlay = {
   clock: string | null;
   playType: string | null;
   description: string | null;
-  homeScore: number | null;
-  awayScore: number | null;
+  score: ScoreObject | null;
 };
 
 /**
@@ -222,6 +221,12 @@ export type NarrativeBlock = {
   embeddedSocialPostId?: number | null;
   /** Cumulative box score with segment deltas */
   miniBox?: BlockMiniBox | null;
+  /**
+   * Set by validate_blocks.py when the RESOLUTION block has no traceable
+   * reference to a final-window play. Soft signal — warnings only, not a
+   * structural failure. Mirrors _check_resolution_specificity in backend.
+   */
+  resolutionSpecificityWarning?: boolean | null;
 };
 
 /**

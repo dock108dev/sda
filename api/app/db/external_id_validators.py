@@ -2,7 +2,7 @@
 
 Both columns store a flat dict[str, str | int] — no nested objects, no arrays.
 Validation fires on every insert and update via mapper-level before_{insert,update} events.
-Raises ValueError on invalid payloads so the DB write is aborted before any SQL is issued.
+Raises JsonbValidationError on invalid payloads so the DB write is aborted before any SQL is issued.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import event
 
+from .jsonb_registry import JsonbValidationError
 from .sports import SportsGame, SportsTeam
 
 
@@ -18,24 +19,27 @@ def _validate_flat_str_or_int_dict(value: Any, field_name: str) -> None:
     """Validate that *value* is a flat dict mapping str keys to str or int values.
 
     Raises:
-        ValueError: if the value is not a dict, has non-string keys, or has
+        JsonbValidationError: if the value is not a dict, has non-string keys, or has
                     values that are not str or int (booleans are rejected because
                     bool is a subclass of int but semantically wrong here).
     """
     if not isinstance(value, dict):
-        raise ValueError(
-            f"{field_name} must be a JSON object (dict), got {type(value).__name__!r}"
+        raise JsonbValidationError(
+            column_name=field_name,
+            message=f"must be a JSON object (dict), got {type(value).__name__!r}",
         )
     for key, val in value.items():
         if not isinstance(key, str):
-            raise ValueError(
-                f"{field_name}: all keys must be strings, got key {key!r} of type "
-                f"{type(key).__name__!r}"
+            raise JsonbValidationError(
+                column_name=field_name,
+                message=f"all keys must be strings, got key {key!r} of type {type(key).__name__!r}",
+                field_path=str(key),
             )
         if isinstance(val, bool) or not isinstance(val, (str, int)):
-            raise ValueError(
-                f"{field_name}[{key!r}] must be a string or integer, "
-                f"got {type(val).__name__!r}"
+            raise JsonbValidationError(
+                column_name=field_name,
+                message=f"[{key!r}] must be a string or integer, got {type(val).__name__!r}",
+                field_path=key,
             )
 
 

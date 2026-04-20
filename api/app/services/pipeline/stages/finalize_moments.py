@@ -213,7 +213,7 @@ async def execute_finalize_moments(
     total_words = previous_output.get("total_words", 0)
 
     # Validate all embedded tweet references exist before writing.
-    await validate_embedded_tweet_ids(session, blocks)
+    blocks = await validate_embedded_tweet_ids(session, blocks, game_id)
 
     if existing_flow:
         # Update existing flow; upgrade legacy story_version on overwrite.

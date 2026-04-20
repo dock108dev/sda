@@ -44,6 +44,20 @@ from .block_types import (
     MIN_WORDS_PER_BLOCK,
     SemanticRole,
 )
+
+# Required semantic roles — every flow must contain at least these two block types.
+# Mirrors REQUIRED_BLOCK_TYPE_ROLES in web/src/lib/guardrails.ts.
+REQUIRED_BLOCK_TYPES: frozenset[str] = frozenset([
+    SemanticRole.SETUP.value,
+    SemanticRole.RESOLUTION.value,
+])
+
+# Stat fields expected in every mini_box team stats dict.
+# Absent fields are filled with MINI_BOX_UNKNOWN rather than left null.
+MINI_BOX_STAT_FIELDS: frozenset[str] = frozenset(["points"])
+
+# Sentinel for absent/unknown mini_box stat values — never null on the wire.
+MINI_BOX_UNKNOWN = "UNKNOWN"
 from .density import check_information_density
 from .embedded_tweets import load_and_attach_embedded_tweets
 
@@ -501,6 +515,34 @@ def _validate_block_count(blocks: list[dict[str, Any]]) -> tuple[list[str], list
     return errors, warnings
 
 
+def _validate_required_block_types(
+    blocks: list[dict[str, Any]],
+) -> tuple[list[str], list[str]]:
+    """Validate that all required semantic block types are present.
+
+    Every flow must contain at least SETUP and RESOLUTION blocks regardless of
+    position (position rules are enforced by _validate_role_constraints).
+
+    Args:
+        blocks: Narrative blocks.
+
+    Returns:
+        Tuple of (errors, warnings). Each missing required type produces one error.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    present_roles = {block.get("role") for block in blocks}
+    for required_role in sorted(REQUIRED_BLOCK_TYPES):
+        if required_role not in present_roles:
+            errors.append(
+                f"Required block type missing: {required_role} "
+                f"(present roles: {sorted(r for r in present_roles if r)})"
+            )
+
+    return errors, warnings
+
+
 def _validate_role_constraints(blocks: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
     """Validate role constraints.
 
@@ -676,6 +718,9 @@ def _validate_mini_box(blocks: list[dict[str, Any]]) -> tuple[list[str], list[st
     - mini_box.cumulative.home — cumulative home stats up to this block
     - mini_box.cumulative.away — cumulative away stats up to this block
     - mini_box.delta           — stats for just this block's time window
+
+    Absent fields from MINI_BOX_STAT_FIELDS are filled with MINI_BOX_UNKNOWN
+    (never left null) and emit a warning per missing field.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -692,14 +737,35 @@ def _validate_mini_box(blocks: list[dict[str, Any]]) -> tuple[list[str], list[st
         if not cumulative or not isinstance(cumulative, dict):
             errors.append(f"Block {block_idx}: mini_box missing cumulative stats")
         else:
-            if not cumulative.get("home"):
-                errors.append(f"Block {block_idx}: mini_box cumulative missing home stats")
-            if not cumulative.get("away"):
-                errors.append(f"Block {block_idx}: mini_box cumulative missing away stats")
+            for side in ("home", "away"):
+                team_stats = cumulative.get(side)
+                if team_stats is None:
+                    errors.append(
+                        f"Block {block_idx}: mini_box cumulative missing {side} stats"
+                    )
+                elif isinstance(team_stats, dict):
+                    for field in sorted(MINI_BOX_STAT_FIELDS):
+                        if team_stats.get(field) is None:
+                            team_stats[field] = MINI_BOX_UNKNOWN
+                            warnings.append(
+                                f"Block {block_idx}: mini_box cumulative.{side}.{field} "
+                                f"absent — filled with {MINI_BOX_UNKNOWN!r}"
+                            )
 
         delta = mini_box.get("delta")
         if not delta or not isinstance(delta, dict):
             errors.append(f"Block {block_idx}: mini_box missing segment delta stats")
+        else:
+            for side in ("home", "away"):
+                side_stats = delta.get(side)
+                if isinstance(side_stats, dict):
+                    for field in sorted(MINI_BOX_STAT_FIELDS):
+                        if side_stats.get(field) is None:
+                            side_stats[field] = MINI_BOX_UNKNOWN
+                            warnings.append(
+                                f"Block {block_idx}: mini_box delta.{side}.{field} "
+                                f"absent — filled with {MINI_BOX_UNKNOWN!r}"
+                            )
 
     return errors, warnings
 
@@ -818,17 +884,29 @@ async def execute_validate_blocks(
     all_errors.extend(errors)
     all_warnings.extend(warnings)
     if errors:
+        logger.warning(
+            "block_count_out_of_range",
+            extra={
+                "game_id": game_id,
+                "observed": len(blocks),
+                "expected_min": MIN_BLOCKS,
+                "expected_max": MAX_BLOCKS,
+            },
+        )
         output.add_log(f"Rule 1 FAILED: {errors}", level="error")
     else:
         output.add_log("Rule 1 PASSED")
 
-    # 2. Role constraints
+    # 2. Role constraints (position) + required block types (presence)
     output.add_log("Checking Rule 2: Role constraints")
     errors, warnings = _validate_role_constraints(blocks)
     all_errors.extend(errors)
     all_warnings.extend(warnings)
-    if errors:
-        output.add_log(f"Rule 2 FAILED: {errors}", level="error")
+    type_errors, type_warnings = _validate_required_block_types(blocks)
+    all_errors.extend(type_errors)
+    all_warnings.extend(type_warnings)
+    if errors or type_errors:
+        output.add_log(f"Rule 2 FAILED: {errors + type_errors}", level="error")
     else:
         output.add_log("Rule 2 PASSED")
 
@@ -951,7 +1029,8 @@ async def execute_validate_blocks(
         increment_regen(sport, reason)
     else:
         decision = "FALLBACK"
-        increment_fallback(sport)
+        fallback_reason = "coverage_fail" if coverage_errors else "quality_fail"
+        increment_fallback(sport, fallback_reason)
 
     if passed and coverage_passed:
         output.add_log(f"VALIDATE_BLOCKS PASSED with {len(all_warnings)} warnings")

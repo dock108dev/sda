@@ -471,6 +471,32 @@ services:
       timeout: 5s
       retries: 5
 
+  # Prometheus — scrapes OTel collector metrics endpoint.
+  # Only started when the "observability" profile is active:
+  #   docker compose --profile observability up
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: sports-prometheus
+    profiles: ["observability"]
+    logging: *default-logging
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   log-relay:
     build:
       context: ./log-relay
@@ -494,6 +520,7 @@ volumes:
   scraper-cache:
   model-artifacts:
   grafana-data:
+  prometheus-data:
 
 networks:
   internal:

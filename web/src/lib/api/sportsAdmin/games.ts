@@ -37,10 +37,6 @@ export async function resyncGame(gameId: number): Promise<JobResponse> {
   return request(`/api/admin/sports/games/${gameId}/resync`, { method: "POST" });
 }
 
-// Legacy aliases
-export const rescrapeGame = resyncGame;
-export const resyncOdds = resyncGame;
-
 /**
  * Fetch the game flow for a game.
  * Returns null only on 404 (game not found).

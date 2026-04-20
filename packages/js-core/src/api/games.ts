@@ -21,8 +21,7 @@ export type GameFlowPlay = {
   clock: string | null;
   playType: string | null;
   description: string | null;
-  homeScore: number | null;
-  awayScore: number | null;
+  score: ScoreObject | null;
 };
 
 export type NarrativeBlock = {

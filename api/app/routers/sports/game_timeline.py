@@ -30,6 +30,7 @@ from .schemas import (
     ScoreObject,
     TimelineArtifactResponse,
 )
+from .schemas.common import _score_obj
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -174,7 +175,7 @@ async def get_game_flow(
         select(SportsGameFlow).where(
             SportsGameFlow.game_id == game_id,
             SportsGameFlow.story_version == FLOW_VERSION,
-            SportsGameFlow.moments_json.isnot(None),
+            SportsGameFlow.blocks_json.isnot(None),
         )
     )
     flow_record = flow_result.scalar_one_or_none()
@@ -263,8 +264,7 @@ async def get_game_flow(
             clock=play.game_clock,
             playType=play.play_type,
             description=play.description,
-            homeScore=play.home_score,
-            awayScore=play.away_score,
+            score=_score_obj(play.home_score, play.away_score),
         )
         for play_index in sorted(all_play_ids)
         if (play := play_lookup.get(play_index))

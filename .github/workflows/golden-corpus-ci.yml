@@ -6,6 +6,11 @@ name: Golden Corpus Pipeline Gate
 on:
   pull_request:
     branches: ["main"]
+    paths:
+      - "api/app/services/pipeline/**"
+      - "scraper/**"
+      - "tests/golden/**"
+      - ".github/workflows/golden-corpus-ci.yml"
   push:
     branches: ["main"]
   workflow_dispatch: {}
@@ -73,10 +78,11 @@ jobs:
         # Collects all failures rather than stopping on first (-x removed).
         # TestPassRateGate runs last and fails the job if pass rate < GOLDEN_PASS_THRESHOLD.
         # Per-sport summary is written to $GITHUB_STEP_SUMMARY by the conftest plugin.
+        # Regression tests (ISSUE-004) run against tests/golden/ fixtures.
         run: |
           source .venv/bin/activate
           pytest scraper/tests/test_golden_corpus.py \
-            -k "TestPipelineExecution or TestCoverageFields or TestPassRateGate" \
+            -k "TestPipelineExecution or TestCoverageFields or TestPassRateGate or TestBlockCountRegression or TestRequiredBlockTypes or TestQualityScoreRegression" \
             --timeout=300 \
             -v \
             --tb=short

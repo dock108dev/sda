@@ -21,11 +21,21 @@
  * These guardrails define the product.
  */
 
-import type { FlowSource, NarrativeBlock } from "./api/sportsAdmin/gameFlowTypes";
+import type { FlowSource, NarrativeBlock, SemanticRole } from "./api/sportsAdmin/gameFlowTypes";
 
 // =============================================================================
 // INVARIANT CONSTANTS
 // =============================================================================
+
+/**
+ * Required semantic role types that every flow must contain.
+ * Mirrors REQUIRED_BLOCK_TYPES in api/app/services/pipeline/stages/validate_blocks.py.
+ * Keep in sync: any change here must be reflected there and vice versa.
+ */
+export const REQUIRED_BLOCK_TYPE_ROLES: readonly SemanticRole[] = [
+  "SETUP",
+  "RESOLUTION",
+] as const;
 
 /** Maximum number of narrative blocks per game */
 export const MAX_BLOCKS = 7;
@@ -170,6 +180,35 @@ export function validateBlocksPreRender(
       message: `Total word count ${totalWords} may exceed ${MAX_READ_TIME_SECONDS}s read time`,
       actualValue: totalWords,
       limitValue: MAX_TOTAL_WORDS,
+      severity: "warning",
+    });
+  }
+
+  // Check required block types are present
+  const presentRoles = new Set(blocks.map((b) => b.role));
+  for (const requiredRole of REQUIRED_BLOCK_TYPE_ROLES) {
+    if (!presentRoles.has(requiredRole)) {
+      violations.push({
+        invariant: "REQUIRED_BLOCK_TYPE",
+        message: `Required block type ${requiredRole} is missing from flow`,
+        actualValue: [...presentRoles],
+        limitValue: requiredRole,
+        severity: "error",
+      });
+    }
+  }
+
+  // Check RESOLUTION block for specificity warning (mirrors _check_resolution_specificity)
+  // Soft check: warns when the backend flagged the block as lacking a traceable
+  // final-window play reference. Does not affect the passed/error outcome.
+  const resolutionBlock = blocks.find((b) => b.role === "RESOLUTION");
+  if (resolutionBlock?.resolutionSpecificityWarning) {
+    violations.push({
+      invariant: "RESOLUTION_SPECIFICITY",
+      message:
+        "RESOLUTION block has no traceable reference to a final-window play — narrative may be generic",
+      actualValue: resolutionBlock.blockIndex,
+      limitValue: "at least one named play or score from the final game window",
       severity: "warning",
     });
   }

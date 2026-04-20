@@ -120,7 +120,7 @@ async def backfill_embedded_tweets_for_game(
         }
 
     # Validate all embedded tweet references exist before writing.
-    await validate_embedded_tweet_ids(session, updated_blocks)
+    updated_blocks = await validate_embedded_tweet_ids(session, updated_blocks, game_id)
 
     # Persist updated blocks
     flow.blocks_json = updated_blocks

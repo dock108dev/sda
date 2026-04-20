@@ -29,7 +29,11 @@ SKIP_SUFFIXES = (
     "Action",
 )
 
-PYDANTIC_BASES = {"BaseModel", "BaseSettings"}
+# Direct Pydantic base classes that mark a class as a model to lint.
+PYDANTIC_BASES = {"BaseModel", "BaseSettings", "CamelResponse"}
+
+# Base classes that imply alias_generator on all subclasses (inherited config).
+ALIAS_GENERATOR_BASES = {"CamelResponse"}
 
 
 def _has_underscore(name: str) -> bool:
@@ -44,7 +48,19 @@ def _to_camel(snake: str) -> str:
 def _model_has_alias_generator(
     class_node: ast.ClassDef, alias_cfg_names: set[str]
 ) -> bool:
-    """Return True if the class body assigns model_config with alias_generator."""
+    """Return True if the class has alias_generator coverage.
+
+    Coverage is present when:
+    - The class body assigns model_config with alias_generator, OR
+    - The class directly inherits from a base that implies alias_generator
+      (e.g. CamelResponse), meaning all subclasses inherit the config.
+    """
+    # Inherited alias_generator via known base class
+    for base in class_node.bases:
+        base_name = ast.unparse(base).split(".")[-1]
+        if base_name in ALIAS_GENERATOR_BASES:
+            return True
+
     for item in class_node.body:
         if not isinstance(item, ast.Assign):
             continue

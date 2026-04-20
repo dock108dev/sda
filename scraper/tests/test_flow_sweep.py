@@ -91,11 +91,15 @@ _ss_jobs_runs = _stub("sports_scraper.services.job_runs")
 _ss_redis = _stub("sports_scraper.utils.redis_lock")
 _ss_redis.LOCK_TIMEOUT_30MIN = 1800
 _ss_redis.LOCK_TIMEOUT_5MIN = 300
+_ss_redis.LOCK_TIMEOUT_1HOUR = 3600
 _ss_utils = _stub("sports_scraper.utils")
 _ss_utils.redis_lock = _ss_redis
 
 _db_models_stub = sys.modules["sports_scraper.db.db_models"]
 _db_models_stub.GameStatus.final.value = "final"
+_db_models_stub.GameStatus.recap_pending.value = "recap_pending"
+_db_models_stub.GameStatus.recap_ready.value = "recap_ready"
+_db_models_stub.GameStatus.recap_failed.value = "recap_failed"
 
 # Wire column attributes so comparisons (>=, ==) don't raise TypeError.
 # Python dispatches >= via type(left).__ge__, so _ColMock instances are needed.
@@ -107,9 +111,10 @@ _db_models_stub.SportsGameTimelineArtifact.game_id = _ColMock()
 _ss_db.db_models = _db_models_stub
 sys.modules["sports_scraper.services"].job_runs = _ss_jobs_runs
 
-# SQLAlchemy filter helpers — not_ returns its arg unchanged; exists() is a mock.
+# SQLAlchemy filter helpers — not_ returns its arg unchanged; exists() and or_() are mocks.
 _sa_stub = sys.modules["sqlalchemy"]
 _sa_stub.not_ = MagicMock(side_effect=lambda x: x)
+_sa_stub.or_ = MagicMock(return_value=MagicMock())
 _sa_stub.exists = MagicMock(return_value=MagicMock())
 
 # Load flow_trigger_tasks fresh so all stubs above are visible.
@@ -237,3 +242,19 @@ class TestSweepMissingFlows:
                 _task_mod.sweep_missing_flows()
 
         m_release.assert_called_once_with(SWEEP_LOCK, "tok")
+
+
+class TestSweepIncludesRecapFailed:
+    def test_or_filter_called_with_final_and_recap_failed(self):
+        """Sweep must pass both final and recap_failed values to or_() filter."""
+        sa_stub = sys.modules["sqlalchemy"]
+
+        # Reset call history so we can inspect what this run produces
+        sa_stub.or_.reset_mock()
+
+        _run_sweep(game_ids=[])
+
+        assert sa_stub.or_.called, "or_() must be called in the sweep filter"
+        call_args = sa_stub.or_.call_args[0]
+        # Two comparisons should be passed to or_() — one for final, one for recap_failed
+        assert len(call_args) == 2

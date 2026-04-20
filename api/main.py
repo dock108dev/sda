@@ -117,6 +117,15 @@ app = FastAPI(
             ),
         },
         {
+            "name": "admin",
+            "description": (
+                "**Admin API** — Mutating and operational endpoints under "
+                "``/api/admin/``. Admin role required. Never mixed with "
+                "consumer ``/api/v1/`` routes (enforced by "
+                "``scripts/lint_router_namespaces.py``)."
+            ),
+        },
+        {
             "name": "auth",
             "description": (
                 "**Authentication** — Sign up, log in, and retrieve "

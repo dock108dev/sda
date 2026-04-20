@@ -236,14 +236,3 @@ async def resync_game(game_id: int, session: AsyncSession = Depends(get_db)) -> 
     if not game:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
     return await enqueue_single_game_resync(session, game)
-
-
-# Keep old endpoints as aliases for backward compatibility
-@router.post("/games/{game_id}/rescrape", response_model=JobResponse, include_in_schema=False)
-async def rescrape_game(game_id: int, session: AsyncSession = Depends(get_db)) -> JobResponse:
-    return await resync_game(game_id, session)
-
-
-@router.post("/games/{game_id}/resync-odds", response_model=JobResponse, include_in_schema=False)
-async def resync_game_odds(game_id: int, session: AsyncSession = Depends(get_db)) -> JobResponse:
-    return await resync_game(game_id, session)

@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from .common import (
+    ScoreObject,
     LiveSnapshot,
     MLBBatterStat,
     MLBPitcherStat,
@@ -59,8 +60,7 @@ class GameSummary(BaseModel):
     home_team: str = Field(..., alias="homeTeam")
     away_team: str = Field(..., alias="awayTeam")
     status: str | None = None
-    home_score: int | None = Field(None, alias="homeScore")
-    away_score: int | None = Field(None, alias="awayScore")
+    score: ScoreObject | None = None
     current_period: int | None = Field(None, alias="currentPeriod")
     game_clock: str | None = Field(None, alias="gameClock")
     has_boxscore: bool = Field(..., alias="hasBoxscore")
@@ -139,8 +139,7 @@ class GameMeta(BaseModel):
     away_team: str = Field(..., alias="awayTeam")
     home_team_id: int | None = Field(None, alias="homeTeamId")
     away_team_id: int | None = Field(None, alias="awayTeamId")
-    home_score: int | None = Field(None, alias="homeScore")
-    away_score: int | None = Field(None, alias="awayScore")
+    score: ScoreObject | None = None
     status: str
     scrape_version: int | None = Field(None, alias="scrapeVersion")
     last_scraped_at: datetime | None = Field(None, alias="lastScrapedAt")

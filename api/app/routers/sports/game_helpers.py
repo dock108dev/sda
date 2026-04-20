@@ -18,7 +18,8 @@ from ...db.sports import GameStatus, SportsGame, SportsLeague, SportsTeam
 from ...game_metadata.models import GameContext, StandingsEntry, TeamRatings
 from ...services.game_status import compute_status_flags
 from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-from .schemas import GameSummary, JobResponse, LiveSnapshot, ScrapeRunConfig, SocialPostEntry
+from .schemas import GameSummary, JobResponse, LiveSnapshot, ScrapeRunConfig, ScoreObject, SocialPostEntry
+from .schemas.common import _score_obj
 
 logger = logging.getLogger(__name__)
 
@@ -284,8 +285,7 @@ def summarize_game(
         live_snapshot = LiveSnapshot(
             period_label=current_period_label,
             time_label=time_label(current_period, game_clock_val, league_code),
-            home_score=game.home_score,
-            away_score=game.away_score,
+            score=_score_obj(game.home_score, game.away_score),
             current_period=current_period,
             game_clock=game_clock_val,
         )
@@ -301,8 +301,7 @@ def summarize_game(
         status=game.status,
         home_team=game.home_team.name,
         away_team=game.away_team.name,
-        home_score=game.home_score,
-        away_score=game.away_score,
+        score=_score_obj(game.home_score, game.away_score),
         current_period=current_period,
         game_clock=game_clock_val,
         has_boxscore=has_boxscore,

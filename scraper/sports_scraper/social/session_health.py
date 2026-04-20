@@ -5,8 +5,11 @@ valid. Results are persisted to Redis so the admin dashboard can display them
 and the circuit breaker state is visible within seconds of a probe run.
 
 Redis keys:
-  playwright:session:health       — JSON health snapshot, 35-min TTL
-  playwright:session:circuit_open — "1" when session is invalid, 35-min TTL
+  playwright:session:health               — JSON health snapshot, 1h TTL
+  playwright:session:circuit_open         — "1" when circuit is tripped, 1h TTL
+  playwright:session:consecutive_failures — int counter reset on success, 1h TTL
+
+Circuit breaker trips after CIRCUIT_BREAKER_THRESHOLD consecutive probe failures.
 """
 
 from __future__ import annotations
@@ -22,10 +25,13 @@ from ..logging import logger
 
 HEALTH_KEY = "playwright:session:health"
 CIRCUIT_OPEN_KEY = "playwright:session:circuit_open"
+CONSECUTIVE_FAILURES_KEY = "playwright:session:consecutive_failures"
 
-# TTL for both keys — slightly longer than the 30-min probe cadence so a
-# missed beat cycle doesn't immediately clear state.
-_KEY_TTL_SECONDS = 35 * 60
+# Trip the circuit breaker after this many consecutive probe failures.
+CIRCUIT_BREAKER_THRESHOLD = 3
+
+# TTL for all keys — 1 hour so a missed beat cycle doesn't immediately clear state.
+_KEY_TTL_SECONDS = 60 * 60
 
 # Hard cap for the entire browser session inside the worker thread.
 _PROBE_THREAD_TIMEOUT_SECONDS = 12
@@ -180,15 +186,41 @@ def probe_session_health(
         )
 
 
-def record_health(redis_client: Any, result: SessionHealthResult) -> None:
-    """Persist health result and trip/clear the circuit breaker in Redis."""
+def record_health(redis_client: Any, result: SessionHealthResult) -> bool:
+    """Persist health result and manage the circuit breaker in Redis.
+
+    Returns True exactly when the circuit breaker transitions from closed to
+    open (i.e. the CIRCUIT_BREAKER_THRESHOLD-th consecutive failure), so the
+    caller can emit a one-time alert without re-alerting on subsequent failures.
+    """
     payload = json.dumps(asdict(result))
     redis_client.set(HEALTH_KEY, payload, ex=_KEY_TTL_SECONDS)
 
     if result.is_valid:
         redis_client.delete(CIRCUIT_OPEN_KEY)
-    else:
+        redis_client.delete(CONSECUTIVE_FAILURES_KEY)
+        return False
+
+    # Increment the consecutive-failure counter (atomic; creates key at 0 first).
+    count = redis_client.incr(CONSECUTIVE_FAILURES_KEY)
+    redis_client.expire(CONSECUTIVE_FAILURES_KEY, _KEY_TTL_SECONDS)
+
+    if count >= CIRCUIT_BREAKER_THRESHOLD:
         redis_client.set(CIRCUIT_OPEN_KEY, "1", ex=_KEY_TTL_SECONDS)
+        # Return True only on the exact transition (count == threshold) so
+        # the caller alerts once rather than on every subsequent failure.
+        return count == CIRCUIT_BREAKER_THRESHOLD
+
+    return False
+
+
+def get_consecutive_failures(redis_client: Any) -> int:
+    """Return the current consecutive-failure count (0 if key absent)."""
+    raw = redis_client.get(CONSECUTIVE_FAILURES_KEY)
+    try:
+        return int(raw) if raw else 0
+    except (TypeError, ValueError):
+        return 0
 
 
 def get_cached_health(redis_client: Any) -> dict | None:

@@ -33,16 +33,16 @@ class TestRecordStageDuration:
         with patch.object(m, "_instruments", return_value=(hist, regen, fallback, published, score_mismatch)):
             m.record_stage_duration("NORMALIZE_PBP", "NBA", 1234.5)
         hist.record.assert_called_once_with(
-            1234.5, attributes={"stage_name": "NORMALIZE_PBP", "sport": "NBA"}
+            1234.5, attributes={"stage": "NORMALIZE_PBP", "sport": "NBA"}
         )
 
-    def test_different_stages_use_stage_name_attribute(self):
+    def test_different_stages_use_stage_attribute(self):
         m = _reset_module()
         hist, regen, fallback, published, score_mismatch = _make_mock_instruments()
         with patch.object(m, "_instruments", return_value=(hist, regen, fallback, published, score_mismatch)):
             m.record_stage_duration("ANALYZE_DRAMA", "NFL", 999.0)
         hist.record.assert_called_once_with(
-            999.0, attributes={"stage_name": "ANALYZE_DRAMA", "sport": "NFL"}
+            999.0, attributes={"stage": "ANALYZE_DRAMA", "sport": "NFL"}
         )
 
 
@@ -67,12 +67,19 @@ class TestIncrementRegen:
 
 
 class TestIncrementFallback:
-    def test_increments_with_sport(self):
+    def test_increments_with_sport_and_reason(self):
+        m = _reset_module()
+        hist, regen, fallback, published, score_mismatch = _make_mock_instruments()
+        with patch.object(m, "_instruments", return_value=(hist, regen, fallback, published, score_mismatch)):
+            m.increment_fallback("NHL", "coverage_fail")
+        fallback.add.assert_called_once_with(1, attributes={"sport": "NHL", "reason": "coverage_fail"})
+
+    def test_default_reason_is_max_regen_exceeded(self):
         m = _reset_module()
         hist, regen, fallback, published, score_mismatch = _make_mock_instruments()
         with patch.object(m, "_instruments", return_value=(hist, regen, fallback, published, score_mismatch)):
             m.increment_fallback("NHL")
-        fallback.add.assert_called_once_with(1, attributes={"sport": "NHL"})
+        fallback.add.assert_called_once_with(1, attributes={"sport": "NHL", "reason": "max_regen_exceeded"})
 
 
 class TestIncrementPublished:
@@ -190,13 +197,14 @@ class TestValidateBlocksEmitsMetrics:
             },
         )
 
-        with patch(
-            "app.services.pipeline.stages.validate_blocks.load_and_attach_embedded_tweets",
-            new=AsyncMock(return_value=(blocks, None)),
-        ):
-            return asyncio.get_event_loop().run_until_complete(
-                execute_validate_blocks(session, stage_input)
-            )
+        async def _inner():
+            with patch(
+                "app.services.pipeline.stages.validate_blocks.load_and_attach_embedded_tweets",
+                new=AsyncMock(return_value=(blocks, None)),
+            ):
+                return await execute_validate_blocks(session, stage_input)
+
+        return asyncio.run(_inner())
 
     def test_regenerate_increments_regen_counter(self):
         import app.services.pipeline.metrics as m
@@ -225,8 +233,10 @@ class TestValidateBlocksEmitsMetrics:
         with patch.object(m, "_instruments", return_value=(hist, regen, fallback, published, score_mismatch)):
             result = self._run(blocks, regen_attempt=2)  # >= MAX_REGEN_ATTEMPTS=2
 
-        assert result.data["decision"] == "FALLBACK"
-        fallback.add.assert_called_once_with(1, attributes={"sport": "NBA"})
+        # FALLBACK replaces LLM blocks with template blocks → final decision is PUBLISH
+        assert result.data["fallback_used"] is True
+        assert result.data["decision"] == "PUBLISH"
+        fallback.add.assert_called_once_with(1, attributes={"sport": "NBA", "reason": "coverage_fail"})
         regen.add.assert_not_called()
 
     def test_no_metric_on_publish(self):

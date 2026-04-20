@@ -66,6 +66,7 @@ _bc_mod = _load_module(
 
 CollectedPost = _models_mod.CollectedPost
 BlueSkyCollector = _bc_mod.BlueSkyCollector
+persist_bluesky_posts = _bc_mod.persist_bluesky_posts
 _build_post_url = _bc_mod._build_post_url
 _extract_media = _bc_mod._extract_media
 _parse_at_uri = _bc_mod._parse_at_uri
@@ -430,3 +431,138 @@ class TestFeatureFlag:
             "ENABLE_BLUESKY_SOCIAL": "true",
         })
         assert s.bluesky_enabled is True
+
+
+# ---------------------------------------------------------------------------
+# persist_bluesky_posts — schema compliance and write-path tests.
+# Stubs the DB layer so no real database connection is required.
+# ---------------------------------------------------------------------------
+
+def _make_post(
+    rkey: str = "rkey1",
+    handle: str = "team.bsky.social",
+    text: str = "Game update!",
+    media_type: str = "none",
+    has_video: bool = False,
+) -> CollectedPost:
+    return CollectedPost(
+        post_url=f"https://bsky.app/profile/{handle}/post/{rkey}",
+        external_post_id=rkey,
+        platform="bluesky",
+        posted_at=datetime(2024, 1, 15, 14, 0, tzinfo=UTC),
+        has_video=has_video,
+        text=text,
+        author_handle=handle,
+        media_type=media_type,
+    )
+
+
+def _make_db_stubs():
+    """Return (mock_session, fake_db_models, mock_insert_cls) for persist tests."""
+    # Stub the insert statement chain: insert(Model).values(...).on_conflict_do_nothing(...)
+    mock_result = MagicMock()
+    mock_result.rowcount = 1
+
+    mock_stmt = MagicMock()
+    mock_stmt.on_conflict_do_nothing.return_value = mock_stmt
+
+    mock_insert_cls = MagicMock(return_value=mock_stmt)
+    mock_stmt_with_values = MagicMock()
+    mock_stmt_with_values.on_conflict_do_nothing.return_value = mock_stmt_with_values
+
+    # insert(Model) -> obj; obj.values(**kw) -> obj2; obj2.on_conflict_do_nothing(...) -> obj2
+    insert_result = MagicMock()
+    insert_result.values.return_value = mock_stmt_with_values
+    mock_stmt_with_values.on_conflict_do_nothing.return_value = mock_stmt_with_values
+    mock_insert_cls.return_value = insert_result
+
+    mock_session = MagicMock()
+    mock_session.execute.return_value = mock_result
+
+    fake_tsp = MagicMock()
+    fake_db_models = types.SimpleNamespace(TeamSocialPost=fake_tsp)
+
+    # Wire stubs into sys.modules so the lazy imports inside persist_bluesky_posts resolve.
+    fake_db_module = types.ModuleType("sports_scraper.db")
+    fake_db_module.db_models = fake_db_models  # type: ignore[attr-defined]
+    sys.modules["sports_scraper.db"] = fake_db_module
+
+    # Stub sqlalchemy.dialects.postgresql so `from sqlalchemy.dialects.postgresql import insert` works.
+    pg_mod = types.ModuleType("sqlalchemy.dialects.postgresql")
+    pg_mod.insert = mock_insert_cls  # type: ignore[attr-defined]
+    # Ensure parent stubs exist too.
+    sys.modules.setdefault("sqlalchemy", types.ModuleType("sqlalchemy"))
+    sys.modules.setdefault("sqlalchemy.dialects", types.ModuleType("sqlalchemy.dialects"))
+    sys.modules["sqlalchemy.dialects.postgresql"] = pg_mod
+
+    return mock_session, fake_db_models, mock_insert_cls, mock_stmt_with_values
+
+
+class TestPersistBlueSkyPosts:
+    def test_returns_new_count_for_inserted_rows(self):
+        session, db_models, insert_cls, stmt = _make_db_stubs()
+        posts = [_make_post("r1"), _make_post("r2")]
+        count = persist_bluesky_posts(session, team_id=42, posts=posts)
+        assert count == 2
+        assert session.execute.call_count == 2
+
+    def test_schema_compliance_fields(self):
+        """CollectedPost fields map to the expected TeamSocialPost columns."""
+        session, db_models, insert_cls, stmt = _make_db_stubs()
+        post = _make_post("rkey99", handle="bulls.bsky.social", text="Let's go!")
+        persist_bluesky_posts(session, team_id=7, posts=[post])
+
+        # Inspect the values(...) call on the insert statement.
+        call_kwargs = insert_cls.return_value.values.call_args[1]
+        assert call_kwargs["platform"] == "bluesky"
+        assert call_kwargs["team_id"] == 7
+        assert call_kwargs["external_post_id"] == "rkey99"
+        assert call_kwargs["post_url"] == "https://bsky.app/profile/bulls.bsky.social/post/rkey99"
+        assert call_kwargs["tweet_text"] == "Let's go!"
+        assert call_kwargs["source_handle"] == "bulls.bsky.social"
+        assert call_kwargs["mapping_status"] == "unmapped"
+        assert call_kwargs["game_phase"] == "unknown"
+        assert call_kwargs["has_video"] is False
+        assert call_kwargs["media_type"] == "none"
+
+    def test_zero_rowcount_not_counted(self):
+        session, db_models, insert_cls, stmt = _make_db_stubs()
+        session.execute.return_value.rowcount = 0
+        posts = [_make_post("dup")]
+        count = persist_bluesky_posts(session, team_id=1, posts=posts)
+        assert count == 0
+
+    def test_empty_posts_returns_zero(self):
+        session, db_models, insert_cls, stmt = _make_db_stubs()
+        count = persist_bluesky_posts(session, team_id=1, posts=[])
+        assert count == 0
+        session.execute.assert_not_called()
+
+    def test_none_media_type_defaults_to_none_string(self):
+        session, db_models, insert_cls, stmt = _make_db_stubs()
+        post = CollectedPost(
+            post_url="https://bsky.app/profile/h/post/r",
+            external_post_id="r",
+            platform="bluesky",
+            posted_at=datetime(2024, 1, 15, 14, 0, tzinfo=UTC),
+            has_video=False,
+            media_type=None,
+        )
+        persist_bluesky_posts(session, team_id=1, posts=[post])
+        call_kwargs = insert_cls.return_value.values.call_args[1]
+        assert call_kwargs["media_type"] == "none"
+
+    def test_video_post_schema(self):
+        session, db_models, insert_cls, stmt = _make_db_stubs()
+        post = _make_post("vid1", media_type="video", has_video=True)
+        persist_bluesky_posts(session, team_id=3, posts=[post])
+        call_kwargs = insert_cls.return_value.values.call_args[1]
+        assert call_kwargs["has_video"] is True
+        assert call_kwargs["media_type"] == "video"
+
+    def test_on_conflict_do_nothing_called(self):
+        session, db_models, insert_cls, stmt = _make_db_stubs()
+        persist_bluesky_posts(session, team_id=1, posts=[_make_post("r1")])
+        stmt.on_conflict_do_nothing.assert_called_once_with(
+            index_elements=["external_post_id"]
+        )

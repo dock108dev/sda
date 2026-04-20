@@ -149,8 +149,13 @@ def _probe_historical_game_ids(
                 result[(home, away, game_day)] = game_id
                 lookup.append({"home": home, "away": away, "date": str(game_day), "gid": game_id})
         except Exception:
+            logger.debug("nba_game_id_probe_parse_error", exc_info=True, extra={"game_id": game_id})
             consecutive_misses += 1
             if consecutive_misses > 50:
+                logger.warning(
+                    "nba_game_id_probe_early_abort",
+                    extra={"game_num": num, "run_id": run_id, "season": season},
+                )
                 break
             continue
 

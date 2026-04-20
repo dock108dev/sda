@@ -159,4 +159,5 @@ def get_all_live_keys_for_game(game_id: int) -> list[str]:
         r = _get_redis()
         return list(r.scan_iter(f"live:odds:*:{game_id}:*", count=100))
     except Exception:
+        logger.debug("live_odds_redis_scan_failed", extra={"game_id": game_id}, exc_info=True)
         return []
