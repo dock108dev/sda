@@ -38,12 +38,21 @@ def _set_module(name: str, module: object) -> object:
     return module
 
 
-def _restore_stubbed_modules() -> None:
+def _restore_stubbed_modules(include_sports_scraper: bool = False) -> None:
     for name, original in _ORIG_MODULES.items():
+        if not include_sports_scraper and name.startswith("sports_scraper"):
+            continue
         if original is _MISSING:
             sys.modules.pop(name, None)
         else:
             sys.modules[name] = original
+
+
+def teardown_module(_module=None) -> None:
+    """Remove all stubs this file installed so downstream tests re-import real modules."""
+    for _name in list(_ORIG_MODULES):
+        sys.modules.pop(_name, None)
+    sys.modules.pop("sports_scraper.jobs.flow_trigger_tasks", None)
 
 
 def _force_magic(name: str) -> None:
@@ -148,7 +157,34 @@ _task_mod = _ilu.module_from_spec(_spec)
 _task_mod.__package__ = "sports_scraper.jobs"
 sys.modules["sports_scraper.jobs.flow_trigger_tasks"] = _task_mod
 _spec.loader.exec_module(_task_mod)
-_restore_stubbed_modules()
+
+
+# Snapshot installed stubs BEFORE restoring originals, so the autouse fixture
+# can re-install them for each test.
+_STUB_SNAPSHOT = {name: sys.modules.get(name) for name in _ORIG_MODULES}
+_STUB_SNAPSHOT["sports_scraper.jobs.flow_trigger_tasks"] = _task_mod
+
+# Clear only the stubs we installed, so later test files (collected after us)
+# can import real modules at collection time.  Restoring to _ORIG_MODULES is
+# unsafe — the "original" may itself be a stub left by a sibling test file
+# collected before us — so we pop instead.
+for _name in list(_ORIG_MODULES):
+    sys.modules.pop(_name, None)
+sys.modules.pop("sports_scraper.jobs.flow_trigger_tasks", None)
+
+
+@pytest.fixture(autouse=True)
+def _reinstall_stubs():
+    saved = {name: sys.modules.get(name) for name in _STUB_SNAPSHOT}
+    for name, mod in _STUB_SNAPSHOT.items():
+        if mod is not None:
+            sys.modules[name] = mod
+    yield
+    for name, mod in saved.items():
+        if mod is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = mod
 
 
 # ---------------------------------------------------------------------------

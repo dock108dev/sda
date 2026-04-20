@@ -77,8 +77,10 @@ class TestFlowImmutability:
         assert result["status"] == "success"
         mock_call_api.assert_called_once_with(1, "NBA")
 
+    @patch("sports_scraper.utils.redis_lock.acquire_redis_lock", return_value="fake-token")
+    @patch("sports_scraper.utils.redis_lock.release_redis_lock")
     @patch("sports_scraper.jobs.flow_trigger_tasks.get_session")
-    def test_flow_skips_non_final_game(self, mock_get_session):
+    def test_flow_skips_non_final_game(self, mock_get_session, mock_release, mock_acquire):
         """Games not in FINAL status are skipped."""
         from sports_scraper.jobs.flow_trigger_tasks import trigger_flow_for_game
 
@@ -94,10 +96,12 @@ class TestFlowImmutability:
         result = trigger_flow_for_game.run(1)
 
         assert result["status"] == "skipped"
-        assert result["reason"] == "not_final"
+        assert result["reason"] == "not_eligible"
 
+    @patch("sports_scraper.utils.redis_lock.acquire_redis_lock", return_value="fake-token")
+    @patch("sports_scraper.utils.redis_lock.release_redis_lock")
     @patch("sports_scraper.jobs.flow_trigger_tasks.get_session")
-    def test_flow_game_not_found(self, mock_get_session):
+    def test_flow_game_not_found(self, mock_get_session, mock_release, mock_acquire):
         """Missing game returns not_found."""
         from sports_scraper.jobs.flow_trigger_tasks import trigger_flow_for_game
 

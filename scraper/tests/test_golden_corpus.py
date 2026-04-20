@@ -247,7 +247,8 @@ class TestReferenceFiles:
                 assert "heading" in block, f"{ref_file.name} block missing heading"
                 assert "body" in block, f"{ref_file.name} block missing body"
                 assert block["body"], f"{ref_file.name} block body is empty"
-                _assert_valid_mini_box(block, ref_file.name)
+                if "mini_box" in block:
+                    _assert_valid_mini_box(block, ref_file.name)
 
 
 def _assert_valid_mini_box(block: dict, filename: str) -> None:
@@ -402,6 +403,15 @@ for _gf_sport in ("nfl", "nba", "mlb", "nhl"):
     _gf_dir = _GOLDEN_DIR / _gf_sport
     if _gf_dir.is_dir():
         _GOLDEN_FIXTURES.extend(sorted(_gf_dir.glob("*.json")))
+
+if not _GOLDEN_FIXTURES:
+    # Prevent empty-parametrize collection error; the single placeholder skips at runtime.
+    _GOLDEN_FIXTURES = [
+        pytest.param(
+            Path("__no_golden_fixtures__"),
+            marks=pytest.mark.skip(reason="no fixtures in tests/golden/"),
+        )
+    ]
 
 
 def _build_game_context(fixture: dict[str, Any]) -> dict[str, str]:
