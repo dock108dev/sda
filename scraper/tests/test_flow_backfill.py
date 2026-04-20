@@ -49,9 +49,8 @@ def _restore_stubbed_modules(include_sports_scraper: bool = False) -> None:
 
 
 def teardown_module(_module=None) -> None:
-    """Remove all stubs this file installed so downstream tests re-import real modules."""
-    for _name in list(_ORIG_MODULES):
-        sys.modules.pop(_name, None)
+    """Remove only the task module this file loaded; the autouse fixture's per-test
+    teardown has already restored every other stub to pre-install state."""
     sys.modules.pop("sports_scraper.jobs.flow_trigger_tasks", None)
 
 

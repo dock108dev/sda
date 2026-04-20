@@ -68,8 +68,6 @@ def _restore_stubbed_modules(include_sports_scraper: bool = False) -> None:
 
 
 def teardown_module(_module=None) -> None:
-    for _name in list(_ORIG_MODULES):
-        sys.modules.pop(_name, None)
     sys.modules.pop("sports_scraper.jobs.flow_trigger_tasks", None)
 
 
