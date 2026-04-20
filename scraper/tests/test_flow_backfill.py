@@ -163,13 +163,17 @@ _spec.loader.exec_module(_task_mod)
 _STUB_SNAPSHOT = {name: sys.modules.get(name) for name in _ORIG_MODULES}
 _STUB_SNAPSHOT["sports_scraper.jobs.flow_trigger_tasks"] = _task_mod
 
-# Clear only the stubs we installed, so later test files (collected after us)
-# can import real modules at collection time.  Restoring to _ORIG_MODULES is
-# unsafe — the "original" may itself be a stub left by a sibling test file
-# collected before us — so we pop instead.
-for _name in list(_ORIG_MODULES):
-    sys.modules.pop(_name, None)
+# Remove the dynamically-loaded task module and restore pre-stub state for every
+# module we replaced, so sibling test files collected after us see real modules.
+# If the original was _MISSING, pop the stub so a fresh import will reload the
+# real module on demand; otherwise put the real module back. Restoring the real
+# parent package preserves class identity for tests that already imported from it.
 sys.modules.pop("sports_scraper.jobs.flow_trigger_tasks", None)
+for _name, _original in _ORIG_MODULES.items():
+    if _original is _MISSING:
+        sys.modules.pop(_name, None)
+    else:
+        sys.modules[_name] = _original
 
 
 @pytest.fixture(autouse=True)

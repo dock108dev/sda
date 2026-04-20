@@ -44,7 +44,9 @@ class TestSSEEndpoint:
             return call_count[0] > 1  # True on second call
         request.is_disconnected = fake_disconnect
 
-        response = await sse_endpoint(request, channels="game:1:summary", _auth=None)
+        response = await sse_endpoint(
+            request, channels="game:1:summary", last_seq=None, last_epoch=None, _auth=None
+        )
         assert response.status_code == 200
         assert response.media_type == "text/event-stream"
 

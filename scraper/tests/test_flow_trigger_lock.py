@@ -146,9 +146,12 @@ _spec.loader.exec_module(_task_mod)
 _STUB_SNAPSHOT = {name: sys.modules.get(name) for name in _ORIG_MODULES}
 _STUB_SNAPSHOT["sports_scraper.jobs.flow_trigger_tasks"] = _task_mod
 
-for _name in list(_ORIG_MODULES):
-    sys.modules.pop(_name, None)
 sys.modules.pop("sports_scraper.jobs.flow_trigger_tasks", None)
+for _name, _original in _ORIG_MODULES.items():
+    if _original is _MISSING:
+        sys.modules.pop(_name, None)
+    else:
+        sys.modules[_name] = _original
 
 
 @pytest.fixture(autouse=True)

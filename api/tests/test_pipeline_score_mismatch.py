@@ -83,9 +83,13 @@ def _make_stage_input(blocks, validated=True, blocks_validated=True):
 def _run(session, stage_input):
     from app.services.pipeline.stages.finalize_moments import execute_finalize_moments
 
-    return asyncio.get_event_loop().run_until_complete(
-        execute_finalize_moments(session, stage_input, run_uuid="test-uuid")
-    )
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(
+            execute_finalize_moments(session, stage_input, run_uuid="test-uuid")
+        )
+    finally:
+        loop.close()
 
 
 # ---------------------------------------------------------------------------

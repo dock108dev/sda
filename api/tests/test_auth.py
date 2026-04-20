@@ -36,6 +36,7 @@ class TestVerifyApiKey:
         test_key = "a" * 32  # Valid 32-char key
         with patch("app.dependencies.auth.settings") as mock_settings:
             mock_settings.api_key = test_key
+            mock_settings.consumer_api_key = None
 
             result = await verify_api_key(mock_request, test_key)
 
@@ -49,6 +50,7 @@ class TestVerifyApiKey:
 
         with patch("app.dependencies.auth.settings") as mock_settings:
             mock_settings.api_key = configured_key
+            mock_settings.consumer_api_key = None
 
             with pytest.raises(HTTPException) as exc_info:
                 await verify_api_key(mock_request, provided_key)
@@ -177,6 +179,7 @@ class TestVerifyApiKey:
         """Invalid API key logs warning with client IP and path."""
         with patch("app.dependencies.auth.settings") as mock_settings:
             mock_settings.api_key = "correct_key_" + "x" * 20
+            mock_settings.consumer_api_key = None
 
             with patch("app.dependencies.auth.logger") as mock_logger:
                 with pytest.raises(HTTPException):
@@ -222,6 +225,7 @@ class TestConstantTimeComparison:
 
         with patch("app.dependencies.auth.settings") as mock_settings:
             mock_settings.api_key = test_key
+            mock_settings.consumer_api_key = None
 
             with patch("app.dependencies.auth.secrets.compare_digest") as mock_compare:
                 mock_compare.return_value = True

@@ -242,3 +242,4 @@ def golden_corpus_outcomes():
     (file ordering ensures TestPassRateGate runs last).
     """
     return _compute_golden_outcomes
+

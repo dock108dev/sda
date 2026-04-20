@@ -72,7 +72,7 @@ class TestListSportTeamsNBA:
         assert data["sport"] == "nba"
         assert data["count"] == 1
         assert data["teams"][0]["abbreviation"] == "BOS"
-        assert data["teams"][0]["games_with_stats"] == 55
+        assert data["teams"][0]["gamesWithStats"] == 55
 
 
 class TestListSportTeamsNHL:
@@ -175,10 +175,10 @@ class TestSimulateGameNBA:
         assert resp.status_code == 200
         data = resp.json()
         assert data["sport"] == "nba"
-        assert data["home_team"] == "BOS"
-        assert data["away_team"] == "MIA"
-        assert data["home_win_probability"] == 0.56
-        assert data["profiles_loaded"] is False
+        assert data["homeTeam"] == "BOS"
+        assert data["awayTeam"] == "MIA"
+        assert data["homeWinProbability"] == 0.56
+        assert data["profilesLoaded"] is False
         assert data["iterations"] == 100
 
     @patch("app.routers.simulator._predict_with_game_model", new_callable=AsyncMock)
@@ -204,8 +204,8 @@ class TestSimulateGameNBA:
         assert resp.status_code == 200
         data = resp.json()
         assert data["sport"] == "nba"
-        assert data["profiles_loaded"] is True
-        assert data["model_home_win_probability"] == 0.60
+        assert data["profilesLoaded"] is True
+        assert data["modelHomeWinProbability"] == 0.60
 
     @patch("app.routers.simulator._predict_with_game_model", new_callable=AsyncMock)
     @patch("app.routers.simulator.get_team_rolling_profile", new_callable=AsyncMock)
@@ -263,9 +263,9 @@ class TestSimulateGameNHL:
         assert resp.status_code == 200
         data = resp.json()
         assert data["sport"] == "nhl"
-        assert data["home_team"] == "BOS"
-        assert data["away_team"] == "TOR"
-        assert data["home_win_probability"] == 0.52
+        assert data["homeTeam"] == "BOS"
+        assert data["awayTeam"] == "TOR"
+        assert data["homeWinProbability"] == 0.52
 
 
 class TestSimulateGameNCAAB:
@@ -297,9 +297,9 @@ class TestSimulateGameNCAAB:
         assert resp.status_code == 200
         data = resp.json()
         assert data["sport"] == "ncaab"
-        assert data["home_team"] == "DUKE"
-        assert data["away_team"] == "UNC"
-        assert data["home_win_probability"] == 0.65
+        assert data["homeTeam"] == "DUKE"
+        assert data["awayTeam"] == "UNC"
+        assert data["homeWinProbability"] == 0.65
 
 
 class TestSimulateGameUnsupported:
@@ -392,7 +392,7 @@ class TestMLBSimulateBackwardCompat:
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["home_team"] == "NYY"
-        assert data["away_team"] == "LAD"
-        assert data["home_win_probability"] == 0.54
+        assert data["homeTeam"] == "NYY"
+        assert data["awayTeam"] == "LAD"
+        assert data["homeWinProbability"] == 0.54
         assert data["iterations"] == 100

@@ -22,6 +22,11 @@ ALERT_FILES = {
     "score-mismatch": ALERTS_DIR / "score-mismatch.json",
 }
 
+pytestmark = pytest.mark.skipif(
+    not ALERTS_DIR.is_dir(),
+    reason=f"Grafana alert provisioning directory not present at {ALERTS_DIR}",
+)
+
 
 def _load(name: str) -> dict:
     path = ALERT_FILES[name]

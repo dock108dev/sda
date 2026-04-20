@@ -67,7 +67,7 @@ class TestListSimulatorTeams:
         data = resp.json()
         assert data["count"] == 1
         assert data["teams"][0]["abbreviation"] == "NYY"
-        assert data["teams"][0]["games_with_stats"] == 42
+        assert data["teams"][0]["gamesWithStats"] == 42
 
 
 class TestSimulateMLBGame:
@@ -102,10 +102,10 @@ class TestSimulateMLBGame:
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["home_team"] == "NYY"
-        assert data["away_team"] == "LAD"
-        assert data["home_win_probability"] == 0.54
-        assert data["profiles_loaded"] is False
+        assert data["homeTeam"] == "NYY"
+        assert data["awayTeam"] == "LAD"
+        assert data["homeWinProbability"] == 0.54
+        assert data["profilesLoaded"] is False
         assert data["iterations"] == 100
 
     @patch(f"{_MLB_MOD}._predict_with_game_model", new_callable=AsyncMock)
@@ -143,8 +143,8 @@ class TestSimulateMLBGame:
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["profiles_loaded"] is True
-        assert data["model_home_win_probability"] == 0.58
+        assert data["profilesLoaded"] is True
+        assert data["modelHomeWinProbability"] == 0.58
 
     def test_validation_team_too_short(self) -> None:
         client = _make_client()
