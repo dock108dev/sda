@@ -70,18 +70,21 @@ jobs:
       - name: Install dependencies (api + scraper)
         run: |
           uv venv --python 3.12
+          source .venv/bin/activate
           uv pip install -r api/requirements.txt
           uv pip install -e ./scraper
-          uv pip install pytest pytest-timeout
+          uv pip install pytest pytest-cov pytest-timeout
+          python -c "import pytest_cov, pytest_timeout; print('pytest-cov', pytest_cov.__version__)"
 
       - name: Run golden corpus pipeline gate
         # Collects all failures rather than stopping on first (-x removed).
         # TestPassRateGate runs last and fails the job if pass rate < GOLDEN_PASS_THRESHOLD.
         # Per-sport summary is written to $GITHUB_STEP_SUMMARY by the conftest plugin.
         # Regression tests (ISSUE-004) run against tests/golden/ fixtures.
+        working-directory: scraper
         run: |
-          source .venv/bin/activate
-          pytest scraper/tests/test_golden_corpus.py \
+          source ../.venv/bin/activate
+          python -m pytest tests/test_golden_corpus.py \
             -k "TestPipelineExecution or TestCoverageFields or TestPassRateGate or TestBlockCountRegression or TestRequiredBlockTypes or TestQualityScoreRegression" \
             --timeout=300 \
             -v \
