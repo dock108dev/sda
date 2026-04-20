@@ -16,6 +16,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import httpx
+import pytest
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -56,6 +57,26 @@ def _setdefault_module(name: str, module: types.ModuleType) -> None:
 
 def _restore_stubbed_modules() -> None:
     for name, original in _ORIG_MODULES.items():
+        if original is _MISSING:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
+
+
+@pytest.fixture(autouse=True)
+def _restore_runtime_module_stubs():
+    """Prevent per-test module stubs from leaking to other test modules."""
+    names = (
+        "sports_scraper.db",
+        "sqlalchemy",
+        "sqlalchemy.dialects",
+        "sqlalchemy.dialects.postgresql",
+    )
+    originals: dict[str, object] = {
+        name: sys.modules.get(name, _MISSING) for name in names
+    }
+    yield
+    for name, original in originals.items():
         if original is _MISSING:
             sys.modules.pop(name, None)
         else:

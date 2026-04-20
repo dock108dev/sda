@@ -135,20 +135,31 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
 
   // Load available features and saved loadouts when sport changes
   useEffect(() => {
-    setFeaturesLoading(true);
-    setFeatureGrid([]);
-    Promise.all([
-      getAvailableFeatures(sportCode),
-      listFeatureLoadouts(sportCode).catch(() => ({ loadouts: [] })),
-    ])
-      .then(([featRes, loadoutRes]) => {
-        const feats = featRes.plate_appearance_features || featRes.all_features || [];
-        setAvailableFeatures(feats);
-        setFeatureGrid(buildDefaultGrid(feats));
-        setLoadouts(loadoutRes.loadouts || []);
-      })
-      .catch((err) => { console.error("experiments_feature_load_failed", err); })
-      .finally(() => setFeaturesLoading(false));
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      setFeaturesLoading(true);
+      setFeatureGrid([]);
+      Promise.all([
+        getAvailableFeatures(sportCode),
+        listFeatureLoadouts(sportCode).catch(() => ({ loadouts: [] })),
+      ])
+        .then(([featRes, loadoutRes]) => {
+          if (cancelled) return;
+          const feats = featRes.plate_appearance_features || featRes.all_features || [];
+          setAvailableFeatures(feats);
+          setFeatureGrid(buildDefaultGrid(feats));
+          setLoadouts(loadoutRes.loadouts || []);
+        })
+        .catch((err) => { console.error("experiments_feature_load_failed", err); })
+        .finally(() => {
+          if (!cancelled) setFeaturesLoading(false);
+        });
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [sportCode]);
 
   const enabledFeatures = featureGrid.filter((f) => f.enabled);

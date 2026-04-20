@@ -51,7 +51,10 @@ export function ExperimentHistory({ refreshKey, sportCode = "mlb" }: { refreshKe
   }, [sportCode]);
 
   useEffect(() => {
-    refresh();
+    const timer = setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [refresh, refreshKey]);
 
   // Poll for active suites

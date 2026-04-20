@@ -38,7 +38,10 @@ export function CalibrationPanel({ sport }: { sport?: string }) {
   }, [sport]);
 
   useEffect(() => {
-    refresh();
+    const timer = setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   const handleRecordOutcomes = async () => {

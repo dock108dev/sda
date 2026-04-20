@@ -43,7 +43,7 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
     }
   }, [gameId]);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(function connectImpl() {
     if (!mountedRef.current) return;
 
     const url = new URL(`${BASE_URL}/v1/sse`);
@@ -111,7 +111,7 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
         MAX_DELAY_MS,
       );
       attemptRef.current += 1;
-      timerRef.current = setTimeout(connect, delay);
+      timerRef.current = setTimeout(connectImpl, delay);
     };
   }, [gameId, fetchFullState]);
 
