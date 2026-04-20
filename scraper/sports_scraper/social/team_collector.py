@@ -262,7 +262,7 @@ class TeamTweetCollector:
                 existing.has_video = post.has_video
                 existing.video_url = post.video_url
                 existing.image_url = post.image_url
-                existing.media_type = post.media_type or "none"
+                existing.media_type = post.media_type or None
                 existing.source_handle = post.author_handle
                 existing.updated_at = now_utc()
                 logger.debug(
@@ -293,7 +293,8 @@ class TeamTweetCollector:
                     has_video=post.has_video,
                     video_url=post.video_url,
                     image_url=post.image_url,
-                    media_type=post.media_type or "none",
+                    # Column is nullable and CHECK allows only {video, image, NULL}.
+                    media_type=post.media_type or None,
                     source_handle=post.author_handle,
                     mapping_status="unmapped",
                     # Initial value; tweet_mapper reclassifies to pregame/in_game/postgame

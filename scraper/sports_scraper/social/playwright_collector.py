@@ -328,10 +328,12 @@ class PlaywrightXCollector:
                     if text_el:
                         text_content = text_el.inner_text()
 
-                    # Detect media
+                    # Detect media. media_type stays None for text-only posts —
+                    # team_social_posts has a CHECK constraint allowing only
+                    # {video, image, NULL}.
                     video_url = None
                     image_url = None
-                    media_type = "none"
+                    media_type: str | None = None
 
                     video_container = (
                         article.query_selector('[data-testid="videoPlayer"]')

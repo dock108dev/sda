@@ -26,4 +26,4 @@ class CollectedPost(BaseModel):
     # Media content fields for custom embed display
     video_url: str | None = Field(default=None, description="Direct video URL if available")
     image_url: str | None = Field(default=None, description="Thumbnail or image URL")
-    media_type: str | None = Field(default=None, description="video, image, or none")
+    media_type: str | None = Field(default=None, description="'video', 'image', or None for text-only")
