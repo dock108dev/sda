@@ -35,6 +35,7 @@ from app.routers.admin import (
     odds_sync,
     pbp,
     pipeline,
+    platform as admin_platform,
     quality_review,
     quality_summary,
     realtime as admin_realtime,
@@ -247,6 +248,17 @@ app.include_router(golf_router, dependencies=auth_dependency)
 # Admin UI routers — require admin role (Origin-based for admin UI,
 # JWT-based for consumer apps)
 # ---------------------------------------------------------------------------
+# Admin SPA platform endpoints (/api/admin/stats, /api/admin/poll-health).
+# Gated by the admin-tier API key only — not JWT/role — because the admin
+# SPA reaches this backend through an nginx reverse proxy that injects the
+# admin API key, and Caddy Basic Auth already scopes the SPA to operators.
+app.include_router(
+    admin_platform.router,
+    prefix="/api/admin",
+    tags=["admin", "platform"],
+    dependencies=auth_dependency,
+)
+
 app.include_router(
     timeline_jobs.router,
     prefix="/api/admin/sports",
