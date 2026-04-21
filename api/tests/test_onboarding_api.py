@@ -72,10 +72,11 @@ def _make_app(session: _FakeSession | None = None) -> tuple[TestClient, _FakeSes
 
 
 def _valid_payload(**overrides: Any) -> dict[str, Any]:
+    """Build a camelCase request body — matches the frontend's wire format."""
     payload = {
-        "club_name": "Pine Valley GC",
-        "contact_email": "pro@pv.example",
-        "expected_entries": 40,
+        "clubName": "Pine Valley GC",
+        "contactEmail": "pro@pv.example",
+        "expectedEntries": 40,
         "notes": "for Masters 2027",
     }
     payload.update(overrides)
@@ -98,8 +99,11 @@ class TestSubmitClubClaimHappyPath:
             )
         assert resp.status_code == 201, resp.text
         body = resp.json()
-        assert re.match(r"^claim_[\w-]{6,12}$", body["claim_id"])
-        assert body["received_at"]
+        # Project convention: responses are camelCase on the wire.
+        assert re.match(r"^claim_[\w-]{6,12}$", body["claimId"])
+        assert body["receivedAt"]
+        assert "claim_id" not in body
+        assert "received_at" not in body
         assert sess.committed is True
         assert len(sess.added) == 1
         row = sess.added[0]
@@ -107,13 +111,13 @@ class TestSubmitClubClaimHappyPath:
         assert row.contact_email == "pro@pv.example"
         assert row.expected_entries == 40
         assert row.notes == "for Masters 2027"
-        assert row.claim_id == body["claim_id"]
+        assert row.claim_id == body["claimId"]
 
     def test_trims_and_lowercases(self) -> None:
         client, sess = _make_app()
         payload = _valid_payload(
-            club_name="  Pine Valley GC  ",
-            contact_email="PRO@PV.EXAMPLE",
+            clubName="  Pine Valley GC  ",
+            contactEmail="PRO@PV.EXAMPLE",
             notes="   keep me   ",
         )
         with patch("app.routers.onboarding.send_email", new=AsyncMock()):
@@ -176,7 +180,7 @@ class TestSubmitClubClaimValidation:
         with patch("app.routers.onboarding.send_email", new=AsyncMock()):
             resp = client.post(
                 "/api/onboarding/club-claims",
-                json={"contact_email": "pro@pv.example"},
+                json={"contactEmail": "pro@pv.example"},
             )
         assert resp.status_code == 422
 
@@ -185,7 +189,7 @@ class TestSubmitClubClaimValidation:
         with patch("app.routers.onboarding.send_email", new=AsyncMock()):
             resp = client.post(
                 "/api/onboarding/club-claims",
-                json=_valid_payload(club_name=""),
+                json=_valid_payload(clubName=""),
             )
         assert resp.status_code == 422
 
@@ -194,7 +198,7 @@ class TestSubmitClubClaimValidation:
         with patch("app.routers.onboarding.send_email", new=AsyncMock()):
             resp = client.post(
                 "/api/onboarding/club-claims",
-                json=_valid_payload(contact_email="not-an-email"),
+                json=_valid_payload(contactEmail="not-an-email"),
             )
         assert resp.status_code == 422
 
@@ -203,7 +207,7 @@ class TestSubmitClubClaimValidation:
         with patch("app.routers.onboarding.send_email", new=AsyncMock()):
             resp = client.post(
                 "/api/onboarding/club-claims",
-                json=_valid_payload(expected_entries=-1),
+                json=_valid_payload(expectedEntries=-1),
             )
         assert resp.status_code == 422
 

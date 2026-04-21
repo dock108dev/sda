@@ -20,6 +20,10 @@ EXEMPT_PATHS: frozenset[str] = frozenset(
         "/redoc",
         "/openapi.json",
         "/docs/oauth2-redirect",
+        # Prospect-facing onboarding form — public, rate-limited. Not a
+        # consumer (/api/v1/) or admin (/api/admin/) surface; it's a
+        # pre-signup contact endpoint.
+        "/api/onboarding/club-claims",
     }
 )
 

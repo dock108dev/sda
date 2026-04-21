@@ -12,7 +12,8 @@ from datetime import datetime
 from html import escape
 
 from fastapi import APIRouter, Depends, Request, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -25,7 +26,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
 
+_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
 class ClubClaimRequest(BaseModel):
+    model_config = _ALIAS_CFG
+
     club_name: str = Field(min_length=1, max_length=200)
     contact_email: EmailStr
     expected_entries: int | None = Field(default=None, ge=1, le=100_000)
@@ -33,6 +39,8 @@ class ClubClaimRequest(BaseModel):
 
 
 class ClubClaimResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
     claim_id: str
     received_at: datetime
 
