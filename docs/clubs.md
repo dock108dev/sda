@@ -93,7 +93,7 @@ Request:
 ### Commerce (API key required)
 
 ```
-POST /api/commerce/checkout
+POST /api/v1/commerce/checkout
 ```
 Create a Stripe checkout session for a given plan and claim.
 
@@ -129,7 +129,7 @@ Handled events:
 ### Clubs (no auth)
 
 ```
-GET /api/clubs/{slug}
+GET /api/v1/clubs/{slug}
 ```
 Returns club info and its active pools (status: `open`, `locked`, or `live`). Returns 404 for unknown or suspended/cancelled clubs. Used by public entry pages at `/clubs/{slug}/`.
 
@@ -157,7 +157,7 @@ Response:
 ### Billing (JWT required, club owner only)
 
 ```
-POST /api/billing/portal
+POST /api/v1/billing/portal
 ```
 Create a Stripe Customer Portal session for self-service subscription management (cancel, update payment method, view invoices). Caller must be the `owner` of the specified club.
 
@@ -176,7 +176,7 @@ Response:
 ### Club Branding (JWT required, owner + premium plan)
 
 ```
-PUT /api/clubs/{id}/branding
+PUT /api/v1/clubs/{id}/branding
 ```
 Update a club's `branding_json` (logo URL, colors, etc.). Gated by plan entitlement.
 

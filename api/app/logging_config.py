@@ -10,6 +10,19 @@ from typing import Any
 
 from .utils.datetime_utils import now_utc
 
+_SENSITIVE_EXTRA_FIELDS = {
+    "email",
+    "password",
+    "token",
+    "access_token",
+    "refresh_token",
+    "api_key",
+    "apikey",
+    "secret",
+    "authorization",
+    "raw_token",
+}
+
 _RESERVED_LOG_RECORD_KEYS = {
     "args",
     "asctime",
@@ -52,7 +65,7 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
         extras = {
-            key: value
+            key: ("[REDACTED]" if key.lower() in _SENSITIVE_EXTRA_FIELDS else value)
             for key, value in record.__dict__.items()
             if key not in _RESERVED_LOG_RECORD_KEYS
         }

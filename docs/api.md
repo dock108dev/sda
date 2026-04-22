@@ -3810,3 +3810,23 @@ Key fields:
 - `counts_toward_total`: Whether this golfer's score is included in the aggregate
 - `is_dropped`: True for golfers not counted (worse score or didn't make cut)
 - `made_cut`: Whether the golfer is still active (not cut/wd/dq)
+
+---
+
+## Club Provisioning & Commerce
+
+Self-serve club onboarding, Stripe commerce, billing, branding, and audit endpoints. See [Club Provisioning](clubs.md) for the full reference (request/response shapes, entitlement error table, pool lifecycle state machine, Stripe idempotency design).
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/onboarding/club-claims` | Reserve a club slug and start an onboarding session |
+| `GET` | `/api/onboarding/session/{token}` | Fetch onboarding session state (post-payment recovery) |
+| `POST` | `/api/onboarding/claim` | Claim an account via magic-link token after Stripe payment |
+| `POST` | `/api/v1/commerce/checkout` | Create a Stripe Checkout Session for the onboarding session |
+| `POST` | `/api/webhooks/stripe` | Stripe webhook receiver (idempotent via `processed_stripe_events`) |
+| `GET` | `/api/v1/clubs/{slug}` | Public club lookup (name, branding) used for path-based landing pages |
+| `POST` | `/api/v1/billing/portal` | Return a Stripe billing portal URL for the authenticated admin's club |
+| `PUT` | `/api/v1/clubs/{id}/branding` | Update club branding (gated by branding entitlement) |
+| `GET` | `/api/admin/audit` | Platform-admin audit log access |
+
+All endpoints enforce the three-layer idempotency pattern (HTTP keys → DB unique constraints → session state machine) described in `docs/clubs.md` and `CLAUDE.md`.

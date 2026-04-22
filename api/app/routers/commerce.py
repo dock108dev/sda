@@ -21,7 +21,7 @@ from app.db.onboarding import ClubClaim, OnboardingSession
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/commerce", tags=["commerce"])
+router = APIRouter(prefix="/api/v1/commerce", tags=["commerce"])
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 

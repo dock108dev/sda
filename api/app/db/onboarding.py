@@ -39,7 +39,7 @@ class ClubClaim(Base):
 class OnboardingSession(Base):
     """Pending checkout session linking a club claim to a Stripe Checkout Session.
 
-    Created by `POST /api/commerce/checkout` before redirecting the prospect to
+    Created by `POST /api/v1/commerce/checkout` before redirecting the prospect to
     Stripe. Status transitions:
       pending → paid (webhook handler)
       paid    → claimed (POST /api/onboarding/claim with valid claim_token)

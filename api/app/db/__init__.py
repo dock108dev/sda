@@ -11,6 +11,7 @@ Session management:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -29,6 +30,8 @@ from .golf_pools import PoolLifecycleEvent  # noqa: F401 — register ORM model 
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
+
+logger = logging.getLogger(__name__)
 
 # Lazy-loaded engine and session factory to avoid initialization at import time.
 # This allows tests to import modules without triggering database connection,
@@ -73,7 +76,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             yield session
             await session.commit()
         except Exception:
-            await session.rollback()
+            try:
+                await session.rollback()
+            except Exception:
+                logger.warning("session_rollback_failed", exc_info=True)
             raise
         finally:
             await session.close()
@@ -88,7 +94,10 @@ async def get_async_session():
             yield session
             await session.commit()
         except Exception:
-            await session.rollback()
+            try:
+                await session.rollback()
+            except Exception:
+                logger.warning("session_rollback_failed", exc_info=True)
             raise
 
 

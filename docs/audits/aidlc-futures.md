@@ -9,15 +9,13 @@
 - **Issues implemented**: 25
 - **Issues verified**: 0
 - **Issues failed**: 3
-- **Finalization passes completed**: ssot, security, abend, docs, cleanup
+- **Finalization passes completed**: ssot, abend, cleanup
 
 ## Audit Reports
 
 - [abend-handling](docs/audits/abend-handling.md)
-- [aidlc-futures](docs/audits/aidlc-futures.md)
 - [cleanup-report](docs/audits/cleanup-report.md)
 - [docs-consolidation](docs/audits/docs-consolidation.md)
-- [security-audit](docs/audits/security-audit.md)
 - [ssot-cleanup](docs/audits/ssot-cleanup.md)
 
 ## Preparing for Next Run

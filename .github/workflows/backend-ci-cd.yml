@@ -231,6 +231,47 @@ jobs:
           source .venv/bin/activate
           python scripts/check_js_core_sync.py
 
+  security-bandit:
+    name: Security · bandit scan (api/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install bandit
+        run: pip install "bandit[toml]==1.7.9"
+      - name: Run bandit on api/app
+        run: |
+          # -ll = fail only on medium+ severity. Config lives in api/pyproject.toml.
+          bandit -r api/app -c api/pyproject.toml -ll
+
+  security-detect-secrets:
+    name: Security · detect-secrets scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install detect-secrets
+        run: pip install "detect-secrets==1.5.0"
+      - name: Verify no new secrets introduced
+        run: |
+          detect-secrets scan --baseline .secrets.baseline \
+            --exclude-files '(^|/)(coverage_html|node_modules|\.venv|dist|build)(/|$)'
+
+  security-sql-interpolation:
+    name: Security · SQL interpolation audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Grep api/app for SQL string interpolation
+        run: python scripts/lint_sql_interpolation.py
+
   compile:
     name: Compile
     runs-on: ubuntu-latest
@@ -245,6 +286,9 @@ jobs:
       - lint-guardrails-sync
       - lint-fk-ondelete
       - lint-js-core-sync
+      - security-bandit
+      - security-detect-secrets
+      - security-sql-interpolation
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6

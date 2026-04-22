@@ -5,7 +5,7 @@ Covers:
 - customer.subscription.deleted: subscription canceled, Club.status restricted, idempotency
 - invoice.payment_failed: subscription set to past_due, dunning email sent, idempotency
 - EntitlementService.check_pool_limit: blocks past_due clubs with 402
-- POST /api/billing/portal: returns portal URL, owner-only, 404 on missing club
+- POST /api/v1/billing/portal: returns portal URL, owner-only, 404 on missing club
 """
 
 from __future__ import annotations
@@ -225,7 +225,7 @@ class TestHandleInvoicePaymentFailed:
 
         with (
             patch("app.services.audit.emit"),
-            patch("asyncio.create_task"),
+            patch("asyncio.create_task", side_effect=lambda c: c.close()),
         ):
             self._run(_handle_invoice_payment_failed(db, event))
 
@@ -237,7 +237,7 @@ class TestHandleInvoicePaymentFailed:
 
         with (
             patch("app.services.audit.emit"),
-            patch("asyncio.create_task") as mock_task,
+            patch("asyncio.create_task", side_effect=lambda c: c.close()) as mock_task,
         ):
             self._run(_handle_invoice_payment_failed(db, event))
 
@@ -250,7 +250,7 @@ class TestHandleInvoicePaymentFailed:
 
         with (
             patch("app.services.audit.emit"),
-            patch("asyncio.create_task") as mock_task,
+            patch("asyncio.create_task", side_effect=lambda c: c.close()) as mock_task,
         ):
             self._run(_handle_invoice_payment_failed(db, event))
 
@@ -263,7 +263,7 @@ class TestHandleInvoicePaymentFailed:
 
         with (
             patch("app.services.audit.emit"),
-            patch("asyncio.create_task"),
+            patch("asyncio.create_task", side_effect=lambda c: c.close()),
         ):
             self._run(_handle_invoice_payment_failed(db, event))
 
@@ -275,7 +275,7 @@ class TestHandleInvoicePaymentFailed:
 
         with (
             patch("app.services.audit.emit") as mock_emit,
-            patch("asyncio.create_task"),
+            patch("asyncio.create_task", side_effect=lambda c: c.close()),
         ):
             self._run(_handle_invoice_payment_failed(db, event))
 
@@ -423,7 +423,7 @@ class TestEntitlementServicePastDue:
 
 
 # ---------------------------------------------------------------------------
-# POST /api/billing/portal
+# POST /api/v1/billing/portal
 # ---------------------------------------------------------------------------
 
 
@@ -528,7 +528,7 @@ class TestBillingPortalEndpoint:
             mock_settings.frontend_url = "http://localhost:3000"
             client = TestClient(app, raise_server_exceptions=True)
             resp = client.post(
-                "/api/billing/portal",
+                "/api/v1/billing/portal",
                 json={"club_id": "club-uuid-001"},
             )
 
@@ -562,7 +562,7 @@ class TestBillingPortalEndpoint:
             mock_settings.frontend_url = "http://localhost:3000"
             client = TestClient(app, raise_server_exceptions=False)
             resp = client.post(
-                "/api/billing/portal",
+                "/api/v1/billing/portal",
                 json={"club_id": "nonexistent-club"},
             )
 
@@ -596,7 +596,7 @@ class TestBillingPortalEndpoint:
             mock_settings.frontend_url = "http://localhost:3000"
             client = TestClient(app, raise_server_exceptions=False)
             resp = client.post(
-                "/api/billing/portal",
+                "/api/v1/billing/portal",
                 json={"club_id": "club-uuid-001"},
             )
 
@@ -629,7 +629,7 @@ class TestBillingPortalEndpoint:
             mock_settings.frontend_url = "http://localhost:3000"
             client = TestClient(app, raise_server_exceptions=False)
             resp = client.post(
-                "/api/billing/portal",
+                "/api/v1/billing/portal",
                 json={"club_id": "club-uuid-001"},
             )
 
@@ -664,7 +664,7 @@ class TestBillingPortalEndpoint:
             mock_settings.frontend_url = "http://localhost:3000"
             client = TestClient(app, raise_server_exceptions=False)
             resp = client.post(
-                "/api/billing/portal",
+                "/api/v1/billing/portal",
                 json={"club_id": "club-uuid-001"},
             )
 

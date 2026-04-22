@@ -1,6 +1,6 @@
 """Club branding endpoint — owner role, gated by custom_branding entitlement.
 
-PUT /api/clubs/{club_id}/branding  — set logo_url and palette colours.
+PUT /api/v1/clubs/{club_id}/branding  — set logo_url and palette colours.
 Returns 402 when the club's plan lacks the custom_branding feature.
 Returns 403 when caller is not the club owner.
 Returns 422 on invalid hex colour or non-HTTPS logo_url.
@@ -13,7 +13,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +24,7 @@ from app.db.club_membership import ClubMembership
 from app.dependencies.roles import require_user
 from app.services.entitlement import EntitlementError, EntitlementService
 
-router = APIRouter(prefix="/api/clubs", tags=["clubs"])
+router = APIRouter(prefix="/api/v1/clubs", tags=["clubs"])
 
 _entitlements = EntitlementService()
 _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
@@ -60,6 +61,8 @@ class BrandingRequest(BaseModel):
 
 
 class BrandingResponse(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     club_id: str
     branding: dict[str, str]
 

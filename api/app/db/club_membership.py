@@ -13,7 +13,7 @@ from .base import Base
 class ClubMembership(Base):
     """A user's role within a club tenant.
 
-    Created when an invite is accepted via POST /api/clubs/invites/{token}/accept.
+    Created when an invite is accepted via POST /api/v1/clubs/invites/{token}/accept.
     Roles: owner (provisioned automatically), admin, viewer.
     """
 

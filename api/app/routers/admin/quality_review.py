@@ -76,11 +76,15 @@ def _extract_forbidden_phrases(tier_breakdown: dict) -> list[str]:
     """Pull forbidden-phrase list from the tier1 failures stored at escalation."""
     failures: list = tier_breakdown.get("tier1", {}).get("failures", [])
     for f in failures:
-        if f.startswith("forbidden_phrases="):
-            try:
-                return ast.literal_eval(f.split("=", 1)[1])
-            except Exception:
-                return []
+        if not isinstance(f, str) or not f.startswith("forbidden_phrases="):
+            continue
+        try:
+            parsed = ast.literal_eval(f.split("=", 1)[1])
+        except (ValueError, SyntaxError, MemoryError, RecursionError):
+            return []
+        if isinstance(parsed, (list, tuple)):
+            return [str(item) for item in parsed if isinstance(item, str)]
+        return []
     return []
 
 

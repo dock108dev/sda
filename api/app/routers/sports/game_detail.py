@@ -112,7 +112,7 @@ async def get_game_preview_score(
     if not game.home_team or not game.away_team:
         logger.error("Preview score missing team data", extra={"game_id": game_id})
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Game missing team data",
         )
 

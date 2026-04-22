@@ -97,3 +97,11 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
+
+[tool.bandit]
+# Bandit scans for common Python security issues. We scan api/app/ in CI and
+# fail on medium+ severity findings. See ISSUE-025.
+exclude_dirs = ["tests", "alembic", "coverage_html"]
+# B101: assert_used — Pydantic validators and tests rely on assert.
+# B311: random — non-cryptographic randomness is used for simulations only.
+skips = ["B101", "B311"]

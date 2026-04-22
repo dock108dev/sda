@@ -27,9 +27,6 @@ HISTORY_TTL_S = 12 * 3600  # 12 hours
 # Max entries in history ring buffer per game/market
 HISTORY_MAX_LEN = 300
 
-# Enable/disable debug history ring buffer
-HISTORY_ENABLED = True
-
 
 def _get_redis():
     """Get a Redis client for live odds storage."""
@@ -82,24 +79,22 @@ def write_live_snapshot(
         key = _snapshot_key(league, game_id, market_key)
         r.set(key, json.dumps(snapshot), ex=LIVE_SNAPSHOT_TTL_S)
 
-        # Append to history ring buffer if enabled
-        if HISTORY_ENABLED:
-            hist_key = _history_key(game_id, market_key)
-            compact = {
-                "t": round(time.time()),
-                "books": {
-                    book_name: [
-                        {"s": s.get("selection", ""), "l": s.get("line"), "p": s.get("price")}
-                        for s in sels
-                    ]
-                    for book_name, sels in books.items()
-                },
-            }
-            pipe = r.pipeline()
-            pipe.lpush(hist_key, json.dumps(compact))
-            pipe.ltrim(hist_key, 0, HISTORY_MAX_LEN - 1)
-            pipe.expire(hist_key, HISTORY_TTL_S)
-            pipe.execute()
+        hist_key = _history_key(game_id, market_key)
+        compact = {
+            "t": round(time.time()),
+            "books": {
+                book_name: [
+                    {"s": s.get("selection", ""), "l": s.get("line"), "p": s.get("price")}
+                    for s in sels
+                ]
+                for book_name, sels in books.items()
+            },
+        }
+        pipe = r.pipeline()
+        pipe.lpush(hist_key, json.dumps(compact))
+        pipe.ltrim(hist_key, 0, HISTORY_MAX_LEN - 1)
+        pipe.expire(hist_key, HISTORY_TTL_S)
+        pipe.execute()
 
     except Exception as exc:
         logger.warning(

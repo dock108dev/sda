@@ -94,12 +94,12 @@ See [Analytics](analytics.md) for details.
 **Purpose:** Multi-tenant self-serve club provisioning for golf pool operators
 
 - **Onboarding:** Public "claim your club" form (`POST /api/onboarding/club-claims`) kicks off a two-phase flow: prospect submits interest → operator initiates Stripe checkout → webhook confirms payment → claim token exchanged for account
-- **Commerce:** Stripe checkout session creation (`POST /api/commerce/checkout`); three plans — Starter ($29/mo), Pro ($99/mo), Enterprise ($299/mo)
+- **Commerce:** Stripe checkout session creation (`POST /api/v1/commerce/checkout`); three plans — Starter ($29/mo), Pro ($99/mo), Enterprise ($299/mo)
 - **Webhooks:** Idempotent Stripe webhook handler (`POST /api/webhooks/stripe`) using `processed_stripe_events` as a dedup table (`ON CONFLICT DO NOTHING`)
-- **Clubs:** Public club lookup (`GET /api/clubs/{slug}`) returns club info and active pools, used by public entry pages
-- **Billing:** Stripe Customer Portal self-service (`POST /api/billing/portal`) for club owners to manage subscriptions
+- **Clubs:** Public club lookup (`GET /api/v1/clubs/{slug}`) returns club info and active pools, used by public entry pages
+- **Billing:** Stripe Customer Portal self-service (`POST /api/v1/billing/portal`) for club owners to manage subscriptions
 - **Club Memberships:** Invite-based RBAC (`api/app/routers/club_memberships.py`) — owner/admin roles, `club_memberships` table
-- **Club Branding:** `PUT /api/clubs/{id}/branding` — gated by plan; stores `branding_json` JSONB in the clubs table
+- **Club Branding:** `PUT /api/v1/clubs/{id}/branding` — gated by plan; stores `branding_json` JSONB in the clubs table
 - **Entitlements:** `EntitlementService` (`api/app/services/entitlement.py`) centralizes all plan limits; raises `EntitlementError` (→ 403), `SeatLimitError` (→ 402), `SubscriptionPastDueError` (→ 402)
 - **Pool Lifecycle:** `TransitionError` (→ 409) raised when a pool state machine guard fails
 

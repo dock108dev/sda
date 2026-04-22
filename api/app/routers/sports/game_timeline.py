@@ -129,6 +129,10 @@ async def generate_game_timeline(
     try:
         artifact = await generate_timeline_artifact(session, game_id)
     except TimelineGenerationError as exc:
+        logger.warning(
+            "timeline_generation_failed",
+            extra={"game_id": game_id, "status_code": exc.status_code, "error": str(exc)},
+        )
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     await session.commit()

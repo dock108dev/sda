@@ -1,4 +1,4 @@
-"""Tests for GET /api/clubs/{slug} — public club lookup endpoint.
+"""Tests for GET /api/v1/clubs/{slug} — public club lookup endpoint.
 
 Covers:
   - 404 for unknown slug
@@ -108,7 +108,7 @@ def _app(db_override: Any) -> FastAPI:
 def test_unknown_slug_returns_404() -> None:
     db = _QueueDB(_make_result(scalar=None))
     client = TestClient(_app(db))
-    resp = client.get("/api/clubs/no-such-slug")
+    resp = client.get("/api/v1/clubs/no-such-slug")
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Club not found"
 
@@ -117,7 +117,7 @@ def test_inactive_club_returns_404() -> None:
     inactive = _make_club(status="suspended")
     db = _QueueDB(_make_result(scalar=inactive))
     client = TestClient(_app(db))
-    resp = client.get("/api/clubs/pebble-gc")
+    resp = client.get("/api/v1/clubs/pebble-gc")
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Club not found"
 
@@ -129,7 +129,7 @@ def test_active_club_with_no_pools_returns_empty_list() -> None:
         _make_result(scalars=[]),
     )
     client = TestClient(_app(db))
-    resp = client.get("/api/clubs/pebble-gc")
+    resp = client.get("/api/v1/clubs/pebble-gc")
     assert resp.status_code == 200
     body = resp.json()
     assert body["club_id"] == "uuid-0001"
@@ -147,7 +147,7 @@ def test_active_club_returns_active_pools() -> None:
         _make_result(scalars=[open_pool, live_pool]),
     )
     client = TestClient(_app(db))
-    resp = client.get("/api/clubs/pebble-gc")
+    resp = client.get("/api/v1/clubs/pebble-gc")
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["active_pools"]) == 2
@@ -163,7 +163,7 @@ def test_pool_payload_shape() -> None:
         _make_result(scalars=[pool]),
     )
     client = TestClient(_app(db))
-    resp = client.get("/api/clubs/pebble-gc")
+    resp = client.get("/api/v1/clubs/pebble-gc")
     assert resp.status_code == 200
     p = resp.json()["active_pools"][0]
     assert p["pool_id"] == 42
@@ -182,7 +182,7 @@ def test_branding_included_when_set() -> None:
         _make_result(scalars=[]),
     )
     client = TestClient(_app(db))
-    resp = client.get("/api/clubs/pebble-gc")
+    resp = client.get("/api/v1/clubs/pebble-gc")
     assert resp.status_code == 200
     body = resp.json()
     assert "branding" in body
@@ -197,7 +197,7 @@ def test_branding_omitted_when_null() -> None:
         _make_result(scalars=[]),
     )
     client = TestClient(_app(db))
-    resp = client.get("/api/clubs/pebble-gc")
+    resp = client.get("/api/v1/clubs/pebble-gc")
     assert resp.status_code == 200
     body = resp.json()
     assert "branding" not in body

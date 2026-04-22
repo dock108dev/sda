@@ -21,6 +21,7 @@ from app.db.golf_pools import (
 )
 from app.schemas.pool_config import PoolConfigValidator
 from app.services.golf_pool_scoring import Pick, rules_from_json, validate_picks
+from app.utils.sanitize import sanitize_text
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -69,6 +70,11 @@ class PoolCreateRequest(BaseModel):
             PoolConfigValidator.validate(v)
         return v
 
+    @field_validator("name", "notes", mode="before")
+    @classmethod
+    def _strip_html(cls, v: object) -> object:
+        return sanitize_text(v)
+
 
 class PoolUpdateRequest(BaseModel):
     name: str | None = None
@@ -88,6 +94,11 @@ class PoolUpdateRequest(BaseModel):
         if v is not None:
             PoolConfigValidator.validate(v)
         return v
+
+    @field_validator("name", "notes", mode="before")
+    @classmethod
+    def _strip_html(cls, v: object) -> object:
+        return sanitize_text(v)
 
 
 class BucketPlayerItem(BaseModel):

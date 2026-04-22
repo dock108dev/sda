@@ -19,7 +19,7 @@ from app.routers.onboarding import router
 # Helpers
 # ---------------------------------------------------------------------------
 
-_NOW = datetime(2026, 4, 21, 12, 0, 0, tzinfo=UTC)
+_NOW = datetime.now(UTC)
 _FUTURE = _NOW + timedelta(hours=23)
 _PAST = _NOW - timedelta(seconds=1)
 

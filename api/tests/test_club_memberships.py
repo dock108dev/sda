@@ -1,10 +1,10 @@
 """Tests for club membership endpoints — invite flow and RBAC.
 
 Covers:
-  - POST /api/clubs/invites/{token}/accept
-  - POST /api/clubs/{club_id}/invites
-  - GET  /api/clubs/{club_id}/members
-  - DELETE /api/clubs/{club_id}/members/{user_id}
+  - POST /api/v1/clubs/invites/{token}/accept
+  - POST /api/v1/clubs/{club_id}/invites
+  - GET  /api/v1/clubs/{club_id}/members
+  - DELETE /api/v1/clubs/{club_id}/members/{user_id}
 
 Integration cycle: invite → accept → list → remove (two-admin club).
 """
@@ -164,12 +164,12 @@ def test_accept_invite_ok() -> None:
 
     client = TestClient(_app(db))
     resp = client.post(
-        f"/api/clubs/invites/{invite_token}/accept",
+        f"/api/v1/clubs/invites/{invite_token}/accept",
         headers=_bearer(_ADMIN_ID),
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["club_id"] == _CLUB_UUID
+    assert body["clubId"] == _CLUB_UUID
     assert body["name"] == "Test GC"
     assert body["slug"] == "test-gc"
     assert len(db.added) == 1
@@ -200,7 +200,7 @@ def test_accept_invite_expired_token_returns_410() -> None:
     db = _AsyncDB()
     client = TestClient(_app(db))
     resp = client.post(
-        f"/api/clubs/invites/{expired_token}/accept",
+        f"/api/v1/clubs/invites/{expired_token}/accept",
         headers=_bearer(_ADMIN_ID),
     )
     assert resp.status_code == 410
@@ -211,7 +211,7 @@ def test_accept_invite_invalid_token_returns_410() -> None:
     db = _AsyncDB()
     client = TestClient(_app(db))
     resp = client.post(
-        "/api/clubs/invites/not-a-jwt/accept",
+        "/api/v1/clubs/invites/not-a-jwt/accept",
         headers=_bearer(_ADMIN_ID),
     )
     assert resp.status_code == 410
@@ -230,7 +230,7 @@ def test_accept_invite_already_member_returns_409() -> None:
 
     client = TestClient(_app(db))
     resp = client.post(
-        f"/api/clubs/invites/{invite_token}/accept",
+        f"/api/v1/clubs/invites/{invite_token}/accept",
         headers=_bearer(_ADMIN_ID),
     )
     assert resp.status_code == 409
@@ -246,7 +246,7 @@ def test_accept_invite_unauthenticated_returns_4xx() -> None:
     )
     db = _AsyncDB()
     client = TestClient(_app(db))
-    resp = client.post(f"/api/clubs/invites/{invite_token}/accept")
+    resp = client.post(f"/api/v1/clubs/invites/{invite_token}/accept")
     # No token → resolve_role returns guest → require_user raises 403
     assert resp.status_code in (401, 403)
 
@@ -267,7 +267,7 @@ def test_send_invite_ok_viewer() -> None:
         mock_email.return_value = None
         client = TestClient(_app(db))
         resp = client.post(
-            f"/api/clubs/{_CLUB_UUID}/invites",
+            f"/api/v1/clubs/{_CLUB_UUID}/invites",
             json={"email": "viewer@example.com", "role": "viewer"},
             headers=_bearer(_OWNER_ID),
         )
@@ -290,7 +290,7 @@ def test_send_invite_admin_enforces_seat_limit() -> None:
     with patch("app.routers.club_memberships.send_club_invite_email", new_callable=AsyncMock):
         client = TestClient(_app(db))
         resp = client.post(
-            f"/api/clubs/{_CLUB_UUID}/invites",
+            f"/api/v1/clubs/{_CLUB_UUID}/invites",
             json={"email": "admin2@example.com", "role": "admin"},
             headers=_bearer(_OWNER_ID),
         )
@@ -309,7 +309,7 @@ def test_send_invite_admin_below_seat_limit_ok() -> None:
         mock_email.return_value = None
         client = TestClient(_app(db))
         resp = client.post(
-            f"/api/clubs/{_CLUB_UUID}/invites",
+            f"/api/v1/clubs/{_CLUB_UUID}/invites",
             json={"email": "admin2@example.com", "role": "admin"},
             headers=_bearer(_OWNER_ID),
         )
@@ -323,7 +323,7 @@ def test_send_invite_non_member_returns_403() -> None:
 
     client = TestClient(_app(db))
     resp = client.post(
-        f"/api/clubs/{_CLUB_UUID}/invites",
+        f"/api/v1/clubs/{_CLUB_UUID}/invites",
         json={"email": "x@example.com", "role": "viewer"},
         headers=_bearer(_OUTSIDER_ID),
     )
@@ -337,7 +337,7 @@ def test_send_invite_viewer_caller_returns_403() -> None:
 
     client = TestClient(_app(db))
     resp = client.post(
-        f"/api/clubs/{_CLUB_UUID}/invites",
+        f"/api/v1/clubs/{_CLUB_UUID}/invites",
         json={"email": "x@example.com", "role": "viewer"},
         headers=_bearer(_VIEWER_ID),
     )
@@ -351,7 +351,7 @@ def test_send_invite_invalid_role_returns_422() -> None:
 
     client = TestClient(_app(db))
     resp = client.post(
-        f"/api/clubs/{_CLUB_UUID}/invites",
+        f"/api/v1/clubs/{_CLUB_UUID}/invites",
         json={"email": "x@example.com", "role": "superuser"},
         headers=_bearer(_OWNER_ID),
     )
@@ -362,7 +362,7 @@ def test_send_invite_unknown_club_returns_404() -> None:
     db = _AsyncDB(_scalar(None))
     client = TestClient(_app(db))
     resp = client.post(
-        "/api/clubs/no-such-club/invites",
+        "/api/v1/clubs/no-such-club/invites",
         json={"email": "x@example.com", "role": "viewer"},
         headers=_bearer(_OWNER_ID),
     )
@@ -395,7 +395,7 @@ def test_list_members_ok() -> None:
     db = _AsyncDB(_scalar(club), _scalar(caller_membership), rows_result)
     client = TestClient(_app(db))
     resp = client.get(
-        f"/api/clubs/{_CLUB_UUID}/members",
+        f"/api/v1/clubs/{_CLUB_UUID}/members",
         headers=_bearer(_ADMIN_ID),
     )
     assert resp.status_code == 200
@@ -411,7 +411,7 @@ def test_list_members_non_member_returns_403() -> None:
     db = _AsyncDB(_scalar(club), _scalar(None))
     client = TestClient(_app(db))
     resp = client.get(
-        f"/api/clubs/{_CLUB_UUID}/members",
+        f"/api/v1/clubs/{_CLUB_UUID}/members",
         headers=_bearer(_OUTSIDER_ID),
     )
     assert resp.status_code == 403
@@ -430,7 +430,7 @@ def test_remove_member_ok() -> None:
 
     client = TestClient(_app(db))
     resp = client.delete(
-        f"/api/clubs/{_CLUB_UUID}/members/{_ADMIN_ID}",
+        f"/api/v1/clubs/{_CLUB_UUID}/members/{_ADMIN_ID}",
         headers=_bearer(_OWNER_ID),
     )
     assert resp.status_code == 204
@@ -444,7 +444,7 @@ def test_remove_member_self_returns_409() -> None:
 
     client = TestClient(_app(db))
     resp = client.delete(
-        f"/api/clubs/{_CLUB_UUID}/members/{_OWNER_ID}",
+        f"/api/v1/clubs/{_CLUB_UUID}/members/{_OWNER_ID}",
         headers=_bearer(_OWNER_ID),
     )
     assert resp.status_code == 409
@@ -458,7 +458,7 @@ def test_remove_member_non_owner_returns_403() -> None:
 
     client = TestClient(_app(db))
     resp = client.delete(
-        f"/api/clubs/{_CLUB_UUID}/members/{_VIEWER_ID}",
+        f"/api/v1/clubs/{_CLUB_UUID}/members/{_VIEWER_ID}",
         headers=_bearer(_ADMIN_ID),
     )
     assert resp.status_code == 403
@@ -471,7 +471,7 @@ def test_remove_member_not_found_returns_404() -> None:
 
     client = TestClient(_app(db))
     resp = client.delete(
-        f"/api/clubs/{_CLUB_UUID}/members/9999",
+        f"/api/v1/clubs/{_CLUB_UUID}/members/9999",
         headers=_bearer(_OWNER_ID),
     )
     assert resp.status_code == 404
@@ -510,7 +510,7 @@ def test_full_invite_accept_list_remove_cycle() -> None:
     with patch("app.routers.club_memberships.send_club_invite_email", side_effect=_capture_email):
         client = TestClient(_app(invite_db))
         resp = client.post(
-            f"/api/clubs/{_CLUB_UUID}/invites",
+            f"/api/v1/clubs/{_CLUB_UUID}/invites",
             json={"email": "admin2@gc.example", "role": "admin"},
             headers=_bearer(_OWNER_ID),
         )
@@ -522,11 +522,11 @@ def test_full_invite_accept_list_remove_cycle() -> None:
     accept_db = _AsyncDB(_scalar(club))
     client2 = TestClient(_app(accept_db))
     resp2 = client2.post(
-        f"/api/clubs/invites/{token}/accept",
+        f"/api/v1/clubs/invites/{token}/accept",
         headers=_bearer(_ADMIN_ID),
     )
     assert resp2.status_code == 200
-    assert resp2.json()["club_id"] == _CLUB_UUID
+    assert resp2.json()["clubId"] == _CLUB_UUID
     assert len(accept_db.added) == 1
     assert accept_db.added[0].role == "admin"
 
@@ -547,7 +547,7 @@ def test_full_invite_accept_list_remove_cycle() -> None:
     )
     client3 = TestClient(_app(list_db))
     resp3 = client3.get(
-        f"/api/clubs/{_CLUB_UUID}/members",
+        f"/api/v1/clubs/{_CLUB_UUID}/members",
         headers=_bearer(_OWNER_ID),
     )
     assert resp3.status_code == 200
@@ -565,7 +565,7 @@ def test_full_invite_accept_list_remove_cycle() -> None:
     )
     client4 = TestClient(_app(remove_db))
     resp4 = client4.delete(
-        f"/api/clubs/{_CLUB_UUID}/members/{_ADMIN_ID}",
+        f"/api/v1/clubs/{_CLUB_UUID}/members/{_ADMIN_ID}",
         headers=_bearer(_OWNER_ID),
     )
     assert resp4.status_code == 204

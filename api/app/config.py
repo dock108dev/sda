@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     )
 
     # Stripe — payment processing for club subscriptions.
-    # STRIPE_SECRET_KEY is required for the /api/commerce/checkout endpoint.
+    # STRIPE_SECRET_KEY is required for the /api/v1/commerce/checkout endpoint.
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_checkout_success_url: str = Field(
         default="http://localhost:3000/onboarding/success?session={CHECKOUT_SESSION_ID}",

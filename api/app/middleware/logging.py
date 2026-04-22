@@ -10,6 +10,9 @@ from urllib.parse import parse_qs
 
 from fastapi import Request
 
+from app.context import request_id_var
+from app.metrics import http_request_duration_seconds, http_requests_total
+
 
 class StructuredLoggingMiddleware:
     """Log request/response details in JSON.
@@ -70,6 +73,9 @@ class StructuredLoggingMiddleware:
         if isinstance(state, dict):
             state["request_id"] = request_id
 
+        # Propagate request_id for audit log entries and other async callees
+        token = request_id_var.set(request_id)
+
         async def send_wrapper(message: dict) -> None:
             if message["type"] == "http.response.start":
                 # Inject X-Request-ID into response headers
@@ -77,11 +83,19 @@ class StructuredLoggingMiddleware:
                 headers.append((b"x-request-id", request_id.encode()))
                 message["headers"] = headers
 
-                elapsed_ms = (time.perf_counter() - start) * 1000
+                elapsed_s = time.perf_counter() - start
+                elapsed_ms = elapsed_s * 1000
+                path = request.url.path
+                method = request.method
+                status = str(message["status"])
+
+                http_requests_total.labels(method=method, path=path, status=status).inc()
+                http_request_duration_seconds.labels(method=method, path=path).observe(elapsed_s)
+
                 log_payload = {
                     "request_id": request_id,
-                    "method": request.method,
-                    "path": request.url.path,
+                    "method": method,
+                    "path": path,
                     "query_params": self._redact_query_params(request.url.query),
                     "status_code": message["status"],
                     "client_ip": request.client.host if request.client else None,
@@ -91,4 +105,7 @@ class StructuredLoggingMiddleware:
                 self.logger.info("http_request", extra=log_payload)
             await send(message)
 
-        await self.app(scope, receive, send_wrapper)
+        try:
+            await self.app(scope, receive, send_wrapper)
+        finally:
+            request_id_var.reset(token)

@@ -6,8 +6,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
-from starlette.responses import JSONResponse
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from sqlalchemy import func, select, text
+from starlette.responses import JSONResponse, Response
 
 from app.analytics.api.analytics_routes import router as analytics_router
 from app.config import settings
@@ -19,6 +20,7 @@ from app.dependencies.roles import require_admin, require_user
 from app.logging_config import configure_logging
 from app.middleware.logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.realtime.listener import pg_listener
 from app.realtime.manager import realtime_manager
 from app.realtime.poller import db_poller
@@ -179,6 +181,7 @@ instrument_fastapi(app)
 
 app.add_middleware(StructuredLoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_cors_origins,
@@ -263,7 +266,7 @@ app.include_router(preferences.router)
 app.include_router(clubs_router)
 
 # ---------------------------------------------------------------------------
-# Club branding — PUT /api/clubs/:id/branding (owner role, premium plan).
+# Club branding — PUT /api/v1/clubs/:id/branding (owner role, premium plan).
 # ---------------------------------------------------------------------------
 app.include_router(club_branding_router)
 
@@ -461,3 +464,69 @@ async def healthcheck() -> JSONResponse:
         payload["error"] = "database unavailable"
         return JSONResponse(payload, status_code=503)
     return JSONResponse(payload)
+
+
+@app.get("/health", include_in_schema=False)
+async def health() -> JSONResponse:
+    """Always-up liveness probe — no auth, no dependency checks."""
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/ready", include_in_schema=False)
+async def ready() -> JSONResponse:
+    """Readiness probe — 200 when DB and Redis are reachable, 503 otherwise."""
+    import redis.asyncio as aioredis
+
+    result: dict[str, bool] = {"db": True, "redis": True}
+
+    try:
+        async with _get_engine().connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        logger.warning("Readiness check: DB unreachable")
+        result["db"] = False
+
+    try:
+        r = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        await r.ping()
+        await r.aclose()
+    except Exception:
+        logger.warning("Readiness check: Redis unreachable")
+        result["redis"] = False
+
+    if all(result.values()):
+        return JSONResponse({"status": "ok", **result})
+    return JSONResponse({"status": "unavailable", **result}, status_code=503)
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Prometheus metrics endpoint — text/plain exposition format."""
+    from app.db.golf_pools import GolfPool
+    from app.db.stripe import WebhookDeliveryAttempt
+    from app import metrics as _metrics
+
+    try:
+        async with get_async_session() as db:
+            pool_count = await db.scalar(
+                select(func.count()).select_from(GolfPool).where(
+                    GolfPool.status.in_(["open", "locked", "live"])
+                )
+            )
+            _metrics.active_pools_total.set(pool_count or 0)
+    except Exception:
+        logger.warning("metrics: failed to query active_pools_total")
+
+    try:
+        async with get_async_session() as db:
+            depth = await db.scalar(
+                select(func.count(WebhookDeliveryAttempt.event_id.distinct())).where(
+                    WebhookDeliveryAttempt.outcome == "fail",
+                    WebhookDeliveryAttempt.is_dead_letter.is_(False),
+                )
+            )
+            _metrics.webhook_queue_depth.set(depth or 0)
+    except Exception:
+        logger.warning("metrics: failed to query webhook_queue_depth")
+
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

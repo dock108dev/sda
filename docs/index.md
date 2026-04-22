@@ -7,6 +7,7 @@
 | [Infrastructure & Local Dev](ops/infra.md) | **Start here:** Docker setup, manual setup, environment variables |
 | [Architecture](architecture.md) | System components, data flow, database schema, key principles |
 | [API Reference](api.md) | FastAPI endpoints and usage |
+| [Roadmap](roadmap.md) | Phase-by-phase delivery plan with ✅/⬜ status and open architectural decisions |
 
 ## External App Integration
 
@@ -72,7 +73,10 @@
 | [Infrastructure & Local Dev](ops/infra.md) | Docker configuration, local setup, environment variables |
 | [Error Handling Audit](audits/abend-handling.md) | 188 exception blocks audited; all Critical/High findings fixed |
 | [SSOT Cleanup](audits/ssot-cleanup.md) | PipelineStage, GameStatus, story_version consolidation |
+| [Security Audit](audits/security-audit.md) | Auth, webhooks, CSP, SSRF, dependency surface review |
+| [Code Cleanup Report](audits/cleanup-report.md) | Lint / dead-code cleanup notes for the observability & security-hardening batch |
 | [Docs Consolidation](audits/docs-consolidation.md) | Documentation audit passes — what was fixed and what was verified |
+| [AIDLC Futures](audits/aidlc-futures.md) | Auto-generated finalization summary from the AIDLC tooling run |
 | [Changelog](changelog.md) | Recent changes and releases |
 
 ## Research

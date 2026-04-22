@@ -76,4 +76,4 @@ class ModelLoader:
     def _load_pickle(self, path: str) -> Any:
         import pickle
         with open(path, "rb") as f:
-            return pickle.load(f)  # noqa: S301
+            return pickle.load(f)  # noqa: S301  # nosec B301 — trusted model artifact from local disk, never user input

@@ -35,11 +35,20 @@ EXEMPT_PATHS: frozenset[str] = frozenset(
         "/redoc",
         "/openapi.json",
         "/docs/oauth2-redirect",
-        # Prospect-facing onboarding form — public (no API key), rate-limited
-        # per-IP. Not a consumer (/api/v1/) or admin (/api/admin/) surface;
-        # it's a pre-signup contact endpoint. See onboarding router for
-        # details.
+        # Kubernetes liveness/readiness probes and Prometheus scrape target.
+        # Must stay at root-level unversioned paths per ops conventions.
+        "/health",
+        "/ready",
+        "/metrics",
+        # Stripe webhook — URL is configured in the Stripe dashboard and
+        # signed by Stripe; it's not a consumer or admin surface.
+        "/api/webhooks/stripe",
+        # Prospect-facing onboarding flow — public (no API key), rate-limited
+        # per-IP. Pre-signup endpoints, not a consumer (/api/v1/) or admin
+        # (/api/admin/) surface. See onboarding router for details.
         "/api/onboarding/club-claims",
+        "/api/onboarding/claim",
+        "/api/onboarding/session/{session_token}",
     }
 )
 

@@ -126,10 +126,10 @@ def _app(db_override: Any) -> FastAPI:
     "strategy,request_path,slug_header",
     [
         # Path-based: slug comes from URL path param
-        ("path", "/api/clubs/the-pines-gc", None),
+        ("path", "/api/v1/clubs/the-pines-gc", None),
         # Subdomain: middleware would set X-Club-Slug; API endpoint ignores the header
         # and still resolves via path param — both strategies hit the same handler.
-        ("subdomain", "/api/clubs/the-pines-gc", "the-pines-gc"),
+        ("subdomain", "/api/v1/clubs/the-pines-gc", "the-pines-gc"),
     ],
 )
 def test_both_routing_strategies_resolve_same_handler(

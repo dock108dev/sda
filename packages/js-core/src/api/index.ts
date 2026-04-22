@@ -15,4 +15,14 @@ export {
   type NarrativeBlock,
   type ScoreObject,
 } from "./games";
+export type {
+  ActivePool,
+  BrandingResponse,
+  CheckoutResponse,
+  ClubBranding,
+  ClubPublic,
+  ClubSummary,
+  MemberResponse,
+  PortalResponse,
+} from "./clubs";
 

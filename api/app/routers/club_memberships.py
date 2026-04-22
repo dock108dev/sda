@@ -1,9 +1,9 @@
 """Club membership endpoints — invite flow and role-based access control.
 
-POST /api/clubs/invites/{token}/accept  — accept a signed JWT invite
-POST /api/clubs/{club_id}/invites       — send an invite (admin or owner)
-GET  /api/clubs/{club_id}/members       — list members (any role)
-DELETE /api/clubs/{club_id}/members/{target_user_id} — remove member (owner only)
+POST /api/v1/clubs/invites/{token}/accept  — accept a signed JWT invite
+POST /api/v1/clubs/{club_id}/invites       — send an invite (admin or owner)
+GET  /api/v1/clubs/{club_id}/members       — list members (any role)
+DELETE /api/v1/clubs/{club_id}/members/{target_user_id} — remove member (owner only)
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from typing import Any
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +30,7 @@ from app.services.email import send_club_invite_email
 from app.services.entitlement import EntitlementService, SeatLimitError
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/clubs", tags=["clubs"])
+router = APIRouter(prefix="/api/v1/clubs", tags=["clubs"])
 
 _entitlements = EntitlementService()
 _ADMIN_ROLES = frozenset({"owner", "admin"})
@@ -47,6 +48,8 @@ class InviteRequest(BaseModel):
 
 
 class MemberResponse(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     user_id: int
     email: str
     role: str
@@ -54,6 +57,8 @@ class MemberResponse(BaseModel):
 
 
 class ClubSummary(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     club_id: str
     name: str
     slug: str
@@ -188,7 +193,7 @@ async def send_invite(
     """
     if body.role not in _VALID_INVITE_ROLES:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail=f"Invalid role '{body.role}'. Must be one of: {', '.join(sorted(_VALID_INVITE_ROLES))}",
         )
 

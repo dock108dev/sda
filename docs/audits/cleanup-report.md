@@ -1,71 +1,87 @@
 # Code Quality Cleanup Report
 
-**Date:** 2026-04-22  
-**Scope:** Full repository — Python (api/, scraper/), TypeScript (web/, packages/)
+**Date:** 2026-04-22
+**Scope:** files modified/added on the current branch (observability, security
+hardening, and SQL-interpolation-linter work).
+**Rule:** no behavioral changes; lint/build must still pass.
 
----
+## Dead code removed
 
-## Dead Code Removed
+- `api/tests/test_observability.py`: removed a function-local `import json`
+  inside `TestPIIRedaction._format` and hoisted it to module-level stdlib
+  imports (where the rest of the stdlib imports live).
 
-### `api/app/db/onboarding.py`
-- Removed module-level constant `_SESSION_TTL_HOURS = 24`. It was defined but never referenced anywhere in the file or codebase. The TTL is enforced at the application layer, not by this constant.
+## Files refactored (cosmetic only)
 
-### `api/app/dependencies/roles.py`
-- Removed `_MAGIC_LINK_EXPIRE_MINUTES = 15`, `create_magic_link_token()`, and `decode_magic_link_token()`. These three items were dead code: the magic link flow uses DB-stored SHA-256 hashes (`MagicLinkToken` table) rather than JWTs, so the JWT-based approach was an unused parallel implementation. No import site existed for either function outside of `roles.py` itself.
+- `api/main.py`: consolidated two split `from sqlalchemy import …` lines
+  (`text` on one line, `func, select` a few lines later) into a single
+  ordered import, and re-grouped the third-party block so
+  `prometheus_client`, `sqlalchemy`, and `starlette` sit together in stdlib →
+  third-party → local order. No runtime change.
+- `api/app/db/__init__.py`: moved `logger = logging.getLogger(__name__)`
+  out from between the stdlib/third-party imports and the local `from .base
+  import Base` block (was triggering PEP 8 E402 "module level import not at
+  top of file"). Logger definition now sits with the other module-level state
+  after the `TYPE_CHECKING` block. No runtime change.
 
-### `api/app/routers/golf/tournaments.py`
-- Removed unused `delete` import from `sqlalchemy`. The `remove_field_player` endpoint uses `await db.delete(row)` (the async ORM session method), not the SQLAlchemy `delete()` statement constructor — making the import unreachable.
+## Files still over 500 LOC
 
----
+| File | LOC | Status |
+|------|-----|--------|
+| `api/main.py` | 533 | **Flagged for follow-up.** Marginally over. Bulk is FastAPI router registration and exception handlers — pure wiring. A clean extraction would move (a) the admin router registrations (~lines 337–433) into `app/routers/admin/__init__.py` and (b) the domain exception handlers (~lines 197–240) into `app/error_handlers.py`. Deferred: structural and touches the import graph, out of scope for a no-behavior cleanup. |
 
-## Consistency Changes Made
+All other audited files are well under 500 LOC:
 
-### `api/app/routers/onboarding.py`
-- Replaced a local `from datetime import timezone` import inside `_is_session_expired()` with the module-level `UTC` constant already imported at the top of the file. The local import was a stale artifact; `UTC` and `timezone.utc` are equivalent since Python 3.11 and `UTC` was already present.
+| File | LOC |
+|------|-----|
+| `api/app/logging_config.py` | 102 |
+| `api/app/middleware/logging.py` | 111 |
+| `api/app/realtime/listener.py` | 352 |
+| `api/app/routers/golf/pools_helpers.py` | 373 |
+| `api/app/routers/onboarding.py` | 300 |
+| `api/app/services/audit.py` | 84 |
+| `api/app/context.py` | 7 |
+| `api/app/metrics.py` | 32 |
+| `api/app/middleware/security_headers.py` | 52 |
+| `api/app/utils/sanitize.py` | 35 |
+| `api/tests/test_observability.py` | 371 |
+| `api/tests/test_security_hardening.py` | 218 |
+| `scripts/lint_sql_interpolation.py` | 59 |
 
-### `api/app/routers/golf/pools.py`
-- Moved `import random` from between third-party imports into the stdlib import block at the top of the file. The misplacement violated PEP 8 import ordering (stdlib → third-party → first-party) and would be flagged by Ruff's `I` (isort) rules.
+## Consistency changes
 
----
+- Normalized `api/main.py` imports to stdlib → third-party → local,
+  alphabetical inside the third-party group.
+- Removed the misplaced in-function `import json` in `test_observability.py`.
+- Relocated misplaced module-level `logger` assignment in
+  `api/app/db/__init__.py` so all imports sit together at the top.
 
-## Files Still Over 500 LOC
+## Considered but not changed
 
-The following files exceed 500 lines. Each is noted with a brief justification or a flag for follow-up.
+- **`_sensitive_query_keys` (middleware/logging.py) vs `_SENSITIVE_EXTRA_FIELDS`
+  (logging_config.py)** — flagged as a possible duplicate, but the two sets
+  cover different concerns (URL query-string keys vs. log-record `extra`
+  attributes) with only partial overlap (`signature`, `auth`, `key` exist only
+  in the query-key set; `email` only in the log set). Merging would broaden
+  redaction in ways that could hide useful log fields. Left as is.
+- **`OrderedDict` in `api/app/realtime/listener.py`** — flagged as potentially
+  redundant since `dict` preserves insertion order in Python 3.7+, but
+  `_LRUDict.set()` calls `popitem(last=False)` for LRU eviction, which is
+  only available on `OrderedDict`. Import is load-bearing.
+- **`sanitize.py` lazy `bleach` import** — the module docstring already
+  explains why (tests / environments without bleach still import cleanly).
+  No additional comment needed.
+- **Lazy imports inside `audit._write()` and `main.py` `/ready`,
+  `/metrics`** — intentional: circular-import avoidance and lighter startup.
+  Left as is.
 
-| File | Lines | Status |
-|------|-------|--------|
-| `api/app/services/pipeline/stages/validate_blocks.py` | 1113 | **Flag.** Largest file in the codebase. Contains 21 validation functions across several distinct concerns (structural, coverage, block-level, moment-level). Prime candidate for splitting into `_structural.py`, `_coverage.py`, and `_block_validators.py`. |
-| `api/app/tasks/_training_data.py` | 732 | **Flag.** Dataset assembly logic; a dedicated module for each sport (MLB/NBA/NHL/etc.) would improve navigation. |
-| `api/app/routers/golf/pools_admin.py` | 717 | **Flag.** Admin router covering pool CRUD, bucket management, CSV upload, entry management, and state-machine transitions. Consider splitting into `_pools_crud.py`, `_buckets.py`, and `_entries.py`. |
-| `api/app/services/pipeline/executor.py` | 605 | **Justified.** Pure orchestration class. All 605 lines coordinate stage execution; extracting sub-stages would not reduce conceptual complexity. |
-| `api/app/routers/golf/pools.py` | 604 | **Flag.** Public pool router handling submission, leaderboard, scoring, and field management. Leaderboard/scoring endpoints are good extraction candidates. |
-| `api/app/routers/admin/pbp.py` | 584 | **Justified.** PBP inspection router with rich diagnostic output per endpoint. High comment density is intentional (documents wire format). |
-| `api/app/routers/auth.py` | 579 | **Justified.** Single-domain router covering all auth flows (signup, login, refresh, magic-link, password reset, account management). The breadth is the feature, not bloat. |
-| `api/app/tasks/experiment_tasks.py` | 571 | **Flag.** Complex Celery task with multiple phases. The experiment lifecycle phases could be helper functions in a companion module. |
-| `api/app/routers/simulator_mlb.py` | 552 | **Flag.** Four functions, each individually large. The simulation orchestration logic in `run_simulation` (≈200 lines) is a candidate for extraction to `services/simulator_orchestration.py`. |
-| `api/app/analytics/core/simulation_engine.py` | 541 | **Flag.** Multi-sport dispatch with per-sport specialization. Already well-commented; splitting by sport would improve discoverability. |
-| `api/app/analytics/api/_experiment_routes.py` | 538 | **Flag.** Experiment lifecycle routes mixed with Celery polling. Consider splitting mutation endpoints from read endpoints. |
-| `api/app/routers/fairbet/live.py` | 527 | **Flag.** Live-odds orchestration + scraper-control mixed in one file. |
-| `api/app/db/sports.py` | 526 | **Justified.** Pure ORM model definitions. Monolithic by design; Alembic autogenerate requires all models visible. |
-| `api/app/services/pipeline/stages/guardrails.py` | 521 | **Justified.** Invariant-enforcement stage. Heavy inline documentation is intentional (each invariant references a design principle). |
-| `api/app/analytics/datasets/mlb_pa_dataset.py` | 518 | **Justified.** PA-level feature engineering. Complex domain logic without obvious seams. |
-| `api/app/services/pipeline/stages/box_score_helpers.py` | 517 | **Flag.** Helper module for two different stages (`box_score_phase` and `validate_blocks`). Should be split by consumer. |
-| `api/app/services/pipeline/stages/validate_moments.py` | 514 | **Flag.** Moment-level validation with structural overlap with `validate_blocks.py`. A shared `_validators_common.py` could eliminate ~100 lines of duplication. |
-| `api/app/services/pipeline/stages/render_prompts.py` | 510 | **Flag.** Two large functions. `render_game_narrative_prompt` and `render_pbp_prompt` each exceed 200 lines and share no logic — separate files would improve testability. |
-| `api/app/routers/fairbet/odds.py` | 509 | **Justified.** Three modes (EV/snapshot, keyset, light) require coordinated branching in a single request handler. The complexity is essential. |
+## Duplicate utilities
 
----
+None consolidated. The one candidate (the two sensitive-key lists) turned
+out to be two different concerns — see "Considered but not changed".
 
-## Duplicate Patterns Identified (Not Fixed — No Behavioral Change Risk)
+## Verification
 
-1. **SQLAlchemy eager-load boilerplate.** `_safe_game_load_options()` in `fairbet/odds.py` uses try/except to handle partially-initialized mappers during testing. A similar pattern exists in `fairbet/live.py`. Candidates for a shared `db/query_helpers.py` utility.
-
-2. **`validate_blocks.py` and `validate_moments.py`.** Both implement role-checking, word-count validation, and coverage guards using structurally identical patterns. A `_validators_common.py` with the shared primitives would eliminate ~100 lines of duplication.
-
-3. **Mixed `Mapped`/`Column` style in `golf_pools.py`.** Most columns use the modern `Mapped[T] = mapped_column(...)` style, but several `DateTime` columns still use the legacy `Column(DateTime(...))` form. Both work correctly; a full migration to the modern style would improve consistency.
-
----
-
-## No Behavioral Changes
-
-All edits are pure dead-code removal and import ordering corrections. No logic, no defaults, and no public APIs were modified. The test suite should pass without any changes.
+- `python -m py_compile api/main.py api/tests/test_observability.py
+  api/app/db/__init__.py` — passes.
+- All edits are import reorganization with no behavioral effect.

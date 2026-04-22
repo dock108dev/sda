@@ -19,7 +19,7 @@ from app.dependencies.roles import require_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/billing", tags=["billing"])
+router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 
 
 class PortalRequest(BaseModel):
@@ -76,7 +76,7 @@ async def create_customer_portal(
 
     if not club.stripe_customer_id:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Club has no Stripe customer record",
         )
 

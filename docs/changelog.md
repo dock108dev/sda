@@ -25,12 +25,24 @@ Complete backend for multi-tenant self-serve club provisioning. Adds 11 new data
 - `POST /api/onboarding/club-claims` — public claim form
 - `GET /api/onboarding/session/{token}` — session status polling
 - `POST /api/onboarding/claim` — paid→claimed transition
-- `POST /api/commerce/checkout` — create Stripe checkout session
+- `POST /api/v1/commerce/checkout` — create Stripe checkout session
 - `POST /api/webhooks/stripe` — idempotent Stripe webhook handler
-- `GET /api/clubs/{slug}` — public club lookup
-- `POST /api/billing/portal` — Stripe Customer Portal for club owners
-- `PUT /api/clubs/{id}/branding` — club branding (plan-gated)
+- `GET /api/v1/clubs/{slug}` — public club lookup
+- `POST /api/v1/billing/portal` — Stripe Customer Portal for club owners
+- `PUT /api/v1/clubs/{id}/branding` — club branding (plan-gated)
 - `GET /api/admin/stats`, `GET /api/admin/poll-health` — admin SPA platform endpoints
+
+### Namespace migration
+
+Consumer routes introduced in this release landed on the convention-required
+`/api/v1/` prefix. Clubs, billing, and commerce routes that appeared at
+`/api/clubs/*`, `/api/billing/*`, `/api/commerce/*` in pre-release builds
+now live under `/api/v1/`. Infra endpoints (`/health`, `/ready`, `/metrics`,
+`/api/webhooks/stripe`) and public onboarding endpoints (`/api/onboarding/*`)
+are explicitly exempted in `scripts/lint_router_namespaces.py`.
+
+See the [API v1 prefix migration guide](migrations/2026-04-api-v1-prefix.md)
+for a full old→new mapping for any external consumer.
 
 **New services:**
 - `EntitlementService` — centralized plan limit enforcement (raises `EntitlementError` → 403, `SeatLimitError` → 402)

@@ -12,6 +12,8 @@ import logging
 from typing import Any
 from uuid import uuid4
 
+from app.context import request_id_var
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +32,11 @@ def emit(
     Safe to call from any async context. Failures never propagate.
     actor_type must be one of: user, webhook, system.
     """
+    rid = request_id_var.get()
+    merged_payload: dict[str, Any] | None = payload
+    if rid:
+        merged_payload = {**(payload or {}), "request_id": rid}
+
     asyncio.create_task(
         _write(
             event_type=event_type,
@@ -38,7 +45,7 @@ def emit(
             club_id=club_id,
             resource_type=resource_type,
             resource_id=resource_id,
-            payload=payload,
+            payload=merged_payload,
         )
     )
 

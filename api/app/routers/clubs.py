@@ -12,7 +12,7 @@ from app.db import get_db
 from app.db.club import Club
 from app.db.golf_pools import GolfPool
 
-router = APIRouter(prefix="/api/clubs", tags=["clubs"])
+router = APIRouter(prefix="/api/v1/clubs", tags=["clubs"])
 
 _ACTIVE_POOL_STATUSES = ("open", "locked", "live")
 

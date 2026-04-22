@@ -34,7 +34,7 @@ export class ClubNotFoundError extends Error {
 
 export async function fetchClubBySlug(slug: string): Promise<ClubPublic> {
   try {
-    return await request<ClubPublic>(`/api/clubs/${encodeURIComponent(slug)}`);
+    return await request<ClubPublic>(`/api/v1/clubs/${encodeURIComponent(slug)}`);
   } catch (err) {
     if (err instanceof Error && err.message.includes("(404)")) {
       throw new ClubNotFoundError(slug);
@@ -47,7 +47,7 @@ export async function updateClubBranding(
   clubId: string,
   branding: ClubBranding,
 ): Promise<{ club_id: string; branding: ClubBranding }> {
-  return request(`/api/clubs/${encodeURIComponent(clubId)}/branding`, {
+  return request(`/api/v1/clubs/${encodeURIComponent(clubId)}/branding`, {
     method: "PUT",
     body: JSON.stringify(branding),
   });

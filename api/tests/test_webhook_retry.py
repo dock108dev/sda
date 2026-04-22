@@ -56,7 +56,7 @@ class TestProcessStripeWebhookEventTask:
     def test_success_returns_ok(self) -> None:
         with patch("asyncio.new_event_loop") as mock_loop_factory:
             loop = MagicMock()
-            loop.run_until_complete = MagicMock(return_value=None)  # no error
+            loop.run_until_complete = MagicMock(side_effect=lambda c: (c.close(), None)[1])  # no error
             mock_loop_factory.return_value = loop
 
             result = _call_task("evt_ok", _CHECKOUT_PAYLOAD, retries=0)
@@ -73,7 +73,7 @@ class TestProcessStripeWebhookEventTask:
             patch("app.tasks.webhook_retry.logger") as mock_logger,
         ):
             loop = MagicMock()
-            loop.run_until_complete = MagicMock(return_value=exc)
+            loop.run_until_complete = MagicMock(side_effect=lambda c: (c.close(), exc)[1])
             mock_loop_factory.return_value = loop
 
             with pytest.raises(Exception):
@@ -100,7 +100,7 @@ class TestProcessStripeWebhookEventTask:
 
             with patch("asyncio.new_event_loop") as mock_loop_factory:
                 loop = MagicMock()
-                loop.run_until_complete = MagicMock(return_value=exc)
+                loop.run_until_complete = MagicMock(side_effect=lambda c: (c.close(), exc)[1])
                 mock_loop_factory.return_value = loop
 
                 process_stripe_webhook_event.push_request(retries=retry_index)
@@ -124,7 +124,7 @@ class TestProcessStripeWebhookEventTask:
             patch("app.tasks.webhook_retry.logger") as mock_logger,
         ):
             loop = MagicMock()
-            loop.run_until_complete = MagicMock(return_value=exc)
+            loop.run_until_complete = MagicMock(side_effect=lambda c: (c.close(), exc)[1])
             mock_loop_factory.return_value = loop
 
             result = _call_task("evt_dl", _CHECKOUT_PAYLOAD, retries=3)
@@ -144,7 +144,7 @@ class TestProcessStripeWebhookEventTask:
             patch("app.tasks.webhook_retry.logger") as mock_logger,
         ):
             loop = MagicMock()
-            loop.run_until_complete = MagicMock(return_value=exc)
+            loop.run_until_complete = MagicMock(side_effect=lambda c: (c.close(), exc)[1])
             mock_loop_factory.return_value = loop
 
             _call_task("evt_dl2", _CHECKOUT_PAYLOAD, retries=3)
@@ -156,7 +156,7 @@ class TestProcessStripeWebhookEventTask:
         """_run_and_record returns None → no retry, status=ok."""
         with patch("asyncio.new_event_loop") as mock_loop_factory:
             loop = MagicMock()
-            loop.run_until_complete = MagicMock(return_value=None)
+            loop.run_until_complete = MagicMock(side_effect=lambda c: (c.close(), None)[1])
             mock_loop_factory.return_value = loop
 
             result = _call_task("evt_idem", _CHECKOUT_PAYLOAD, retries=0)

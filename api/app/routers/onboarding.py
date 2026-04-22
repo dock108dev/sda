@@ -13,8 +13,10 @@ from datetime import UTC, datetime
 from html import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
+
+from app.utils.sanitize import sanitize_text
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,6 +46,11 @@ class ClubClaimRequest(BaseModel):
     contact_email: EmailStr
     expected_entries: int | None = Field(default=None, ge=1, le=100_000)
     notes: str = Field(default="", max_length=2000)
+
+    @field_validator("club_name", "notes", mode="before")
+    @classmethod
+    def _strip_html(cls, v: object) -> object:
+        return sanitize_text(v)
 
 
 class ClubClaimResponse(BaseModel):
@@ -252,7 +259,7 @@ async def claim_session(
         assert_can_transition(session.status, SessionStatus.CLAIMED)
     except InvalidTransitionError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail={"error": "invalid_transition", "message": str(exc)},
         ) from exc
 

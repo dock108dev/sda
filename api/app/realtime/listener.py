@@ -98,7 +98,7 @@ class ListenNotifyListener:
             try:
                 await conn.close()
             except Exception:
-                pass
+                logger.debug("listen_notify_close_failed", exc_info=True)
         logger.info("listen_notify_listener_stopped")
 
     def stats(self) -> dict:
@@ -159,7 +159,7 @@ class ListenNotifyListener:
                             await conn.remove_listener(ch, self._on_notify)
                         await conn.close()
                     except Exception:
-                        pass
+                        logger.debug("listen_notify_cleanup_failed", exc_info=True)
 
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, self._MAX_BACKOFF)

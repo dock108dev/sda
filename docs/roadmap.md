@@ -26,7 +26,7 @@ DB schema, module boundaries, multi-tenant auth middleware.
 Stripe checkout, idempotent webhook handling, onboarding sessions.
 
 - ✅ `stripe_customers`, `stripe_subscriptions`, `processed_stripe_events` tables (migration 058)
-- ✅ `POST /api/commerce/checkout` — create Stripe checkout session for a plan
+- ✅ `POST /api/v1/commerce/checkout` — create Stripe checkout session for a plan
 - ✅ `POST /api/webhooks/stripe` — idempotent webhook handler; advances `onboarding_sessions` on `checkout.session.completed` and manages subscription lifecycle on `customer.subscription.*`
 - ✅ Payment confirmation email on successful checkout
 - ✅ Dunning email on `invoice.payment_failed`
@@ -54,7 +54,7 @@ Idempotent club + first pool creation, entitlement service.
 - ✅ `club_claims` table (migration 057) — public "claim your club" form submissions
 - ✅ `clubs` table (migration 061) — slug-keyed tenant records with plan, status, Stripe customer link
 - ✅ `POST /api/onboarding/club-claims` — public form submission, triggers notification email
-- ✅ `GET /api/clubs/{slug}` — public club lookup with active pools
+- ✅ `GET /api/v1/clubs/{slug}` — public club lookup with active pools
 - ✅ `golf_pools.club_id` FK (migration 061) — club-scoped tenancy for pools
 - ✅ `EntitlementService` — centralized plan limit enforcement; raises `EntitlementError` (→ 403) or `SeatLimitError` (→ 402)
 - ✅ Global exception handlers for `EntitlementError`, `SeatLimitError`, `SubscriptionPastDueError`, `TransitionError`
@@ -117,7 +117,7 @@ Operator API, webhook retry, transactional emails, audit log.
 Club invites, custom branding gating, annual subscription lifecycle.
 
 - ⬜ `club_memberships` invite flow fully wired (migration 065 exists, UI pending)
-- ⬜ Custom branding: `clubs.branding_json` column populated via `PUT /api/clubs/{id}/branding`
+- ⬜ Custom branding: `clubs.branding_json` column populated via `PUT /api/v1/clubs/{id}/branding`
 - ⬜ Annual subscription lifecycle (cancel_at_period_end, renewal emails)
 - ⬜ Multi-admin seat limits enforced by `EntitlementService`
 

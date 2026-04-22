@@ -3,19 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-import types
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
-
-# Stripe is not installed in the test environment; stub it before any module
-# that does `import stripe` is loaded.
-if "stripe" not in sys.modules:
-    _stripe_stub = types.ModuleType("stripe")
-    _stripe_stub.Webhook = MagicMock()
-    _stripe_stub.SignatureVerificationError = Exception
-    sys.modules["stripe"] = _stripe_stub
 
 import pytest
 from fastapi import FastAPI
@@ -126,7 +116,7 @@ class TestAuditService:
         """emit() calls asyncio.create_task with the write coroutine."""
         import app.services.audit as svc
 
-        with patch("asyncio.create_task") as mock_create:
+        with patch("asyncio.create_task", side_effect=lambda c: c.close()) as mock_create:
             svc.emit(
                 "club_provisioned",
                 actor_type="system",

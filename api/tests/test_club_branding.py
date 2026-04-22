@@ -1,4 +1,4 @@
-"""Tests for PUT /api/clubs/{club_id}/branding — ISSUE-022.
+"""Tests for PUT /api/v1/clubs/{club_id}/branding — ISSUE-022.
 
 Covers:
   - 401 when no user_id on request state
@@ -109,14 +109,14 @@ def test_no_user_id_on_state_returns_401() -> None:
     """If require_user passes but no user_id on state, return 401."""
     db = _QueueDB(_make_result(scalar=_make_club()))
     client = TestClient(_app(db, user_id=None))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={})
     assert resp.status_code == 401
 
 
 def test_club_not_found_returns_404() -> None:
     db = _QueueDB(_make_result(scalar=None))
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/no-such-id/branding", json={})
+    resp = client.put("/api/v1/clubs/no-such-id/branding", json={})
     assert resp.status_code == 404
 
 
@@ -125,7 +125,7 @@ def test_viewer_membership_returns_403() -> None:
     viewer = _make_membership(role="viewer")
     db = _QueueDB(_make_result(scalar=club), _make_result(scalar=viewer))
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={"primary_color": "#AABBCC"})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={"primary_color": "#AABBCC"})
     assert resp.status_code == 403
 
 
@@ -133,7 +133,7 @@ def test_no_membership_returns_403() -> None:
     club = _make_club()
     db = _QueueDB(_make_result(scalar=club), _make_result(scalar=None))
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={})
     assert resp.status_code == 403
 
 
@@ -148,7 +148,7 @@ def test_free_tier_owner_returns_402() -> None:
         _make_result(scalar=club),  # consumed by _get_limits inside assert_feature
     )
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={"primary_color": "#112233"})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={"primary_color": "#112233"})
     assert resp.status_code == 402
 
 
@@ -162,7 +162,7 @@ def test_pro_tier_owner_returns_402() -> None:
         _make_result(scalar=club),
     )
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={"primary_color": "#112233"})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={"primary_color": "#112233"})
     assert resp.status_code == 402
 
 
@@ -173,7 +173,7 @@ def test_invalid_hex_returns_422() -> None:
     # Validation fails before DB query for entitlement
     db = _QueueDB(_make_result(scalar=club), _make_result(scalar=owner))
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={"primary_color": "red"})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={"primary_color": "red"})
     assert resp.status_code == 422
 
 
@@ -182,7 +182,7 @@ def test_accent_color_invalid_hex_returns_422() -> None:
     owner = _make_membership(role="owner")
     db = _QueueDB(_make_result(scalar=club), _make_result(scalar=owner))
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={"accent_color": "#GGH"})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={"accent_color": "#GGH"})
     assert resp.status_code == 422
 
 
@@ -193,7 +193,7 @@ def test_non_https_logo_url_returns_422() -> None:
     db = _QueueDB(_make_result(scalar=club), _make_result(scalar=owner))
     client = TestClient(_app(db))
     resp = client.put(
-        "/api/clubs/uuid-1111/branding",
+        "/api/v1/clubs/uuid-1111/branding",
         json={"logo_url": "http://example.com/logo.png"},
     )
     assert resp.status_code == 422
@@ -214,10 +214,10 @@ def test_enterprise_owner_sets_branding_successfully() -> None:
         "primary_color": "#1e40af",
         "accent_color": "#93c5fd",
     }
-    resp = client.put("/api/clubs/uuid-1111/branding", json=payload)
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json=payload)
     assert resp.status_code == 200
     body = resp.json()
-    assert body["club_id"] == "uuid-1111"
+    assert body["clubId"] == "uuid-1111"
     assert body["branding"]["logo_url"] == "https://cdn.example.com/logo.png"
     assert body["branding"]["primary_color"] == "#1E40AF"
     assert body["branding"]["accent_color"] == "#93C5FD"
@@ -235,7 +235,7 @@ def test_null_fields_omitted_from_branding() -> None:
     )
     client = TestClient(_app(db))
     resp = client.put(
-        "/api/clubs/uuid-1111/branding",
+        "/api/v1/clubs/uuid-1111/branding",
         json={"primary_color": "#AABBCC", "logo_url": None, "accent_color": None},
     )
     assert resp.status_code == 200
@@ -254,7 +254,7 @@ def test_empty_payload_clears_branding() -> None:
         _make_result(scalar=club),
     )
     client = TestClient(_app(db))
-    resp = client.put("/api/clubs/uuid-1111/branding", json={})
+    resp = client.put("/api/v1/clubs/uuid-1111/branding", json={})
     assert resp.status_code == 200
     body = resp.json()
     assert body["branding"] == {}

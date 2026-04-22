@@ -1,4 +1,4 @@
-"""Integration tests for POST /api/commerce/checkout.
+"""Integration tests for POST /api/v1/commerce/checkout.
 
 Mocks the Stripe SDK to verify endpoint behaviour without live network calls.
 """
@@ -137,7 +137,7 @@ class TestCreateCheckoutSessionHappyPath:
             mock_settings.stripe_checkout_success_url = "https://example.com/success"
             mock_settings.stripe_checkout_cancel_url = "https://example.com/cancel"
 
-            resp = client.post("/api/commerce/checkout", json=_valid_payload())
+            resp = client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         assert resp.status_code == 201, resp.text
         body = resp.json()
@@ -165,7 +165,7 @@ class TestCreateCheckoutSessionHappyPath:
             mock_settings.stripe_checkout_success_url = "https://example.com/success"
             mock_settings.stripe_checkout_cancel_url = "https://example.com/cancel"
 
-            resp = client.post("/api/commerce/checkout", json=_valid_payload())
+            resp = client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         assert resp.status_code == 201
         # Customer.create must NOT be called when customer already exists
@@ -188,7 +188,7 @@ class TestCreateCheckoutSessionHappyPath:
             mock_settings.stripe_checkout_success_url = "https://example.com/success"
             mock_settings.stripe_checkout_cancel_url = "https://example.com/cancel"
 
-            resp = client.post("/api/commerce/checkout", json=_valid_payload())
+            resp = client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         assert resp.status_code == 201
         assert db_sess.flushed is True
@@ -218,7 +218,7 @@ class TestCreateCheckoutSessionHappyPath:
             mock_settings.stripe_checkout_success_url = "https://example.com/success"
             mock_settings.stripe_checkout_cancel_url = "https://example.com/cancel"
 
-            client.post("/api/commerce/checkout", json=_valid_payload())
+            client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         _, kwargs = create_session_mock.call_args
         assert kwargs.get("idempotency_key") == "claim_abc123:price_monthly_pro"
@@ -237,7 +237,7 @@ class TestCreateCheckoutSession400:
         with patch("app.routers.commerce.settings") as mock_settings:
             mock_settings.stripe_secret_key = _TEST_STRIPE_KEY
 
-            resp = client.post("/api/commerce/checkout", json=_valid_payload())
+            resp = client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         assert resp.status_code == 400
         assert resp.json()["detail"]["error"] == "invalid_claim"
@@ -249,7 +249,7 @@ class TestCreateCheckoutSession400:
         with patch("app.routers.commerce.settings") as mock_settings:
             mock_settings.stripe_secret_key = _TEST_STRIPE_KEY
 
-            resp = client.post("/api/commerce/checkout", json=_valid_payload())
+            resp = client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         assert resp.status_code == 400
         assert resp.json()["detail"]["error"] == "invalid_claim"
@@ -262,7 +262,7 @@ class TestCreateCheckoutSession400:
             mock_settings.stripe_secret_key = _TEST_STRIPE_KEY
 
             resp = client.post(
-                "/api/commerce/checkout",
+                "/api/v1/commerce/checkout",
                 json=_valid_payload(clubClaimId="claim_abc123"),
             )
 
@@ -283,7 +283,7 @@ class TestCreateCheckoutSession503:
         with patch("app.routers.commerce.settings") as mock_settings:
             mock_settings.stripe_secret_key = None
 
-            resp = client.post("/api/commerce/checkout", json=_valid_payload())
+            resp = client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         assert resp.status_code == 503
         assert resp.json()["detail"]["error"] == "stripe_unavailable"
@@ -305,7 +305,7 @@ class TestCreateCheckoutSession503:
             mock_settings.stripe_checkout_success_url = "https://example.com/success"
             mock_settings.stripe_checkout_cancel_url = "https://example.com/cancel"
 
-            resp = client.post("/api/commerce/checkout", json=_valid_payload())
+            resp = client.post("/api/v1/commerce/checkout", json=_valid_payload())
 
         assert resp.status_code == 503
         assert resp.json()["detail"]["error"] == "stripe_unavailable"
@@ -321,7 +321,7 @@ class TestCheckoutRequestValidation:
     def test_missing_plan_id_returns_422(self) -> None:
         client, _ = _make_app()
         resp = client.post(
-            "/api/commerce/checkout",
+            "/api/v1/commerce/checkout",
             json={"clubClaimId": "claim_abc123"},
         )
         assert resp.status_code == 422
@@ -329,7 +329,7 @@ class TestCheckoutRequestValidation:
     def test_missing_club_claim_id_returns_422(self) -> None:
         client, _ = _make_app()
         resp = client.post(
-            "/api/commerce/checkout",
+            "/api/v1/commerce/checkout",
             json={"planId": "price_pro"},
         )
         assert resp.status_code == 422
