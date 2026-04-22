@@ -30,9 +30,15 @@ if [ -f "$BACKUP_FILE" ]; then
     # and on the host filesystem (infra/backups/...).
     ln -sf "$(basename "$BACKUP_FILE")" "${BACKUP_DIR}/latest.sql.gz"
     
-    # Keep only last 3 days of backups (~1.2GB each, ~3.6GB total)
+    # Retention: drop anything older than 3 days, then cap count so multiple
+    # runs per day cannot fill the disk (mtime-only pruning is insufficient).
     find "$BACKUP_DIR" -name "sports_*.sql.gz" -mtime +3 -delete
-    echo "Cleaned up backups older than 3 days"
+    echo "Cleaned up backups older than 3 days (mtime)"
+    # Keep at most 5 newest dumps. Multiple runs/day all have mtime < 3d, so
+    # the find above alone cannot prevent disk fill (~2GB per dump).
+    # shellcheck disable=SC2012
+    ls -t "$BACKUP_DIR"/sports_*.sql.gz 2>/dev/null | tail -n +6 | xargs -r rm -f
+    echo "Pruned to 5 most recent full backups (count cap)"
 else
     echo "ERROR: Backup failed - file not created"
     exit 1
