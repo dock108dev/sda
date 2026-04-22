@@ -169,7 +169,7 @@ def test_accept_invite_ok() -> None:
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["club_id"] == _CLUB_UUID
+    assert body["clubId"] == _CLUB_UUID
     assert body["name"] == "Test GC"
     assert body["slug"] == "test-gc"
     assert len(db.added) == 1
@@ -526,7 +526,7 @@ def test_full_invite_accept_list_remove_cycle() -> None:
         headers=_bearer(_ADMIN_ID),
     )
     assert resp2.status_code == 200
-    assert resp2.json()["club_id"] == _CLUB_UUID
+    assert resp2.json()["clubId"] == _CLUB_UUID
     assert len(accept_db.added) == 1
     assert accept_db.added[0].role == "admin"
 

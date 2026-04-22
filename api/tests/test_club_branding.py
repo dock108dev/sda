@@ -217,7 +217,7 @@ def test_enterprise_owner_sets_branding_successfully() -> None:
     resp = client.put("/api/v1/clubs/uuid-1111/branding", json=payload)
     assert resp.status_code == 200
     body = resp.json()
-    assert body["club_id"] == "uuid-1111"
+    assert body["clubId"] == "uuid-1111"
     assert body["branding"]["logo_url"] == "https://cdn.example.com/logo.png"
     assert body["branding"]["primary_color"] == "#1E40AF"
     assert body["branding"]["accent_color"] == "#93C5FD"

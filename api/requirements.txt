@@ -28,7 +28,10 @@ opentelemetry-exporter-otlp-proto-grpc==1.29.0
 opentelemetry-instrumentation-fastapi==0.50b0
 opentelemetry-instrumentation-sqlalchemy==0.50b0
 opentelemetry-instrumentation-celery==0.50b0
-stripe>=7.0.0
+# Pinned <12 — stripe v12+ restructured resource/error classes, breaking
+# module-level attributes like stripe.Customer and stripe.StripeError that
+# tests patch. Migrate to StripeClient-style API in a follow-up before raising.
+stripe>=7.0.0,<12.0.0
 prometheus_client>=0.20.0
 # HTML sanitization for free-text user fields (ISSUE-025)
 bleach>=6.1.0
