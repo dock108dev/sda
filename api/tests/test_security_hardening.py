@@ -7,17 +7,8 @@
 
 from __future__ import annotations
 
-import sys
-import types
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
-
-# Stub stripe before any import pulls it.
-if "stripe" not in sys.modules:
-    _stripe_stub = types.ModuleType("stripe")
-    _stripe_stub.Webhook = MagicMock()
-    _stripe_stub.SignatureVerificationError = Exception
-    sys.modules["stripe"] = _stripe_stub
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
