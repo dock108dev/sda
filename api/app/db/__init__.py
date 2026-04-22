@@ -20,7 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from .base import Base
 from . import hooks as _hooks  # noqa: F401 — registers ORM event listeners
 from . import telemetry as _telemetry  # noqa: F401 — registers CircuitBreakerTripEvent mapper
-from .onboarding import ClubClaim  # noqa: F401 — register ORM model for Alembic autogenerate
+from .club import Club  # noqa: F401 — register ORM model for Alembic autogenerate
+from .magic_link import MagicLinkToken  # noqa: F401 — register ORM model for Alembic autogenerate
+from .onboarding import ClubClaim, OnboardingSession  # noqa: F401 — register ORM models for Alembic autogenerate
+from .stripe import ProcessedStripeEvent, StripeCustomer, StripeSubscription, WebhookDeliveryAttempt  # noqa: F401
+from .audit import AuditEvent  # noqa: F401 — register ORM model for Alembic autogenerate
+from .golf_pools import PoolLifecycleEvent  # noqa: F401 — register ORM model for Alembic autogenerate
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
@@ -98,7 +103,16 @@ async def close_db() -> None:
 __all__ = [
     "Base",
     "AsyncSession",
+    "AuditEvent",
+    "Club",
     "ClubClaim",
+    "MagicLinkToken",
+    "OnboardingSession",
+    "PoolLifecycleEvent",
+    "ProcessedStripeEvent",
+    "StripeCustomer",
+    "StripeSubscription",
+    "WebhookDeliveryAttempt",
     "get_db",
     "get_async_session",
     "close_db",

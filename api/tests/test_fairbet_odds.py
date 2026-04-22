@@ -17,7 +17,6 @@ from app.routers.fairbet.ev_extrapolation import _build_sharp_reference, _try_ex
 from app.routers.fairbet.odds import (
     BetDefinition,
     FairbetOddsResponse,
-    _build_base_filters,
     get_fairbet_odds,
 )
 from app.services.ev_config import extrapolation_confidence
@@ -123,28 +122,6 @@ class TestFairbetOddsResponseModel:
         )
         assert response.total == 1
         assert len(response.books_available) == 2
-
-
-class TestBuildBaseFilters:
-    """Tests for _build_base_filters helper function."""
-
-    def test_returns_game_start_expression(self):
-        """Returns game_start expression and conditions."""
-        game_start, conditions = _build_base_filters(None)
-        assert game_start is not None
-        assert len(conditions) >= 2  # status filter + time filter
-
-    def test_adds_league_filter_when_provided(self):
-        """Adds league filter condition when league is specified."""
-        _, conditions_without = _build_base_filters(None)
-        _, conditions_with = _build_base_filters("NBA")
-        assert len(conditions_with) == len(conditions_without) + 1
-
-    def test_uppercases_league_code(self):
-        """League code is uppercased in filter."""
-        # This is tested implicitly through the condition creation
-        _, conditions = _build_base_filters("nba")
-        assert len(conditions) == 3  # status + time + league
 
 
 class TestBooksSorting:

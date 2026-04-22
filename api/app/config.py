@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
 
 from pydantic import Field, model_validator
@@ -45,19 +46,6 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(
         default=60, alias="RATE_LIMIT_WINDOW_SECONDS"
     )
-    fairbet_cursor_enabled: bool = Field(default=True, alias="FAIRBET_CURSOR_ENABLED")
-    fairbet_light_default_enabled: bool = Field(
-        default=True, alias="FAIRBET_LIGHT_DEFAULT_ENABLED"
-    )
-    fairbet_redis_limiter_enabled: bool = Field(
-        default=False, alias="FAIRBET_REDIS_LIMITER_ENABLED"
-    )
-    fairbet_odds_limiter_requests: int = Field(
-        default=240, alias="FAIRBET_ODDS_LIMITER_REQUESTS"
-    )
-    fairbet_odds_limiter_window_seconds: int = Field(
-        default=60, alias="FAIRBET_ODDS_LIMITER_WINDOW_SECONDS"
-    )
     fairbet_odds_cache_enabled: bool = Field(
         default=True, alias="FAIRBET_ODDS_CACHE_ENABLED"
     )
@@ -67,6 +55,10 @@ class Settings(BaseSettings):
     fairbet_odds_snapshot_ttl_seconds: int = Field(
         default=60, alias="FAIRBET_ODDS_SNAPSHOT_TTL_SECONDS"
     )
+
+    # Subdomain routing
+    subdomain_routing: bool = Field(default=False, alias="SUBDOMAIN_ROUTING")
+    base_domain: str = Field(default="localhost", alias="BASE_DOMAIN")
 
     # API Authentication
     # Required in production - all endpoints except /healthz require this key
@@ -83,7 +75,7 @@ class Settings(BaseSettings):
     admin_rate_limit_window_seconds: int = Field(default=60, alias="ADMIN_RATE_LIMIT_WINDOW_SECONDS")
 
     # JWT / User Authentication
-    # AUTH_ENABLED=false returns admin role for all requests (feature flag fallback)
+    # AUTH_ENABLED=false skips JWT verification (dev-only; rejected in production by validator)
     auth_enabled: bool = Field(default=True, alias="AUTH_ENABLED")
     jwt_secret: str = Field(
         default="dev-jwt-secret-change-in-production",
@@ -92,8 +84,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_expire_minutes: int = Field(default=1440, alias="JWT_EXPIRE_MINUTES")  # 24h
 
-    # Email — Resend (preferred) or SMTP (fallback)
-    resend_api_key: str | None = Field(default=None, alias="RESEND_API_KEY")
+    # Email — backend selection and transport credentials.
+    # EMAIL_BACKEND must be 'smtp' or 'ses'; defaults to 'smtp' for local dev.
+    email_backend: str = Field(default="smtp", alias="EMAIL_BACKEND")
     smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
     smtp_user: str | None = Field(default=None, alias="SMTP_USER")
@@ -102,6 +95,7 @@ class Settings(BaseSettings):
     mail_from: str = Field(
         default="noreply@scrolldownsports.com", alias="MAIL_FROM"
     )
+    aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
     frontend_url: str = Field(
         default="http://localhost:3000", alias="FRONTEND_URL"
     )
@@ -111,6 +105,19 @@ class Settings(BaseSettings):
     onboarding_notification_email: str | None = Field(
         default=None, alias="ONBOARDING_NOTIFICATION_EMAIL"
     )
+
+    # Stripe — payment processing for club subscriptions.
+    # STRIPE_SECRET_KEY is required for the /api/commerce/checkout endpoint.
+    stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
+    stripe_checkout_success_url: str = Field(
+        default="http://localhost:3000/onboarding/success?session={CHECKOUT_SESSION_ID}",
+        alias="STRIPE_CHECKOUT_SUCCESS_URL",
+    )
+    stripe_checkout_cancel_url: str = Field(
+        default="http://localhost:3000/onboarding/cancel",
+        alias="STRIPE_CHECKOUT_CANCEL_URL",
+    )
+    stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
 
     # OpenAI Configuration (SSOT for model defaults — docker-compose defers to these)
     # AI is used for interpretation/narration only, never for ordering/filtering
@@ -150,6 +157,13 @@ class Settings(BaseSettings):
             "http://localhost:5173",
             "http://127.0.0.1:5173",
         ]
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        """Regex allowing all subdomains of BASE_DOMAIN when SUBDOMAIN_ROUTING is enabled."""
+        if not self.subdomain_routing:
+            return None
+        return rf"https?://[a-z0-9][a-z0-9-]*\.{re.escape(self.base_domain)}"
 
     @property
     def admin_origins(self) -> list[str]:
@@ -201,16 +215,18 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "AUTH_ENABLED must not be False in production or staging."
                 )
+        _valid_backends = {"smtp", "ses"}
+        if self.email_backend not in _valid_backends:
+            raise ValueError(
+                f"EMAIL_BACKEND must be one of {sorted(_valid_backends)!r},"
+                f" got {self.email_backend!r}"
+            )
         if self.rate_limit_requests <= 0 or self.rate_limit_window_seconds <= 0:
             raise ValueError("Rate limit settings must be positive integers.")
         if self.fairbet_odds_cache_ttl_seconds <= 0:
             raise ValueError("FAIRBET_ODDS_CACHE_TTL_SECONDS must be positive.")
         if self.fairbet_odds_snapshot_ttl_seconds <= 0:
             raise ValueError("FAIRBET_ODDS_SNAPSHOT_TTL_SECONDS must be positive.")
-        if self.fairbet_odds_limiter_requests <= 0:
-            raise ValueError("FAIRBET_ODDS_LIMITER_REQUESTS must be positive.")
-        if self.fairbet_odds_limiter_window_seconds <= 0:
-            raise ValueError("FAIRBET_ODDS_LIMITER_WINDOW_SECONDS must be positive.")
         return self
 
 
@@ -221,3 +237,11 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+# Source of truth for Stripe plan monthly pricing in cents.
+# Keep in sync with the Stripe product catalog — update here first, then Stripe.
+PLAN_PRICES: dict[str, int] = {
+    "price_starter": 2900,
+    "price_pro": 9900,
+    "price_enterprise": 29900,
+}

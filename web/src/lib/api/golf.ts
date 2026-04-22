@@ -10,6 +10,7 @@ import type {
   GolfOddsEntry,
   GolfDFSProjection,
   GolfPlayerStats,
+  UpcomingTournament,
 } from "./golfTypes";
 import type { TriggerTaskResponse } from "./sportsAdmin/taskControl";
 
@@ -20,6 +21,18 @@ export interface TournamentFilters {
   season?: number;
   status?: string;
   limit?: number;
+}
+
+export async function listUpcomingTournaments(
+  daysAhead?: number
+): Promise<UpcomingTournament[]> {
+  const query = new URLSearchParams();
+  if (daysAhead != null) query.append("days_ahead", String(daysAhead));
+  const qs = query.toString();
+  const res = await request<{ tournaments: UpcomingTournament[]; count: number }>(
+    `/api/golf/tournaments/upcoming${qs ? `?${qs}` : ""}`
+  );
+  return res.tournaments;
 }
 
 export async function listTournaments(

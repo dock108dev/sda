@@ -1,3 +1,11 @@
+export interface UpcomingTournament {
+  tournament_id: number;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  field_available: boolean;
+}
+
 export interface GolfTournament {
   id: number;
   event_id: string;

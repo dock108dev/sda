@@ -27,7 +27,7 @@ def _notify_odds_update(session: Session, game_id: int) -> None:
             text("SELECT pg_notify('odds_update', :p)"), {"p": payload}
         )
     except Exception:
-        pass
+        logger.debug("odds_pg_notify_failed", extra={"game_id": game_id}, exc_info=True)
 
 
 class OddsUpsertResult(Enum):

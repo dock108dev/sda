@@ -2,7 +2,7 @@
 
 Powers the `SuperAdminDashboard` in the admin.dock108.dev SPA:
 
-- GET /api/admin/stats        — one-shot 4-tile summary.
+- GET /api/admin/stats        — one-shot 5-tile summary (cached 60s in Redis).
 - GET /api/admin/poll-health  — per-pool scraper freshness for the polled
                                 live-tournament health widget.
 
@@ -21,25 +21,46 @@ native snake_case field identifiers.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, date, datetime, time, timedelta
+from typing import AsyncGenerator
 from zoneinfo import ZoneInfo
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import PLAN_PRICES, settings
 from app.db import get_db
 from app.db.golf import GolfTournament
 from app.db.golf_pools import GolfPool, GolfPoolEntry, GolfPoolScoreRun
+from app.db.onboarding import ClubClaim
+from app.db.stripe import StripeSubscription
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+_STATS_CACHE_KEY = "admin:stats:v1"
+_STATS_CACHE_TTL = 60  # seconds
+
+
+async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
+    """Yield an async Redis client; close on teardown."""
+    client: aioredis.Redis = aioredis.from_url(
+        settings.redis_url, decode_responses=True
+    )
+    try:
+        yield client
+    finally:
+        await client.aclose()
+
 
 # A pool's data is "stale" during an active tournament window if no
 # successful scoring run has completed within this interval.
@@ -62,6 +83,7 @@ class AdminStatsResponse(BaseModel):
     total_entries: int
     active_clubs: int
     mrr_cents: int
+    pending_claims: int
 
 
 class TournamentPollHealth(BaseModel):
@@ -111,11 +133,17 @@ def _tournament_window_bounds(
 )
 async def get_admin_stats(
     db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),
 ) -> AdminStatsResponse:
     """Summary metrics for the admin dashboard tile grid.
 
     All fields are required integers — zero (not null) when empty.
+    Result is cached in Redis for 60 seconds to avoid hot queries.
     """
+    cached = await redis.get(_STATS_CACHE_KEY)
+    if cached:
+        return AdminStatsResponse(**json.loads(cached))
+
     total_pools = await db.scalar(
         select(func.count(GolfPool.id)).where(
             GolfPool.status.in_(_POOL_STATUSES_COUNTED)
@@ -127,16 +155,24 @@ async def get_admin_stats(
             GolfPool.status.in_(_POOL_STATUSES_LIVE)
         )
     )
+    pending_claims = await db.scalar(
+        select(func.count(ClubClaim.id)).where(ClubClaim.status == "new")
+    )
 
-    # Stripe subscriptions aren't wired up yet; plan says return 0.
-    mrr_cents = 0
+    sub_result = await db.execute(
+        select(StripeSubscription.plan_id).where(StripeSubscription.status == "active")
+    )
+    mrr_cents = sum(PLAN_PRICES.get(plan_id, 0) for (plan_id,) in sub_result.all())
 
-    return AdminStatsResponse(
+    stats = AdminStatsResponse(
         total_pools=int(total_pools or 0),
         total_entries=int(total_entries or 0),
         active_clubs=int(active_clubs or 0),
         mrr_cents=mrr_cents,
+        pending_claims=int(pending_claims or 0),
     )
+    await redis.setex(_STATS_CACHE_KEY, _STATS_CACHE_TTL, json.dumps(stats.model_dump()))
+    return stats
 
 
 @router.get(

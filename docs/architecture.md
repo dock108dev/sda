@@ -90,11 +90,24 @@ See [Analytics](analytics.md) for details.
   - Container log viewer
   - Game detail with boxscores, player stats, odds, social, PBP, flow, and pipeline runs
 
-### 5. Database (PostgreSQL)
+### 5. Club Provisioning Domain (`api/app/routers/` — clubs, commerce, billing, onboarding, webhooks)
+**Purpose:** Multi-tenant self-serve club provisioning for golf pool operators
+
+- **Onboarding:** Public "claim your club" form (`POST /api/onboarding/club-claims`) kicks off a two-phase flow: prospect submits interest → operator initiates Stripe checkout → webhook confirms payment → claim token exchanged for account
+- **Commerce:** Stripe checkout session creation (`POST /api/commerce/checkout`); three plans — Starter ($29/mo), Pro ($99/mo), Enterprise ($299/mo)
+- **Webhooks:** Idempotent Stripe webhook handler (`POST /api/webhooks/stripe`) using `processed_stripe_events` as a dedup table (`ON CONFLICT DO NOTHING`)
+- **Clubs:** Public club lookup (`GET /api/clubs/{slug}`) returns club info and active pools, used by public entry pages
+- **Billing:** Stripe Customer Portal self-service (`POST /api/billing/portal`) for club owners to manage subscriptions
+- **Club Memberships:** Invite-based RBAC (`api/app/routers/club_memberships.py`) — owner/admin roles, `club_memberships` table
+- **Club Branding:** `PUT /api/clubs/{id}/branding` — gated by plan; stores `branding_json` JSONB in the clubs table
+- **Entitlements:** `EntitlementService` (`api/app/services/entitlement.py`) centralizes all plan limits; raises `EntitlementError` (→ 403), `SeatLimitError` (→ 402), `SubscriptionPastDueError` (→ 402)
+- **Pool Lifecycle:** `TransitionError` (→ 409) raised when a pool state machine guard fails
+
+### 6. Database (PostgreSQL)
 **Purpose:** Single source of truth
 
 - **Schema:** Normalized across sports
-- **Tables:** games, plays, box scores, odds, social posts, teams
+- **Tables:** games, plays, box scores, odds, social posts, teams, clubs, memberships, Stripe commerce tables
 - **Migrations:** Alembic (see `api/alembic/versions/`)
 - **Access:** Async SQLAlchemy ORM
 
@@ -281,7 +294,7 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 - `GET/POST /api/golf/pools` — Pool CRUD (RVCC, Crestmont variants)
 - `POST /api/golf/pools/{id}/entries` — Submit pool entry
 - `GET /api/golf/pools/{id}/leaderboard` — Materialized pool standings
-- See [Golf Pools](../golf-pools.md) for full endpoint reference
+- See [API Reference](api.md) for full endpoint reference
 
 ### FairBet Endpoints
 - `GET /api/fairbet/odds` — Cross-book odds comparison with EV annotations and display fields (pre-game)

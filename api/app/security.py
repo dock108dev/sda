@@ -22,7 +22,9 @@ class _BcryptContext:
             bcrypt.gensalt(),
         ).decode("utf-8")
 
-    def verify(self, password: str, password_hash: str) -> bool:
+    def verify(self, password: str, password_hash: str | None) -> bool:
+        if password_hash is None:
+            return False
         try:
             return bcrypt.checkpw(
                 password.encode("utf-8"),

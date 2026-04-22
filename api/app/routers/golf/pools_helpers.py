@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ from app.db.golf_pools import (
     GolfPoolEntry,
     GolfPoolEntryPick,
 )
+from app.schemas.pool_config import PoolConfigValidator
 from app.services.golf_pool_scoring import Pick, rules_from_json, validate_picks
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -40,6 +41,10 @@ class EntrySubmitRequest(BaseModel):
     email: str = Field(..., description="Entrant email address")
     entry_name: str | None = Field(None, description="Display name for the entry")
     picks: list[PickRequest] = Field(..., description="List of golfer picks")
+    website: str | None = Field(
+        None,
+        description="Honeypot — real users leave this empty; bots tend to fill it",
+    )
 
 
 class PoolCreateRequest(BaseModel):
@@ -57,6 +62,13 @@ class PoolCreateRequest(BaseModel):
     allow_self_service_entry: bool = True
     notes: str | None = None
 
+    @field_validator("rules_json")
+    @classmethod
+    def validate_rules(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        if v is not None:
+            PoolConfigValidator.validate(v)
+        return v
+
 
 class PoolUpdateRequest(BaseModel):
     name: str | None = None
@@ -69,6 +81,13 @@ class PoolUpdateRequest(BaseModel):
     require_upload: bool | None = None
     allow_self_service_entry: bool | None = None
     notes: str | None = None
+
+    @field_validator("rules_json")
+    @classmethod
+    def validate_rules(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        if v is not None:
+            PoolConfigValidator.validate(v)
+        return v
 
 
 class BucketPlayerItem(BaseModel):

@@ -3546,7 +3546,7 @@ DFS salary and projection data.
 
 ## Golf Pools API
 
-Country club pool system for live tournament scoring. See [Golf Pools Guide](golf-pools.md) for full operational documentation.
+Country club pool system for live tournament scoring. See [Club Provisioning](clubs.md) for the full club onboarding and lifecycle reference.
 
 ---
 

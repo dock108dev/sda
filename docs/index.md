@@ -29,7 +29,6 @@
 | [Game Flow Contract](gameflow/contract.md) | **Authoritative:** Block-based narrative model (3-7 blocks per game) |
 | [Game Flow Pipeline](gameflow/pipeline.md) | 8-stage pipeline from PBP to narratives |
 | [PBP Game Flow Assumptions](gameflow/pbp-assumptions.md) | Technical assumptions about PBP data |
-| [Phase 6 Validation](phase6-validation.md) | End-to-end validation of quality grader, sport templates, anti-generic detector |
 
 ## Timeline System
 
@@ -51,11 +50,11 @@
 |-------|-------------|
 | [Data Sources](ingestion/data-sources.md) | **Start here:** Where data comes from — NBA, NHL, NCAAB, MLB, NFL (boxscores, PBP, odds, social, advanced stats per sport) |
 
-## Golf
+## Golf & Club Provisioning
 
 | Guide | Description |
 |-------|-------------|
-| [Golf Pools](golf-pools.md) | Country club pool feature — RVCC and Crestmont variants, live scoring, CSV import, admin operations |
+| [Club Provisioning](clubs.md) | Self-serve club onboarding, Stripe commerce, entitlements, pool lifecycle |
 
 ## Analytics & ML
 
@@ -72,7 +71,6 @@
 | [Deployment](ops/deployment.md) | Server setup, deploy flow, edge routing, rollbacks |
 | [Infrastructure & Local Dev](ops/infra.md) | Docker configuration, local setup, environment variables |
 | [Error Handling Audit](audits/abend-handling.md) | 188 exception blocks audited; all Critical/High findings fixed |
-| [Security Audit](audits/security-audit.md) | Auth, secrets, injection surface review |
 | [SSOT Cleanup](audits/ssot-cleanup.md) | PipelineStage, GameStatus, story_version consolidation |
 | [Docs Consolidation](audits/docs-consolidation.md) | Documentation audit passes — what was fixed and what was verified |
 | [Changelog](changelog.md) | Recent changes and releases |
@@ -81,4 +79,4 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Research Index](research/README.md) | Categorized index of 32 technical deep-dives covering event-driven architecture, realtime, API design, DB migrations, pipeline quality, and more |
+| [Research Index](research/README.md) | Pre-implementation design research — commerce, auth, club tenancy, pool lifecycle, entitlements, operations |

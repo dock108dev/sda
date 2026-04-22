@@ -71,7 +71,6 @@ def decode_access_token(token: str) -> dict[str, Any]:
 
 
 _RESET_TOKEN_EXPIRE_MINUTES = 30
-_MAGIC_LINK_EXPIRE_MINUTES = 15
 
 
 def create_reset_token(user_id: int) -> str:
@@ -102,32 +101,44 @@ def decode_reset_token(token: str) -> int:
     return int(payload["sub"])
 
 
-def create_magic_link_token(user_id: int) -> str:
-    """Issue a short-lived JWT for magic-link login."""
+_INVITE_TOKEN_EXPIRE_HOURS = 24
+
+
+def create_invite_token(
+    *,
+    club_id: int,
+    invitee_email: str,
+    role: str,
+    inviter_id: int,
+) -> str:
+    """Issue a signed JWT for a club membership invite (24-hour TTL)."""
     now = datetime.now(UTC)
     payload: dict[str, Any] = {
-        "sub": str(user_id),
-        "purpose": "magic_link",
+        "sub": invitee_email,
+        "purpose": "club_invite",
+        "club_id": club_id,
+        "role": role,
+        "inviter_id": inviter_id,
         "iat": now,
-        "exp": now + timedelta(minutes=_MAGIC_LINK_EXPIRE_MINUTES),
+        "exp": now + timedelta(hours=_INVITE_TOKEN_EXPIRE_HOURS),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def decode_magic_link_token(token: str) -> int:
-    """Decode a magic-link JWT and return the user ID.
+def decode_invite_token(token: str) -> dict[str, Any]:
+    """Decode a club invite JWT and return the payload.
 
     Raises ``jwt.PyJWTError`` on expiry/signature failure and
-    ``ValueError`` if the token is not a magic-link token.
+    ``ValueError`` if the token is not a club invite token.
     """
     payload = jwt.decode(
         token,
         settings.jwt_secret,
         algorithms=[settings.jwt_algorithm],
     )
-    if payload.get("purpose") != "magic_link":
-        raise ValueError("Token is not a magic link token")
-    return int(payload["sub"])
+    if payload.get("purpose") != "club_invite":
+        raise ValueError("Token is not a club invite token")
+    return payload
 
 
 # ---------------------------------------------------------------------------

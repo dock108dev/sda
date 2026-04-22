@@ -183,7 +183,6 @@ def _run_middleware(middleware, scope, limit_requests, limit_window):
             s.admin_rate_limit_window_seconds = limit_window
             s.rate_limit_requests = 120
             s.rate_limit_window_seconds = 60
-            s.fairbet_redis_limiter_enabled = False
             await middleware(scope, mock_receive, capture_send)
 
     asyncio.run(run())
@@ -215,8 +214,7 @@ class TestAdminRateLimitTier:
                 s.admin_rate_limit_window_seconds = 60
                 s.rate_limit_requests = 120
                 s.rate_limit_window_seconds = 60
-                s.fairbet_redis_limiter_enabled = False
-
+    
                 for _ in range(admin_limit):
                     captured.clear()
                     await middleware(_make_scope("/api/admin/sports/games"), mock_receive, capture_send)
@@ -251,8 +249,7 @@ class TestAdminRateLimitTier:
                 s.admin_rate_limit_window_seconds = 60
                 s.rate_limit_requests = 120
                 s.rate_limit_window_seconds = 60
-                s.fairbet_redis_limiter_enabled = False
-
+    
                 # Exhaust admin limit from IP 1.2.3.4
                 for _ in range(admin_limit + 1):
                     await middleware(
@@ -291,8 +288,7 @@ class TestAdminRateLimitTier:
                 s.admin_rate_limit_window_seconds = 60
                 s.rate_limit_requests = 120
                 s.rate_limit_window_seconds = 60
-                s.fairbet_redis_limiter_enabled = False
-
+    
                 for _ in range(2):
                     headers.clear()
                     await middleware(
@@ -326,8 +322,7 @@ class TestAdminRateLimitTier:
                 s.admin_rate_limit_window_seconds = 60
                 s.rate_limit_requests = 120
                 s.rate_limit_window_seconds = 60
-                s.fairbet_redis_limiter_enabled = False
-
+    
                 # Exhaust limit for IP A
                 for _ in range(admin_limit + 1):
                     await middleware(
@@ -365,8 +360,7 @@ class TestAdminRateLimitTier:
                 s.admin_rate_limit_window_seconds = 60
                 s.rate_limit_requests = 120
                 s.rate_limit_window_seconds = 60
-                s.fairbet_redis_limiter_enabled = False
-
+    
                 for _ in range(10):
                     captured.clear()
                     await middleware(_make_scope("/v1/sse"), mock_receive, capture_send)

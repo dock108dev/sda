@@ -113,11 +113,27 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `analytics_replay_jobs` | Historical replay jobs — re-simulate past games with different strategies |
 | `mlb_daily_forecasts` | Hourly-refreshed MLB predictions — one row per game, upserted by `refresh_mlb_forecasts` task. Flat columns for direct SQL querying of edges and EV |
 
+### Club Provisioning & Commerce
+
+| Table | Description |
+|-------|-------------|
+| `club_claims` | Public "claim your club" form submissions — club_name, contact_email, expected_entries, notes, status (`new`), source_ip |
+| `clubs` | Club tenant records — UUID club_id, slug (unique), name, plan_id, status (`active`/`suspended`/`cancelled`), owner_user_id FK, stripe_customer_id, branding_json |
+| `club_memberships` | Club RBAC — club_id + user_id unique pair, role (`owner`/`admin`), invited_at, accepted_at, invited_by_user_id |
+| `onboarding_sessions` | Two-token onboarding sessions — session_token (polling), claim_token (account claim), stripe_checkout_session_id, plan_id, status (`pending`→`paid`→`claimed`→`expired`) |
+| `magic_link_tokens` | Magic-link auth tokens — email, token_hash (unique), expires_at, used_at |
+| `stripe_customers` | Stripe customer records — club_id FK, stripe_customer_id (unique) |
+| `stripe_subscriptions` | Stripe subscription state — stripe_subscription_id (unique), plan_id, status, current_period_end, cancel_at_period_end, metadata JSONB |
+| `processed_stripe_events` | Idempotency dedup table — event_id primary key, processed_at; `ON CONFLICT DO NOTHING` prevents double-processing |
+| `pool_lifecycle_events` | Pool state machine audit trail — pool_id FK, from_state, to_state, actor_user_id FK, metadata JSONB |
+| `audit_events` | Structured provisioning, payment, and lifecycle audit log — event_id UUID (unique), event_type, actor_type, actor_id, club_id FK, resource_type, resource_id, payload JSONB |
+| `webhook_delivery_attempts` | Stripe webhook retry and dead-letter tracking — event_id, event_type, attempt_num, outcome, error_detail, is_dead_letter |
+
 ### Authentication
 
 | Table | Description |
 |-------|-------------|
-| `users` | User accounts — email (unique, indexed), password_hash, role (user/admin), is_active, created_at |
+| `users` | User accounts — email (unique, indexed), password_hash (nullable for magic-link-only accounts), role (user/admin), is_active, created_at |
 
 ### Other
 

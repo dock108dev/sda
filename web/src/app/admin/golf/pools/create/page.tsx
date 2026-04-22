@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AdminCard } from "@/components/admin";
 import { createPool } from "@/lib/api/golfPools";
-import { listTournaments } from "@/lib/api/golf";
-import type { GolfTournament } from "@/lib/api/golfTypes";
+import { listUpcomingTournaments } from "@/lib/api/golf";
+import type { UpcomingTournament } from "@/lib/api/golfTypes";
 import styles from "../../golf.module.css";
 
 const CLUB_OPTIONS = [
@@ -15,7 +15,7 @@ const CLUB_OPTIONS = [
 
 export default function CreatePoolPage() {
   const router = useRouter();
-  const [tournaments, setTournaments] = useState<GolfTournament[]>([]);
+  const [tournaments, setTournaments] = useState<UpcomingTournament[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +32,7 @@ export default function CreatePoolPage() {
   const [tournError, setTournError] = useState<string | null>(null);
 
   useEffect(() => {
-    listTournaments({ limit: 50 })
+    listUpcomingTournaments()
       .then(setTournaments)
       .catch((err) => setTournError(err instanceof Error ? err.message : "Failed to load tournaments"));
   }, []);
@@ -115,18 +115,25 @@ export default function CreatePoolPage() {
             {tournError ? (
               <div style={{ color: "#ef4444", fontSize: "0.85rem" }}>Failed to load tournaments: {tournError}</div>
             ) : (
-              <select
-                value={tournamentId}
-                onChange={(e) => setTournamentId(e.target.value ? Number(e.target.value) : "")}
-                required
-              >
-                <option value="">Select a tournament...</option>
-                {tournaments.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.event_name} ({t.start_date})
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  value={tournamentId}
+                  onChange={(e) => setTournamentId(e.target.value ? Number(e.target.value) : "")}
+                  required
+                >
+                  <option value="">Select a tournament...</option>
+                  {tournaments.map((t) => (
+                    <option key={t.tournament_id} value={t.tournament_id} disabled={!t.field_available}>
+                      {t.name} ({t.start_date}){!t.field_available ? " — no field data" : ""}
+                    </option>
+                  ))}
+                </select>
+                {tournamentId && tournaments.find((t) => t.tournament_id === Number(tournamentId))?.field_available === false && (
+                  <div style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "0.25rem" }}>
+                    This tournament has no field data. The pool cannot be opened until field data is available.
+                  </div>
+                )}
+              </>
             )}
           </div>
 

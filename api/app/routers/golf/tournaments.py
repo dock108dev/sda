@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func as sa_func, select
+from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -21,6 +22,56 @@ from app.db.golf import (
 from . import router
 
 _SYNTHETIC_DG_ID_START = 900_000
+
+
+@router.get("/tournaments/upcoming")
+async def list_upcoming_tournaments(
+    days_ahead: int = Query(90, ge=1, le=365, description="Lookahead window in days"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """List tournaments starting within the next `days_ahead` days.
+
+    Each result includes field_available: true when DataGolf field data exists.
+    Intended for the pool creation form tournament selector.
+    """
+    today = date.today()
+    cutoff = today + timedelta(days=days_ahead)
+
+    stmt = (
+        select(GolfTournament)
+        .where(GolfTournament.start_date >= today)
+        .where(GolfTournament.start_date <= cutoff)
+        .order_by(GolfTournament.start_date.asc())
+    )
+    result = await db.execute(stmt)
+    tournaments = result.scalars().all()
+
+    # Batch-fetch field counts for all matched tournaments.
+    field_counts: dict[int, int] = {}
+    t_ids = [t.id for t in tournaments]
+    if t_ids:
+        count_stmt = (
+            select(GolfTournamentField.tournament_id, sa_func.count(GolfTournamentField.dg_id))
+            .where(GolfTournamentField.tournament_id.in_(t_ids))
+            .group_by(GolfTournamentField.tournament_id)
+        )
+        count_result = await db.execute(count_stmt)
+        for row in count_result:
+            field_counts[row[0]] = row[1]
+
+    return {
+        "tournaments": [
+            {
+                "tournament_id": t.id,
+                "name": t.event_name,
+                "start_date": t.start_date.isoformat() if t.start_date else None,
+                "end_date": t.end_date.isoformat() if t.end_date else None,
+                "field_available": field_counts.get(t.id, 0) > 0,
+            }
+            for t in tournaments
+        ],
+        "count": len(tournaments),
+    }
 
 
 @router.get("/tournaments")

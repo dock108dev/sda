@@ -15,29 +15,34 @@ DELETE /auth/me              — delete own account (authenticated)
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import secrets
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
-from sqlalchemy import select
+from sqlalchemy import select, update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.audit as audit
 from app.config import settings as _settings
 from app.db import get_db
+from app.db.magic_link import MagicLinkToken
 from app.db.users import User
 from app.dependencies.roles import (
     create_access_token,
-    create_magic_link_token,
     create_reset_token,
-    decode_magic_link_token,
     decode_reset_token,
     require_user,
     resolve_role,
 )
 from app.security import pwd_context as _pwd_ctx
 from app.services.email import send_magic_link_email, send_password_reset_email
+
+_MAGIC_LINK_TTL = timedelta(minutes=15)
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -322,8 +327,9 @@ async def reset_password(
     summary="Request a magic-link login email",
     description=(
         "Accepts an email address. If a matching active account exists, "
-        "sends a short-lived login link via email. The response always "
-        "returns 200 to avoid leaking whether the email is registered."
+        "generates a short-lived DB-tracked token, invalidates any prior "
+        "active token for that email, and sends a login link. The response "
+        "always returns 200 to avoid leaking whether the email is registered."
     ),
 )
 async def request_magic_link(
@@ -336,23 +342,99 @@ async def request_magic_link(
     user = result.scalar_one_or_none()
 
     if user is not None and user.is_active:
-        token = create_magic_link_token(user.id)
+        # Invalidate any prior active tokens for this email (one-per-email enforcement).
+        await db.execute(
+            sa_update(MagicLinkToken)
+            .where(
+                MagicLinkToken.email == user.email,
+                MagicLinkToken.used_at.is_(None),
+            )
+            .values(used_at=datetime.now(UTC))
+        )
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        db_token = MagicLinkToken(
+            email=user.email,
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + _MAGIC_LINK_TTL,
+        )
+        db.add(db_token)
+        await db.flush()
+
         base_url = _resolve_redirect_url(body.redirect_url)
-        logger.info(
-            "magic_link_requested",
-            extra={"user_id": user.id},
+        logger.info("magic_link_requested", extra={"user_id": user.id})
+        audit.emit(
+            "magic_link_issued",
+            actor_type="system",
+            actor_id=str(user.id),
+            resource_type="magic_link",
+            resource_id=str(user.id),
+            payload={"user_id": user.id},
         )
         try:
-            await send_magic_link_email(to=user.email, token=token, base_url=base_url)
+            await send_magic_link_email(to=user.email, token=raw_token, base_url=base_url)
         except Exception as exc:
             logger.warning("magic_link_email_delivery_failed", extra={"error": str(exc)}, exc_info=True)
     else:
-        logger.info(
-            "magic_link_no_match",
-            extra={"email": body.email.lower()},
-        )
+        logger.info("magic_link_no_match", extra={"email": body.email.lower()})
 
     return {"detail": "If that email is registered, a sign-in link has been sent."}
+
+
+async def _exchange_magic_link_token(token: str, db: AsyncSession) -> TokenResponse:
+    """Validate a raw magic-link token, mark it used, and return a JWT."""
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+    result = await db.execute(
+        select(MagicLinkToken)
+        .where(MagicLinkToken.token_hash == token_hash)
+        .with_for_update()
+    )
+    ml_token = result.scalar_one_or_none()
+
+    if ml_token is None or ml_token.used_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired magic link",
+        )
+
+    now = datetime.now(UTC)
+    expires_at = ml_token.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if now >= expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired magic link",
+        )
+
+    ml_token.used_at = now
+    await db.flush()
+
+    user_result = await db.execute(select(User).where(User.email == ml_token.email))
+    user = user_result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired magic link",
+        )
+
+    access_token = create_access_token(user.id, user.role)
+    logger.info("magic_link_login", extra={"user_id": user.id, "email": user.email})
+    return TokenResponse(access_token=access_token, role=user.role)
+
+
+@router.get(
+    "/magic-link/verify",
+    response_model=TokenResponse,
+    summary="Exchange a magic-link token for a JWT (GET, token as query param)",
+)
+async def verify_magic_link_get(
+    token: str = Query(..., description="Raw magic-link token from the email link"),
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    return await _exchange_magic_link_token(token, db)
 
 
 @router.post(
@@ -364,25 +446,7 @@ async def verify_magic_link(
     body: MagicLinkVerifyRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    try:
-        user_id = decode_magic_link_token(body.token)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired magic link",
-        ) from exc
-
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired magic link",
-        )
-
-    token = create_access_token(user.id, user.role)
-    logger.info("magic_link_login", extra={"user_id": user.id, "email": user.email})
-    return TokenResponse(access_token=token, role=user.role)
+    return await _exchange_magic_link_token(body.token, db)
 
 
 @router.get(

@@ -26,11 +26,19 @@ from app.realtime.streams import RedisStreamsBridge
 from app.realtime.sse import router as sse_router
 from app.realtime.ws import router as ws_router
 from app.routers import auth, fairbet, onboarding, preferences, simulator, social, sports
+from app.routers.billing import router as billing_router
+from app.routers.clubs import router as clubs_router
+from app.routers.club_branding import router as club_branding_router
+from app.routers.club_memberships import router as club_memberships_router
+from app.routers.commerce import router as commerce_router
+from app.routers.webhooks import router as webhooks_router
 from app.routers.v1 import router as v1_router
 from app.routers.model_odds import router as model_odds_router
 from app.routers.golf import router as golf_router
 from app.routers.admin import (
+    audit as admin_audit,
     circuit_breakers,
+    clubs as admin_clubs,
     coverage_report,
     odds_sync,
     pbp,
@@ -43,8 +51,11 @@ from app.routers.admin import (
     task_control,
     timeline_jobs,
     users,
+    webhooks as admin_webhooks,
 )
 from app.services.circuit_breaker_registry import registry as _cb_registry
+from app.services.entitlement import EntitlementError, SeatLimitError, SubscriptionPastDueError
+from app.services.pool_lifecycle import TransitionError
 
 configure_logging(
     service="sports-data-admin-api",
@@ -171,10 +182,45 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_cors_origins,
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
+
+
+@app.exception_handler(EntitlementError)
+async def _entitlement_exception_handler(request: Request, exc: EntitlementError) -> JSONResponse:
+    return JSONResponse(
+        status_code=403,
+        content={"code": "ENTITLEMENT_EXCEEDED", "detail": str(exc)},
+    )
+
+
+@app.exception_handler(SeatLimitError)
+async def _seat_limit_exception_handler(request: Request, exc: SeatLimitError) -> JSONResponse:
+    return JSONResponse(
+        status_code=402,
+        content={"code": "SEAT_LIMIT_EXCEEDED", "detail": str(exc)},
+    )
+
+
+@app.exception_handler(SubscriptionPastDueError)
+async def _subscription_past_due_handler(
+    request: Request, exc: SubscriptionPastDueError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=402,
+        content={"code": "SUBSCRIPTION_PAST_DUE", "detail": str(exc)},
+    )
+
+
+@app.exception_handler(TransitionError)
+async def _transition_exception_handler(request: Request, exc: TransitionError) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={"code": "INVALID_TRANSITION", "detail": str(exc)},
+    )
 
 
 @app.exception_handler(Exception)
@@ -212,10 +258,41 @@ app.include_router(auth.router)
 app.include_router(preferences.router)
 
 # ---------------------------------------------------------------------------
+# Public club lookup — no auth. Used by public club landing pages.
+# ---------------------------------------------------------------------------
+app.include_router(clubs_router)
+
+# ---------------------------------------------------------------------------
+# Club branding — PUT /api/clubs/:id/branding (owner role, premium plan).
+# ---------------------------------------------------------------------------
+app.include_router(club_branding_router)
+
+# ---------------------------------------------------------------------------
+# Club membership — invite flow and RBAC (requires user JWT).
+# ---------------------------------------------------------------------------
+app.include_router(club_memberships_router)
+
+# ---------------------------------------------------------------------------
 # Onboarding — PUBLIC (no auth). Prospect-facing "claim your club" form.
 # Rate-limited per-IP via RateLimitMiddleware's onboarding-strict tier.
 # ---------------------------------------------------------------------------
 app.include_router(onboarding.router)
+
+# ---------------------------------------------------------------------------
+# Stripe webhooks — NO auth (verified by Stripe-Signature header).
+# Must be registered before Commerce so the raw body is readable.
+# ---------------------------------------------------------------------------
+app.include_router(webhooks_router)
+
+# ---------------------------------------------------------------------------
+# Commerce — API key required. Stripe checkout session creation.
+# ---------------------------------------------------------------------------
+app.include_router(commerce_router, dependencies=auth_dependency)
+
+# ---------------------------------------------------------------------------
+# Billing — JWT required (owner role). Stripe Customer Portal self-service.
+# ---------------------------------------------------------------------------
+app.include_router(billing_router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
 # Public / Guest-accessible endpoints (API key required, no role gate)
@@ -257,6 +334,24 @@ app.include_router(
     prefix="/api/admin",
     tags=["admin", "platform"],
     dependencies=auth_dependency,
+)
+app.include_router(
+    admin_clubs.router,
+    prefix="/api/admin",
+    tags=["admin", "provisioning"],
+    dependencies=admin_dependency,
+)
+app.include_router(
+    admin_audit.router,
+    prefix="/api/admin",
+    tags=["admin", "audit"],
+    dependencies=admin_dependency,
+)
+app.include_router(
+    admin_webhooks.router,
+    prefix="/api/admin",
+    tags=["admin", "webhooks"],
+    dependencies=admin_dependency,
 )
 
 app.include_router(

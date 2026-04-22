@@ -35,7 +35,14 @@ class GolfPool(Base):
     code: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(300), nullable=False)
     club_code: Mapped[str] = mapped_column(String(100), nullable=False)
-    tournament_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=False)
+    # nullable to support draft pools created during provisioning (Phase 3);
+    # set to a real tournament in Phase 4 when the admin schedules the pool.
+    tournament_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("golf_tournaments.id", ondelete="CASCADE"), nullable=True
+    )
+    club_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("clubs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="draft")
     rules_json = Column(JSONB)
     entry_open_at = Column(DateTime(timezone=True))
@@ -172,4 +179,20 @@ class GolfPoolScoreRun(Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False)
     message: Mapped[str | None] = mapped_column(Text)
     entries_scored: Mapped[int] = mapped_column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PoolLifecycleEvent(Base):
+    __tablename__ = "pool_lifecycle_events"
+    __table_args__ = (
+        Index("ix_pool_lifecycle_events_pool_id", "pool_id"),
+        Index("ix_pool_lifecycle_events_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    pool_id: Mapped[int] = mapped_column(Integer, ForeignKey("golf_pools.id", ondelete="CASCADE"), nullable=False)
+    from_state: Mapped[str] = mapped_column(String(30), nullable=False)
+    to_state: Mapped[str] = mapped_column(String(30), nullable=False)
+    actor_user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    event_metadata = Column("metadata", JSONB)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

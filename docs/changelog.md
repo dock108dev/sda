@@ -2,7 +2,43 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-04-08] - Current
+## [2026-04-22] - Current
+
+### Club Provisioning Domain (Phases 0–3)
+
+Complete backend for multi-tenant self-serve club provisioning. Adds 11 new database tables (migrations 057–067) and 7 new API routers.
+
+**New tables:**
+- `club_claims` (057) — public onboarding form submissions
+- `stripe_customers`, `stripe_subscriptions`, `processed_stripe_events` (058) — Stripe commerce state
+- `onboarding_sessions` (059) — two-token session tracking (`pending → paid → claimed → expired`)
+- `magic_link_tokens` (060) — magic-link auth; `users.password_hash` is now nullable
+- `clubs`, `golf_pools.club_id` FK (061) — club tenant records and pool scoping
+- `pool_lifecycle_events` (062) — pool state machine audit trail
+- `audit_events` (063) — structured provisioning and lifecycle audit log
+- `webhook_delivery_attempts` (064) — Stripe webhook retry and dead-letter tracking
+- `club_memberships` (065) — club-scoped RBAC invite flow
+- Query performance indexes (066)
+- `clubs.branding_json` (067) — custom branding JSONB column
+
+**New routers:**
+- `POST /api/onboarding/club-claims` — public claim form
+- `GET /api/onboarding/session/{token}` — session status polling
+- `POST /api/onboarding/claim` — paid→claimed transition
+- `POST /api/commerce/checkout` — create Stripe checkout session
+- `POST /api/webhooks/stripe` — idempotent Stripe webhook handler
+- `GET /api/clubs/{slug}` — public club lookup
+- `POST /api/billing/portal` — Stripe Customer Portal for club owners
+- `PUT /api/clubs/{id}/branding` — club branding (plan-gated)
+- `GET /api/admin/stats`, `GET /api/admin/poll-health` — admin SPA platform endpoints
+
+**New services:**
+- `EntitlementService` — centralized plan limit enforcement (raises `EntitlementError` → 403, `SeatLimitError` → 402)
+- `OnboardingStateMachine` — session status guard
+- `api/app/services/audit.py` — structured audit event writer
+- Global exception handlers for `EntitlementError`, `SeatLimitError`, `SubscriptionPastDueError`, `TransitionError`
+
+## [2026-04-08]
 
 ### MLB Model Improvements
 

@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import csv
 import io
+import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, AsyncIterator
 
 from fastapi import Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.db.club import Club
 from app.db.golf import GolfTournament, GolfTournamentField
 from app.db.golf_pools import (
     GolfPool,
@@ -23,6 +25,10 @@ from app.db.golf_pools import (
     GolfPoolEntryScore,
     GolfPoolEntryScorePlayer,
 )
+
+from app.dependencies.roles import require_admin
+from app.services.entitlement import EntitlementService
+from app.services.pool_lifecycle import ACTION_MAP, PoolStateMachine, TransitionError
 
 from . import router
 from .pools_helpers import (
@@ -38,6 +44,13 @@ from .pools_helpers import (
     serialize_pool,
     validate_entry_picks,
 )
+
+_CSV_BATCH = 500
+
+# Maps the target status string to the ACTION_MAP key used by PoolStateMachine.
+_STATUS_TO_ACTION: dict[str, str] = {v.value: k for k, v in ACTION_MAP.items()}
+
+_entitlement = EntitlementService()
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +69,11 @@ async def create_pool(
     )
     if t_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Tournament not found")
+
+    club_result = await db.execute(select(Club).where(Club.slug == req.club_code))
+    club = club_result.scalar_one_or_none()
+    if club is not None:
+        await _entitlement.check_pool_limit(club.id, db)
 
     pool = GolfPool(
         code=req.code,
@@ -90,7 +108,13 @@ async def update_pool(
     if req.name is not None:
         pool.name = req.name
     if req.status is not None:
-        pool.status = req.status
+        action = _STATUS_TO_ACTION.get(req.status)
+        if action is None:
+            raise HTTPException(status_code=400, detail=f"Cannot transition pool to status {req.status!r} via PATCH")
+        try:
+            await PoolStateMachine(pool, db).transition(action)
+        except TransitionError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
     if req.rules_json is not None:
         pool.rules_json = req.rules_json
     if req.entry_deadline is not None:
@@ -123,6 +147,51 @@ async def delete_pool(
     name = pool.name
     await db.delete(pool)
     return {"status": "deleted", "id": pool_id, "name": name}
+
+
+@router.post("/pools/{pool_id}/duplicate", status_code=201)
+async def duplicate_pool(
+    pool_id: int,
+    club_code: str = Query(..., description="Club code of the requesting club — must match the pool's club"),
+    db: AsyncSession = Depends(get_db),
+    _role: str = Depends(require_admin),
+) -> JSONResponse:
+    """Clone structural fields of a pool into a new draft pool.
+
+    Temporal and state fields are reset: tournament_id=null, entry_open_at=null,
+    entry_deadline=null, status=draft, code=new UUID. Entries, picks, and
+    standings are NOT copied. Returns 201 with a Location header.
+    """
+    pool = await get_pool_or_404(pool_id, db)
+
+    if pool.club_code != club_code:
+        raise HTTPException(status_code=403, detail="Pool belongs to a different club")
+
+    new_pool = GolfPool(
+        code=uuid.uuid4().hex[:12],
+        name=f"{pool.name} (Copy)",
+        club_code=pool.club_code,
+        club_id=pool.club_id,
+        tournament_id=None,
+        status="draft",
+        rules_json=pool.rules_json,
+        entry_open_at=None,
+        entry_deadline=None,
+        scoring_enabled=pool.scoring_enabled,
+        max_entries_per_email=pool.max_entries_per_email,
+        require_upload=pool.require_upload,
+        allow_self_service_entry=pool.allow_self_service_entry,
+        notes=pool.notes,
+    )
+    db.add(new_pool)
+    await db.flush()
+    await db.refresh(new_pool)
+
+    return JSONResponse(
+        status_code=201,
+        content={"result": "created", **serialize_pool(new_pool)},
+        headers={"Location": f"/pools/{new_pool.id}/setup"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -364,6 +433,104 @@ async def export_entries_csv(
     )
 
 
+async def _stream_entries_csv(
+    pool_id: int,
+    pick_count: int,
+    db: AsyncSession,
+) -> AsyncIterator[str]:
+    """Yield CSV chunks for pool entries in batches of _CSV_BATCH rows.
+
+    Queries entries, picks, and scores in separate batches so the full
+    dataset is never loaded into memory at once.
+    """
+    pick_headers = [f"pick_{i}" for i in range(1, pick_count + 1)]
+    header_buf = io.StringIO()
+    csv.writer(header_buf).writerow(["entry_id", "user_email", *pick_headers, "submitted_at", "score"])
+    yield header_buf.getvalue()
+
+    offset = 0
+    while True:
+        entries_stmt = (
+            select(GolfPoolEntry)
+            .where(GolfPoolEntry.pool_id == pool_id)
+            .order_by(GolfPoolEntry.id)
+            .offset(offset)
+            .limit(_CSV_BATCH)
+        )
+        entries_result = await db.execute(entries_stmt)
+        batch = entries_result.scalars().all()
+        if not batch:
+            break
+
+        entry_ids = [e.id for e in batch]
+
+        picks_result = await db.execute(
+            select(GolfPoolEntryPick)
+            .where(GolfPoolEntryPick.entry_id.in_(entry_ids))
+            .order_by(GolfPoolEntryPick.pick_slot)
+        )
+        picks_by_entry: dict[int, list[GolfPoolEntryPick]] = {}
+        for pk in picks_result.scalars().all():
+            picks_by_entry.setdefault(pk.entry_id, []).append(pk)
+
+        scores_result = await db.execute(
+            select(GolfPoolEntryScore)
+            .where(GolfPoolEntryScore.entry_id.in_(entry_ids))
+        )
+        scores_by_entry: dict[int, GolfPoolEntryScore] = {
+            s.entry_id: s for s in scores_result.scalars().all()
+        }
+
+        chunk_buf = io.StringIO()
+        writer = csv.writer(chunk_buf)
+        for entry in batch:
+            entry_picks = picks_by_entry.get(entry.id, [])
+            pick_cells = []
+            for slot in range(1, pick_count + 1):
+                pk = next((p for p in entry_picks if p.pick_slot == slot), None)
+                pick_cells.append(pk.player_name_snapshot if pk else "")
+
+            score_obj = scores_by_entry.get(entry.id)
+            score_val = score_obj.aggregate_score if score_obj is not None else ""
+
+            writer.writerow([
+                entry.id,
+                entry.email,
+                *pick_cells,
+                entry.submitted_at.isoformat() if entry.submitted_at else "",
+                "" if score_val is None else score_val,
+            ])
+
+        yield chunk_buf.getvalue()
+
+        if len(batch) < _CSV_BATCH:
+            break
+        offset += _CSV_BATCH
+
+
+@router.get("/pools/{pool_id}/export/entries.csv")
+async def stream_entries_csv(
+    pool_id: int,
+    db: AsyncSession = Depends(get_db),
+    _role: str = Depends(require_admin),
+) -> StreamingResponse:
+    """Stream pool entries as CSV in batches of 500 rows.
+
+    Columns: entry_id, user_email, pick_1..pick_N, submitted_at, score.
+    Requires admin or pool-owner role.
+    """
+    pool = await get_pool_or_404(pool_id, db)
+    pick_count = (pool.rules_json or {}).get("pick_count", 7)
+    return StreamingResponse(
+        _stream_entries_csv(pool_id, pick_count, db),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{pool.code}_entries.csv"',
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.post("/pools/{pool_id}/rescore")
 async def trigger_rescore(
     pool_id: int,
@@ -388,11 +555,12 @@ async def go_live_pool(
     pool_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Activate pool for live scoring (set status to live + scoring_enabled)."""
+    """Activate pool for live scoring (locked → live via state machine)."""
     pool = await get_pool_or_404(pool_id, db)
-    pool.status = "live"
-    pool.scoring_enabled = True
-    await db.flush()
+    try:
+        await PoolStateMachine(pool, db).go_live()
+    except TransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     await db.refresh(pool)
     return {"status": "live", **serialize_pool(pool)}
 
@@ -402,12 +570,39 @@ async def lock_pool(
     pool_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """Lock pool entries (set status to locked)."""
+    """Lock pool entries (open → locked via state machine)."""
     pool = await get_pool_or_404(pool_id, db)
-    pool.status = "locked"
-    await db.flush()
+    try:
+        await PoolStateMachine(pool, db).lock_pool()
+    except TransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     await db.refresh(pool)
     return {"status": "locked", **serialize_pool(pool)}
+
+
+@router.post("/pools/{pool_id}/transitions/{action}")
+async def pool_transition(
+    pool_id: int,
+    action: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Apply a named lifecycle transition to a pool.
+
+    Valid actions: open, lock, go_live, finalize.
+    Returns HTTP 409 on invalid or guard-failing transitions.
+    """
+    pool = await get_pool_or_404(pool_id, db)
+    if action not in ACTION_MAP:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown action {action!r}. Valid actions: {sorted(ACTION_MAP)}",
+        )
+    try:
+        await PoolStateMachine(pool, db).transition(action)
+    except TransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    await db.refresh(pool)
+    return {"action": action, "status": pool.status, **serialize_pool(pool)}
 
 
 # ---------------------------------------------------------------------------

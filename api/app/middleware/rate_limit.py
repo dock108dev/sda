@@ -16,7 +16,6 @@ For horizontal scaling, replace with a Redis-backed limiter.
 
 from __future__ import annotations
 
-import asyncio
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
@@ -25,8 +24,6 @@ from fastapi import Request
 from starlette.responses import JSONResponse
 
 from app.config import settings
-from app.services.fairbet_runtime import redis_allow_request
-
 
 _EXEMPT_PREFIXES = ("/v1/sse",)
 
@@ -50,7 +47,6 @@ _ONBOARDING_STRICT_LIMIT = 5
 _ONBOARDING_STRICT_WINDOW = 3600  # 5 requests per hour per IP
 
 _ADMIN_PREFIX = "/api/admin/"
-_FAIRBET_PREFIX = "/api/fairbet/odds"
 
 
 class RateLimitMiddleware:
@@ -144,22 +140,6 @@ class RateLimitMiddleware:
             return
 
         # --- Global tier (consumer + all other routes) ---
-        if settings.fairbet_redis_limiter_enabled and path.startswith(_FAIRBET_PREFIX):
-            allowed, retry_after = await asyncio.to_thread(
-                redis_allow_request,
-                client_ip,
-                settings.fairbet_odds_limiter_requests,
-                settings.fairbet_odds_limiter_window_seconds,
-            )
-            if not allowed:
-                response = JSONResponse(
-                    {"detail": "Rate limit exceeded"},
-                    status_code=429,
-                    headers={"Retry-After": str(retry_after)},
-                )
-                await response(scope, receive, send)
-                return
-
         window = settings.rate_limit_window_seconds
         limit = settings.rate_limit_requests
 

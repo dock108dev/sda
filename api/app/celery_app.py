@@ -33,6 +33,7 @@ celery_app = Celery(
         "app.tasks.replay_tasks",
         "app.tasks.forecast_tasks",
         "app.tasks.coverage_report_task",
+        "app.tasks.webhook_retry",
     ],
 )
 

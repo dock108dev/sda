@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import random
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.audit as audit
 from app.db import get_db
 from app.db.golf import GolfPlayer, GolfTournament, GolfTournamentField
 from app.db.golf_pools import (
@@ -20,6 +23,12 @@ from app.db.golf_pools import (
     GolfPoolEntryPick,
     GolfPoolEntryScore,
     GolfPoolEntryScorePlayer,
+)
+
+from app.services.entitlement import EntitlementService
+from app.services.entry_rate_limit import (
+    ENTRY_RATE_WINDOW_SECONDS,
+    check_entry_rate_limit,
 )
 
 from . import router
@@ -33,6 +42,8 @@ from .pools_helpers import (
     serialize_pool,
     validate_entry_picks,
 )
+
+_entitlement = EntitlementService()
 
 
 # ---------------------------------------------------------------------------
@@ -308,18 +319,42 @@ async def _resolve_write_in_picks(
     return resolved
 
 
-@router.post("/pools/{pool_id}/entries")
+_DEFAULT_MAX_ENTRIES_PER_EMAIL = 3
+
+
+@router.post("/pools/{pool_id}/entries", status_code=201)
 async def submit_entry(
     pool_id: int,
     req: EntrySubmitRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
-) -> dict[str, Any]:
+) -> Any:
     """Submit a pool entry with picks.
 
     Write-in picks: send ``dg_id: 0`` with ``player_name: "Last, First"``
     and the backend will resolve/create the player automatically.
     """
+    # Honeypot: bots populate hidden ``website`` field. Return 201 silently
+    # without persisting so they can't distinguish success from rejection.
+    if req.website:
+        return JSONResponse(
+            status_code=201,
+            content={"status": "submitted", "entry": None},
+        )
+
     pool = await get_pool_or_404(pool_id, db)
+
+    client_ip = request.client.host if request.client else "unknown"
+    club_key = pool.club_code or (
+        f"club:{pool.club_id}" if pool.club_id is not None else f"pool:{pool_id}"
+    )
+    allowed, retry_after = await check_entry_rate_limit(club_key, client_ip, pool_id)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many entry submissions. Please try again later.",
+            headers={"Retry-After": str(retry_after or ENTRY_RATE_WINDOW_SECONDS)},
+        )
 
     if pool.status not in ("open", "draft"):
         raise HTTPException(status_code=400, detail="Pool is not accepting entries")
@@ -328,13 +363,24 @@ async def submit_entry(
         if datetime.now(timezone.utc) > pool.entry_deadline:
             raise HTTPException(status_code=400, detail="Entry deadline has passed")
 
-    if pool.max_entries_per_email:
-        count = await count_entries_for_email(pool_id, req.email, db)
-        if count >= pool.max_entries_per_email:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Maximum {pool.max_entries_per_email} entries per email reached",
-            )
+    effective_max = (
+        pool.max_entries_per_email
+        if pool.max_entries_per_email is not None
+        else _DEFAULT_MAX_ENTRIES_PER_EMAIL
+    )
+    count = await count_entries_for_email(pool_id, req.email, db)
+    if count >= effective_max:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "ENTRY_LIMIT_EXCEEDED",
+                "message": f"Maximum {effective_max} entries per email reached",
+                "max_entries_per_email": effective_max,
+            },
+        )
+
+    if pool.club_id is not None:
+        await _entitlement.check_entry_limit(pool.club_id, pool_id, db)
 
     # Resolve write-in picks (dg_id=0) before validation
     req.picks = await _resolve_write_in_picks(pool, req.picks, db)
@@ -347,6 +393,17 @@ async def submit_entry(
         raise HTTPException(status_code=422, detail={"validation_errors": errors})
 
     entry = await create_entry_and_picks(pool, req.email, req.entry_name, req.picks, player_names, db)
+
+    # 1% sample to avoid audit volume from high-frequency entry submissions.
+    if random.random() < 0.01:
+        audit.emit(
+            "entry_submitted",
+            actor_type="user",
+            club_id=pool.club_id,
+            resource_type="entry",
+            resource_id=str(entry.id),
+            payload={"pool_id": pool.id},
+        )
 
     picks_response = [
         {"pick_slot": pk.pick_slot, "player_name": player_names.get(pk.dg_id, pk.player_name or f"Player {pk.dg_id}")}

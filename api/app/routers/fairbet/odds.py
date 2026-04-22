@@ -13,7 +13,6 @@ from fastapi.params import Param
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.orm import selectinload
 
-from ...config import settings
 from ...db import AsyncSession, get_db
 from ...db.odds import FairbetGameOddsWork
 from ...db.sports import SportsGame
@@ -48,12 +47,6 @@ EV_CONFIG = {
     "min_books_for_display": MIN_BOOKS_FOR_FAIRBET,
     "ev_color_thresholds": {"strong_positive": 5.0, "positive": 0.0},
 }
-
-# Backward-compatible symbol used by tests/importers.
-def _build_base_filters(*args, **kwargs):
-    kwargs.pop("book", None)
-    return build_base_filters(*args, **kwargs)
-
 
 def _resolve_query_default(value: Any) -> Any:
     """Convert FastAPI Param sentinels to their concrete default values.
@@ -138,9 +131,7 @@ async def get_fairbet_odds(
         # expected metadata arrays to be populated by default.
         include_meta = True
 
-    sort_resolved = sort_by or ("game_time" if settings.fairbet_light_default_enabled else "ev")
-    if cursor and not settings.fairbet_cursor_enabled:
-        raise HTTPException(status_code=400, detail="Cursor pagination is disabled.")
+    sort_resolved = sort_by or "game_time"
     if cursor and offset > 0:
         raise HTTPException(status_code=400, detail="Use cursor or offset, not both.")
     if (has_fair is not None or min_ev is not None) and sort_resolved != "ev":
@@ -174,11 +165,10 @@ async def get_fairbet_odds(
             ev_config=EV_CONFIG,
         )
 
-    _, conditions = _build_base_filters(
+    _, conditions = build_base_filters(
         league=league,
         market_category=market_category,
         game_id=game_id,
-        book=book,
         player_name=player_name,
         included_books=INCLUDED_BOOKS,
         exclude_categories=exclude_categories,
@@ -503,11 +493,10 @@ async def get_fairbet_odds_meta(
     player_name: str | None = Query(None),
 ) -> dict[str, Any]:
     """Return metadata-only payload for filter dropdowns."""
-    _, conditions = _build_base_filters(
+    _, conditions = build_base_filters(
         league=league,
         market_category=market_category,
         game_id=game_id,
-        book=book,
         player_name=player_name,
         included_books=INCLUDED_BOOKS,
         exclude_categories=exclude_categories,

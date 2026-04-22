@@ -1,25 +1,33 @@
 """Onboarding endpoints — public, no API key required.
 
-POST /api/onboarding/club-claims — submit a 'claim your club' form
-                                   from the prospect-facing onboarding site.
+POST /api/onboarding/club-claims        — submit a 'claim your club' form
+GET  /api/onboarding/session/{token}    — poll session status (frontend polling)
+POST /api/onboarding/claim              — complete paid→claimed transition
 """
 
 from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 from html import escape
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import get_db
-from app.db.onboarding import ClubClaim
+from app.db.onboarding import ClubClaim, OnboardingSession
+from app.db.users import User
 from app.services.email import send_email
+from app.services.onboarding_state_machine import (
+    InvalidTransitionError,
+    SessionStatus,
+    assert_can_transition,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -130,4 +138,156 @@ async def submit_club_claim(
 
     return ClubClaimResponse(
         claim_id=claim.claim_id, received_at=claim.received_at
+    )
+
+
+# ---------------------------------------------------------------------------
+# Session polling and claim endpoints
+# ---------------------------------------------------------------------------
+
+
+class SessionStatusResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
+    session_token: str
+    status: str
+    expires_at: datetime | None
+
+
+class ClaimRequest(BaseModel):
+    model_config = _ALIAS_CFG
+
+    claim_token: str = Field(min_length=1, max_length=64)
+
+
+class ClaimResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
+    session_token: str
+    status: str
+
+
+def _is_session_expired(session: OnboardingSession) -> bool:
+    """Return True if the session has passed its TTL or is explicitly expired."""
+    if session.status == SessionStatus.EXPIRED:
+        return True
+    if session.expires_at is not None:
+        now = datetime.now(UTC)
+        exp = session.expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=UTC)
+        return now >= exp
+    return False
+
+
+@router.get(
+    "/session/{session_token}",
+    response_model=SessionStatusResponse,
+)
+async def get_session_status(
+    session_token: str,
+    db: AsyncSession = Depends(get_db),
+) -> SessionStatusResponse:
+    """Return the current status of an onboarding session.
+
+    Used by the frontend to poll until status transitions to 'paid'
+    after the Stripe webhook fires. Returns 410 for expired sessions,
+    404 for unknown tokens.
+    """
+    result = await db.execute(
+        select(OnboardingSession).where(
+            OnboardingSession.session_token == session_token
+        )
+    )
+    session: OnboardingSession | None = result.scalar_one_or_none()
+
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+    if _is_session_expired(session):
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="expired")
+
+    return SessionStatusResponse(
+        session_token=session.session_token,
+        status=session.status,
+        expires_at=session.expires_at,
+    )
+
+
+@router.post(
+    "/claim",
+    response_model=ClaimResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def claim_session(
+    req: ClaimRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ClaimResponse:
+    """Transition a paid onboarding session to claimed, creating the account context.
+
+    Accepts the claim_token (delivered via the Stripe success_url). Uses a
+    row-level lock to prevent concurrent double-claims — exactly one request
+    succeeds; duplicates receive 409.
+    """
+    result = await db.execute(
+        select(OnboardingSession)
+        .where(OnboardingSession.claim_token == req.claim_token)
+        .with_for_update()
+    )
+    session: OnboardingSession | None = result.scalar_one_or_none()
+
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+    if _is_session_expired(session):
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="expired")
+
+    if session.status == SessionStatus.CLAIMED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "already_claimed", "message": "Session already claimed."},
+        )
+
+    try:
+        assert_can_transition(session.status, SessionStatus.CLAIMED)
+    except InvalidTransitionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "invalid_transition", "message": str(exc)},
+        ) from exc
+
+    session.status = SessionStatus.CLAIMED
+    await db.flush()
+
+    # Create the club_admin user account from the associated club claim.
+    claim_result = await db.execute(
+        select(ClubClaim).where(ClubClaim.claim_id == session.claim_id)
+    )
+    club_claim = claim_result.scalar_one_or_none()
+    if club_claim is not None:
+        existing_user = await db.execute(
+            select(User).where(User.email == club_claim.contact_email.lower())
+        )
+        if existing_user.scalar_one_or_none() is None:
+            new_user = User(
+                email=club_claim.contact_email.lower(),
+                password_hash=None,
+                role="club_admin",
+                is_active=True,
+            )
+            db.add(new_user)
+            await db.flush()
+            logger.info(
+                "club_admin_user_created",
+                extra={"email": club_claim.contact_email.lower(), "claim_id": session.claim_id},
+            )
+
+    logger.info(
+        "onboarding_session_claimed",
+        extra={"session_token": session.session_token, "claim_id": session.claim_id},
+    )
+
+    return ClaimResponse(
+        session_token=session.session_token,
+        status=session.status,
     )

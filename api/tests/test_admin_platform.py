@@ -1,11 +1,12 @@
 """Tests for the admin SPA platform endpoints.
 
-GET /api/admin/stats        — 4-tile dashboard summary.
+GET /api/admin/stats        — 5-tile dashboard summary (Redis-cached 60s).
 GET /api/admin/poll-health  — per-pool scraper freshness.
 """
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -17,9 +18,33 @@ from fastapi.testclient import TestClient
 from app.db import get_db
 from app.dependencies.auth import verify_api_key
 from app.routers.admin.platform import (
+    _STATS_CACHE_KEY,
     _tournament_window_bounds,
+    get_redis,
     router,
 )
+
+
+# ---------------------------------------------------------------------------
+# Fake Redis
+# ---------------------------------------------------------------------------
+
+class _FakeRedis:
+    """Minimal in-memory Redis stand-in for unit tests."""
+
+    def __init__(self, preloaded: str | None = None) -> None:
+        self._store: dict[str, str] = {}
+        if preloaded is not None:
+            self._store[_STATS_CACHE_KEY] = preloaded
+
+    async def get(self, key: str) -> str | None:
+        return self._store.get(key)
+
+    async def setex(self, key: str, ttl: int, value: str) -> None:
+        self._store[key] = value
+
+    async def aclose(self) -> None:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -29,20 +54,24 @@ from app.routers.admin.platform import (
 def _make_app(
     *,
     stats_scalars: list[Any] | None = None,
+    sub_plans: list[str] | None = None,
     pool_rows: list[tuple] | None = None,
     poll_scalars: list[Any] | None = None,
+    redis_preload: str | None = None,
     require_api_key: bool = False,
 ) -> TestClient:
-    """Build a TestClient wired to a fake AsyncSession.
+    """Build a TestClient wired to a fake AsyncSession and fake Redis.
 
-    - ``stats_scalars``: queue of return values for the /stats route's
-      three ``db.scalar(...)`` calls (total_pools, total_entries,
-      active_clubs).
+    - ``stats_scalars``: queue of return values for the /stats route's four
+      ``db.scalar(...)`` calls: total_pools, total_entries, active_clubs,
+      pending_claims.
+    - ``sub_plans``: list of plan_id strings for active subscriptions returned
+      by the /stats execute call.
     - ``pool_rows``: rows returned by the /poll-health route's pool query.
-    - ``poll_scalars``: one scalar result per pool row for the
-      last_polled_at max() query.
-    - ``require_api_key``: when True, mount the real verify_api_key
-      dependency so the 401 regression test actually exercises it.
+    - ``poll_scalars``: one scalar result per pool row for last_polled_at.
+    - ``redis_preload``: if set, the fake Redis starts with a pre-cached JSON
+      string under _STATS_CACHE_KEY (simulates a warm cache hit).
+    - ``require_api_key``: mount the real verify_api_key dependency.
     """
     stats_queue = list(stats_scalars or [])
     poll_queue = list(poll_scalars or [])
@@ -50,8 +79,6 @@ def _make_app(
     db = AsyncMock()
 
     async def _scalar(*_args, **_kwargs) -> Any:
-        # /stats calls scalar first, then /poll-health also uses scalar for
-        # each pool's last_polled_at. Consume /stats first, then /poll-health.
         if stats_queue:
             return stats_queue.pop(0)
         if poll_queue:
@@ -60,24 +87,35 @@ def _make_app(
 
     db.scalar.side_effect = _scalar
 
-    exec_result = MagicMock()
-    exec_result.all.return_value = pool_rows or []
-    db.execute.return_value = exec_result
+    # When sub_plans is explicitly provided (even []) it's a stats test —
+    # the first execute call is the subscription query, the second is pools.
+    # When sub_plans is None it's a poll-health test — execute returns pool rows only.
+    pool_exec = MagicMock()
+    pool_exec.all.return_value = pool_rows or []
+
+    if sub_plans is not None:
+        sub_exec = MagicMock()
+        sub_exec.all.return_value = [(p,) for p in sub_plans]
+        db.execute.side_effect = [sub_exec, pool_exec]
+    else:
+        db.execute.return_value = pool_exec
+
+    fake_redis = _FakeRedis(preloaded=redis_preload)
 
     async def _get_db_override():
         yield db
 
+    async def _get_redis_override():
+        yield fake_redis
+
     app = FastAPI()
     app.dependency_overrides[get_db] = _get_db_override
+    app.dependency_overrides[get_redis] = _get_redis_override
     if require_api_key:
-        # Mount with the real verify_api_key dependency so the
-        # missing-header request raises 401.
         app.include_router(
             router,
             prefix="/api/admin",
-            dependencies=[__import__(
-                "fastapi"
-            ).Depends(verify_api_key)],
+            dependencies=[__import__("fastapi").Depends(verify_api_key)],
         )
     else:
         app.include_router(router, prefix="/api/admin")
@@ -85,13 +123,13 @@ def _make_app(
 
 
 # ---------------------------------------------------------------------------
-# /api/admin/stats
+# /api/admin/stats — basic responses
 # ---------------------------------------------------------------------------
 
 class TestAdminStats:
 
     def test_empty_db_returns_zeros(self) -> None:
-        client = _make_app(stats_scalars=[0, 0, 0])
+        client = _make_app(stats_scalars=[0, 0, 0, 0], sub_plans=[])
         resp = client.get("/api/admin/stats")
         assert resp.status_code == 200
         body = resp.json()
@@ -100,10 +138,11 @@ class TestAdminStats:
             "total_entries": 0,
             "active_clubs": 0,
             "mrr_cents": 0,
+            "pending_claims": 0,
         }
 
     def test_populated_stats(self) -> None:
-        client = _make_app(stats_scalars=[1, 5, 1])
+        client = _make_app(stats_scalars=[1, 5, 1, 2], sub_plans=[])
         resp = client.get("/api/admin/stats")
         assert resp.status_code == 200
         body = resp.json()
@@ -112,10 +151,11 @@ class TestAdminStats:
             "total_entries": 5,
             "active_clubs": 1,
             "mrr_cents": 0,
+            "pending_claims": 2,
         }
 
     def test_null_scalars_coerce_to_zero(self) -> None:
-        client = _make_app(stats_scalars=[None, None, None])
+        client = _make_app(stats_scalars=[None, None, None, None], sub_plans=[])
         resp = client.get("/api/admin/stats")
         assert resp.status_code == 200
         body = resp.json()
@@ -123,9 +163,10 @@ class TestAdminStats:
         assert body["total_entries"] == 0
         assert body["active_clubs"] == 0
         assert body["mrr_cents"] == 0
+        assert body["pending_claims"] == 0
 
     def test_response_shape_is_snake_case_and_strict(self) -> None:
-        client = _make_app(stats_scalars=[3, 142, 2])
+        client = _make_app(stats_scalars=[3, 142, 2, 1], sub_plans=[])
         resp = client.get("/api/admin/stats")
         assert resp.status_code == 200
         body = resp.json()
@@ -134,9 +175,9 @@ class TestAdminStats:
             "total_entries",
             "active_clubs",
             "mrr_cents",
+            "pending_claims",
         }
-        # No camelCase aliases on the wire.
-        for camel in ("totalPools", "totalEntries", "activeClubs", "mrrCents"):
+        for camel in ("totalPools", "totalEntries", "activeClubs", "mrrCents", "pendingClaims"):
             assert camel not in body
 
     def test_without_api_key_is_401(self) -> None:
@@ -154,7 +195,11 @@ class TestAdminStats:
         async def _get_db_override():
             yield AsyncMock()
 
+        async def _get_redis_override():
+            yield _FakeRedis()
+
         app.dependency_overrides[get_db] = _get_db_override
+        app.dependency_overrides[get_redis] = _get_redis_override
         app.dependency_overrides[verify_api_key] = _raise_missing
 
         from fastapi import Depends
@@ -167,6 +212,133 @@ class TestAdminStats:
         client = TestClient(app)
         resp = client.get("/api/admin/stats")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# /api/admin/stats — MRR computation
+# ---------------------------------------------------------------------------
+
+class TestAdminStatsMrr:
+
+    def test_two_active_subscriptions_sum_correctly(self) -> None:
+        """Two active subs (starter + pro) should produce 2900 + 9900 = 12800."""
+        client = _make_app(
+            stats_scalars=[0, 0, 0, 0],
+            sub_plans=["price_starter", "price_pro"],
+        )
+        resp = client.get("/api/admin/stats")
+        assert resp.status_code == 200
+        assert resp.json()["mrr_cents"] == 12800
+
+    def test_enterprise_subscription(self) -> None:
+        client = _make_app(
+            stats_scalars=[0, 0, 0, 0],
+            sub_plans=["price_enterprise"],
+        )
+        resp = client.get("/api/admin/stats")
+        assert resp.status_code == 200
+        assert resp.json()["mrr_cents"] == 29900
+
+    def test_unknown_plan_id_contributes_zero(self) -> None:
+        """Unknown plan_id not in PLAN_PRICES must not crash and contributes 0."""
+        client = _make_app(
+            stats_scalars=[0, 0, 0, 0],
+            sub_plans=["price_unknown_future_plan", "price_pro"],
+        )
+        resp = client.get("/api/admin/stats")
+        assert resp.status_code == 200
+        assert resp.json()["mrr_cents"] == 9900
+
+    def test_no_active_subscriptions(self) -> None:
+        client = _make_app(stats_scalars=[0, 0, 0, 0], sub_plans=[])
+        resp = client.get("/api/admin/stats")
+        assert resp.status_code == 200
+        assert resp.json()["mrr_cents"] == 0
+
+
+# ---------------------------------------------------------------------------
+# /api/admin/stats — Redis caching
+# ---------------------------------------------------------------------------
+
+class TestAdminStatsCache:
+
+    def test_cache_miss_populates_cache(self) -> None:
+        """First call (no cache) computes stats and writes to Redis."""
+        fake_redis = _FakeRedis()
+
+        db = AsyncMock()
+        db.scalar.side_effect = [10, 50, 3, 1]
+        sub_exec = MagicMock()
+        sub_exec.all.return_value = [("price_pro",)]
+        db.execute.return_value = sub_exec
+
+        app = FastAPI()
+
+        async def _get_db_override():
+            yield db
+
+        async def _get_redis_override():
+            yield fake_redis
+
+        app.dependency_overrides[get_db] = _get_db_override
+        app.dependency_overrides[get_redis] = _get_redis_override
+        app.include_router(router, prefix="/api/admin")
+        client = TestClient(app)
+
+        resp = client.get("/api/admin/stats")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["mrr_cents"] == 9900
+        assert body["pending_claims"] == 1
+
+        # Cache should now be populated.
+        assert _STATS_CACHE_KEY in fake_redis._store
+        cached = json.loads(fake_redis._store[_STATS_CACHE_KEY])
+        assert cached["mrr_cents"] == 9900
+
+    def test_cache_hit_skips_db(self) -> None:
+        """Second call within 60s must serve from cache without hitting the DB."""
+        preloaded = json.dumps({
+            "total_pools": 7,
+            "total_entries": 99,
+            "active_clubs": 4,
+            "mrr_cents": 29900,
+            "pending_claims": 3,
+        })
+        db = AsyncMock()
+        # If DB is called, the test fails via unexpected call assertion.
+        db.scalar.side_effect = AssertionError("DB should not be queried on cache hit")
+        db.execute.side_effect = AssertionError("DB should not be queried on cache hit")
+
+        app = FastAPI()
+
+        async def _get_db_override():
+            yield db
+
+        async def _get_redis_override():
+            yield _FakeRedis(preloaded=preloaded)
+
+        app.dependency_overrides[get_db] = _get_db_override
+        app.dependency_overrides[get_redis] = _get_redis_override
+        app.include_router(router, prefix="/api/admin")
+        client = TestClient(app)
+
+        resp = client.get("/api/admin/stats")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total_pools"] == 7
+        assert body["mrr_cents"] == 29900
+        assert body["pending_claims"] == 3
+
+    def test_pending_claims_count_is_correct(self) -> None:
+        """pending_claims reflects ClubClaim rows with status='new'."""
+        client = _make_app(
+            stats_scalars=[0, 0, 0, 5],
+            sub_plans=[],
+        )
+        resp = client.get("/api/admin/stats")
+        assert resp.status_code == 200
+        assert resp.json()["pending_claims"] == 5
 
 
 # ---------------------------------------------------------------------------

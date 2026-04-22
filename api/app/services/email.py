@@ -1,41 +1,48 @@
-"""Async email delivery via Resend (preferred) or SMTP (fallback).
+"""Transactional email service.
 
-Priority:
-1. RESEND_API_KEY set → use Resend HTTP API
-2. SMTP_HOST set → use SMTP
-3. Neither → log the email body (local dev)
+Backend selection via EMAIL_BACKEND env var:
+  smtp — aiosmtplib SMTP transport
+  ses  — AWS SES via boto3 (runs in a thread pool to avoid blocking)
+
+All sends emit an audit event with event_type='email_sent'.
+Call send_email() directly to await delivery, or use asyncio.create_task()
+for fire-and-forget dispatching on hot paths (webhooks, provisioning).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+import app.services.audit as audit
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+_TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "email"
 
-async def _send_resend(*, to: str, subject: str, html: str) -> None:
-    """Deliver via Resend HTTP API."""
-    import httpx
+# Initialized once; FileSystemLoader raises at template-render time if a
+# template is missing, not at module import.
+_jinja_env = Environment(
+    loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+    autoescape=select_autoescape(["html"]),
+)
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
-            json={
-                "from": settings.mail_from,
-                "to": [to],
-                "subject": subject,
-                "html": html,
-            },
-            timeout=10.0,
-        )
-        resp.raise_for_status()
+
+def _render(template_name: str, context: dict) -> str:  # type: ignore[type-arg]
+    return _jinja_env.get_template(template_name).render(**context)
+
+
+# ---------------------------------------------------------------------------
+# Backend transports
+# ---------------------------------------------------------------------------
 
 
 async def _send_smtp(*, to: str, subject: str, html: str) -> None:
-    """Deliver via SMTP."""
+    """Deliver via SMTP using aiosmtplib."""
     import aiosmtplib
     from email.message import EmailMessage
 
@@ -55,41 +62,90 @@ async def _send_smtp(*, to: str, subject: str, html: str) -> None:
     )
 
 
-async def send_email(*, to: str, subject: str, html: str) -> None:
-    """Send an HTML email to *to*.
+async def _send_ses(*, to: str, subject: str, html: str) -> None:
+    """Deliver via AWS SES using boto3 in a thread pool."""
+    import boto3
 
-    Uses Resend if configured, falls back to SMTP, then to logging.
+    def _do_send() -> None:
+        client = boto3.client("ses", region_name=settings.aws_region)
+        client.send_email(
+            Source=settings.mail_from,
+            Destination={"ToAddresses": [to]},
+            Message={
+                "Subject": {"Data": subject},
+                "Body": {"Html": {"Data": html}},
+            },
+        )
+
+    await asyncio.to_thread(_do_send)
+
+
+# ---------------------------------------------------------------------------
+# Core send
+# ---------------------------------------------------------------------------
+
+
+async def send_email(
+    *,
+    to: str,
+    subject: str,
+    html: str,
+    template_name: str = "custom",
+) -> None:
+    """Send an HTML email and emit an audit event on success.
+
+    Raises on delivery failure — callers that want fire-and-forget should
+    wrap this in asyncio.create_task().
     """
-    if settings.resend_api_key:
-        try:
-            await _send_resend(to=to, subject=subject, html=html)
-            logger.info("email_sent", extra={"to": to, "subject": subject, "provider": "resend"})
-            return
-        except Exception:
-            logger.exception("email_send_failed", extra={"to": to, "subject": subject, "provider": "resend"})
-            raise
-
-    if settings.smtp_host:
-        try:
+    backend = settings.email_backend
+    try:
+        if backend == "smtp":
             await _send_smtp(to=to, subject=subject, html=html)
-            logger.info("email_sent", extra={"to": to, "subject": subject, "provider": "smtp"})
-            return
-        except Exception:
-            logger.exception("email_send_failed", extra={"to": to, "subject": subject, "provider": "smtp"})
-            raise
+        else:  # ses
+            await _send_ses(to=to, subject=subject, html=html)
+    except Exception:
+        logger.exception(
+            "email_send_failed",
+            extra={"to": to, "template": template_name, "backend": backend},
+        )
+        raise
 
-    logger.warning(
-        "email_not_sent (no email provider configured)",
-        extra={"to": to, "subject": subject},
+    logger.info(
+        "email_sent",
+        extra={"to": to, "template": template_name, "backend": backend},
     )
-    logger.debug("email_body", extra={"html": html})
+    audit.emit(
+        "email_sent",
+        actor_type="system",
+        resource_type="email",
+        resource_id=to,
+        payload={"template_name": template_name, "recipient": to, "subject": subject},
+    )
 
 
 # ---------------------------------------------------------------------------
-# Pre-built email helpers
+# Template helpers
 # ---------------------------------------------------------------------------
 
-async def send_password_reset_email(*, to: str, token: str, base_url: str | None = None) -> None:
+
+async def send_magic_link_email(
+    *, to: str, token: str, base_url: str | None = None
+) -> None:
+    """Send a magic-link login email. Token link expires in 15 minutes."""
+    base = (base_url or settings.frontend_url).rstrip("/")
+    login_url = f"{base}/auth/magic-link?token={token}"
+    html = _render("magic_link.html", {"login_url": login_url})
+    await send_email(
+        to=to,
+        subject="Your sign-in link",
+        html=html,
+        template_name="magic_link",
+    )
+
+
+async def send_password_reset_email(
+    *, to: str, token: str, base_url: str | None = None
+) -> None:
     """Send a password-reset email with a link containing *token*."""
     base = (base_url or settings.frontend_url).rstrip("/")
     reset_url = f"{base}/auth/reset-password?token={token}"
@@ -99,17 +155,73 @@ async def send_password_reset_email(*, to: str, token: str, base_url: str | None
 <p><a href="{reset_url}">{reset_url}</a></p>
 <p>If you didn't request this, you can safely ignore this email.</p>
 """
-    await send_email(to=to, subject="Reset your password", html=html)
+    await send_email(
+        to=to,
+        subject="Reset your password",
+        html=html,
+        template_name="password_reset",
+    )
 
 
-async def send_magic_link_email(*, to: str, token: str, base_url: str | None = None) -> None:
-    """Send a magic-link login email."""
+async def send_payment_confirmation_email(*, to: str, plan_id: str = "") -> None:
+    """Send a payment confirmation email after a successful Stripe checkout."""
+    html = _render("payment_confirmation.html", {"plan_id": plan_id})
+    await send_email(
+        to=to,
+        subject="Payment confirmed",
+        html=html,
+        template_name="payment_confirmation",
+    )
+
+
+async def send_club_invite_email(
+    *,
+    to: str,
+    club_name: str,
+    inviter_email: str,
+    role: str,
+    token: str,
+    base_url: str | None = None,
+) -> None:
+    """Send a club membership invite email with a signed JWT accept link."""
     base = (base_url or settings.frontend_url).rstrip("/")
-    login_url = f"{base}/auth/magic-link?token={token}"
-    html = f"""\
-<h2>Sign in to Sports Data Admin</h2>
-<p>Click the link below to sign in. This link expires in 15 minutes.</p>
-<p><a href="{login_url}">{login_url}</a></p>
-<p>If you didn't request this, you can safely ignore this email.</p>
-"""
-    await send_email(to=to, subject="Your sign-in link", html=html)
+    accept_url = f"{base}/clubs/invites/{token}/accept"
+    html = _render(
+        "club_invite.html",
+        {
+            "club_name": club_name,
+            "inviter_email": inviter_email,
+            "role": role,
+            "accept_url": accept_url,
+        },
+    )
+    await send_email(
+        to=to,
+        subject=f"You've been invited to join {club_name}",
+        html=html,
+        template_name="club_invite",
+    )
+
+
+async def send_dunning_email(*, to: str) -> None:
+    """Send a dunning email after an invoice payment failure."""
+    html = _render("dunning.html", {})
+    await send_email(
+        to=to,
+        subject="Action required: payment failed for your subscription",
+        html=html,
+        template_name="dunning",
+    )
+
+
+async def send_welcome_email(*, to: str, club_name: str, slug: str) -> None:
+    """Send a welcome email after a club is provisioned for the first time."""
+    base = settings.frontend_url.rstrip("/")
+    club_url = f"{base}/clubs/{slug}"
+    html = _render("welcome.html", {"club_name": club_name, "club_url": club_url})
+    await send_email(
+        to=to,
+        subject=f"Welcome — {club_name} is live",
+        html=html,
+        template_name="welcome",
+    )
