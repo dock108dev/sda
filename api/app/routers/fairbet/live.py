@@ -40,6 +40,7 @@ from app.services.game_status import LIVE_STATUSES
 from app.services.live_odds_redis import discover_live_game_ids, read_all_live_snapshots_for_game
 from app.services.response_cache import (
     build_cache_key,
+    cache_status,
     get_cached,
     set_cached,
     should_bypass_cache,
@@ -594,5 +595,10 @@ def _finalize_live_response(
     response.headers["Cache-Control"] = (
         f"public, max-age={_LIVE_CACHE_TTL_SECONDS}"
     )
-    response.headers["X-Cache"] = "BYPASS" if cache_bypass else "MISS"
+    if cache_bypass:
+        response.headers["X-Cache"] = "BYPASS"
+    elif cache_status()["open"]:
+        response.headers["X-Cache"] = "DISABLED"
+    else:
+        response.headers["X-Cache"] = "MISS"
     return payload

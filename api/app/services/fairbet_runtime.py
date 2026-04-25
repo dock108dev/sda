@@ -30,6 +30,17 @@ def _circuit_open() -> bool:
     return time.time() < _redis_error_until
 
 
+def cache_status() -> dict[str, Any]:
+    """Healthcheck-friendly view of the FairBet Redis circuit breaker."""
+    now = time.time()
+    is_open = now < _redis_error_until
+    return {
+        "name": _BREAKER_NAME,
+        "open": is_open,
+        "open_for_seconds": max(0.0, _redis_error_until - now) if is_open else 0.0,
+    }
+
+
 def _trip_circuit(reason: str = "redis_error") -> None:
     global _redis_error_until
     _redis_error_until = time.time() + _REDIS_CIRCUIT_SECONDS

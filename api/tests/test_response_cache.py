@@ -101,3 +101,25 @@ class TestRedisRoundTrip:
         fake.get.reset_mock()
         assert rc.get_cached("anything") is None
         fake.get.assert_not_called()
+
+
+class TestCacheStatus:
+    """Public ``cache_status()`` is consumed by /healthz and the X-Cache header."""
+
+    @pytest.fixture(autouse=True)
+    def _reset_circuit(self):
+        rc._reset_circuit()
+        yield
+        rc._reset_circuit()
+
+    def test_status_when_healthy(self):
+        status = rc.cache_status()
+        assert status["open"] is False
+        assert status["open_for_seconds"] == 0.0
+        assert status["name"] == "response_cache_redis"
+
+    def test_status_when_circuit_tripped(self):
+        rc._trip_circuit("induced for test")
+        status = rc.cache_status()
+        assert status["open"] is True
+        assert status["open_for_seconds"] > 0.0

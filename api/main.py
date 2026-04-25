@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -449,7 +450,11 @@ async def realtime_status() -> JSONResponse:
 
 @app.get("/healthz")
 async def healthcheck() -> JSONResponse:
-    components: dict[str, str] = {"app": "ok", "db": "ok"}
+    import redis.asyncio as aioredis
+
+    from app.services import fairbet_runtime, response_cache
+
+    components: dict[str, str] = {"app": "ok", "db": "ok", "redis": "ok"}
 
     try:
         async with _get_engine().connect() as conn:
@@ -458,9 +463,34 @@ async def healthcheck() -> JSONResponse:
         logger.exception("Healthcheck database connectivity failed.")
         components["db"] = "error"
 
-    status = "ok" if components["db"] == "ok" else "unhealthy"
-    payload: dict[str, str] = {"status": status, **components}
-    if status != "ok":
+    try:
+        r = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        await r.ping()
+        await r.aclose()
+    except Exception:
+        # Don't log.exception here — Redis being down is not a stack-trace
+        # event during a healthcheck. Log at warning so it shows up in
+        # ops dashboards without alarming.
+        logger.warning("Healthcheck Redis connectivity failed.")
+        components["redis"] = "error"
+
+    # Surface the response_cache and fairbet_runtime circuit-breaker state
+    # explicitly. A tripped breaker means recent Redis errors are causing
+    # cache misses on every request — the most common reason "everything
+    # feels slow" in dev when Redis isn't actually down at the moment of
+    # the healthcheck but was recently.
+    cache_breakers = {
+        response_cache.cache_status()["name"]: response_cache.cache_status(),
+        fairbet_runtime.cache_status()["name"]: fairbet_runtime.cache_status(),
+    }
+
+    db_ok = components["db"] == "ok"
+    payload: dict[str, Any] = {
+        "status": "ok" if db_ok else "unhealthy",
+        **components,
+        "cache_breakers": cache_breakers,
+    }
+    if not db_ok:
         payload["error"] = "database unavailable"
         return JSONResponse(payload, status_code=503)
     return JSONResponse(payload)

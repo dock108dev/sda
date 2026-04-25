@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date, datetime
 
 from fastapi import HTTPException
@@ -20,6 +21,20 @@ from ...services.game_status import compute_status_flags
 from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 from .schemas import GameSummary, JobResponse, LiveSnapshot, ScrapeRunConfig, ScoreObject, SocialPostEntry
 from .schemas.common import _score_obj
+
+
+@dataclass(frozen=True, slots=True)
+class _GameSummaryFlags:
+    """Pre-computed has-/count flags fetched in the list query as scalar
+    subqueries, so ``summarize_game`` doesn't need full eager-loaded relations
+    just to derive booleans and counts."""
+
+    has_boxscore: bool
+    has_player_stats: bool
+    has_social: bool
+    social_post_count: int
+    has_pbp: bool
+    play_count: int
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +241,10 @@ def build_preview_context(
 def summarize_game(
     game: SportsGame,
     has_flow: bool | None = None,
+    *,
+    flags: "_GameSummaryFlags | None" = None,
+    latest_play_period: int | None = None,
+    latest_play_clock: str | None = None,
 ) -> GameSummary:
     """Summarize game fields for list responses. Fails fast if core data missing.
 
@@ -233,22 +252,35 @@ def summarize_game(
         game: The game to summarize
         has_flow: Whether the game has a flow in SportsGameFlow table.
             If None, defaults to False.
+        flags: Pre-computed has_/count flags from the list query. When None,
+            falls back to lazy access on the ORM relationships (used by the
+            single-game detail path which eager-loads everything).
+        latest_play_period / latest_play_clock: Latest-play snapshot fetched
+            separately for live games only — the list query does not eager-load
+            the full plays collection just to derive these.
     """
     if not game.league:
         raise ValueError(f"Game {game.id} missing league")
     if not game.home_team or not game.away_team:
         raise ValueError(f"Game {game.id} missing team mappings")
 
-    has_boxscore = bool(game.team_boxscores)
-    has_player_stats = bool(game.player_boxscores)
+    if flags is not None:
+        has_boxscore = flags.has_boxscore
+        has_player_stats = flags.has_player_stats
+        has_social = flags.has_social
+        social_post_count = flags.social_post_count
+        has_pbp = flags.has_pbp
+        play_count = flags.play_count
+    else:
+        has_boxscore = bool(game.team_boxscores)
+        has_player_stats = bool(game.player_boxscores)
+        social_posts = getattr(game, "social_posts", [])
+        has_social = bool(social_posts)
+        social_post_count = len(social_posts)
+        plays = getattr(game, "plays", [])
+        has_pbp = bool(plays)
+        play_count = len(plays)
     has_odds = bool(game.odds)
-    social_posts = getattr(game, "social_posts", [])
-    has_social = bool(social_posts)
-    social_post_count = len(social_posts)
-    plays = getattr(game, "plays", [])
-    has_pbp = bool(plays)
-    play_count = len(plays)
-    # has_flow is now passed in from caller (checked against SportsGameFlow table)
     if has_flow is None:
         has_flow = False
 
@@ -268,10 +300,21 @@ def summarize_game(
         away_secondary_dark=game.away_team.color_secondary_dark_hex,
     )
 
-    # Latest play's period/clock for live score context
-    latest_play = max(plays, key=lambda p: p.play_index, default=None) if plays else None
-    current_period = getattr(latest_play, "quarter", None) if latest_play else None
-    game_clock_val = getattr(latest_play, "game_clock", None) if latest_play else None
+    # Latest play's period/clock for live score context. The list path passes
+    # these in from a targeted live-only query; the detail path falls back to
+    # the eager-loaded plays collection.
+    if latest_play_period is not None or latest_play_clock is not None:
+        current_period = latest_play_period
+        game_clock_val = latest_play_clock
+    else:
+        plays_attr = getattr(game, "plays", None) or []
+        latest_play = (
+            max(plays_attr, key=lambda p: p.play_index, default=None)
+            if plays_attr
+            else None
+        )
+        current_period = getattr(latest_play, "quarter", None) if latest_play else None
+        game_clock_val = getattr(latest_play, "game_clock", None) if latest_play else None
 
     status_flags = compute_status_flags(game.status)
     league_code = game.league.code

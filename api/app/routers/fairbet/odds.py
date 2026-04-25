@@ -36,11 +36,18 @@ from .odds_core import (
 )
 from .odds_enrichment import enrich_and_finalize
 from .odds_models import BetDefinition, FairbetOddsResponse
+from ...services.single_flight import SingleFlight
 
 logger = logging.getLogger(__name__)
 
 # Minimum number of books required for a bet to appear in FairBet results.
 MIN_BOOKS_FOR_FAIRBET = 3
+
+# Process-local request coalescer: if multiple workers in this process all
+# miss the EV-mode snapshot for the same query, only one of them runs the
+# DB+enrich+snapshot pipeline; the rest await the result. Cross-replica
+# coalescing is handled by the Redis snapshot itself.
+_ev_compute_flight = SingleFlight()
 
 router = APIRouter()
 EV_CONFIG = {
@@ -269,48 +276,61 @@ async def get_fairbet_odds(
                 ev_config=EV_CONFIG,
             )
 
-        count_stmt = select(func.count()).select_from(
-            select(
-                FairbetGameOddsWork.game_id,
-                FairbetGameOddsWork.market_key,
-                FairbetGameOddsWork.selection_key,
-                FairbetGameOddsWork.line_value,
-            )
-            .distinct()
-            .join(SportsGame)
-            .where(*conditions)
-            .subquery()
-        )
-        total_raw = (await _exec(count_stmt)).scalar() or 0
-        if total_raw == 0:
-            return _empty_response()
-
-        rows = (
-            await _exec(
-                select(FairbetGameOddsWork)
-                .join(SportsGame)
-                .where(*conditions)
-                .options(*_safe_game_load_options())
-                .order_by(
+        # Coalesce concurrent identical cold-miss requests through SingleFlight
+        # so only one of them does the DB query + enrichment + snapshot. The
+        # leader fills the snapshot; followers receive its result.
+        async def _compute_ev_snapshot():
+            count_stmt = select(func.count()).select_from(
+                select(
                     FairbetGameOddsWork.game_id,
                     FairbetGameOddsWork.market_key,
                     FairbetGameOddsWork.selection_key,
                     FairbetGameOddsWork.line_value,
                 )
+                .distinct()
+                .join(SportsGame)
+                .where(*conditions)
+                .subquery()
             )
-        ).scalars().all()
-        bets_all, ev_diagnostics = enrich_and_finalize(
-            rows,
-            "ev",
-            has_fair=has_fair,
-            min_ev=min_ev,
-            book=book,
-            min_books_for_fairbet=MIN_BOOKS_FOR_FAIRBET,
-        )
+            total_raw = (await _exec(count_stmt)).scalar() or 0
+            if total_raw == 0:
+                return None  # signal empty
+
+            rows = (
+                await _exec(
+                    select(FairbetGameOddsWork)
+                    .join(SportsGame)
+                    .where(*conditions)
+                    .options(*_safe_game_load_options())
+                    .order_by(
+                        FairbetGameOddsWork.game_id,
+                        FairbetGameOddsWork.market_key,
+                        FairbetGameOddsWork.selection_key,
+                        FairbetGameOddsWork.line_value,
+                    )
+                )
+            ).scalars().all()
+            # CPU-bound: pair opposite sides, run Shin devig, compute EV per
+            # book, sort. Offload to a thread so the event loop stays free.
+            bets_all_inner, ev_diag_inner = await asyncio.to_thread(
+                enrich_and_finalize,
+                rows,
+                "ev",
+                has_fair=has_fair,
+                min_ev=min_ev,
+                book=book,
+                min_books_for_fairbet=MIN_BOOKS_FOR_FAIRBET,
+            )
+            snap_key, gen_at = await asyncio.to_thread(
+                create_snapshot, query_hash, bets_all_inner, len(bets_all_inner)
+            )
+            return bets_all_inner, ev_diag_inner, snap_key, gen_at
+
+        ev_result = await _ev_compute_flight.run(query_hash, _compute_ev_snapshot)
+        if ev_result is None:
+            return _empty_response()
+        bets_all, ev_diagnostics, snapshot_key, generated_at = ev_result
         total = len(bets_all)
-        snapshot_key, generated_at = await asyncio.to_thread(
-            create_snapshot, query_hash, bets_all, total
-        )
         page = bets_all[:limit]
         has_more = total > limit
         if not snapshot_key:
@@ -416,7 +436,8 @@ async def get_fairbet_odds(
             )
         )
     ).scalars().all()
-    bets_list, ev_diagnostics = enrich_and_finalize(
+    bets_list, ev_diagnostics = await asyncio.to_thread(
+        enrich_and_finalize,
         rows,
         sort_resolved,
         has_fair=has_fair,
