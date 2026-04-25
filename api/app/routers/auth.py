@@ -75,6 +75,8 @@ class TokenResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
     id: int | None = Field(None, description="User ID (null for guests)")
     email: str | None = Field(None, description="User email (null for guests)")
     role: str = Field(..., description="Current role: guest, user, or admin")

@@ -46,6 +46,16 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = Field(
         default=60, alias="RATE_LIMIT_WINDOW_SECONDS"
     )
+    # Per-key bucket: requests presenting an X-API-Key header get their own
+    # higher-budget bucket. Lets CI workers share a key without throttling
+    # each other off a per-IP bucket. Falls back to the IP-keyed limit above
+    # when no key is provided.
+    rate_limit_requests_keyed: int = Field(
+        default=600, alias="RATE_LIMIT_REQUESTS_KEYED"
+    )
+    rate_limit_window_seconds_keyed: int = Field(
+        default=60, alias="RATE_LIMIT_WINDOW_SECONDS_KEYED"
+    )
     fairbet_odds_cache_enabled: bool = Field(
         default=True, alias="FAIRBET_ODDS_CACHE_ENABLED"
     )

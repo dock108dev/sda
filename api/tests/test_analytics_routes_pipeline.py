@@ -344,6 +344,38 @@ class TestListBatchSimJobs:
         resp = client.get("/api/analytics/batch-simulate-jobs?sport=mlb")
         assert resp.status_code == 200
 
+    def test_db_error_returns_503_with_retry_after(self) -> None:
+        mock_db = AsyncMock()
+        mock_db.execute.side_effect = RuntimeError("connection lost")
+        client = _make_client(mock_db)
+        resp = client.get("/api/analytics/batch-simulate-jobs")
+        assert resp.status_code == 503
+        assert resp.headers.get("retry-after") == "5"
+
+    def test_per_row_serialization_failure_isolated(self) -> None:
+        good = _mock_batch_sim_job(id=1, sport="mlb")
+        bad = _mock_batch_sim_job(id=2, sport="mlb")
+        # Force the bad row's serialization to blow up. The cleanest hook is
+        # making `created_at` raise on attribute access during isoformat().
+        type(bad).created_at = property(
+            lambda self: (_ for _ in ()).throw(RuntimeError("corrupt"))
+        )
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [good, bad]
+        mock_db.execute.return_value = mock_result
+
+        client = _make_client(mock_db)
+        resp = client.get("/api/analytics/batch-simulate-jobs")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 2
+        good_entry = next(j for j in data["jobs"] if j["id"] == 1)
+        assert good_entry["sport"] == "mlb"
+        bad_entry = next(j for j in data["jobs"] if j["id"] == 2)
+        assert bad_entry == {"id": 2, "error": "serialization_failed"}
+
 
 class TestGetBatchSimJob:
     """GET /api/analytics/batch-simulate-job/{job_id}"""
@@ -367,6 +399,14 @@ class TestGetBatchSimJob:
         data = resp.json()
         assert data["id"] == 1
         assert data["sport"] == "mlb"
+
+    def test_db_error_returns_503(self) -> None:
+        mock_db = AsyncMock()
+        mock_db.get.side_effect = RuntimeError("connection lost")
+        client = _make_client(mock_db)
+        resp = client.get("/api/analytics/batch-simulate-job/1")
+        assert resp.status_code == 503
+        assert resp.headers.get("retry-after") == "5"
 
 
 # ---------------------------------------------------------------------------

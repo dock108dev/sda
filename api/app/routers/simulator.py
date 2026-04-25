@@ -20,6 +20,7 @@ See the full request/response schemas below for optional parameters.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -35,7 +36,19 @@ from app.analytics.services.profile_service import (
     profile_to_probabilities,
 )
 from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS
+from app.analytics.sports.nba.constants import NBA_TEAM_ABBRS as _NBA_TEAM_ABBRS
+from app.analytics.sports.nhl.constants import NHL_TEAM_ABBRS as _NHL_TEAM_ABBRS
 from app.db import get_db
+
+# Canonical team-abbreviation filters per sport. Used to exclude minor-league,
+# all-star, exhibition, and cross-sport rows that may exist in the DB under
+# the same league. NCAAB is omitted: the league has 350+ D-I teams and no
+# practical canonical list — we rely on league_id alone there.
+_CANONICAL_TEAM_ABBRS: dict[str, frozenset[str]] = {
+    "mlb": _MLB_TEAM_ABBRS,
+    "nba": _NBA_TEAM_ABBRS,
+    "nhl": _NHL_TEAM_ABBRS,
+}
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -132,10 +145,13 @@ class TeamInfo(BaseModel):
     name: str
     short_name: str | None = None
     games_with_stats: int
+    sport: str
 
 
 class TeamsResponse(BaseModel):
     """List of teams available for simulation for a given sport."""
+
+    model_config = _ALIAS_CFG
 
     sport: str
     teams: list[TeamInfo]
@@ -213,9 +229,12 @@ async def list_sport_teams(
         .order_by(SportsTeam.name)
     )
 
-    # For MLB, filter by canonical team abbreviations
-    if sport_lower == "mlb":
-        stmt = stmt.where(SportsTeam.abbreviation.in_(_MLB_TEAM_ABBRS))
+    # Filter by canonical team abbreviations to exclude cross-sport/minor-league
+    # rows accidentally tagged with this league_id. NCAAB skipped (no canonical
+    # list — relies on league_id alone).
+    canonical_abbrs = _CANONICAL_TEAM_ABBRS.get(sport_lower)
+    if canonical_abbrs:
+        stmt = stmt.where(SportsTeam.abbreviation.in_(canonical_abbrs))
 
     result = await db.execute(stmt)
     rows = result.all()
@@ -226,6 +245,7 @@ async def list_sport_teams(
             name=row.name,
             short_name=row.short_name,
             games_with_stats=row.games_with_stats,
+            sport=sport_lower,
         )
         for row in rows
     ]
@@ -312,8 +332,12 @@ async def simulate_game(
             },
         )
 
-    # Run Monte Carlo simulation
-    result = _service.run_full_simulation(
+    # Run Monte Carlo simulation off the event loop. The engine is CPU-bound
+    # (10k–50k iterations of pure-Python loops) and blocks the worker for
+    # seconds per call; without this offload, concurrent requests serialize
+    # and tail latency spikes under load.
+    result = await asyncio.to_thread(
+        _service.run_full_simulation,
         sport=sport_lower,
         game_context=game_context,
         iterations=req.iterations,

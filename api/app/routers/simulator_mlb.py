@@ -7,6 +7,7 @@ bullpen transition modeling.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -411,8 +412,10 @@ async def simulate_mlb_game(
             game_context.update(lineup_ctx)
             use_lineup = True
 
-    # Run Monte Carlo simulation
-    result = _service.run_full_simulation(
+    # Run Monte Carlo simulation off the event loop — see simulator.py for
+    # rationale (CPU-bound, multi-second blocking per call).
+    result = await asyncio.to_thread(
+        _service.run_full_simulation,
         sport="mlb",
         game_context=game_context,
         iterations=req.iterations,

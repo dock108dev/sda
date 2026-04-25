@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -135,6 +136,167 @@ class TestListSportTeamsUnsupported:
         client = _make_client()
         resp = client.get("/api/simulator/unknown/teams")
         assert resp.status_code == 400
+
+
+class TestCanonicalAbbrFilter:
+    """Cross-sport contamination guard: each sport's /teams query must
+    include the canonical abbr IN-list (except NCAAB, which has no list)."""
+
+    @staticmethod
+    def _executed_sql(mock_db: AsyncMock) -> str:
+        # Compile each executed statement with literal_binds=True so IN-list
+        # values appear inline (otherwise they show as POSTCOMPILE markers).
+        compiled: list[str] = []
+        for call in mock_db.execute.call_args_list:
+            stmt = call.args[0]
+            try:
+                compiled.append(
+                    str(stmt.compile(compile_kwargs={"literal_binds": True}))
+                )
+            except Exception:
+                compiled.append(str(stmt))
+        return "\n".join(compiled)
+
+    def _make_db(self) -> AsyncMock:
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        mock_db.execute.return_value = mock_result
+        return mock_db
+
+    def test_mlb_filters_by_canonical_abbrs(self) -> None:
+        from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS
+
+        mock_db = self._make_db()
+        client = _make_client(mock_db)
+        resp = client.get("/api/simulator/mlb/teams")
+        assert resp.status_code == 200
+        sql = self._executed_sql(mock_db)
+        # Each canonical abbr should appear as a bound IN value in the compiled
+        # SQL (sqlalchemy ClauseList renders them inline at __str__ time).
+        for abbr in ("NYY", "LAD", "BOS"):
+            assert abbr in sql, f"MLB query missing canonical abbr {abbr}"
+
+    def test_nba_filters_by_canonical_abbrs(self) -> None:
+        mock_db = self._make_db()
+        client = _make_client(mock_db)
+        resp = client.get("/api/simulator/nba/teams")
+        assert resp.status_code == 200
+        sql = self._executed_sql(mock_db)
+        for abbr in ("BOS", "LAL", "GSW"):
+            assert abbr in sql, f"NBA query missing canonical abbr {abbr}"
+
+    def test_nhl_filters_by_canonical_abbrs(self) -> None:
+        mock_db = self._make_db()
+        client = _make_client(mock_db)
+        resp = client.get("/api/simulator/nhl/teams")
+        assert resp.status_code == 200
+        sql = self._executed_sql(mock_db)
+        for abbr in ("BOS", "TOR", "VGK"):
+            assert abbr in sql, f"NHL query missing canonical abbr {abbr}"
+        # Both ARI (historic Coyotes) and UTA (Hockey Club) should be present.
+        assert "ARI" in sql
+        assert "UTA" in sql
+
+    def test_ncaab_does_not_apply_canonical_filter(self) -> None:
+        # NCAAB has 350+ teams; no canonical list. We rely on league_id alone.
+        mock_db = self._make_db()
+        client = _make_client(mock_db)
+        resp = client.get("/api/simulator/ncaab/teams")
+        assert resp.status_code == 200
+        sql = self._executed_sql(mock_db)
+        # No NBA-specific abbr should leak in (proves we didn't accidentally
+        # apply the wrong sport's filter).
+        # We can't assert "no IN clause" cleanly, but we can assert that we
+        # didn't import another sport's list:
+        assert "GSW" not in sql
+        assert "NYY" not in sql
+
+    def test_team_info_includes_sport_field(self) -> None:
+        mock_db = AsyncMock()
+        mock_row = MagicMock()
+        mock_row.abbreviation = "BOS"
+        mock_row.name = "Boston Celtics"
+        mock_row.short_name = "Celtics"
+        mock_row.games_with_stats = 55
+        mock_result = MagicMock()
+        mock_result.all.return_value = [mock_row]
+        mock_db.execute.return_value = mock_result
+
+        client = _make_client(mock_db)
+        resp = client.get("/api/simulator/nba/teams")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["teams"][0]["sport"] == "nba"
+
+
+class TestSimulatorThreadOffload:
+    """The simulator must run via asyncio.to_thread so concurrent requests
+    don't serialize on a single ASGI worker.
+
+    Strategy: replace _service.run_full_simulation with a function that blocks
+    on time.sleep (which only releases the GIL when run in a thread pool).
+    Issue N concurrent requests via httpx.AsyncClient and assert wall-clock
+    is closer to the per-call sleep than to N × per-call sleep.
+    """
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_run_in_parallel(self) -> None:
+        import asyncio
+        import time
+
+        import httpx
+        from app.routers import simulator as sim_module
+
+        per_call_seconds = 0.25
+        concurrency = 4
+
+        def _slow_sim(*args, **kwargs):
+            # time.sleep releases the GIL — the whole point of to_thread.
+            time.sleep(per_call_seconds)
+            return _SIMULATION_RESULT
+
+        client = _make_client()
+        with (
+            patch.object(sim_module, "_service") as mock_service,
+            patch(
+                "app.routers.simulator.get_team_rolling_profile",
+                new_callable=AsyncMock,
+            ) as mock_profile,
+            patch(
+                "app.routers.simulator._predict_with_game_model",
+                new_callable=AsyncMock,
+            ) as mock_predict,
+        ):
+            mock_profile.return_value = None
+            mock_predict.return_value = None
+            mock_service.run_full_simulation.side_effect = _slow_sim
+
+            transport = httpx.ASGITransport(app=client.app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as ac:
+                start = time.perf_counter()
+                results = await asyncio.gather(*[
+                    ac.post(
+                        "/api/simulator/nba",
+                        json={
+                            "home_team": "BOS",
+                            "away_team": "MIA",
+                            "iterations": 100,
+                        },
+                    )
+                    for _ in range(concurrency)
+                ])
+                elapsed = time.perf_counter() - start
+
+        assert all(r.status_code == 200 for r in results)
+        # Serial wall-clock would be ~ concurrency * per_call_seconds = 1.0s.
+        # Parallel via to_thread should finish in well under 2x per_call.
+        assert elapsed < per_call_seconds * 2.5, (
+            f"simulator did not parallelize: elapsed={elapsed:.2f}s, "
+            f"expected < {per_call_seconds * 2.5:.2f}s"
+        )
 
 
 # ---------------------------------------------------------------------------

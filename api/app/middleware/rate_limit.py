@@ -3,15 +3,21 @@
 Provides three tiers:
 - **Admin**: Tighter limit for `/api/admin/` routes (default 20 req/min).
   Configurable via ``ADMIN_RATE_LIMIT_REQUESTS`` / ``ADMIN_RATE_LIMIT_WINDOW_SECONDS``.
-- **Global**: Default rate limit for all other non-exempt endpoints (configurable
-  via ``RATE_LIMIT_REQUESTS`` / ``RATE_LIMIT_WINDOW_SECONDS``).
+- **Global**: Default rate limit for all other non-exempt endpoints. Two
+  buckets:
+  - Requests with an ``X-API-Key`` header are keyed on the API key with a
+    higher budget (``RATE_LIMIT_REQUESTS_KEYED``, default 600/min). Lets
+    multiple workers behind one CI key share a single bucket without
+    throttling each other off the per-IP one.
+  - Requests without a key fall back to per-IP keying with the standard
+    budget (``RATE_LIMIT_REQUESTS``, default 120/min).
 - **Auth-strict**: Tightest limit for authentication endpoints that are
   vulnerable to brute-force attacks (login, signup, forgot-password,
   magic-link, reset-password).
 
-All tiers use a sliding-window counter keyed by client IP. This is
-an in-memory implementation suitable for single-instance deployments.
-For horizontal scaling, replace with a Redis-backed limiter.
+All tiers use a sliding-window counter. The store is in-memory, suitable
+for single-instance deployments. For horizontal scaling, replace with a
+Redis-backed limiter (the per-key keying here is the prerequisite).
 """
 
 from __future__ import annotations
@@ -54,8 +60,10 @@ class RateLimitMiddleware:
 
     def __init__(self, app: Callable) -> None:
         self.app = app
-        # Global rate limit buckets (keyed by client IP).
+        # Global rate limit buckets, keyed by client IP (requests without a key).
         self._requests: dict[str, deque[float]] = defaultdict(deque)
+        # Global rate limit buckets, keyed by api_key (requests presenting one).
+        self._keyed_requests: dict[str, deque[float]] = defaultdict(deque)
         # Auth-specific buckets (keyed by "ip:path_prefix").
         self._auth_requests: dict[str, deque[float]] = defaultdict(deque)
         # Admin-specific buckets (keyed by client IP).
@@ -140,14 +148,23 @@ class RateLimitMiddleware:
             return
 
         # --- Global tier (consumer + all other routes) ---
-        window = settings.rate_limit_window_seconds
-        limit = settings.rate_limit_requests
+        # Requests with an X-API-Key get their own keyed bucket with a
+        # higher budget; unkeyed requests fall back to per-IP. Lets a single
+        # CI key burst across many workers without per-IP throttling.
+        api_key = request.headers.get("x-api-key")
+        if api_key:
+            window = settings.rate_limit_window_seconds_keyed
+            limit = settings.rate_limit_requests_keyed
+            bucket = self._keyed_requests[api_key]
+        else:
+            window = settings.rate_limit_window_seconds
+            limit = settings.rate_limit_requests
+            bucket = self._requests[client_ip]
 
-        request_times = self._requests[client_ip]
-        while request_times and request_times[0] <= now - window:
-            request_times.popleft()
+        while bucket and bucket[0] <= now - window:
+            bucket.popleft()
 
-        if len(request_times) >= limit:
+        if len(bucket) >= limit:
             response = JSONResponse(
                 {"detail": "Rate limit exceeded"},
                 status_code=429,
@@ -156,5 +173,5 @@ class RateLimitMiddleware:
             await response(scope, receive, send)
             return
 
-        request_times.append(now)
+        bucket.append(now)
         await self.app(scope, receive, send)

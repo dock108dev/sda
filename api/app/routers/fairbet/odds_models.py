@@ -41,6 +41,8 @@ class BetDefinition(BaseModel):
     league_code: str
     home_team: str
     away_team: str
+    home_team_abbr: str | None = None
+    away_team_abbr: str | None = None
     game_date: datetime
     market_key: str
     selection_key: str
