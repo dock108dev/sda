@@ -127,3 +127,15 @@ POINTS_PER_EVENT: dict[str, float] = {
     "free_throw_trip": 1.5,  # avg ~2 FTA, ~78% make rate
     "turnover": 0,
 }
+
+# ---------------------------------------------------------------------------
+# Canonical team abbreviations
+# ---------------------------------------------------------------------------
+
+# Excludes summer league, G-League, and exhibition entries that may exist in
+# the DB under the NBA league.
+NBA_TEAM_ABBRS: frozenset[str] = frozenset({
+    "ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DAL", "DEN", "DET", "GSW",
+    "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", "NOP", "NYK",
+    "OKC", "ORL", "PHI", "PHX", "POR", "SAC", "SAS", "TOR", "UTA", "WAS",
+})

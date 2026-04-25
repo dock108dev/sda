@@ -1,6 +1,7 @@
-"""Route-level tests for the simulator endpoints.
+"""Route-level tests for ``POST /api/simulator/mlb`` (lineup-aware MLB sim).
 
-Covers: GET /api/simulator/mlb/teams, POST /api/simulator/mlb.
+``GET /api/simulator/{sport}/teams`` (including mlb) is covered in
+``test_simulator_routes_multisport.py``.
 """
 
 from __future__ import annotations
@@ -37,37 +38,6 @@ def _make_client(mock_db=None):
     app.dependency_overrides[get_db] = mock_get_db
     app.include_router(router)
     return TestClient(app)
-
-
-class TestListSimulatorTeams:
-    """GET /api/simulator/mlb/teams"""
-
-    def test_returns_empty_teams(self) -> None:
-        client = _make_client()
-        resp = client.get("/api/simulator/mlb/teams")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["teams"] == []
-        assert data["count"] == 0
-
-    def test_returns_teams_with_stats(self) -> None:
-        mock_db = AsyncMock()
-        mock_row = MagicMock()
-        mock_row.abbreviation = "NYY"
-        mock_row.name = "New York Yankees"
-        mock_row.short_name = "Yankees"
-        mock_row.games_with_stats = 42
-        mock_result = MagicMock()
-        mock_result.all.return_value = [mock_row]
-        mock_db.execute.return_value = mock_result
-
-        client = _make_client(mock_db)
-        resp = client.get("/api/simulator/mlb/teams")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["count"] == 1
-        assert data["teams"][0]["abbreviation"] == "NYY"
-        assert data["teams"][0]["gamesWithStats"] == 42
 
 
 class TestSimulateMLBGame:

@@ -9,31 +9,33 @@
 ## Table of Contents
 
 1. [Authentication](#authentication)
-2. [Date & Time Convention](#date--time-convention)
-3. [Quick Start](#quick-start)
-4. [Reference Tables](#reference-tables)
-5. [Health Check](#health-check)
-6. [Games](#games)
-7. [Game Flow](#game-flow)
-8. [Timeline](#timeline)
-9. [Teams](#teams)
-10. [Scraper Runs](#scraper-runs)
-11. [Game Flow Pipeline](#game-flow-pipeline)
-12. [Diagnostics](#diagnostics)
-13. [Jobs](#jobs)
-14. [Task Control](#task-control)
-15. [PBP Inspection](#pbp-inspection)
-16. [Entity Resolution](#entity-resolution)
-17. [Social](#social)
-18. [FairBet](#fairbet)
-19. [Analytics](#analytics)
-20. [Simulator](#simulator)
-21. [Model Odds](#model-odds)
-22. [Realtime](#realtime)
-23. [Reading Positions](#reading-positions)
-24. [Golf API](#golf-api)
-25. [Golf Pools API](#golf-pools-api)
-25. [Response Models](#response-models)
+2. [Rate Limiting](#rate-limiting)
+3. [Caching](#caching)
+4. [Date & Time Convention](#date--time-convention)
+5. [Quick Start](#quick-start)
+6. [Reference Tables](#reference-tables)
+7. [Health Check](#health-check)
+8. [Games](#games)
+9. [Game Flow](#game-flow)
+10. [Timeline](#timeline)
+11. [Teams](#teams)
+12. [Scraper Runs](#scraper-runs)
+13. [Game Flow Pipeline](#game-flow-pipeline)
+14. [Diagnostics](#diagnostics)
+15. [Jobs](#jobs)
+16. [Task Control](#task-control)
+17. [PBP Inspection](#pbp-inspection)
+18. [Entity Resolution](#entity-resolution)
+19. [Social](#social)
+20. [FairBet](#fairbet)
+21. [Analytics](#analytics)
+22. [Simulator](#simulator)
+23. [Model Odds](#model-odds)
+24. [Realtime](#realtime)
+25. [Reading Positions](#reading-positions)
+26. [Golf API](#golf-api)
+27. [Golf Pools API](#golf-pools-api)
+28. [Response Models](#response-models)
 
 ---
 
@@ -76,8 +78,8 @@ Content-Type: application/json
 Response:
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer",
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "tokenType": "bearer",
   "role": "user"
 }
 ```
@@ -160,7 +162,7 @@ Content-Type: application/json
 }
 ```
 
-Response: same as login (returns `TokenResponse` with `access_token` and `role`). `400` if the token is invalid or expired.
+Response: same as login (returns `TokenResponse` with `accessToken` and `role`). `400` if the token is invalid or expired.
 
 #### Get Current Identity
 
@@ -335,6 +337,39 @@ The `/healthz` endpoint does not require authentication to support infrastructur
 ### Request Correlation
 
 Every response includes an `X-Request-ID` header for log correlation. If the client sends an `X-Request-ID` header, the same value is echoed back; otherwise the server generates a UUID. Use this ID when reporting issues to trace the request through server logs.
+
+---
+
+## Rate Limiting
+
+Sliding-window per-tier limits enforced by `api/app/middleware/rate_limit.py`. Limits exceeded → `429` with a `Retry-After` header (seconds).
+
+| Tier | Path prefix | Default limit | Window | Bucket key | Configurable via |
+|---|---|---|---|---|---|
+| **Auth-strict** | `/auth/login`, `/auth/signup`, `/auth/forgot-password`, `/auth/magic-link`, `/auth/reset-password` | 10 req | 60s | client IP + path | hardcoded |
+| **Onboarding-strict** | `/api/onboarding/` | 5 req | 3600s | client IP | hardcoded |
+| **Admin** | `/api/admin/` | 20 req | 60s | client IP | `ADMIN_RATE_LIMIT_REQUESTS`, `ADMIN_RATE_LIMIT_WINDOW_SECONDS` |
+| **Global / keyed** | everything else, when `X-API-Key` is present | **600 req** | 60s | API key | `RATE_LIMIT_REQUESTS_KEYED`, `RATE_LIMIT_WINDOW_SECONDS_KEYED` |
+| **Global / IP** | everything else, no `X-API-Key` | 120 req | 60s | client IP | `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` |
+
+**Notes:**
+- The keyed and IP buckets on the global tier are independent. Multiple workers behind one IP that all send the same `X-API-Key` share a single keyed bucket.
+- Exempt prefix: `/v1/sse`.
+- Store is in-memory per process (single-instance deployments). Horizontal scaling requires a Redis-backed limiter (per-key keying here is the prerequisite).
+
+---
+
+## Caching
+
+Read-heavy endpoints emit `Cache-Control: public, max-age=<ttl>` and an `X-Cache: HIT|MISS|BYPASS` debug header. Authenticated requests (any `Authorization` or `Cookie` header) bypass the cache so per-user state cannot leak through a shared key.
+
+| Endpoint | TTL | Backed by |
+|---|---|---|
+| `GET /api/games` | 15s | `app.services.response_cache` (Redis) |
+| `GET /api/fairbet/odds` | 15s (`FAIRBET_ODDS_CACHE_TTL_SECONDS`) | `app.services.fairbet_runtime` (Redis) |
+| `GET /api/fairbet/live` | 5s | `app.services.response_cache` (Redis) |
+
+Cache misses still happen on every distinct query-param combination. The cache exists to collapse duplicate identical requests (e.g. multiple CI workers loading the same page within the TTL window), not to extend data freshness.
 
 ---
 
@@ -1253,7 +1288,8 @@ Get bet-centric odds for cross-book comparison with EV annotations.
 > - Excluded books (see [Reference Tables](#excluded-sportsbooks-20)) are filtered out automatically at query time.
 > - `sort_by=ev` uses snapshot semantics for stable pagination. First request creates a snapshot and returns `snapshotId`; follow-up pages must pass that `snapshotId` with `cursor`.
 
-**Response:**
+**Response:** All keys are camelCase (Pydantic `alias_generator=to_camel`).
+
 ```json
 {
   "requestId": "2f3de337-c894-4c80-85a5-28fd28b5ca25",
@@ -1264,73 +1300,75 @@ Get bet-centric odds for cross-book comparison with EV annotations.
   "snapshotId": null,
   "items": [
     {
-      "game_id": 123,
-      "league_code": "NBA",
-      "home_team": "Los Angeles Lakers",
-      "away_team": "Boston Celtics",
-      "game_date": "2026-01-31T19:00:00Z",
-      "market_key": "spreads",
-      "selection_key": "team:los_angeles_lakers",
-      "line_value": -3.5,
-      "market_category": "mainline",
-      "player_name": null,
+      "gameId": 123,
+      "leagueCode": "NBA",
+      "homeTeam": "Los Angeles Lakers",
+      "awayTeam": "Boston Celtics",
+      "homeTeamAbbr": "LAL",
+      "awayTeamAbbr": "BOS",
+      "gameDate": "2026-01-31T19:00:00Z",
+      "marketKey": "spreads",
+      "selectionKey": "team:los_angeles_lakers",
+      "lineValue": -3.5,
+      "marketCategory": "mainline",
+      "playerName": null,
       "description": null,
-      "true_prob": 0.5432,
-      "reference_price": -118,
-      "opposite_reference_price": 108,
-      "ev_confidence_tier": "high",
-      "ev_disabled_reason": null,
-      "ev_method": "pinnacle_devig",
-      "has_fair": true,
-      "fair_american_odds": -119,
-      "selection_display": "LAL -3.5",
-      "market_display_name": "Spread",
-      "best_book": "DraftKings",
-      "best_ev_percent": 2.15,
-      "confidence_display_label": "Sharp",
-      "ev_method_display_name": "Pinnacle Devig",
-      "ev_method_explanation": "Fair odds derived by removing vig from Pinnacle's line using Shin's method.",
-      "explanation_steps": [
+      "trueProb": 0.5432,
+      "referencePrice": -118,
+      "oppositeReferencePrice": 108,
+      "evConfidenceTier": "high",
+      "evDisabledReason": null,
+      "evMethod": "pinnacle_devig",
+      "hasFair": true,
+      "fairAmericanOdds": -119,
+      "selectionDisplay": "LAL -3.5",
+      "marketDisplayName": "Spread",
+      "bestBook": "DraftKings",
+      "bestEvPercent": 2.15,
+      "confidenceDisplayLabel": "Sharp",
+      "evMethodDisplayName": "Pinnacle Devig",
+      "evMethodExplanation": "Fair odds derived by removing vig from Pinnacle's line using Shin's method.",
+      "explanationSteps": [
         {
-          "step_number": 1,
+          "stepNumber": 1,
           "title": "Convert odds to implied probability",
           "description": "Each side's American odds are converted to an implied win probability.",
-          "detail_rows": [
-            { "label": "This side", "value": "-118 → 54.1%", "is_highlight": false },
-            { "label": "Other side", "value": "+108 → 48.1%", "is_highlight": false },
-            { "label": "Total", "value": "102.2%", "is_highlight": false }
+          "detailRows": [
+            { "label": "This side", "value": "-118 → 54.1%", "isHighlight": false },
+            { "label": "Other side", "value": "+108 → 48.1%", "isHighlight": false },
+            { "label": "Total", "value": "102.2%", "isHighlight": false }
           ]
         },
         {
-          "step_number": 2,
+          "stepNumber": 2,
           "title": "Identify the vig",
           "description": "The total implied probability exceeds 100% — the excess is the bookmaker's margin (vig).",
-          "detail_rows": [
-            { "label": "Total implied", "value": "102.2%", "is_highlight": false },
-            { "label": "Should be", "value": "100.0%", "is_highlight": false },
-            { "label": "Vig (margin)", "value": "2.2%", "is_highlight": true }
+          "detailRows": [
+            { "label": "Total implied", "value": "102.2%", "isHighlight": false },
+            { "label": "Should be", "value": "100.0%", "isHighlight": false },
+            { "label": "Vig (margin)", "value": "2.2%", "isHighlight": true }
           ]
         },
         {
-          "step_number": 3,
+          "stepNumber": 3,
           "title": "Remove the vig (Shin's method)",
           "description": "Shin's method accounts for favorite-longshot bias, allocating more vig correction to longshots than favorites.",
-          "detail_rows": [
-            { "label": "Shin parameter (z)", "value": "0.0215", "is_highlight": false },
-            { "label": "Formula", "value": "p = (√(z² + 4(1−z)q²) − z) / (2(1−z))", "is_highlight": false },
-            { "label": "Fair probability", "value": "54.3%", "is_highlight": true },
-            { "label": "Fair odds", "value": "-119", "is_highlight": false }
+          "detailRows": [
+            { "label": "Shin parameter (z)", "value": "0.0215", "isHighlight": false },
+            { "label": "Formula", "value": "p = (√(z² + 4(1−z)q²) − z) / (2(1−z))", "isHighlight": false },
+            { "label": "Fair probability", "value": "54.3%", "isHighlight": true },
+            { "label": "Fair odds", "value": "-119", "isHighlight": false }
           ]
         },
         {
-          "step_number": 4,
+          "stepNumber": 4,
           "title": "Calculate EV at best price",
           "description": "Expected value measures the average profit per dollar wagered at the best available price.",
-          "detail_rows": [
-            { "label": "Best price", "value": "-110 (DraftKings)", "is_highlight": false },
-            { "label": "Win", "value": "54.3% x $0.91 profit = +$0.4941", "is_highlight": false },
-            { "label": "Loss", "value": "45.7% x $1.00 risked = -$0.4570", "is_highlight": false },
-            { "label": "EV", "value": "+2.15%", "is_highlight": true }
+          "detailRows": [
+            { "label": "Best price", "value": "-110 (DraftKings)", "isHighlight": false },
+            { "label": "Win", "value": "54.3% x $0.91 profit = +$0.4941", "isHighlight": false },
+            { "label": "Loss", "value": "45.7% x $1.00 risked = -$0.4570", "isHighlight": false },
+            { "label": "EV", "value": "+2.15%", "isHighlight": true }
           ]
         }
       ],
@@ -1338,28 +1376,28 @@ Get bet-centric odds for cross-book comparison with EV annotations.
         {
           "book": "DraftKings",
           "price": -110,
-          "observed_at": "2026-01-31T18:00:00Z",
-          "ev_percent": 2.15,
-          "implied_prob": 0.5238,
-          "is_sharp": false,
-          "ev_method": "pinnacle_devig",
-          "ev_confidence_tier": "high",
-          "book_abbr": "DK",
-          "price_decimal": 1.909,
-          "ev_tier": "positive"
+          "observedAt": "2026-01-31T18:00:00Z",
+          "evPercent": 2.15,
+          "impliedProb": 0.5238,
+          "isSharp": false,
+          "evMethod": "pinnacle_devig",
+          "evConfidenceTier": "high",
+          "bookAbbr": "DK",
+          "priceDecimal": 1.909,
+          "evTier": "positive"
         },
         {
           "book": "Pinnacle",
           "price": -118,
-          "observed_at": "2026-01-31T18:00:00Z",
-          "ev_percent": null,
-          "implied_prob": 0.5414,
-          "is_sharp": true,
-          "ev_method": "pinnacle_devig",
-          "ev_confidence_tier": "high",
-          "book_abbr": "PIN",
-          "price_decimal": 1.847,
-          "ev_tier": "neutral"
+          "observedAt": "2026-01-31T18:00:00Z",
+          "evPercent": null,
+          "impliedProb": 0.5414,
+          "isSharp": true,
+          "evMethod": "pinnacle_devig",
+          "evConfidenceTier": "high",
+          "bookAbbr": "PIN",
+          "priceDecimal": 1.847,
+          "evTier": "neutral"
         }
       ]
     }
@@ -1368,41 +1406,42 @@ Get bet-centric odds for cross-book comparison with EV annotations.
   "nextCursor": "eyJzb3J0IjoiZ2FtZV90aW1lIiwidiI6WyIyMDI2LTAxLTMxVDE5OjAwOjAwKzAwOjAwIiwxMjMsInNwcmVhZHMiLCJ0ZWFtOmxvc19hbmdlbGVzX2xha2VycyIsLTMuNV19",
   "hasMore": true,
   "total": 245,
-  "books_available": ["BetMGM", "Caesars", "DraftKings", "FanDuel", "Pinnacle"],
-  "market_categories_available": ["mainline", "player_prop", "team_prop"],
-  "games_available": [
+  "booksAvailable": ["BetMGM", "Caesars", "DraftKings", "FanDuel", "Pinnacle"],
+  "marketCategoriesAvailable": ["mainline", "player_prop", "team_prop"],
+  "gamesAvailable": [
     {
       "game_id": 123,
       "matchup": "Boston Celtics @ Los Angeles Lakers",
       "game_date": "2026-01-31T19:00:00Z"
     }
   ],
-  "ev_config": {
+  "evConfig": {
     "min_books_for_display": 3,
     "ev_color_thresholds": { "strong_positive": 5.0, "positive": 0.0 }
   }
 }
 ```
 
-**Field Notes:**
-- `market_key`: `"h2h"` (moneyline), `"spreads"`, `"totals"`, or any prop market key (e.g., `"player_points"`)
-- `selection_key`: `{entity_type}:{entity_slug}` — built from canonical DB team names, not Odds API names (e.g., `"team:los_angeles_lakers"`, `"player:lebron_james"`)
-- `line_value`: Spread or total number; `0` for moneyline
-- `true_prob`: Fair probability derived from Pinnacle devig (null if EV computation disabled)
-- `ev_percent`: Expected value percentage vs fair odds (positive = +EV bet)
-- `is_sharp`: `true` for the Pinnacle reference line
-- `market_categories_available`: Dynamic list of categories with data for the current filter
-- `games_available`: Dropdown-friendly list of pregame games with odds data
-- `fair_american_odds`: Fair odds in American format derived from `true_prob`
-- `selection_display`: Human-readable selection label (e.g., "LAL -3.5", "Over 215.5", "LeBron James Over 25.5")
-- `market_display_name`: Human-readable market name (e.g., "Spread", "Player Points")
-- `best_book`: Book with the highest EV% for this bet
-- `best_ev_percent`: Highest EV% across all books
-- `confidence_display_label`: Human-readable confidence tier ("Sharp", "Market", "Thin")
-- `ev_method_display_name`: Human-readable EV method name (e.g., "Pinnacle Devig")
-- `ev_method_explanation`: Sentence explaining how fair odds were derived
-- `explanation_steps`: Step-by-step math walkthrough of how fair odds were derived. Each step has `step_number`, `title`, `description`, and `detail_rows` (label/value pairs with optional `is_highlight`). `null` when not enriched. Paths: Pinnacle devig (3-4 steps), extrapolated (3-4 steps), fallback (1-2 steps), not available (1 step with disabled reason label)
-- `ev_config`: Global configuration for EV display thresholds
+**Field Notes** (camelCase on the wire — Python identifier in parens for cross-reference):
+- `marketKey` (`market_key`): `"h2h"` (moneyline), `"spreads"`, `"totals"`, or any prop market key (e.g., `"player_points"`)
+- `selectionKey`: `{entity_type}:{entity_slug}` — built from canonical DB team names, not Odds API names (e.g., `"team:los_angeles_lakers"`, `"player:lebron_james"`)
+- `lineValue`: Spread or total number; `0` for moneyline
+- `homeTeamAbbr` / `awayTeamAbbr`: Canonical team abbreviation (e.g. `"LAL"`, `"BOS"`). Pass these directly to the simulator's `home_team` / `away_team` request fields. `null` for unmapped teams.
+- `trueProb`: Fair probability derived from Pinnacle devig (null if EV computation disabled)
+- `evPercent` (per-book): Expected value percentage vs fair odds (positive = +EV bet)
+- `isSharp` (per-book): `true` for the Pinnacle reference line
+- `marketCategoriesAvailable`: Dynamic list of categories with data for the current filter
+- `gamesAvailable`: Dropdown-friendly list of pregame games with odds data. **Inner dict keys are snake_case** (`game_id`, `matchup`, `game_date`) — only the wrapper field name is camelCase.
+- `fairAmericanOdds`: Fair odds in American format derived from `trueProb`
+- `selectionDisplay`: Human-readable selection label (e.g., "LAL -3.5", "Over 215.5", "LeBron James Over 25.5")
+- `marketDisplayName`: Human-readable market name (e.g., "Spread", "Player Points")
+- `bestBook`: Book with the highest EV% for this bet
+- `bestEvPercent`: Highest EV% across all books
+- `confidenceDisplayLabel`: Human-readable confidence tier ("Sharp", "Market", "Thin")
+- `evMethodDisplayName`: Human-readable EV method name (e.g., "Pinnacle Devig")
+- `evMethodExplanation`: Sentence explaining how fair odds were derived
+- `explanationSteps`: Step-by-step math walkthrough. Each step has `stepNumber`, `title`, `description`, and `detailRows` (label/value pairs with optional `isHighlight`). `null` when not enriched. Paths: Pinnacle devig (3-4 steps), extrapolated (3-4 steps), fallback (1-2 steps), not available (1 step with disabled reason label)
+- `evConfig`: Global configuration for EV display thresholds. Inner dict keys remain snake_case (untyped `dict[str, Any]`).
 - `items`: Primary paginated payload. `bets` is retained for backward compatibility.
 - `nextCursor` / `hasMore`: Cursor pagination controls for deterministic page traversal.
 - `snapshotId`: Stable-result snapshot handle for EV-sorted pagination.
@@ -1410,9 +1449,11 @@ Get bet-centric odds for cross-book comparison with EV annotations.
 - `requestId`: Mirrors `X-Request-ID` for log correlation.
 - `pageLatencyMs`: End-to-end handler latency for this page.
 - `partial` / `warnings`: Indicates degraded responses when upstream dependencies fail.
-- Per-book `book_abbr`: Short abbreviation (e.g., "DK", "FD", "PIN")
-- Per-book `price_decimal`: Decimal odds equivalent of the American price
-- Per-book `ev_tier`: `"strong_positive"` (≥5%), `"positive"` (≥0%), `"negative"`, or `"neutral"` (sharp book)
+- Per-book `bookAbbr`: Short abbreviation (e.g., "DK", "FD", "PIN")
+- Per-book `priceDecimal`: Decimal odds equivalent of the American price
+- Per-book `evTier`: `"strong_positive"` (≥5%), `"positive"` (≥0%), `"negative"`, or `"neutral"` (sharp book)
+
+**Caching:** Responses are Redis-cached with TTL 15s (`FAIRBET_ODDS_CACHE_TTL_SECONDS`). Snapshots TTL 60s. The endpoint emits `Cache-Control: public, max-age=15`. Authenticated requests (`Authorization` or `Cookie` header) bypass the cache.
 
 ### `GET /odds/meta`
 
@@ -1495,53 +1536,55 @@ Compute +EV fair-bet odds for a live in-game event. Reads aggregated multi-book 
 | `market_category` | `string` | Filter by market category (`mainline`, `player_prop`, `team_prop`, `alternate`) |
 | `sort_by` | `string` | Sort order: `ev` (default), `market` |
 
-**Response:**
+**Response:** All keys are camelCase (Pydantic `alias_generator=to_camel`).
 
 ```json
 {
-  "game_id": 123,
-  "league_code": "NBA",
-  "home_team": "Los Angeles Lakers",
-  "away_team": "Boston Celtics",
+  "gameId": 123,
+  "leagueCode": "NBA",
+  "homeTeam": "Los Angeles Lakers",
+  "awayTeam": "Boston Celtics",
   "bets": [
     {
-      "game_id": 123,
-      "league_code": "NBA",
-      "home_team": "Los Angeles Lakers",
-      "away_team": "Boston Celtics",
-      "game_date": "2026-03-05T19:00:00Z",
-      "market_key": "spreads",
-      "selection_key": "team:los_angeles_lakers",
-      "line_value": -3.5,
-      "market_category": "mainline",
-      "true_prob": 0.5432,
-      "reference_price": -118,
-      "ev_method": "pinnacle_devig",
-      "has_fair": true,
-      "fair_american_odds": -119,
-      "selection_display": "LAL -3.5",
-      "market_display_name": "Spread",
-      "best_book": "DraftKings",
-      "best_ev_percent": 2.15,
-      "explanation_steps": ["..."],
+      "gameId": 123,
+      "leagueCode": "NBA",
+      "homeTeam": "Los Angeles Lakers",
+      "awayTeam": "Boston Celtics",
+      "homeTeamAbbr": "LAL",
+      "awayTeamAbbr": "BOS",
+      "gameDate": "2026-03-05T19:00:00Z",
+      "marketKey": "spreads",
+      "selectionKey": "team:los_angeles_lakers",
+      "lineValue": -3.5,
+      "marketCategory": "mainline",
+      "trueProb": 0.5432,
+      "referencePrice": -118,
+      "evMethod": "pinnacle_devig",
+      "hasFair": true,
+      "fairAmericanOdds": -119,
+      "selectionDisplay": "LAL -3.5",
+      "marketDisplayName": "Spread",
+      "bestBook": "DraftKings",
+      "bestEvPercent": 2.15,
+      "explanationSteps": ["..."],
       "books": [
         {
           "book": "DraftKings",
           "price": -110,
-          "observed_at": "2026-03-05T19:30:00Z",
-          "ev_percent": 2.15,
-          "is_sharp": false,
-          "book_abbr": "DK",
-          "ev_tier": "positive"
+          "observedAt": "2026-03-05T19:30:00Z",
+          "evPercent": 2.15,
+          "isSharp": false,
+          "bookAbbr": "DK",
+          "evTier": "positive"
         }
       ]
     }
   ],
   "total": 12,
-  "books_available": ["DraftKings", "FanDuel", "Pinnacle"],
-  "market_categories_available": ["mainline"],
-  "last_updated_at": "2026-03-05T19:30:00+00:00",
-  "ev_diagnostics": {
+  "booksAvailable": ["DraftKings", "FanDuel", "Pinnacle"],
+  "marketCategoriesAvailable": ["mainline"],
+  "lastUpdatedAt": "2026-03-05T19:30:00+00:00",
+  "evDiagnostics": {
     "total_pairs": 6,
     "total_unpaired": 0,
     "passed": 5,
@@ -1550,7 +1593,9 @@ Compute +EV fair-bet odds for a live in-game event. Reads aggregated multi-book 
 }
 ```
 
-The `bets` array uses the same `BetDefinition` shape as the pre-game `/odds` endpoint, including all display enrichment fields (`fair_american_odds`, `selection_display`, `market_display_name`, `explanation_steps`, per-book `book_abbr`, `ev_tier`, etc.). See the `/odds` response documentation above for field semantics.
+The `bets` array uses the same `BetDefinition` shape as the pre-game `/odds` endpoint and includes the same `homeTeamAbbr` / `awayTeamAbbr` fields. See the `/odds` response documentation above for field semantics.
+
+**Caching:** Redis-cached with TTL 5s (live odds change fast). The endpoint emits `Cache-Control: public, max-age=5` and `X-Cache: HIT|MISS|BYPASS`. Authenticated requests bypass the cache.
 
 ---
 
@@ -2109,6 +2154,17 @@ Delete a single variant from a suite.
 
 Delete a batch simulation job.
 
+#### Batch Simulate Job Error Handling
+
+`GET /batch-simulate-jobs` and `GET /batch-simulate-job/{job_id}` distinguish transient from terminal errors:
+
+| Status | Meaning | Client behavior |
+|---|---|---|
+| `503` + `Retry-After: 5` | Transient DB error during query | Retry after the indicated seconds |
+| `404` | Job not found (single-job endpoint only) | Don't retry |
+| `500` | Genuine bug — usually serialization failure | Don't retry; surface the error |
+| `200` with `{"id": <n>, "error": "serialization_failed"}` row | One corrupted job row in the list | The rest of the list is valid; treat the marked row as unreadable |
+
 ### Historical Replay
 
 Evaluate a trained model on historical games using point-in-time profiles (no data leakage).
@@ -2157,35 +2213,7 @@ curl -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
 
 ### `GET /mlb/teams`
 
-List MLB teams available for simulation. Use the `abbreviation` values as `home_team` / `away_team` in the simulation endpoint. Teams with more `games_with_stats` produce more accurate, data-driven simulations.
-
-**Response:**
-```json
-{
-  "teams": [
-    {
-      "abbreviation": "NYY",
-      "name": "New York Yankees",
-      "short_name": "Yankees",
-      "games_with_stats": 162
-    },
-    {
-      "abbreviation": "LAD",
-      "name": "Los Angeles Dodgers",
-      "short_name": "Dodgers",
-      "games_with_stats": 158
-    }
-  ],
-  "count": 30
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `abbreviation` | `string` | Team abbreviation — use this as `home_team` / `away_team` |
-| `name` | `string` | Full team name |
-| `short_name` | `string?` | Short name (e.g. "Yankees") |
-| `games_with_stats` | `int` | Number of games with advanced Statcast data. Teams with 0 use league-average defaults. |
+Served by the generic `GET /{sport}/teams` handler — see [Multi-Sport Simulator](#multi-sport-simulator) for the canonical shape. The MLB-specific handler was removed; the URL still works and now returns the richer SSOT shape (includes `sport` field).
 
 ### `POST /mlb`
 
@@ -2199,9 +2227,7 @@ Run a Monte Carlo game simulation between two MLB teams.
 4. Aggregates results into win probabilities, expected scores, and most common final scores
 5. If a trained game model is active, also runs a direct model prediction for an additional win probability estimate
 
-**Request body:**
-
-Only `home_team` and `away_team` are required. Everything else has sensible defaults.
+**Request body:** snake_case (Pydantic field identifiers). Only `home_team` and `away_team` are required.
 
 ```json
 {
@@ -2221,64 +2247,68 @@ Only `home_team` and `away_team` are required. Everything else has sensible defa
 | `rolling_window` | `int` | `30` | Number of recent games for building each team's profile (5–162). Smaller (10–15) reacts to hot/cold streaks; larger (40–80) is more stable. |
 | `seed` | `int?` | `null` | Optional random seed for reproducible results. Same seed + inputs = identical output. |
 
-**Response:**
+The lineup-aware fields (`home_lineup`, `away_lineup`, `home_starter`, `away_starter`, `starter_innings`) are MLB-specific and accepted on this endpoint only. See the request schema in `api/app/routers/simulator_mlb.py:MLBSimulationRequest` for the full list.
+
+**Response:** All keys are camelCase on the wire (Pydantic `alias_generator=to_camel`).
 
 ```json
 {
-  "home_team": "NYY",
-  "away_team": "LAD",
-  "home_win_probability": 0.5432,
-  "away_win_probability": 0.4568,
-  "average_home_score": 4.8,
-  "average_away_score": 4.2,
-  "average_total": 9.0,
-  "median_total": 9,
-  "most_common_scores": [
+  "homeTeam": "NYY",
+  "awayTeam": "LAD",
+  "homeWinProbability": 0.5432,
+  "awayWinProbability": 0.4568,
+  "averageHomeScore": 4.8,
+  "averageAwayScore": 4.2,
+  "averageTotal": 9.0,
+  "medianTotal": 9,
+  "mostCommonScores": [
     { "score": "4-5", "probability": 0.042 },
     { "score": "3-4", "probability": 0.038 }
   ],
   "iterations": 5000,
-  "rolling_window": 30,
-  "profiles_loaded": true,
-  "home_pa_probabilities": {
+  "rollingWindow": 30,
+  "profilesLoaded": true,
+  "homePaProbabilities": {
     "strikeout": 0.2315,
     "walk": 0.0912,
     "single": 0.1423,
     "double": 0.0534,
     "triple": 0.008,
-    "home_run": 0.0315
+    "homeRun": 0.0315
   },
-  "away_pa_probabilities": {
+  "awayPaProbabilities": {
     "strikeout": 0.2187,
     "walk": 0.0845,
     "single": 0.1512,
     "double": 0.0489,
     "triple": 0.008,
-    "home_run": 0.0270
+    "homeRun": 0.0270
   },
-  "model_home_win_probability": 0.5821
+  "modelHomeWinProbability": 0.5821
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `home_team` | `string` | Home team abbreviation |
-| `away_team` | `string` | Away team abbreviation |
-| `home_win_probability` | `float` | Probability the home team wins (0–1) |
-| `away_win_probability` | `float` | Probability the away team wins (0–1) |
-| `average_home_score` | `float` | Average home runs across all iterations |
-| `average_away_score` | `float` | Average away runs across all iterations |
-| `average_total` | `float` | Average combined total runs |
-| `median_total` | `float` | Median combined total runs |
-| `most_common_scores` | `array` | Top 10 most frequent final scores (score string + probability) |
+| `homeTeam` | `string` | Home team abbreviation |
+| `awayTeam` | `string` | Away team abbreviation |
+| `homeWinProbability` | `float` | Probability the home team wins (0–1) |
+| `awayWinProbability` | `float` | Probability the away team wins (0–1) |
+| `averageHomeScore` | `float` | Average home runs across all iterations |
+| `averageAwayScore` | `float` | Average away runs across all iterations |
+| `averageTotal` | `float` | Average combined total runs |
+| `medianTotal` | `float` | Median combined total runs |
+| `mostCommonScores` | `array` | Top 10 most frequent final scores (score string + probability) |
 | `iterations` | `int` | Number of iterations run |
-| `rolling_window` | `int` | Rolling window used for profiles |
-| `profiles_loaded` | `bool` | `true` if real team profiles were loaded. `false` means league-average defaults were used (team abbreviation not found or insufficient data). |
-| `home_pa_probabilities` | `object?` | PA event probabilities used for the home team. `null` if profiles not loaded. |
-| `away_pa_probabilities` | `object?` | PA event probabilities used for the away team. `null` if profiles not loaded. |
-| `model_home_win_probability` | `float?` | Direct win probability from the trained game model, if one is active. `null` if no model available. This is separate from the Monte Carlo simulation — it's a single model inference. |
+| `rollingWindow` | `int` | Rolling window used for profiles |
+| `profilesLoaded` | `bool` | `true` if real team profiles were loaded. `false` means league-average defaults were used (team abbreviation not found or insufficient data). |
+| `homePaProbabilities` | `object?` | PA event probabilities used for the home team. `null` if profiles not loaded. |
+| `awayPaProbabilities` | `object?` | PA event probabilities used for the away team. `null` if profiles not loaded. |
+| `modelHomeWinProbability` | `float?` | Direct win probability from the trained game model, if one is active. `null` if no model available. This is separate from the Monte Carlo simulation — it's a single model inference. |
 
-**PA probability keys:** `strikeout`, `walk`, `single`, `double`, `triple`, `home_run`
+**PA probability keys:** `strikeout`, `walk`, `single`, `double`, `triple`, `homeRun`
+
+**Concurrency:** the simulator runs CPU-bound and is offloaded to a worker thread via `asyncio.to_thread` (`api/app/routers/simulator_mlb.py:simulate_mlb_game`), so concurrent requests do not serialize on a single ASGI worker.
 
 ### Error Responses
 
@@ -2286,12 +2316,13 @@ Only `home_team` and `away_team` are required. Everything else has sensible defa
 |--------|-------|
 | `422` | Missing or invalid `home_team`/`away_team`, `iterations` out of range, etc. |
 | `401` | Missing or invalid API key |
+| `429` | Rate limit exceeded — see [Rate Limiting](#rate-limiting) |
 
 ### Multi-Sport Simulator
 
 The simulator supports all sports with advanced stats data: MLB, NBA, NHL, NCAAB.
 
-> The MLB-specific endpoints above (`POST /mlb`, `GET /mlb/teams`) remain available with full lineup support. The generic endpoints below work for any sport but do not support lineup-level simulation.
+`POST /mlb` (above) is the only MLB-specific endpoint that remains — it accepts lineup-aware fields the generic `POST /{sport}` does not. `GET /mlb/teams` is now served by the generic `/{sport}/teams` handler with the canonical SSOT shape.
 
 #### `GET /{sport}/teams`
 
@@ -2303,17 +2334,35 @@ curl -H "X-API-Key: $API_KEY" \
   https://sda.dock108.dev/api/simulator/nba/teams
 ```
 
-**Response:** Same shape as MLB teams endpoint.
+**Response:** All keys are camelCase.
 
 ```json
 {
   "sport": "nba",
   "teams": [
-    { "abbreviation": "BOS", "name": "Boston Celtics", "short_name": "Celtics", "games_with_stats": 82 }
+    {
+      "abbreviation": "BOS",
+      "name": "Boston Celtics",
+      "shortName": "Celtics",
+      "gamesWithStats": 82,
+      "sport": "nba"
+    }
   ],
   "count": 30
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sport` (top-level) | `string` | Echo of the requested sport |
+| `teams[].abbreviation` | `string` | Canonical team abbreviation — pass to `home_team` / `away_team` |
+| `teams[].name` | `string` | Full team name |
+| `teams[].shortName` | `string?` | Short name (e.g. "Yankees") |
+| `teams[].gamesWithStats` | `int` | Games with advanced stats; 0 means league-average defaults |
+| `teams[].sport` | `string` | Sport tag on each team (defensive — lets consumers detect cross-sport rows even though the server-side canonical-abbr filter prevents leakage for MLB/NBA/NHL) |
+| `count` | `int` | Number of teams in the response |
+
+**Cross-sport filtering:** MLB, NBA, and NHL responses are filtered by canonical abbreviation lists (`api/app/analytics/sports/team_filters.py`) so cross-sport rows accidentally tagged under the wrong league are excluded. NCAAB has no canonical list (350+ D-I teams) and relies on `league_id` alone.
 
 #### `POST /{sport}`
 
@@ -2336,25 +2385,25 @@ curl -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
 | `rolling_window` | `int` | `30` | Recent games for team profiles (5–162) |
 | `seed` | `int?` | `null` | Random seed for reproducibility |
 
-**Response:**
+**Response:** All keys are camelCase.
 
 ```json
 {
   "sport": "nba",
-  "home_team": "BOS",
-  "away_team": "LAL",
-  "home_win_probability": 0.6234,
-  "away_win_probability": 0.3766,
-  "average_home_score": 114.2,
-  "average_away_score": 108.7,
-  "average_total": 222.9,
-  "most_common_scores": [
+  "homeTeam": "BOS",
+  "awayTeam": "LAL",
+  "homeWinProbability": 0.6234,
+  "awayWinProbability": 0.3766,
+  "averageHomeScore": 114.2,
+  "averageAwayScore": 108.7,
+  "averageTotal": 222.9,
+  "mostCommonScores": [
     { "score": "112-108", "probability": 0.008 }
   ],
   "iterations": 5000,
-  "rolling_window": 30,
-  "profiles_loaded": true,
-  "model_home_win_probability": null
+  "rollingWindow": 30,
+  "profilesLoaded": true,
+  "modelHomeWinProbability": null
 }
 ```
 

@@ -2,7 +2,39 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-04-22] - Current
+## [2026-04-25] - Current
+
+### Downstream-driven hardening (`scrolldown_changes` branch)
+
+Response to `docs/handoff/scroll-down-web-2026-04-25-response.md`.
+
+**API contract:**
+- `GET /api/simulator/{sport}/teams` now filters MLB, NBA, and NHL by canonical-abbreviation lists (`api/app/analytics/sports/team_filters.py`). Cross-sport rows are excluded server-side. NCAAB still relies on `league_id` only (350+ D-I teams, no canonical short list).
+- `TeamInfo` adds a `sport` field so consumers can detect cross-sport leakage defensively.
+- `BetDefinition` (`/api/fairbet/odds`) and `LiveBetDefinition` (`/api/fairbet/live`) add `homeTeamAbbr` and `awayTeamAbbr`. Pass these directly to the simulator's `home_team` / `away_team` fields — no name→abbr lookup needed.
+- `MeResponse` (`/auth/me`) and `TeamsResponse` (`/api/simulator/{sport}/teams`) wrappers now use camelCase aliases for consistency. Wire shape unchanged for the existing fields (no underscores to flip).
+
+**SSOT cleanup:**
+- Deleted the duplicate `/api/simulator/mlb/teams` handler in `simulator_mlb.py`. The URL is now served by the generic `/{sport}/teams` handler with the richer SSOT shape (adds `sport` field).
+- `/api/analytics/mlb-teams` body collapsed to a 1-line delegate of `/api/analytics/{sport}/teams?sport=mlb`. URL retained for the web client.
+- Inline `if sport == "mlb": stmt.where(... .in_(_MLB_TEAM_ABBRS))` branch removed from `analytics_routes.py:get_sport_teams` and replaced with the shared `get_canonical_abbrs()` SSOT.
+
+**Rate limiting** (`api/app/middleware/rate_limit.py`):
+- The global tier now keys on `X-API-Key` (separate bucket, default 600 req/min) when present, falling back to per-IP (default 120 req/min). Same key from different IPs shares one bucket; missing key falls back to per-IP. Configurable via `RATE_LIMIT_REQUESTS_KEYED` and `RATE_LIMIT_WINDOW_SECONDS_KEYED`.
+
+**Caching** (new module `app/services/response_cache.py`):
+- `GET /api/games` (TTL 15s) and `GET /api/fairbet/live` (TTL 5s) now Redis-cache by query-param hash. Both emit `Cache-Control: public, max-age=<ttl>` and `X-Cache: HIT|MISS|BYPASS`. Authenticated requests (any `Authorization` or `Cookie` header) bypass the cache to avoid leaking per-user state through a shared key.
+
+**Concurrency:**
+- The Monte Carlo engine is offloaded to a worker thread via `asyncio.to_thread` at all call sites: `POST /api/simulator/{sport}`, `POST /api/simulator/mlb`, `POST /api/analytics/simulate`. Concurrent requests no longer serialize on a single ASGI worker.
+
+**Error handling:**
+- `GET /api/analytics/batch-simulate-jobs` and `GET /api/analytics/batch-simulate-job/{job_id}` return `503` with `Retry-After: 5` on transient DB errors (was: bare 500). Per-row serialization failures are isolated — one corrupted job row no longer breaks the whole list; it appears as `{"id": <n>, "error": "serialization_failed"}` instead.
+
+**CI:**
+- `.github/workflows/backend-ci-cd.yml`: `build` job no longer runs on `pull_request` events. Tests/lint/type-check still run on PRs; image build/push happens only on push-to-main and `workflow_dispatch` with `full_deploy=true`.
+
+## [2026-04-22]
 
 ### Club Provisioning Domain (Phases 0–3)
 

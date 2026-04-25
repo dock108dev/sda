@@ -244,19 +244,43 @@ async def list_batch_simulate_jobs(
     sport: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
-    """List batch simulation jobs."""
+    """List batch simulation jobs.
+
+    Surfaces transient DB errors as 503 with Retry-After so callers know to
+    retry, and isolates per-row serialization failures so one bad job row
+    doesn't 500 the whole list.
+    """
     from app.db.analytics import AnalyticsBatchSimJob
 
     stmt = select(AnalyticsBatchSimJob).order_by(AnalyticsBatchSimJob.id.desc())
     if sport:
         stmt = stmt.where(AnalyticsBatchSimJob.sport == sport)
-    result = await db.execute(stmt)
-    jobs = list(result.scalars().all())
+    try:
+        result = await db.execute(stmt)
+        jobs = list(result.scalars().all())
+    except Exception as exc:
+        logger.exception("batch_sim_jobs_list_db_error", extra={"sport": sport})
+        raise HTTPException(
+            status_code=503,
+            detail="Batch sim job listing temporarily unavailable",
+            headers={"Retry-After": "5"},
+        ) from exc
 
-    return {
-        "jobs": [_serialize_batch_sim_job(j) for j in jobs],
-        "count": len(jobs),
-    }
+    serialized: list[dict[str, Any]] = []
+    for job in jobs:
+        try:
+            serialized.append(_serialize_batch_sim_job(job))
+        except Exception:
+            # Don't 500 the whole list because of one corrupted row. Surface
+            # the row id and a marker so the caller can decide what to do.
+            job_id = getattr(job, "id", None)
+            logger.exception(
+                "batch_sim_job_serialization_failed",
+                extra={"job_id": job_id},
+            )
+            serialized.append({"id": job_id, "error": "serialization_failed"})
+
+    return {"jobs": serialized, "count": len(serialized)}
 
 
 @router.get("/batch-simulate-job/{job_id}")
@@ -267,10 +291,27 @@ async def get_batch_simulate_job(
     """Get details for a specific batch simulation job."""
     from app.db.analytics import AnalyticsBatchSimJob
 
-    job = await db.get(AnalyticsBatchSimJob, job_id)
+    try:
+        job = await db.get(AnalyticsBatchSimJob, job_id)
+    except Exception as exc:
+        logger.exception("batch_sim_job_get_db_error", extra={"job_id": job_id})
+        raise HTTPException(
+            status_code=503,
+            detail="Batch sim job lookup temporarily unavailable",
+            headers={"Retry-After": "5"},
+        ) from exc
     if job is None:
         raise HTTPException(status_code=404, detail="Batch sim job not found")
-    return _serialize_batch_sim_job(job, include_diagnostics=True)
+    try:
+        return _serialize_batch_sim_job(job, include_diagnostics=True)
+    except Exception as exc:
+        logger.exception(
+            "batch_sim_job_serialization_failed", extra={"job_id": job_id}
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to serialize batch sim job",
+        ) from exc
 
 
 @router.delete("/batch-simulate-job/{job_id}", dependencies=[Depends(require_admin)])

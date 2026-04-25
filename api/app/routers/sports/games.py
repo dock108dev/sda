@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import desc, exists, func, not_, or_, select
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +19,12 @@ from ...db.sports import (
     SportsGamePlay,
     SportsPlayerBoxscore,
     SportsTeamBoxscore,
+)
+from ...services.response_cache import (
+    build_cache_key,
+    get_cached,
+    set_cached,
+    should_bypass_cache,
 )
 from .game_detail import router as detail_router
 from .game_helpers import (
@@ -33,9 +40,15 @@ from .schemas import (
 router = APIRouter()
 router.include_router(detail_router)
 
+# Read-heavy endpoint: many CI workers and SSR loaders fetch the same shape.
+# Short TTL keeps data fresh while collapsing duplicate queries.
+_GAMES_LIST_CACHE_TTL_SECONDS = 15
+
 
 @router.get("/games", response_model=GameListResponse)
 async def list_games(
+    request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_db),
     league: list[str] | None = Query(None),
     season: int | None = Query(None),
@@ -63,7 +76,39 @@ async def list_games(
     ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-) -> GameListResponse:
+):
+    cache_bypass = should_bypass_cache(request)
+    cache_key: str | None = None
+    if not cache_bypass:
+        cache_key = build_cache_key(
+            "games_list",
+            {
+                "league": league,
+                "season": season,
+                "team": team,
+                "startDate": startDate.isoformat() if startDate else None,
+                "endDate": endDate.isoformat() if endDate else None,
+                "missingBoxscore": missingBoxscore,
+                "missingPlayerStats": missingPlayerStats,
+                "missingOdds": missingOdds,
+                "missingSocial": missingSocial,
+                "missingAny": missingAny,
+                "hasPbp": hasPbp,
+                "finalOnly": finalOnly,
+                "safe": safe,
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        cached = get_cached(cache_key)
+        if cached is not None:
+            return JSONResponse(
+                content=cached,
+                headers={
+                    "Cache-Control": f"public, max-age={_GAMES_LIST_CACHE_TTL_SECONDS}",
+                    "X-Cache": "HIT",
+                },
+            )
     base_stmt = select(SportsGame).options(
         selectinload(SportsGame.league),
         selectinload(SportsGame.home_team),
@@ -215,7 +260,7 @@ async def list_games(
     next_offset = offset + limit if offset + limit < total else None
     summaries = [summarize_game(game, has_flow=game.id in games_with_flow) for game in games]
 
-    return GameListResponse(
+    payload = GameListResponse(
         games=summaries,
         total=total,
         next_offset=next_offset,
@@ -227,6 +272,20 @@ async def list_games(
         with_flow_count=with_flow_count,
         with_advanced_stats_count=with_advanced_stats_count,
     )
+
+    if cache_key is not None:
+        # Cache the wire shape (camelCase aliases) so the hit path doesn't
+        # need to re-serialize through the response model.
+        set_cached(
+            cache_key,
+            payload.model_dump(by_alias=True, mode="json"),
+            ttl_seconds=_GAMES_LIST_CACHE_TTL_SECONDS,
+        )
+    response.headers["Cache-Control"] = (
+        f"public, max-age={_GAMES_LIST_CACHE_TTL_SECONDS}"
+    )
+    response.headers["X-Cache"] = "BYPASS" if cache_bypass else "MISS"
+    return payload
 
 
 @router.post("/games/{game_id}/resync", response_model=JobResponse)

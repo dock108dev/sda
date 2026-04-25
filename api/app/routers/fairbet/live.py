@@ -15,7 +15,8 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from sqlalchemy import select
@@ -37,6 +38,16 @@ from app.services.fairbet_display import (
 )
 from app.services.game_status import LIVE_STATUSES
 from app.services.live_odds_redis import discover_live_game_ids, read_all_live_snapshots_for_game
+from app.services.response_cache import (
+    build_cache_key,
+    get_cached,
+    set_cached,
+    should_bypass_cache,
+)
+
+# Live odds change fast — keep TTL short so the cache only collapses
+# duplicate worker requests within a single page-load burst.
+_LIVE_CACHE_TTL_SECONDS = 5
 
 from .ev_annotation import (
     BookOdds,
@@ -99,6 +110,8 @@ class LiveBetDefinition(BaseModel):
     league_code: str
     home_team: str
     away_team: str
+    home_team_abbr: str | None = None
+    away_team_abbr: str | None = None
     game_date: datetime | None
     market_key: str
     selection_key: str
@@ -214,18 +227,41 @@ class FairbetLiveResponse(BaseModel):
     redis_status: str = "ok"
 
 
-@router.get("/live")
+@router.get("/live", response_model=FairbetLiveResponse)
 async def fairbet_live(
+    request: Request,
+    response: Response,
     game_id: int = Query(..., description="Game ID"),
     market_category: str | None = Query(None, description="Filter by market category"),
     sort_by: str = Query("ev", description="Sort: ev, market"),
-) -> FairbetLiveResponse:
+) -> Any:
     """Compute +EV fair-bet odds for a live game.
 
     Reads all bookmakers' live odds from Redis, runs the same EV pipeline
     as pre-game (Shin devig, Pinnacle reference, extrapolation), and
     returns annotated bet definitions. Nothing persisted.
     """
+    cache_bypass = should_bypass_cache(request)
+    cache_key: str | None = None
+    if not cache_bypass:
+        cache_key = build_cache_key(
+            "fairbet_live",
+            {
+                "game_id": game_id,
+                "market_category": market_category,
+                "sort_by": sort_by,
+            },
+        )
+        cached = get_cached(cache_key)
+        if cached is not None:
+            return JSONResponse(
+                content=cached,
+                headers={
+                    "Cache-Control": f"public, max-age={_LIVE_CACHE_TTL_SECONDS}",
+                    "X-Cache": "HIT",
+                },
+            )
+
     # Look up game info from DB
     async for session in get_db():
         from sqlalchemy.orm import aliased
@@ -243,6 +279,8 @@ async def fairbet_live(
                 SportsLeague.code,
                 HomeTeam.name.label("home_name"),
                 AwayTeam.name.label("away_name"),
+                HomeTeam.abbreviation.label("home_abbr"),
+                AwayTeam.abbreviation.label("away_abbr"),
             )
             .join(SportsLeague, SportsGame.league_id == SportsLeague.id)
             .outerjoin(HomeTeam, SportsGame.home_team_id == HomeTeam.id)
@@ -255,7 +293,16 @@ async def fairbet_live(
         if not row:
             raise HTTPException(status_code=404, detail="Game not found")
 
-        _, game_date, game_status, league_code, home_team_name, away_team_name = row
+        (
+            _,
+            game_date,
+            game_status,
+            league_code,
+            home_team_name,
+            away_team_name,
+            home_team_abbr,
+            away_team_abbr,
+        ) = row
         home_team_name = home_team_name or "Unknown"
         away_team_name = away_team_name or "Unknown"
 
@@ -264,7 +311,7 @@ async def fairbet_live(
     redis_status = "error" if redis_error else "ok"
 
     if not snapshots:
-        return FairbetLiveResponse(
+        empty = FairbetLiveResponse(
             game_id=game_id,
             league_code=league_code,
             home_team=home_team_name,
@@ -276,6 +323,7 @@ async def fairbet_live(
             last_updated_at=None,
             redis_status=redis_status,
         )
+        return _finalize_live_response(empty, response, cache_key, cache_bypass)
 
     # Build bets_map from Redis snapshots (same format as pre-game odds.py)
     now = datetime.now(UTC)
@@ -321,6 +369,8 @@ async def fairbet_live(
                         "league_code": league_code,
                         "home_team": home_team_name,
                         "away_team": away_team_name,
+                        "home_team_abbr": home_team_abbr,
+                        "away_team_abbr": away_team_abbr,
                         "game_date": game_date,
                         "market_key": market_key,
                         "selection_key": selection_key,
@@ -509,7 +559,7 @@ async def fairbet_live(
     for bet in bets_list:
         bet.pop("entity_key", None)
 
-    return FairbetLiveResponse(
+    payload = FairbetLiveResponse(
         game_id=game_id,
         league_code=league_code,
         home_team=home_team_name,
@@ -525,3 +575,24 @@ async def fairbet_live(
         ev_diagnostics=ev_diagnostics,
         redis_status=redis_status,
     )
+    return _finalize_live_response(payload, response, cache_key, cache_bypass)
+
+
+def _finalize_live_response(
+    payload: FairbetLiveResponse,
+    response: Response,
+    cache_key: str | None,
+    cache_bypass: bool,
+) -> FairbetLiveResponse:
+    """Cache the response (if not bypassed) and stamp Cache-Control headers."""
+    if cache_key is not None:
+        set_cached(
+            cache_key,
+            payload.model_dump(by_alias=True, mode="json"),
+            ttl_seconds=_LIVE_CACHE_TTL_SECONDS,
+        )
+    response.headers["Cache-Control"] = (
+        f"public, max-age={_LIVE_CACHE_TTL_SECONDS}"
+    )
+    response.headers["X-Cache"] = "BYPASS" if cache_bypass else "MISS"
+    return payload

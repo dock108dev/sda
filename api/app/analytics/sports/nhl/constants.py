@@ -111,3 +111,16 @@ OT_SHOTS = 4  # ~5 min OT, fewer shots
 MAX_OVERTIMES = 1  # NHL regular season: 1 OT then shootout
 SHOOTOUT_ROUNDS = 5  # max shootout rounds before sudden death
 SHOOTOUT_GOAL_PROB = 0.33  # ~33% success rate per attempt
+
+# ---------------------------------------------------------------------------
+# Canonical team abbreviations
+# ---------------------------------------------------------------------------
+
+# Includes both ARI (historic Arizona Coyotes) and UTA (Utah Hockey Club,
+# 2024-) so historical and current games both match.
+NHL_TEAM_ABBRS: frozenset[str] = frozenset({
+    "ANA", "ARI", "BOS", "BUF", "CAR", "CBJ", "CGY", "CHI", "COL", "DAL",
+    "DET", "EDM", "FLA", "LAK", "MIN", "MTL", "NJD", "NSH", "NYI", "NYR",
+    "OTT", "PHI", "PIT", "SEA", "SJS", "STL", "TBL", "TOR", "UTA", "VAN",
+    "VGK", "WPG", "WSH",
+})

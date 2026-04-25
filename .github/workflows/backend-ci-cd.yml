@@ -324,7 +324,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: compile
     if: >-
-      github.event_name == 'pull_request' ||
       (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.full_deploy == 'true')
     permissions:
@@ -349,19 +348,13 @@ jobs:
         run: |
           REPO="ghcr.io/${{ github.repository }}-${SERVICE}"
           SHORT_SHA="${GITHUB_SHA::7}"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            PRIMARY="${REPO}:pr-${{ github.event.number }}-${SHORT_SHA}"
-          else
-            PRIMARY="${REPO}:${SHORT_SHA}"
-          fi
           {
             echo "tags<<EOF"
-            echo "${PRIMARY}"
+            echo "${REPO}:${SHORT_SHA}"
             echo "${REPO}:latest"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -372,7 +365,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          push: true
           tags: ${{ steps.image-tags.outputs.tags }}
 
   deploy:

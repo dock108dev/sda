@@ -534,7 +534,8 @@ All endpoints prefixed with `/api/analytics`.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/team-profile` | Team rolling profile with league baselines (for comparison UI) |
-| GET | `/mlb-teams` | List MLB teams with games_with_stats count (for dropdowns) |
+| GET | `/{sport}/teams` | List teams per sport with `games_with_stats` count (SSOT) |
+| GET | `/mlb-teams` | Thin delegate to `/{sport}/teams?sport=mlb` (kept for the web client's `listMLBTeams`) |
 | GET | `/mlb-roster` | Team roster (recent batters + pitchers) for lineup selection |
 | GET | `/mlb-data-coverage` | Data family readiness status (PA, Pitch, Fielding) |
 
@@ -553,10 +554,11 @@ Separate router at `/api/simulator` — simplified, downstream-friendly interfac
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/simulator/mlb/teams` | List MLB teams available for simulation |
-| POST | `/api/simulator/mlb` | Run MLB game simulation (only home_team + away_team required) |
+| GET | `/api/simulator/{sport}/teams` | List teams (SSOT — works for `mlb`, `nba`, `nhl`, `ncaab`) |
+| POST | `/api/simulator/{sport}` | Run a sim for any supported sport |
+| POST | `/api/simulator/mlb` | MLB-specific sim with optional lineup-aware fields (`home_lineup`, `away_lineup`, `home_starter`, etc.) |
 
-See [API — Simulator](api.md#simulator) for full request/response documentation.
+See [API — Simulator](api.md#simulator) for full request/response documentation. The Monte Carlo loop is offloaded to a worker thread (`asyncio.to_thread`) so concurrent requests don't serialize on a single ASGI worker.
 
 ### Experiments & Replay
 

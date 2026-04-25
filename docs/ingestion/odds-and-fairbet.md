@@ -305,104 +305,43 @@ POST /api/fairbet/parlay/evaluate
 
 ### Response
 
+The wire response is **camelCase** (Pydantic `alias_generator=to_camel`). See [API — FairBet `/odds`](../api.md#get-odds) for the complete annotated example. The Python identifiers used in this document (table below) map to camelCase aliases on the wire — e.g. `home_team` → `homeTeam`, `fair_american_odds` → `fairAmericanOdds`, `home_team_abbr` → `homeTeamAbbr`.
+
+A condensed sketch:
+
 ```json
 {
   "bets": [
     {
-      "game_id": 123,
-      "league_code": "NBA",
-      "home_team": "Los Angeles Lakers",
-      "away_team": "Boston Celtics",
-      "game_date": "2026-01-31T19:00:00Z",
-      "market_key": "spreads",
-      "selection_key": "team:los_angeles_lakers",
-      "line_value": -3.5,
-      "market_category": "mainline",
-      "player_name": null,
-      "description": null,
-      "true_prob": 0.5432,
-      "reference_price": -118,
-      "opposite_reference_price": 108,
-      "ev_confidence_tier": "high",
-      "ev_disabled_reason": null,
-      "ev_method": "pinnacle_devig",
-      "has_fair": true,
-      "explanation_steps": [
-        {
-          "step_number": 1,
-          "title": "Convert odds to implied probability",
-          "description": "Each side's American odds are converted to an implied win probability.",
-          "detail_rows": [
-            { "label": "This side", "value": "-118 → 54.1%", "is_highlight": false },
-            { "label": "Other side", "value": "+108 → 48.1%", "is_highlight": false },
-            { "label": "Total", "value": "102.2%", "is_highlight": false }
-          ]
-        },
-        {
-          "step_number": 2,
-          "title": "Identify the vig",
-          "description": "The total implied probability exceeds 100% — the excess is the bookmaker's margin (vig).",
-          "detail_rows": [
-            { "label": "Total implied", "value": "102.2%", "is_highlight": false },
-            { "label": "Should be", "value": "100.0%", "is_highlight": false },
-            { "label": "Vig (margin)", "value": "2.2%", "is_highlight": true }
-          ]
-        },
-        {
-          "step_number": 3,
-          "title": "Remove the vig (Shin's method)",
-          "description": "Shin's method accounts for favorite-longshot bias, allocating more vig correction to longshots than favorites.",
-          "detail_rows": [
-            { "label": "Shin parameter (z)", "value": "0.0215", "is_highlight": false },
-            { "label": "Fair probability", "value": "54.3%", "is_highlight": true },
-            { "label": "Fair odds", "value": "-119", "is_highlight": false }
-          ]
-        },
-        {
-          "step_number": 4,
-          "title": "Calculate EV at best price",
-          "description": "Expected value measures the average profit per dollar wagered at the best available price.",
-          "detail_rows": [
-            { "label": "Best price", "value": "-110 (DraftKings)", "is_highlight": false },
-            { "label": "EV", "value": "+2.15%", "is_highlight": true }
-          ]
-        }
-      ],
+      "gameId": 123,
+      "leagueCode": "NBA",
+      "homeTeam": "Los Angeles Lakers",
+      "awayTeam": "Boston Celtics",
+      "homeTeamAbbr": "LAL",
+      "awayTeamAbbr": "BOS",
+      "marketKey": "spreads",
+      "selectionKey": "team:los_angeles_lakers",
+      "lineValue": -3.5,
+      "trueProb": 0.5432,
+      "fairAmericanOdds": -119,
+      "hasFair": true,
       "books": [
-        {
-          "book": "DraftKings",
-          "price": -110,
-          "observed_at": "2026-01-31T18:00:00Z",
-          "ev_percent": 2.15,
-          "implied_prob": 0.5238,
-          "is_sharp": false,
-          "ev_method": "pinnacle_devig",
-          "ev_confidence_tier": "high"
-        },
-        {
-          "book": "Pinnacle",
-          "price": -118,
-          "observed_at": "2026-01-31T18:00:00Z",
-          "ev_percent": null,
-          "implied_prob": 0.5414,
-          "is_sharp": true,
-          "ev_method": "pinnacle_devig",
-          "ev_confidence_tier": "high"
-        }
+        { "book": "DraftKings", "price": -110, "evPercent": 2.15, "isSharp": false },
+        { "book": "Pinnacle", "price": -118, "evPercent": null, "isSharp": true }
       ]
     }
   ],
   "total": 245,
-  "books_available": ["BetMGM", "Caesars", "DraftKings", "FanDuel", "Pinnacle"],
-  "market_categories_available": ["mainline", "player_prop", "team_prop"],
-  "games_available": [
+  "booksAvailable": ["BetMGM", "Caesars", "DraftKings", "FanDuel", "Pinnacle"],
+  "marketCategoriesAvailable": ["mainline", "player_prop", "team_prop"],
+  "gamesAvailable": [
     {
       "game_id": 123,
       "matchup": "Boston Celtics @ Los Angeles Lakers",
       "game_date": "2026-01-31T19:00:00Z"
     }
   ],
-  "ev_diagnostics": {
+  "evDiagnostics": {
     "total_pairs": 120,
     "total_unpaired": 5,
     "eligible": 98,
@@ -415,11 +354,14 @@ POST /api/fairbet/parlay/evaluate
 
 ### Key Field Semantics
 
+Python identifiers shown below; wire format is camelCase (`selection_key` → `selectionKey`, etc.).
+
 | Field | Meaning |
 |-------|---------|
 | `selection_key` | Book-agnostic bet identifier. Format: `{entity}:{slug}`. Built from DB team names. |
 | `market_key` | Market type from the API: `h2h`, `spreads`, `totals`, or prop key (e.g., `player_points`) |
 | `line_value` | Spread or total value. `0` for moneyline. |
+| `home_team_abbr` / `away_team_abbr` | Canonical team abbreviation (e.g. `"LAL"`). `null` for unmapped teams. Pass directly to the simulator's `home_team` / `away_team` request fields. |
 | `true_prob` | Fair probability from Pinnacle devig. `null` if EV disabled. |
 | `reference_price` | Pinnacle's price for this side (American odds). |
 | `ev_percent` | Expected value % vs fair odds. Positive = +EV. `null` if EV disabled. |
@@ -430,7 +372,7 @@ POST /api/fairbet/parlay/evaluate
 | `explanation_steps` | Step-by-step math walkthrough (see [Explanation Steps](#explanation-steps)). `null` if not enriched. |
 | `ev_diagnostics` | Aggregate stats on EV computation for the current query. |
 | `books_available` | All sportsbooks present in the current filtered result set. |
-| `games_available` | Dropdown-friendly list of pregame games: `{game_id, matchup, game_date}`. |
+| `games_available` | Dropdown-friendly list of pregame games: `{game_id, matchup, game_date}` (inner keys snake_case — `dict[str, Any]` is not transformed by the alias generator). |
 
 ### Display Fields (Server-Computed)
 

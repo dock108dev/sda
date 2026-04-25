@@ -20,6 +20,7 @@ See the full request/response schemas below for optional parameters.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -34,7 +35,7 @@ from app.analytics.services.profile_service import (
     get_team_rolling_profile,
     profile_to_probabilities,
 )
-from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS
+from app.analytics.sports.team_filters import get_canonical_abbrs
 from app.db import get_db
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -62,7 +63,6 @@ _SUPPORTED_SPORTS = frozenset(_SPORT_ADVANCED_STATS.keys())
 
 
 from app.routers.simulator_models import ScoreFrequency  # noqa: F401 — re-exported
-
 
 # ---------------------------------------------------------------------------
 # Generic multi-sport request / response models
@@ -132,20 +132,21 @@ class TeamInfo(BaseModel):
     name: str
     short_name: str | None = None
     games_with_stats: int
+    sport: str
 
 
 class TeamsResponse(BaseModel):
     """List of teams available for simulation for a given sport."""
+
+    model_config = _ALIAS_CFG
 
     sport: str
     teams: list[TeamInfo]
     count: int
 
 
-# ---------------------------------------------------------------------------
-# Include MLB sub-router BEFORE generic {sport} routes are defined,
-# so FastAPI matches /mlb/teams before /{sport}/teams.
-# ---------------------------------------------------------------------------
+# MLB sub-router is included before the generic {sport} routes so FastAPI
+# matches POST /mlb (lineup-aware) before POST /{sport}.
 from app.routers.simulator_mlb import router as _mlb_router  # noqa: E402
 
 router.include_router(_mlb_router)
@@ -213,9 +214,12 @@ async def list_sport_teams(
         .order_by(SportsTeam.name)
     )
 
-    # For MLB, filter by canonical team abbreviations
-    if sport_lower == "mlb":
-        stmt = stmt.where(SportsTeam.abbreviation.in_(_MLB_TEAM_ABBRS))
+    # Filter by canonical team abbreviations to exclude cross-sport/minor-league
+    # rows accidentally tagged with this league_id. NCAAB skipped (no canonical
+    # list — relies on league_id alone).
+    canonical_abbrs = get_canonical_abbrs(sport_lower)
+    if canonical_abbrs:
+        stmt = stmt.where(SportsTeam.abbreviation.in_(canonical_abbrs))
 
     result = await db.execute(stmt)
     rows = result.all()
@@ -226,6 +230,7 @@ async def list_sport_teams(
             name=row.name,
             short_name=row.short_name,
             games_with_stats=row.games_with_stats,
+            sport=sport_lower,
         )
         for row in rows
     ]
@@ -312,8 +317,12 @@ async def simulate_game(
             },
         )
 
-    # Run Monte Carlo simulation
-    result = _service.run_full_simulation(
+    # Run Monte Carlo simulation off the event loop. The engine is CPU-bound
+    # (10k–50k iterations of pure-Python loops) and blocks the worker for
+    # seconds per call; without this offload, concurrent requests serialize
+    # and tail latency spikes under load.
+    result = await asyncio.to_thread(
+        _service.run_full_simulation,
         sport=sport_lower,
         game_context=game_context,
         iterations=req.iterations,

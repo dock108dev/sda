@@ -209,6 +209,15 @@ docker exec sports-postgres psql -U sports -d sports -c "SELECT COUNT(*) FROM sp
 | `SPORTS_API_INTERNAL_URL` | No | Internal API URL for server-side fetches in Docker |
 | `ALLOWED_CORS_ORIGINS` | Prod | Allowed CORS origins |
 | `CONFIRM_DESTRUCTIVE` | No | Required for restore/reset scripts |
+| `RATE_LIMIT_REQUESTS` | No | Per-IP global limit, requests per window (default: 120) |
+| `RATE_LIMIT_WINDOW_SECONDS` | No | Per-IP global window in seconds (default: 60) |
+| `RATE_LIMIT_REQUESTS_KEYED` | No | Per-`X-API-Key` global limit, requests per window (default: 600) |
+| `RATE_LIMIT_WINDOW_SECONDS_KEYED` | No | Per-`X-API-Key` global window in seconds (default: 60) |
+| `ADMIN_RATE_LIMIT_REQUESTS` | No | Per-IP admin-tier limit (default: 20) |
+| `ADMIN_RATE_LIMIT_WINDOW_SECONDS` | No | Per-IP admin-tier window in seconds (default: 60) |
+| `FAIRBET_ODDS_CACHE_ENABLED` | No | Enable FairBet odds Redis cache (default: `true`) |
+| `FAIRBET_ODDS_CACHE_TTL_SECONDS` | No | FairBet odds response cache TTL (default: 15) |
+| `FAIRBET_ODDS_SNAPSHOT_TTL_SECONDS` | No | FairBet odds EV-sort snapshot TTL (default: 60) |
 
 ## Health Checks
 

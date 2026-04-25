@@ -23,7 +23,8 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
-from sqlalchemy import select, update as sa_update
+from sqlalchemy import select
+from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,6 +76,8 @@ class TokenResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
     id: int | None = Field(None, description="User ID (null for guests)")
     email: str | None = Field(None, description="User email (null for guests)")
     role: str = Field(..., description="Current role: guest, user, or admin")

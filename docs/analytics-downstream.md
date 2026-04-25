@@ -24,8 +24,8 @@ Monte Carlo simulations using pitch-level data and team profiles.
 ### Teams & Rosters
 
 ```
-GET /api/analytics/{sport}/teams    (sport = mlb, nba, nhl, ncaab)
-GET /api/analytics/mlb-teams        (MLB backward compat)
+GET /api/analytics/{sport}/teams    (sport = mlb, nba, nhl, ncaab) — SSOT
+GET /api/analytics/mlb-teams        (thin delegate to /{sport}/teams with sport=mlb)
 GET /api/analytics/mlb-roster?team=NYY (MLB only — lineup support)
 ```
 

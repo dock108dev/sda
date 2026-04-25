@@ -8,7 +8,11 @@ from typing import Any
 
 from ...db.odds import FairbetGameOddsWork
 from ...services.ev import american_to_implied
-from ...services.ev_config import SHARP_REF_MAX_AGE_SECONDS, get_fairbet_debug_game_ids, get_strategy
+from ...services.ev_config import (
+    SHARP_REF_MAX_AGE_SECONDS,
+    get_fairbet_debug_game_ids,
+    get_strategy,
+)
 from ...services.fairbet_display import (
     book_abbreviation,
     build_explanation_steps,
@@ -36,6 +40,13 @@ def enrich_and_finalize(
     min_books_for_fairbet: int,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Convert raw DB rows into API-ready bets with EV and display fields."""
+
+    def _abbr(team: Any) -> str | None:
+        if team is None:
+            return None
+        value = getattr(team, "abbreviation", None)
+        return value if isinstance(value, str) else None
+
     bets_map: dict[tuple, dict[str, Any]] = {}
     for row in rows:
         game = row.game
@@ -46,6 +57,8 @@ def enrich_and_finalize(
                 "league_code": game.league.code if game.league else "UNKNOWN",
                 "home_team": game.home_team.name if game.home_team else "Unknown",
                 "away_team": game.away_team.name if game.away_team else "Unknown",
+                "home_team_abbr": _abbr(game.home_team),
+                "away_team_abbr": _abbr(game.away_team),
                 "game_date": game.game_date,
                 "market_key": row.market_key,
                 "selection_key": row.selection_key,

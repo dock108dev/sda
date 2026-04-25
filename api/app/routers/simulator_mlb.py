@@ -7,6 +7,7 @@ bullpen transition modeling.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -25,8 +26,6 @@ from app.analytics.services.profile_service import (
     profile_to_pa_probabilities,
 )
 from app.db import get_db
-
-from app.analytics.sports.mlb.constants import MLB_TEAM_ABBRS as _MLB_TEAM_ABBRS
 from app.routers.simulator_models import ScoreFrequency
 
 _ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -224,85 +223,9 @@ class MLBSimulationResponse(BaseModel):
     )
 
 
-class MLBTeamInfo(BaseModel):
-    """A team available for simulation."""
-
-    model_config = _ALIAS_CFG
-
-    abbreviation: str = Field(..., description="Team abbreviation (e.g. NYY)")
-    name: str = Field(..., description="Full team name (e.g. New York Yankees)")
-    short_name: str | None = Field(None, description="Short name (e.g. Yankees)")
-    games_with_stats: int = Field(
-        ...,
-        description=(
-            "Number of games with advanced Statcast data. "
-            "Teams with 0 games will use league-average defaults."
-        ),
-    )
-
-
-class MLBTeamsResponse(BaseModel):
-    """List of MLB teams available for simulation."""
-
-    teams: list[MLBTeamInfo] = Field(..., description="All MLB teams")
-    count: int = Field(..., description="Total number of teams")
-
-
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
-
-
-@router.get(
-    "/mlb/teams",
-    response_model=MLBTeamsResponse,
-    summary="List MLB teams available for simulation",
-    description=(
-        "Returns all MLB teams with the number of games that have "
-        "advanced Statcast data.  Use the ``abbreviation`` values as "
-        "``home_team`` / ``away_team`` in the simulation endpoint. "
-        "Teams with more ``games_with_stats`` will produce more "
-        "accurate, data-driven simulations."
-    ),
-)
-async def list_simulator_teams(
-    db: AsyncSession = Depends(get_db),
-) -> MLBTeamsResponse:
-    from sqlalchemy import func as sa_func
-    from sqlalchemy import select as sa_select
-
-    from app.db.mlb_advanced import MLBGameAdvancedStats
-    from app.db.sports import SportsTeam
-
-    stmt = (
-        sa_select(
-            SportsTeam.id,
-            SportsTeam.name,
-            SportsTeam.short_name,
-            SportsTeam.abbreviation,
-            sa_func.count(MLBGameAdvancedStats.id).label("games_with_stats"),
-        )
-        .outerjoin(
-            MLBGameAdvancedStats,
-            MLBGameAdvancedStats.team_id == SportsTeam.id,
-        )
-        .where(SportsTeam.abbreviation.in_(_MLB_TEAM_ABBRS))
-        .group_by(SportsTeam.id)
-        .order_by(SportsTeam.name)
-    )
-    result = await db.execute(stmt)
-    rows = result.all()
-
-    teams = [
-        MLBTeamInfo(
-            abbreviation=row.abbreviation,
-            name=row.name,
-            short_name=row.short_name,
-            games_with_stats=row.games_with_stats,
-        )
-        for row in rows
-    ]
-    return MLBTeamsResponse(teams=teams, count=len(teams))
 
 
 @router.post(
@@ -411,8 +334,10 @@ async def simulate_mlb_game(
             game_context.update(lineup_ctx)
             use_lineup = True
 
-    # Run Monte Carlo simulation
-    result = _service.run_full_simulation(
+    # Run Monte Carlo simulation off the event loop — see simulator.py for
+    # rationale (CPU-bound, multi-second blocking per call).
+    result = await asyncio.to_thread(
+        _service.run_full_simulation,
         sport="mlb",
         game_context=game_context,
         iterations=req.iterations,

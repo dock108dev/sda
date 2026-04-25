@@ -454,6 +454,58 @@ class TestGetFairbetOddsEndpoint:
         assert bet.line_value == -3.5
 
     @pytest.mark.asyncio
+    async def test_bet_definition_includes_team_abbreviations(
+        self, mock_session, mock_odds_row,
+    ):
+        """home_team_abbr / away_team_abbr are populated from team relations.
+
+        Downstream simulator requires abbreviations; without these the consumer
+        has to look them up via /api/simulator/{sport}/teams.
+        """
+        mock_odds_row.game.home_team.abbreviation = "LAL"
+        mock_odds_row.game.away_team.abbreviation = "BOS"
+
+        mock_row2 = MagicMock()
+        mock_row2.game_id = 1
+        mock_row2.market_key = "spreads"
+        mock_row2.selection_key = "team:los_angeles_lakers"
+        mock_row2.line_value = -3.5
+        mock_row2.book = "FanDuel"
+        mock_row2.price = -108
+        mock_row2.observed_at = datetime.now(UTC)
+        mock_row2.market_category = "mainline"
+        mock_row2.player_name = None
+        mock_row2.game = mock_odds_row.game
+
+        mock_row3 = MagicMock()
+        mock_row3.game_id = 1
+        mock_row3.market_key = "spreads"
+        mock_row3.selection_key = "team:los_angeles_lakers"
+        mock_row3.line_value = -3.5
+        mock_row3.book = "Pinnacle"
+        mock_row3.price = -112
+        mock_row3.observed_at = datetime.now(UTC)
+        mock_row3.market_category = "mainline"
+        mock_row3.player_name = None
+        mock_row3.game = mock_odds_row.game
+
+        self._mock_execute_chain(
+            mock_session,
+            [
+                {"scalar": 1},
+                {"scalars_all": [mock_odds_row, mock_row2, mock_row3]},
+                {"all": [("DraftKings",), ("FanDuel",), ("Pinnacle",)]},
+                {"all": [("mainline",)]},
+                {"scalars_all": []},
+            ],
+        )
+
+        response = await get_fairbet_odds(**self._call_kwargs(mock_session))
+        bet = response.bets[0]
+        assert bet.home_team_abbr == "LAL"
+        assert bet.away_team_abbr == "BOS"
+
+    @pytest.mark.asyncio
     async def test_bets_below_min_books_filtered(self, mock_session, mock_odds_row):
         """Bets with fewer than MIN_BOOKS_FOR_FAIRBET books are excluded."""
         # Bet A (spreads, lakers, -3.5): 3 books → passes filter

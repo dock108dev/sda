@@ -83,4 +83,4 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Research Index](research/README.md) | Pre-implementation design research — commerce, auth, club tenancy, pool lifecycle, entitlements, operations |
+| [Research Index](archived/research/README.md) | Pre-implementation design research — commerce, auth, club tenancy, pool lifecycle, entitlements, operations |

@@ -271,7 +271,8 @@ Schema is defined in the baseline Alembic migration (`api/alembic/versions/`). R
 ### Analytics Endpoints
 - `GET /api/analytics/team-profile` — Team rolling profile with league baselines
 - `POST /api/analytics/simulate` — Full Monte Carlo simulation (team-level or lineup-aware)
-- `GET /api/analytics/mlb-teams` — MLB teams with stats count (for dropdowns)
+- `GET /api/analytics/{sport}/teams` — Teams with stats count, per sport (SSOT for dropdowns)
+- `GET /api/analytics/mlb-teams` — Thin delegate to `/{sport}/teams` with sport=mlb
 - `GET /api/analytics/mlb-roster` — Team roster for lineup selection
 - `GET /api/analytics/models/*` — Model registry and activation
 - `GET/POST /api/analytics/feature-config*` — Feature loadout CRUD (DB-backed)
