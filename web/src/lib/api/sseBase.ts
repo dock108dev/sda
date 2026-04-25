@@ -1,34 +1,24 @@
 /**
- * Base URL resolver for direct browser→backend connections.
+ * Base URL resolver for SSE (`EventSource`) connections.
  *
- * SSE (`EventSource`) and the SSE epoch-refetch fall back to direct calls
- * because Next.js's proxy doesn't stream SSE cleanly. So these requests need
- * a real URL — and crucially, one that matches the page's protocol.
+ * SSE goes through the Next.js `/proxy` path so the X-API-Key header is
+ * injected server-side. `EventSource` cannot send custom headers, so a direct
+ * browser → FastAPI connection 401s in production. The proxy route streams
+ * the response body intact, which works for SSE.
  *
- * Why this exists separately from `apiBase.ts`:
- * - `apiBase.ts` returns "/proxy" for browser fetches. That's correct for
- *   normal API calls (so the Next.js proxy can inject the API key).
- * - SSE goes direct, so it needs an absolute URL. If `NEXT_PUBLIC_SPORTS_API_URL`
- *   isn't baked into the client at build time, falling back to
- *   "http://localhost:8000" produces mixed-content failures on production
- *   HTTPS pages — Firefox specifically throws "The operation is insecure"
- *   when `new EventSource("http://...")` is called from an HTTPS document.
- *
- * Same-origin default makes the page Just Work in production (Caddy routes
- * `/v1/*` to the API container) and degrades gracefully in dev.
+ * In the browser we always use same-origin `/proxy` to avoid mixed-content
+ * issues and to keep the API key out of the client bundle.
  */
 
 export function getSseBaseUrl(): string {
-  const envBase = process.env?.NEXT_PUBLIC_SPORTS_API_URL;
-  if (envBase) return envBase;
-
   if (typeof window !== "undefined") {
-    // Same origin — protocol matches the page, no mixed-content issues.
-    return window.location.origin;
+    return `${window.location.origin}/proxy`;
   }
 
-  // Server-side fallback (SSE is constructed in browser only, but the hook
-  // module evaluates BASE_URL at import time which can run on the server).
+  // Server-side fallback (SSE is constructed in the browser only, but the
+  // hook module evaluates this at import time which can run on the server).
+  const envBase = process.env?.NEXT_PUBLIC_SPORTS_API_URL;
+  if (envBase) return envBase;
   return "http://localhost:8000";
 }
 

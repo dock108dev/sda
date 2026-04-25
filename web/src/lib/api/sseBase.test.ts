@@ -13,15 +13,15 @@ describe("getSseBaseUrl", () => {
     }
   });
 
-  it("returns NEXT_PUBLIC_SPORTS_API_URL when set", () => {
-    process.env.NEXT_PUBLIC_SPORTS_API_URL = "https://api.example.com";
-    expect(getSseBaseUrl()).toBe("https://api.example.com");
-  });
-
-  it("falls back to window.location.origin in browser when env is unset", () => {
+  it("returns same-origin /proxy in the browser", () => {
     delete process.env.NEXT_PUBLIC_SPORTS_API_URL;
     // jsdom default is http://localhost:3000
-    expect(getSseBaseUrl()).toBe(window.location.origin);
+    expect(getSseBaseUrl()).toBe(`${window.location.origin}/proxy`);
+  });
+
+  it("ignores NEXT_PUBLIC_SPORTS_API_URL in the browser (proxy is same-origin)", () => {
+    process.env.NEXT_PUBLIC_SPORTS_API_URL = "https://api.example.com";
+    expect(getSseBaseUrl()).toBe(`${window.location.origin}/proxy`);
   });
 });
 
