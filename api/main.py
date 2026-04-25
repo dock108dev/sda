@@ -19,6 +19,7 @@ from app.db.telemetry import CircuitBreakerTripEvent
 from app.dependencies.auth import verify_api_key
 from app.dependencies.roles import require_admin, require_user
 from app.logging_config import configure_logging
+from app.middleware.head_method import HeadAsGetMiddleware
 from app.middleware.logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -188,9 +189,13 @@ app.add_middleware(
     allow_origins=settings.allowed_cors_origins,
     allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
+# Outermost: rewrite HEAD requests to GET so cache/diagnostic headers
+# emitted by GET handlers are visible to HEAD probes (curl -I, uptime
+# monitors, browser DevTools). Body is dropped on the way out.
+app.add_middleware(HeadAsGetMiddleware)
 
 
 @app.exception_handler(EntitlementError)
