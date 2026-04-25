@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { OddsSnapshot, EVAnalysis, FairbetOddsEvent } from "@dock108/js-core";
 
+import { getSseBaseUrl, safeEventSource } from "@/lib/api/sseBase";
+
 export type LiveOddsState = {
   odds: OddsSnapshot[];
   evAnalysis: EVAnalysis | null;
   isConnected: boolean;
 };
-
-const BASE_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_SPORTS_API_URL) ||
-  "http://localhost:8000";
 
 const INITIAL_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
@@ -56,7 +54,7 @@ export function useLiveOdds(gameId: string | number): LiveOddsState {
   const fetchFullState = useCallback(async () => {
     try {
       const res = await fetch(
-        `${BASE_URL}/api/fairbet/live?game_id=${gameId}`,
+        `${getSseBaseUrl()}/api/fairbet/live?game_id=${gameId}`,
       );
       if (!res.ok || !mountedRef.current) return;
       const data = await res.json();
@@ -81,7 +79,7 @@ export function useLiveOdds(gameId: string | number): LiveOddsState {
   const connect = useCallback(function connectImpl() {
     if (!mountedRef.current) return;
 
-    const url = new URL(`${BASE_URL}/v1/sse`);
+    const url = new URL(`${getSseBaseUrl()}/v1/sse`);
     url.searchParams.set("channels", "fairbet:odds");
     if (lastSeqRef.current !== null) {
       url.searchParams.set("lastSeq", String(lastSeqRef.current));
@@ -90,7 +88,14 @@ export function useLiveOdds(gameId: string | number): LiveOddsState {
       url.searchParams.set("lastEpoch", lastEpochRef.current);
     }
 
-    const es = new EventSource(url.toString());
+    const es = safeEventSource(url.toString());
+    if (es === null) {
+      // SSE unavailable in this context (typically a build-time env var
+      // mismatch causing a mixed-content URL). Mark disconnected and stay
+      // here — fetchFullState already populated whatever the API returned.
+      setIsConnected(false);
+      return;
+    }
     esRef.current = es;
 
     es.onopen = () => {

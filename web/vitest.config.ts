@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@dock108/js-core": path.resolve(__dirname, "../packages/js-core/src/index.ts"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   test: {

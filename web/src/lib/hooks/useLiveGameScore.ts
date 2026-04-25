@@ -1,16 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { ScoreObject, GameStatus, LiveGameEvent } from "@dock108/js-core";
 
+import { getSseBaseUrl, safeEventSource } from "@/lib/api/sseBase";
+
 export type LiveGameScoreState = {
   score: ScoreObject | null;
   clock: string | null;
   status: GameStatus | null;
   isConnected: boolean;
 };
-
-const BASE_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_SPORTS_API_URL) ||
-  "http://localhost:8000";
 
 const INITIAL_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
@@ -31,7 +29,7 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
 
   const fetchFullState = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/games/${gameId}`);
+      const res = await fetch(`${getSseBaseUrl()}/api/v1/games/${gameId}`);
       if (!res.ok || !mountedRef.current) return;
       const data = await res.json();
       if (!mountedRef.current) return;
@@ -46,7 +44,7 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
   const connect = useCallback(function connectImpl() {
     if (!mountedRef.current) return;
 
-    const url = new URL(`${BASE_URL}/v1/sse`);
+    const url = new URL(`${getSseBaseUrl()}/v1/sse`);
     url.searchParams.set("channels", `game:${gameId}:summary`);
     if (lastSeqRef.current !== null) {
       url.searchParams.set("lastSeq", String(lastSeqRef.current));
@@ -55,7 +53,11 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
       url.searchParams.set("lastEpoch", lastEpochRef.current);
     }
 
-    const es = new EventSource(url.toString());
+    const es = safeEventSource(url.toString());
+    if (es === null) {
+      setIsConnected(false);
+      return;
+    }
     esRef.current = es;
 
     es.onopen = () => {
