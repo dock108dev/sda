@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { ScoreObject, GameStatus, LiveGameEvent } from "@dock108/js-core";
 
+import { getApiBase } from "@/lib/api/apiBase";
 import { getSseBaseUrl, safeEventSource } from "@/lib/api/sseBase";
 
 export type LiveGameScoreState = {
@@ -28,8 +29,10 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
   const mountedRef = useRef(true);
 
   const fetchFullState = useCallback(async () => {
+    // Routes through /proxy so the Next.js layer adds X-API-Key. A direct
+    // browser fetch to /api/v1/games/{id} silently 401s.
     try {
-      const res = await fetch(`${getSseBaseUrl()}/api/v1/games/${gameId}`);
+      const res = await fetch(`${getApiBase()}/api/v1/games/${gameId}`);
       if (!res.ok || !mountedRef.current) return;
       const data = await res.json();
       if (!mountedRef.current) return;
@@ -37,7 +40,7 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
       if (data.clock != null) setClock(data.clock as string);
       if (data.status != null) setStatus(data.status as GameStatus);
     } catch {
-      // network error during epoch-change refetch — will recover on next reconnect
+      // Initial-state fetch failed; SSE may still recover on reconnect.
     }
   }, [gameId]);
 

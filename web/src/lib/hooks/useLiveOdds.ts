@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { OddsSnapshot, EVAnalysis, FairbetOddsEvent } from "@dock108/js-core";
 
+import { fetchFairbetLiveOdds } from "@/lib/api/fairbet";
 import { getSseBaseUrl, safeEventSource } from "@/lib/api/sseBase";
 
 export type LiveOddsState = {
@@ -52,27 +53,26 @@ export function useLiveOdds(gameId: string | number): LiveOddsState {
   const mountedRef = useRef(true);
 
   const fetchFullState = useCallback(async () => {
+    // Routes through the Next.js /proxy so the API key is injected
+    // server-side. A direct browser fetch to /api/fairbet/live silently
+    // 401s (no X-API-Key in the bundle) and the page renders empty.
     try {
-      const res = await fetch(
-        `${getSseBaseUrl()}/api/fairbet/live?game_id=${gameId}`,
-      );
-      if (!res.ok || !mountedRef.current) return;
-      const data = await res.json();
+      const data = await fetchFairbetLiveOdds({ game_id: Number(gameId) });
       if (!mountedRef.current) return;
       if (Array.isArray(data.bets)) {
-        const bets = data.bets as OddsSnapshot[];
+        const bets = data.bets as unknown as OddsSnapshot[];
         setOdds(bets);
         setEvAnalysis(
           computeEvAnalysis(
             Number(gameId),
             bets,
-            (data.evDiagnostics as Record<string, number>) ?? {},
-            (data.lastUpdatedAt as string | null) ?? null,
+            (data.evDiagnostics as Record<string, number> | undefined) ?? {},
+            (data.lastUpdatedAt as string | null | undefined) ?? null,
           ),
         );
       }
     } catch {
-      // network error during epoch-change refetch — will recover on next reconnect
+      // Initial-state fetch failed; SSE may still recover on reconnect.
     }
   }, [gameId]);
 

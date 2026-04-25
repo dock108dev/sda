@@ -145,7 +145,10 @@ describe("useLiveOdds", () => {
     });
 
     expect(result.current.isConnected).toBe(true);
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("game_id=99"));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("game_id=99"),
+      expect.anything(),
+    );
     expect(result.current.odds).toHaveLength(1);
     expect(result.current.evAnalysis).not.toBeNull();
     expect(result.current.evAnalysis?.gameId).toBe(99);
@@ -288,7 +291,10 @@ describe("useLiveOdds", () => {
       await Promise.resolve();
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("game_id=99"));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("game_id=99"),
+      expect.anything(),
+    );
     expect(result.current.odds).toHaveLength(1);
 
     // After epoch_changed, reconnect should NOT include the stale seq
