@@ -185,6 +185,57 @@ class TestFairbetLiveEndpoint:
 
 
 # ---------------------------------------------------------------------------
+# _build_selection_key — must produce per-player keys for player_prop markets
+# so different players don't collide on `total:over` / `total:under`.
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSelectionKey:
+    def test_player_prop_uses_player_name(self):
+        from app.routers.fairbet.live import _build_selection_key
+
+        key1 = _build_selection_key("Over", "batter_stolen_bases", 0.5, "Otto Lopez")
+        key2 = _build_selection_key("Over", "batter_stolen_bases", 0.5, "Aaron Judge")
+
+        assert key1 == "player:otto_lopez:over"
+        assert key2 == "player:aaron_judge:over"
+        assert key1 != key2
+
+    def test_player_prop_under(self):
+        from app.routers.fairbet.live import _build_selection_key
+
+        key = _build_selection_key("Under", "pitcher_strikeouts", 6.5, "Shota Imanaga")
+        assert key == "player:shota_imanaga:under"
+
+    def test_player_prop_without_description_falls_back(self):
+        # Defensive: if description is missing, don't synthesize a malformed
+        # `player::over` key — fall back to game total format.
+        from app.routers.fairbet.live import _build_selection_key
+
+        key = _build_selection_key("Over", "batter_stolen_bases", 0.5, None)
+        assert key == "total:over"
+
+    def test_team_prop_uses_team_name(self):
+        from app.routers.fairbet.live import _build_selection_key
+
+        key = _build_selection_key("Over", "team_totals", 4.5, "Miami Marlins")
+        assert key == "total:miami_marlins:over"
+
+    def test_game_total_unchanged(self):
+        from app.routers.fairbet.live import _build_selection_key
+
+        assert _build_selection_key("Over", "totals", 220.5) == "total:over"
+        assert _build_selection_key("Under", "totals", 220.5) == "total:under"
+
+    def test_team_selection_unchanged(self):
+        from app.routers.fairbet.live import _build_selection_key
+
+        # Mainline moneyline / spread — selection name IS the team
+        key = _build_selection_key("Los Angeles Lakers", "h2h", None)
+        assert key == "team:los_angeles_lakers"
+
+
+# ---------------------------------------------------------------------------
 # Task registry includes new tasks
 # ---------------------------------------------------------------------------
 

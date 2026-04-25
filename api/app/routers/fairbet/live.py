@@ -86,20 +86,40 @@ def _classify_market(market_key: str) -> str:
     return "mainline"
 
 
-def _build_selection_key(selection_name: str, market_key: str, line: float | None) -> str:
+def _slugify(text: str) -> str:
+    return text.lower().strip().replace(" ", "_").replace(".", "").replace("'", "")
+
+
+def _build_selection_key(
+    selection_name: str,
+    market_key: str,
+    line: float | None,
+    description: str | None = None,
+) -> str:
     """Build a canonical selection_key from Odds API selection name.
 
-    Maps raw names like 'Over', 'Under', team names to the format used
-    by the pre-game EV pipeline: 'total:over', 'team:slug', etc.
+    Maps raw names to the format used by the pre-game EV pipeline:
+      - player_prop Over/Under  -> 'player:{slug}:{over|under}'  (slug from `description`)
+      - team_prop  Over/Under   -> 'total:{slug}:{over|under}'   (slug from `description`)
+      - game total Over/Under   -> 'total:{over|under}'
+      - team selection          -> 'team:{slug}'
+
+    Without `description`, every player's Over/Under in the same market would
+    collide on the same key — see live endpoint dedup.
     """
     name_lower = selection_name.lower().strip()
 
     if name_lower in ("over", "under"):
+        category = _classify_market(market_key)
+        slug = _slugify(description) if description else ""
+        if slug:
+            if category == "player_prop":
+                return f"player:{slug}:{name_lower}"
+            if category == "team_prop":
+                return f"total:{slug}:{name_lower}"
         return f"total:{name_lower}"
 
-    # Team name — slugify
-    slug = name_lower.replace(" ", "_").replace(".", "").replace("'", "")
-    return f"team:{slug}"
+    return f"team:{_slugify(name_lower)}"
 
 
 class LiveBetDefinition(BaseModel):
@@ -359,7 +379,10 @@ async def fairbet_live(
                 if not selection_name or price is None:
                     continue
 
-                selection_key = _build_selection_key(selection_name, market_key, line)
+                description = sel.get("description")
+                selection_key = _build_selection_key(
+                    selection_name, market_key, line, description
+                )
                 line_value = float(line) if line is not None else 0.0
 
                 key = (game_id, market_key, selection_key, line_value)
@@ -377,8 +400,8 @@ async def fairbet_live(
                         "selection_key": selection_key,
                         "line_value": line_value,
                         "market_category": market_category,
-                        "player_name": sel.get("description"),
-                        "entity_key": derive_entity_key(selection_key, market_key),
+                        "player_name": description,
+                        "entity_key": derive_entity_key(selection_key, market_key, description),
                         "books": [],
                     }
 
