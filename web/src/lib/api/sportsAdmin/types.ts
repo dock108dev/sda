@@ -460,6 +460,7 @@ export type PlayEntry = {
   gameClock: string | null;
   periodLabel: string | null;
   timeLabel: string | null;
+  periodType: string | null;
   playType: string | null;
   teamAbbreviation: string | null;
   playerName: string | null;

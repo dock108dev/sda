@@ -37,17 +37,24 @@ def serialize_play_entry(play: SportsGamePlay, league_code: str | None = None) -
     from ...services.period_labels import period_label, time_label
 
     team_abbr = None
+    period_type: str | None = None
     if play.team:
         team_abbr = play.team.abbreviation
-    elif isinstance(play.raw_data, dict):
-        team_abbr = play.raw_data.get("team_abbreviation")
+    if isinstance(play.raw_data, dict):
+        if team_abbr is None:
+            team_abbr = play.raw_data.get("team_abbreviation")
+        # Source-supplied period type (NHL: "REG"/"OT"/"SO") — used to
+        # disambiguate shootouts from overtime when labeling.
+        raw_ptype = play.raw_data.get("period_type")
+        if isinstance(raw_ptype, str) and raw_ptype:
+            period_type = raw_ptype
 
     # Compute display-ready period/time labels when league + period are available
     p_label: str | None = None
     t_label: str | None = None
     if play.quarter is not None and league_code:
-        p_label = period_label(play.quarter, league_code)
-        t_label = time_label(play.quarter, play.game_clock, league_code)
+        p_label = period_label(play.quarter, league_code, period_type)
+        t_label = time_label(play.quarter, play.game_clock, league_code, period_type)
 
     return PlayEntry(
         play_index=play.play_index,
@@ -55,6 +62,7 @@ def serialize_play_entry(play: SportsGamePlay, league_code: str | None = None) -
         game_clock=play.game_clock,
         period_label=p_label,
         time_label=t_label,
+        period_type=period_type,
         play_type=play.play_type,
         team_abbreviation=team_abbr,
         player_name=play.player_name,

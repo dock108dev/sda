@@ -3,16 +3,26 @@
  *
  * NBA:   Q1-Q4, OT, 2OT, 3OT ...
  * NCAAB: H1, H2, OT, 2OT, 3OT ...
- * NHL:   P1-P3, OT, SO
+ * NHL:   P1-P3, OT, 2OT, 3OT ..., SO  (SO requires periodType === 'SO')
+ *
+ * NHL note: regular season has period 4 = OT, period 5 = shootout. Playoffs
+ * have no shootout — periods 5/6/7 are 2OT/3OT/4OT. Without the source's
+ * periodType ("REG"/"OT"/"SO") we cannot tell those apart from the period
+ * number alone, so callers should pass periodType when available.
  */
 
-export function formatPeriodLabel(period: number, leagueCode: string): string {
+export function formatPeriodLabel(
+  period: number,
+  leagueCode: string,
+  periodType?: string | null,
+): string {
   const code = leagueCode.toUpperCase();
 
   if (code === "NHL") {
     if (period <= 3) return `P${period}`;
-    if (period === 4) return "OT";
-    return "SO";
+    if ((periodType ?? "").toUpperCase() === "SO") return "SO";
+    const ot = period - 3;
+    return ot === 1 ? "OT" : `${ot}OT`;
   }
 
   if (code === "MLB") {

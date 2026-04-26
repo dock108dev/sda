@@ -29,9 +29,25 @@ class TestPeriodLabelNHL:
         assert period_label(2, "NHL") == "P2"
         assert period_label(3, "NHL") == "P3"
 
-    def test_overtime_and_shootout(self):
+    def test_regular_season_overtime_and_shootout(self):
+        # period_type from the source feed disambiguates: regular-season
+        # period 5 is the shootout; playoff period 5 is the second OT.
+        assert period_label(4, "NHL", "OT") == "OT"
+        assert period_label(5, "NHL", "SO") == "SO"
+
+    def test_playoff_multi_overtime(self):
+        # Playoffs have no shootout; consecutive OTs increment the count.
+        assert period_label(4, "NHL", "OT") == "OT"
+        assert period_label(5, "NHL", "OT") == "2OT"
+        assert period_label(6, "NHL", "OT") == "3OT"
+        assert period_label(7, "NHL", "OT") == "4OT"
+
+    def test_overtime_default_when_period_type_missing(self):
+        # Without period_type, default to OT-numbering rather than guessing
+        # shootout — wrong on regular-season period 5, but the source feed
+        # always supplies period_type for NHL post-overtime plays.
         assert period_label(4, "NHL") == "OT"
-        assert period_label(5, "NHL") == "SO"
+        assert period_label(5, "NHL") == "2OT"
 
 
 class TestPeriodLabelNCAAB:

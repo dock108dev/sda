@@ -234,6 +234,10 @@ class PlayEntry(BaseModel):
     game_clock: str | None = Field(None, alias="gameClock")
     period_label: str | None = Field(None, alias="periodLabel")
     time_label: str | None = Field(None, alias="timeLabel")
+    # Source-supplied period type (NHL: "REG"/"OT"/"SO") — exposes the
+    # distinction the period number alone cannot carry (e.g., playoff 2OT
+    # vs. regular-season shootout, both at period >= 4).
+    period_type: str | None = Field(None, alias="periodType")
     play_type: str | None = Field(None, alias="playType")
     team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     player_name: str | None = Field(None, alias="playerName")

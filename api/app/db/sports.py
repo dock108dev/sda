@@ -7,6 +7,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -493,6 +494,10 @@ class SportsGamePlay(Base):
     quarter: Mapped[int | None] = mapped_column(Integer, nullable=True)
     game_clock: Mapped[str | None] = mapped_column(String(10), nullable=True)
     play_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Stable per-event identifier from the source feed (e.g., NHL eventId).
+    # When present, this is the upsert identity instead of play_index, since
+    # play_index = period * multiplier + sortOrder can drift across scrape runs.
+    event_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     play_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     team_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("sports_teams.id", ondelete="SET NULL"), nullable=True
@@ -523,4 +528,11 @@ class SportsGamePlay(Base):
     __table_args__ = (
         Index("idx_game_plays_game", "game_id"),
         UniqueConstraint("game_id", "play_index", name="uq_game_play_index"),
+        Index(
+            "uq_sports_game_plays_game_event",
+            "game_id",
+            "event_id",
+            unique=True,
+            postgresql_where=text("event_id IS NOT NULL"),
+        ),
     )

@@ -1,34 +1,41 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AdminGameDetail } from "@/lib/api/sportsAdmin";
+import type { AdminGameDetail, PlayEntry } from "@/lib/api/sportsAdmin";
+import { formatPeriodLabel } from "@/lib/utils/periodLabels";
 import styles from "./styles.module.css";
 
 /**
- * Get period label based on league format.
- * - NBA: Q1, Q2, Q3, Q4, OT1, OT2...
- * - NHL: P1, P2, P3, OT, SO
- * - NCAAB: 1st Half, 2nd Half, OT1, OT2...
+ * Period-tab label.  NCAAB renders "1st Half"/"2nd Half" instead of H1/H2
+ * for readability in this view; everything else delegates to the shared
+ * formatter so NHL OT/SO disambiguation stays in one place.
  */
-const getPeriodLabel = (period: number, leagueCode?: string) => {
-  if (leagueCode === "MLB") {
-    const ordinals: Record<number, string> = {1: "1st", 2: "2nd", 3: "3rd"};
-    return ordinals[period] ?? `${period}th`;
-  }
+const getPeriodLabel = (
+  period: number,
+  leagueCode?: string,
+  periodType?: string | null,
+): string => {
   if (leagueCode === "NCAAB") {
-    // NCAAB uses halves
     if (period === 1) return "1st Half";
     if (period === 2) return "2nd Half";
     return `OT${period - 2}`;
   }
-  if (leagueCode === "NHL") {
-    if (period <= 3) return `P${period}`;
-    if (period === 4) return "OT";
-    return "SO";
-  }
-  // Default: NBA-style quarters
-  if (period <= 4) return `Q${period}`;
-  return `OT${period - 4}`;
+  return formatPeriodLabel(period, leagueCode ?? "", periodType ?? null);
+};
+
+/**
+ * Pick a representative periodType for a given period.  Within one period
+ * every play carries the same periodType, but a few defensive plays may
+ * lack it — find the first one that has it.
+ */
+const periodTypeFor = (
+  plays: AdminGameDetail["plays"],
+  period: number,
+): string | null => {
+  const match = plays.find(
+    (p: PlayEntry) => p.quarter === period && p.periodType,
+  );
+  return match?.periodType ?? null;
 };
 
 function TierBadge({ tier }: { tier: number | null }) {
@@ -158,7 +165,7 @@ export function PbpSection({ plays, groupedPlays, leagueCode }: PbpSectionProps)
                     className={`${styles.quarterTab} ${effectiveQuarter === q ? styles.quarterTabActive : ""}`}
                     onClick={() => setSelectedQuarter(q)}
                   >
-                    {getPeriodLabel(q, leagueCode)}
+                    {getPeriodLabel(q, leagueCode, periodTypeFor(plays, q))}
                     <span className={styles.quarterCount}>
                       {plays.filter((p) => p.quarter === q).length}
                     </span>

@@ -249,42 +249,59 @@ def upsert_plays(
         if play.player_id:
             player_ref_id = player_map.get(str(play.player_id))
 
-        stmt = (
-            insert(db_models.SportsGamePlay)
-            .values(
-                game_id=game_id,
-                play_index=play.play_index,
-                quarter=play.quarter,
-                game_clock=play.game_clock,
-                play_type=play.play_type,
-                team_id=team_id,
-                player_id=play.player_id,
-                player_name=play.player_name,
-                player_ref_id=player_ref_id,
-                description=play.description,
-                home_score=play.home_score,
-                away_score=play.away_score,
-                raw_data=play.raw_data,
-                updated_at=now_utc(),
-            )
-            .on_conflict_do_update(
-                index_elements=["game_id", "play_index"],
-                set_={
-                    "quarter": play.quarter,
-                    "game_clock": play.game_clock,
-                    "play_type": play.play_type,
-                    "team_id": team_id,
-                    "player_id": play.player_id,
-                    "player_name": play.player_name,
-                    "player_ref_id": player_ref_id,
-                    "description": play.description,
-                    "home_score": play.home_score,
-                    "away_score": play.away_score,
-                    "raw_data": play.raw_data,
-                    "updated_at": now_utc(),
-                },
-            )
+        # Pull the source's stable event identifier when the parser exposed
+        # one (currently NHL).  When set, target the (game_id, event_id)
+        # partial unique index so sortOrder drift across scrape runs cannot
+        # produce duplicate rows.  When absent, fall back to the original
+        # (game_id, play_index) constraint used by every other league.
+        event_id = getattr(play, "event_id", None)
+
+        update_set = {
+            "play_index": play.play_index,
+            "event_id": event_id,
+            "quarter": play.quarter,
+            "game_clock": play.game_clock,
+            "play_type": play.play_type,
+            "team_id": team_id,
+            "player_id": play.player_id,
+            "player_name": play.player_name,
+            "player_ref_id": player_ref_id,
+            "description": play.description,
+            "home_score": play.home_score,
+            "away_score": play.away_score,
+            "raw_data": play.raw_data,
+            "updated_at": now_utc(),
+        }
+
+        stmt = insert(db_models.SportsGamePlay).values(
+            game_id=game_id,
+            play_index=play.play_index,
+            event_id=event_id,
+            quarter=play.quarter,
+            game_clock=play.game_clock,
+            play_type=play.play_type,
+            team_id=team_id,
+            player_id=play.player_id,
+            player_name=play.player_name,
+            player_ref_id=player_ref_id,
+            description=play.description,
+            home_score=play.home_score,
+            away_score=play.away_score,
+            raw_data=play.raw_data,
+            updated_at=now_utc(),
         )
+
+        if event_id is not None:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["game_id", "event_id"],
+                index_where=text("event_id IS NOT NULL"),
+                set_=update_set,
+            )
+        else:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["game_id", "play_index"],
+                set_=update_set,
+            )
         session.execute(stmt)
 
     # Return the number of plays processed. With ON CONFLICT DO UPDATE,

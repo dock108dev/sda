@@ -145,6 +145,10 @@ class NormalizedPlay(BaseModel):
     game_clock: str | None = (
         None  # Remaining time in period; absolute timestamps go in raw_data["event_time"].
     )
+    # Stable per-event identifier from the source feed (e.g., NHL eventId).
+    # When set, persistence keys upserts on (game_id, event_id) instead of
+    # (game_id, play_index) — protects against sortOrder drift across runs.
+    event_id: int | None = None
     play_type: str | None = None  # Supports league-specific enums (e.g., NHL eventTypeId).
     team_abbreviation: str | None = None
     player_id: str | None = None

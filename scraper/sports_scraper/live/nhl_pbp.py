@@ -172,16 +172,22 @@ class NHLPbpFetcher:
         # Sort by sortOrder to ensure canonical ordering
         plays.sort(key=lambda p: p.play_index)
 
-        # Deduplicate: the NHL API sometimes returns the same logical event
-        # with different sortOrder values.  Collapse on
-        # (period, game_clock, play_type, team, player) keeping the first.
-        seen: set[tuple] = set()
+        # Deduplicate by NHL eventId: the API occasionally repeats the same
+        # logical event within a single response (different sortOrder, same
+        # eventId).  Cross-run duplicates — same eventId, different sortOrder
+        # across two scrape responses — are handled by the (game_id, event_id)
+        # unique index at persistence time.  Plays without an eventId fall
+        # through unchanged; they cannot be safely deduped without an identity.
+        seen_event_ids: set[int] = set()
         deduped: list[NormalizedPlay] = []
         for p in plays:
-            key = (p.quarter, p.game_clock, p.play_type, p.team_abbreviation, p.player_name)
-            if key not in seen:
-                seen.add(key)
+            if p.event_id is None:
                 deduped.append(p)
+                continue
+            if p.event_id in seen_event_ids:
+                continue
+            seen_event_ids.add(p.event_id)
+            deduped.append(p)
         if len(deduped) < len(plays):
             logger.info(
                 "nhl_pbp_deduped",
@@ -214,6 +220,11 @@ class NHLPbpFetcher:
 
         # Build play_index: period * multiplier + sort_order for stable ordering
         play_index = (period or 0) * NHL_PERIOD_MULTIPLIER + sort_order
+
+        # NHL eventId is the stable per-event identifier; promoted to a
+        # first-class field on NormalizedPlay so persistence can key the
+        # upsert on (game_id, event_id) instead of (game_id, play_index).
+        event_id = parse_int(play.get("eventId"))
 
         # Get timing info
         time_in_period = play.get("timeInPeriod")
@@ -256,11 +267,14 @@ class NHLPbpFetcher:
             play_index=play_index,
             quarter=period,
             game_clock=game_clock,
+            event_id=event_id,
             play_type=play_type,
             team_abbreviation=team_abbr,
             player_id=str(player_id) if player_id else None,
             player_name=player_name,
-            description=self._build_description(type_desc_key, details, player_id_to_name),
+            description=self._build_description(
+                type_desc_key, details, player_id_to_name, player_name
+            ),
             home_score=home_score,
             away_score=away_score,
             raw_data=raw_data,
@@ -315,11 +329,22 @@ class NHLPbpFetcher:
         type_desc_key: str,
         details: dict[str, Any],
         player_id_to_name: dict[int, str] | None = None,
+        player_name: str | None = None,
     ) -> str | None:
-        """Build a human-readable description from event details."""
+        """Build a human-readable description from event details.
+
+        ``player_name`` is the primary player for the event (scorer, shooter,
+        faceoff winner, penalty taker, etc.).  When supplied it is woven into
+        the description so downstream consumers that read only the description
+        column (LLM summarizers, full-text search, social-post composers) can
+        still identify who did what — matching how NBA play strings already
+        embed the player name inline.  When omitted the description falls
+        back to the player-less form for backward compatibility.
+        """
         if type_desc_key == "goal":
             shot_type = details.get("shotType", "")
-            parts = [f"Goal ({shot_type})" if shot_type else "Goal"]
+            head = f"Goal by {player_name}" if player_name else "Goal"
+            parts = [f"{head} ({shot_type})" if shot_type else head]
             # Include assist player names so the pipeline can credit them
             if player_id_to_name:
                 assists: list[str] = []
@@ -334,10 +359,12 @@ class NHLPbpFetcher:
             return " ".join(parts)
         elif type_desc_key == "shot-on-goal":
             shot_type = details.get("shotType", "")
-            return f"Shot on goal ({shot_type})" if shot_type else "Shot on goal"
+            head = f"Shot on goal by {player_name}" if player_name else "Shot on goal"
+            return f"{head} ({shot_type})" if shot_type else head
         elif type_desc_key == "missed-shot":
             reason = details.get("reason", "")
-            return f"Missed shot ({reason})" if reason else "Missed shot"
+            head = f"Missed shot by {player_name}" if player_name else "Missed shot"
+            return f"{head} ({reason})" if reason else head
         elif type_desc_key == "blocked-shot":
             blocker_id = parse_int(details.get("blockingPlayerId"))
             blocker = player_id_to_name.get(blocker_id, "") if player_id_to_name and blocker_id else ""
@@ -361,16 +388,25 @@ class NHLPbpFetcher:
         elif type_desc_key == "penalty":
             desc_key = details.get("descKey", "")
             duration = details.get("duration", 2)
-            return f"Penalty: {desc_key} ({duration} min)" if desc_key else "Penalty"
+            if player_name and desc_key:
+                return f"Penalty on {player_name}: {desc_key} ({duration} min)"
+            if desc_key:
+                return f"Penalty: {desc_key} ({duration} min)"
+            if player_name:
+                return f"Penalty on {player_name}"
+            return "Penalty"
         elif type_desc_key == "giveaway":
             zone = details.get("zoneCode", "")
-            return f"Giveaway ({zone} zone)" if zone else "Giveaway"
+            head = f"Giveaway by {player_name}" if player_name else "Giveaway"
+            return f"{head} ({zone} zone)" if zone else head
         elif type_desc_key == "takeaway":
             zone = details.get("zoneCode", "")
-            return f"Takeaway ({zone} zone)" if zone else "Takeaway"
+            head = f"Takeaway by {player_name}" if player_name else "Takeaway"
+            return f"{head} ({zone} zone)" if zone else head
         elif type_desc_key == "faceoff":
             zone = details.get("zoneCode", "")
-            return f"Faceoff ({zone} zone)" if zone else "Faceoff"
+            head = f"Faceoff won by {player_name}" if player_name else "Faceoff"
+            return f"{head} ({zone} zone)" if zone else head
         elif type_desc_key == "stoppage":
             reason = details.get("reason", "")
             return f"Stoppage: {reason}" if reason else "Stoppage"

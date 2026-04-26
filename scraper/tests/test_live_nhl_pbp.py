@@ -472,6 +472,75 @@ class TestBuildDescription:
         assert result == "Unknown Type"
 
 
+class TestBuildDescriptionWithPlayerName:
+    """Descriptions must embed the primary player so consumers that only
+    read the description column (LLM summarizer, search) know who did what.
+    """
+
+    def _fetcher(self) -> NHLPbpFetcher:
+        return NHLPbpFetcher(MagicMock(), MagicMock())
+
+    def test_goal_includes_scorer(self):
+        result = self._fetcher()._build_description(
+            "goal", {"shotType": "wrist"}, player_name="Connor McDavid"
+        )
+        assert result == "Goal by Connor McDavid (wrist)"
+
+    def test_goal_with_assists_includes_scorer(self):
+        result = self._fetcher()._build_description(
+            "goal",
+            {"shotType": "wrist", "assist1PlayerId": 1, "assist2PlayerId": 2},
+            player_id_to_name={1: "Leon Draisaitl", 2: "Evan Bouchard"},
+            player_name="Connor McDavid",
+        )
+        assert result == "Goal by Connor McDavid (wrist) (assists: Leon Draisaitl, Evan Bouchard)"
+
+    def test_shot_on_goal_includes_shooter(self):
+        result = self._fetcher()._build_description(
+            "shot-on-goal", {"shotType": "slap"}, player_name="Auston Matthews"
+        )
+        assert result == "Shot on goal by Auston Matthews (slap)"
+
+    def test_missed_shot_includes_shooter(self):
+        result = self._fetcher()._build_description(
+            "missed-shot", {"reason": "wide-right"}, player_name="Mitch Marner"
+        )
+        assert result == "Missed shot by Mitch Marner (wide-right)"
+
+    def test_penalty_includes_offender(self):
+        result = self._fetcher()._build_description(
+            "penalty",
+            {"descKey": "tripping", "duration": 2},
+            player_name="Brad Marchand",
+        )
+        assert result == "Penalty on Brad Marchand: tripping (2 min)"
+
+    def test_faceoff_includes_winner(self):
+        result = self._fetcher()._build_description(
+            "faceoff", {"zoneCode": "N"}, player_name="Patrice Bergeron"
+        )
+        assert result == "Faceoff won by Patrice Bergeron (N zone)"
+
+    def test_giveaway_includes_player(self):
+        result = self._fetcher()._build_description(
+            "giveaway", {"zoneCode": "D"}, player_name="Jakob Chychrun"
+        )
+        assert result == "Giveaway by Jakob Chychrun (D zone)"
+
+    def test_takeaway_includes_player(self):
+        result = self._fetcher()._build_description(
+            "takeaway", {"zoneCode": "O"}, player_name="Patrice Bergeron"
+        )
+        assert result == "Takeaway by Patrice Bergeron (O zone)"
+
+    def test_stoppage_unaffected_by_player_name(self):
+        """Stoppages have no acting player; description should not invent one."""
+        result = self._fetcher()._build_description(
+            "stoppage", {"reason": "icing"}, player_name="Should Not Appear"
+        )
+        assert result == "Stoppage: icing"
+
+
 class TestModuleImports:
     """Tests for nhl_pbp module imports."""
 
