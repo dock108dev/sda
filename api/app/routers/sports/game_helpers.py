@@ -252,12 +252,11 @@ def summarize_game(
         game: The game to summarize
         has_flow: Whether the game has a flow in SportsGameFlow table.
             If None, defaults to False.
-        flags: Pre-computed has_/count flags from the list query. When None,
-            falls back to lazy access on the ORM relationships (used by the
-            single-game detail path which eager-loads everything).
+        flags: Pre-computed has_/count flags from the list query.
         latest_play_period / latest_play_clock: Latest-play snapshot fetched
             separately for live games only — the list query does not eager-load
-            the full plays collection just to derive these.
+            the full plays collection just to derive these. Non-live games pass
+            ``(None, None)`` and get no live snapshot.
     """
     if not game.league:
         raise ValueError(f"Game {game.id} missing league")
@@ -300,21 +299,12 @@ def summarize_game(
         away_secondary_dark=game.away_team.color_secondary_dark_hex,
     )
 
-    # Latest play's period/clock for live score context. The list path passes
-    # these in from a targeted live-only query; the detail path falls back to
-    # the eager-loaded plays collection.
-    if latest_play_period is not None or latest_play_clock is not None:
-        current_period = latest_play_period
-        game_clock_val = latest_play_clock
-    else:
-        plays_attr = getattr(game, "plays", None) or []
-        latest_play = (
-            max(plays_attr, key=lambda p: p.play_index, default=None)
-            if plays_attr
-            else None
-        )
-        current_period = getattr(latest_play, "quarter", None) if latest_play else None
-        game_clock_val = getattr(latest_play, "game_clock", None) if latest_play else None
+    # Latest play's period/clock for live score context. The list path runs a
+    # targeted query for live games only and passes the values in here; non-
+    # live games get (None, None). We never lazy-load ``game.plays`` — the list
+    # query doesn't eager-load it, and async lazy loads raise MissingGreenlet.
+    current_period = latest_play_period
+    game_clock_val = latest_play_clock
 
     status_flags = compute_status_flags(game.status)
     league_code = game.league.code
