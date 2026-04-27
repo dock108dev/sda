@@ -33,6 +33,6 @@ opentelemetry-instrumentation-celery==0.50b0
 # the commerce/billing tests patch. Verified locally on 11.6.0. Migrate to
 # the StripeClient-style API in a follow-up before raising the pin.
 stripe==11.6.0
-prometheus_client>=0.20.0
+prometheus_client>=0.25.0
 # HTML sanitization for free-text user fields (ISSUE-025)
 bleach>=6.1.0
