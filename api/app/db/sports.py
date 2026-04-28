@@ -527,7 +527,17 @@ class SportsGamePlay(Base):
 
     __table_args__ = (
         Index("idx_game_plays_game", "game_id"),
-        UniqueConstraint("game_id", "play_index", name="uq_game_play_index"),
+        # Partial unique: play_index is only a stable identity for sources
+        # without an event_id (NBA/MLB/NCAAB).  NHL plays carry event_id
+        # and use the partial index below as their conflict target instead,
+        # because play_index drifts with NHL sortOrder churn.
+        Index(
+            "uq_game_play_index",
+            "game_id",
+            "play_index",
+            unique=True,
+            postgresql_where=text("event_id IS NULL"),
+        ),
         Index(
             "uq_sports_game_plays_game_event",
             "game_id",

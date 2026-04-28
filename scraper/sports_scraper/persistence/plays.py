@@ -298,8 +298,12 @@ def upsert_plays(
                 set_=update_set,
             )
         else:
+            # uq_game_play_index is a partial unique index on rows with
+            # event_id IS NULL; the index_where lets Postgres infer it as
+            # the ON CONFLICT arbiter.
             stmt = stmt.on_conflict_do_update(
                 index_elements=["game_id", "play_index"],
+                index_where=text("event_id IS NULL"),
                 set_=update_set,
             )
         session.execute(stmt)
