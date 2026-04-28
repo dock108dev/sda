@@ -44,11 +44,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_constraint(
-        "uq_game_play_index",
-        "sports_game_plays",
-        type_="unique",
-    )
+    # The original object is a UNIQUE INDEX (not a UNIQUE CONSTRAINT), even
+    # though the ORM models it via UniqueConstraint(...).  Drop the index and
+    # recreate it as a partial unique index with the same name.
+    op.drop_index("uq_game_play_index", table_name="sports_game_plays")
     op.create_index(
         "uq_game_play_index",
         "sports_game_plays",
@@ -80,8 +79,9 @@ def downgrade() -> None:
         """
     )
     op.drop_index("uq_game_play_index", table_name="sports_game_plays")
-    op.create_unique_constraint(
+    op.create_index(
         "uq_game_play_index",
         "sports_game_plays",
         ["game_id", "play_index"],
+        unique=True,
     )
