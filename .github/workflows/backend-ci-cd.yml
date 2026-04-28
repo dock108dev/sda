@@ -468,7 +468,11 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
             echo "Pre-deploy cleanup (free space for new images)..."
-            docker image prune -af --filter "until=1h" 2>/dev/null || true
+            # No --until filter: rapid redeploys must still reclaim space.
+            # -a drops any image not referenced by a running container, so
+            # in-use images (sports-api/web/scraper currently running) stay
+            # and superseded :latest pulls get freed regardless of age.
+            docker image prune -af 2>/dev/null || true
             docker builder prune -af 2>/dev/null || true
 
             echo "Pulling images..."
