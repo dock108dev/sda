@@ -123,11 +123,7 @@ def check_overtime_mention(
             "12th inning",
         ])
 
-    for pattern in ot_patterns:
-        if pattern in narrative_lower:
-            return True
-
-    return False
+    return any(pattern in narrative_lower for pattern in ot_patterns)
 
 
 def inject_overtime_mention(

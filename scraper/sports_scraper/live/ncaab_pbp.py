@@ -146,7 +146,7 @@ class NCAABPbpFetcher:
             points = play.raw_data.get("points") if play.raw_data else None
             is_home = play.raw_data.get("is_home_team") if play.raw_data else None
 
-            if isinstance(points, (int, float)) and points > 0 and is_home is not None:
+            if isinstance(points, int | float) and points > 0 and is_home is not None:
                 if is_home:
                     home_running += int(points)
                 else:

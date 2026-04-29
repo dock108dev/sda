@@ -183,14 +183,10 @@ def match_game_by_names_ncaab(
         away_tokens = _tokens(away_normalized)
 
         home_matches = (
-            home_db_norm == home_normalized
-            or home_db_norm == home_canonical_norm
-            or _ncaab_name_contains(home_normalized, home_db_norm)
+            home_db_norm in (home_normalized, home_canonical_norm) or _ncaab_name_contains(home_normalized, home_db_norm)
         )
         away_matches = (
-            away_db_norm == away_normalized
-            or away_db_norm == away_canonical_norm
-            or _ncaab_name_contains(away_normalized, away_db_norm)
+            away_db_norm in (away_normalized, away_canonical_norm) or _ncaab_name_contains(away_normalized, away_db_norm)
         )
         if not home_matches:
             overlap_home = len(home_tokens & home_db_tokens)
@@ -231,14 +227,10 @@ def match_game_by_names_ncaab(
             return game_id_candidate
 
         home_matches_swapped = (
-            home_db_norm == away_normalized
-            or home_db_norm == away_canonical_norm
-            or _ncaab_name_contains(away_normalized, home_db_norm)
+            home_db_norm in (away_normalized, away_canonical_norm) or _ncaab_name_contains(away_normalized, home_db_norm)
         )
         away_matches_swapped = (
-            away_db_norm == home_normalized
-            or away_db_norm == home_canonical_norm
-            or _ncaab_name_contains(home_normalized, away_db_norm)
+            away_db_norm in (home_normalized, home_canonical_norm) or _ncaab_name_contains(home_normalized, away_db_norm)
         )
 
         if home_matches_swapped and away_matches_swapped:

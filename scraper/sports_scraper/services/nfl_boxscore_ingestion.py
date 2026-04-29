@@ -7,6 +7,7 @@ persist_game_payload function.
 
 from __future__ import annotations
 
+import contextlib
 from datetime import date, datetime
 
 from sqlalchemy import and_, exists, not_
@@ -200,10 +201,8 @@ def select_games_for_boxscores_nfl_api(
     results = []
     for game_id, espn_game_id, game_date, status in rows:
         if espn_game_id:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 results.append((game_id, int(espn_game_id), game_date, status or "final"))
-            except (ValueError, TypeError):
-                pass
     return results
 
 

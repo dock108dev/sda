@@ -40,7 +40,7 @@ from app.tasks._batch_sim_weights import (
 from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    pass
 
 from app.tasks._task_infra import _complete_job_run, _start_job_run, _task_db
 
@@ -256,9 +256,10 @@ async def _execute_batch_sim(
     if probability_mode == "market_blend":
         try:
             async with sf() as mkt_db:
+                from sqlalchemy import select as sa_select
+
                 from app.db.odds import ClosingLine
                 from app.services.ev import american_to_implied, remove_vig
-                from sqlalchemy import select as sa_select
 
                 game_ids = [g.id for g in upcoming_games]
                 # Try closing lines first, fall back to current FairBet odds

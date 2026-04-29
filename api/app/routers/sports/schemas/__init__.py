@@ -52,11 +52,11 @@ from .mlb_advanced import (
     MLBFieldingStatSchema,
     MLBPitcherGameStatSchema,
 )
-from .scraper import ScrapeRunConfig, ScrapeRunCreateRequest, ScrapeRunResponse
 from .nba_advanced import NBAAdvancedPlayerStats, NBAAdvancedTeamStats
 from .ncaab_advanced import NCAABAdvancedPlayerStats, NCAABAdvancedTeamStats
 from .nfl_advanced import NFLAdvancedPlayerStats, NFLAdvancedTeamStats
 from .nhl_advanced import NHLAdvancedTeamStats, NHLGoalieAdvancedStats, NHLSkaterAdvancedStats
+from .scraper import ScrapeRunConfig, ScrapeRunCreateRequest, ScrapeRunResponse
 from .season_audit import SeasonAuditResponse
 from .teams import (
     TeamColorUpdate,

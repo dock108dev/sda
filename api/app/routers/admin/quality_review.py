@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import ast
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -82,7 +83,7 @@ def _extract_forbidden_phrases(tier_breakdown: dict) -> list[str]:
             parsed = ast.literal_eval(f.split("=", 1)[1])
         except (ValueError, SyntaxError, MemoryError, RecursionError):
             return []
-        if isinstance(parsed, (list, tuple)):
+        if isinstance(parsed, list | tuple):
             return [str(item) for item in parsed if isinstance(item, str)]
         return []
     return []

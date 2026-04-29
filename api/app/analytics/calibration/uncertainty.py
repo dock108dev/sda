@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 
 from app.services.ev import implied_to_american
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -198,10 +197,7 @@ def apply_uncertainty(
     penalty = uncertainty.penalty
 
     # Pull toward 0.5
-    if p_true > 0.5:
-        p_conservative = max(0.5, p_true - penalty)
-    else:
-        p_conservative = min(0.5, p_true + penalty)
+    p_conservative = max(0.5, p_true - penalty) if p_true > 0.5 else min(0.5, p_true + penalty)
 
     # Confidence band: wider than the penalty for display purposes
     band_width = penalty * 1.5

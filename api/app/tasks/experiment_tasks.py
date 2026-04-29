@@ -432,6 +432,7 @@ async def _generate_feature_loadouts(
     import random
 
     from sqlalchemy import delete
+
     from app.db.analytics import AnalyticsFeatureConfig
 
     # Clean up any stale configs from a previous failed run of this suite
@@ -522,11 +523,10 @@ async def _generate_feature_loadouts(
     for _ in range(max(0, budget)):
         sample = []
         for f in variable:
-            if f.get("vary_enabled"):
-                # 15% chance of disabling when vary_enabled is on
-                enabled = rng.random() > 0.15
-            else:
-                enabled = True
+            # 15% chance of disabling when vary_enabled is on
+            enabled = (
+                rng.random() > 0.15 if f.get("vary_enabled") else True
+            )
             weight = _rand_weight(f) if enabled else 0
             sample.append({"name": f["name"], "enabled": enabled, "weight": weight})
         combos.append(sample)

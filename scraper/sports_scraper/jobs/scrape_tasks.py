@@ -96,7 +96,7 @@ def run_bulk_backfill(chunks: list[dict], data_toggles: dict) -> dict:
     """
     from ..db import db_models, get_session
     from ..services.ingestion import run_ingestion
-    from ..services.job_runs import complete_job_run, start_job_run
+    from ..services.job_runs import complete_job_run
     from ..utils.datetime_utils import now_utc
 
     total = len(chunks)

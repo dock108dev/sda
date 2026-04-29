@@ -27,6 +27,9 @@ import random
 from typing import Any
 
 from app.analytics.sports.ncaab.constants import (
+    BASELINE_FT_PCT as _BASELINE_FT_PCT,
+)
+from app.analytics.sports.ncaab.constants import (
     DEFAULT_EVENT_PROBS_SUFFIXED as _DEFAULT_PROBS,
 )
 from app.analytics.sports.ncaab.constants import (
@@ -46,12 +49,6 @@ from app.analytics.sports.ncaab.constants import (
 )
 from app.analytics.sports.ncaab.constants import (
     OT_POSSESSIONS as _OT_POSSESSIONS,
-)
-from app.analytics.sports.ncaab.constants import (
-    POSSESSION_EVENTS as _ALL_EVENTS,
-)
-from app.analytics.sports.ncaab.constants import (
-    BASELINE_FT_PCT as _BASELINE_FT_PCT,
 )
 
 # Scorable events used for weighted sampling (excludes offensive_rebound).

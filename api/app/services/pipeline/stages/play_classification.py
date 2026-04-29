@@ -33,10 +33,7 @@ def is_turnover_play(event: dict[str, Any]) -> bool:
 
     # Check description for turnover indicators
     turnover_keywords = ["turnover", "steal", "lost ball", "bad pass", "traveling"]
-    if any(kw in description for kw in turnover_keywords):
-        return True
-
-    return False
+    return bool(any(kw in description for kw in turnover_keywords))
 
 
 def is_period_boundary(
@@ -78,10 +75,7 @@ def is_stoppage_play(event: dict[str, Any]) -> bool:
         return True
 
     # Check description for timeout indicators
-    if "timeout" in description:
-        return True
-
-    return False
+    return "timeout" in description
 
 
 def is_notable_play(event: dict[str, Any]) -> bool:
@@ -133,7 +127,4 @@ def should_start_new_moment(
         return True
 
     # Rule 4: Previous play was a stoppage
-    if is_stoppage_play(previous_event):
-        return True
-
-    return False
+    return bool(is_stoppage_play(previous_event))

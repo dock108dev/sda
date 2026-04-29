@@ -17,7 +17,11 @@ from typing import Any
 from app.analytics.core.types import PlayerProfile, TeamProfile
 from app.analytics.sports._helpers import (
     metric_float as _float,
+)
+from app.analytics.sports._helpers import (
     metric_round as _round,
+)
+from app.analytics.sports._helpers import (
     strip_none as _strip_none,
 )
 from app.analytics.sports.nhl.constants import (

@@ -23,7 +23,7 @@ def _mini_box(h_runs: int, a_runs: int, h_delta: int, a_delta: int) -> dict[str,
 
 
 def render_blocks(
-    mb: "GameMiniBox",
+    mb: GameMiniBox,
     moment_chunks: list[list[int]],
     scores: list[tuple[int, int]],
 ) -> list[dict[str, Any]]:

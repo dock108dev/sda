@@ -55,10 +55,7 @@ async def evaluate_parlay(request: ParlayEvaluateRequest) -> ParlayEvaluateRespo
 
     # Combined confidence: geometric mean of leg confidences
     confidences = [leg.confidence for leg in request.legs if leg.confidence is not None]
-    if confidences:
-        combined_confidence = math.prod(confidences) ** (1.0 / len(confidences))
-    else:
-        combined_confidence = 1.0
+    combined_confidence = math.prod(confidences) ** (1.0 / len(confidences)) if confidences else 1.0
 
     return ParlayEvaluateResponse(
         fair_probability=round(fair_prob, 6),

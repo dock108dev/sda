@@ -173,15 +173,9 @@ class MLBGameSimulator:
             away_starter_weights = [w] * 9
 
         # -- resolve bullpen weights ------------------------------------
-        if "home_bullpen_weights" in game_context:
-            home_bullpen_weights = game_context["home_bullpen_weights"]
-        else:
-            home_bullpen_weights = home_starter_weights
+        home_bullpen_weights = game_context.get("home_bullpen_weights", home_starter_weights)
 
-        if "away_bullpen_weights" in game_context:
-            away_bullpen_weights = game_context["away_bullpen_weights"]
-        else:
-            away_bullpen_weights = away_starter_weights
+        away_bullpen_weights = game_context.get("away_bullpen_weights", away_starter_weights)
 
         transition_inning = int(game_context.get("starter_innings", 6.0))
 

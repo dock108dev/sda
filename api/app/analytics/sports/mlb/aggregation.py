@@ -238,7 +238,7 @@ def weighted_average(
     total_weight = sum(weights)
     if total_weight == 0:
         return None
-    return round(sum(v * w for v, w in zip(values, weights)) / total_weight, 4)
+    return round(sum(v * w for v, w in zip(values, weights, strict=False)) / total_weight, 4)
 
 
 def rate_calculation(numerator: float, denominator: float) -> float | None:

@@ -59,6 +59,13 @@ from .common import (
     serialize_player_stat,
     serialize_team_stat,
 )
+from .game_detail_advanced import (
+    serialize_mlb_advanced,
+    serialize_nba_advanced,
+    serialize_ncaab_advanced,
+    serialize_nfl_advanced,
+    serialize_nhl_advanced,
+)
 from .game_helpers import (
     build_preview_context,
     normalize_score,
@@ -68,13 +75,6 @@ from .game_helpers import (
     serialize_social_posts,
 )
 from .nhl_helpers import compute_nhl_data_health
-from .game_detail_advanced import (
-    serialize_mlb_advanced,
-    serialize_nba_advanced,
-    serialize_ncaab_advanced,
-    serialize_nfl_advanced,
-    serialize_nhl_advanced,
-)
 from .schemas import (
     GameDetailResponse,
     GameMeta,

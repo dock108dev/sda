@@ -8,10 +8,10 @@ Requires admin API key (enforced at router registration level in main.py).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 from datetime import datetime
-from typing import Optional
 
 import redis as _redis_mod
 from fastapi import APIRouter, Depends
@@ -49,9 +49,9 @@ class BreakerStateResponse(BaseModel):
     name: str
     is_open: bool
     trip_count: int
-    last_trip_reason: Optional[str] = None
-    last_trip_at: Optional[datetime] = None
-    last_reset_at: Optional[datetime] = None
+    last_trip_reason: str | None = None
+    last_trip_at: datetime | None = None
+    last_reset_at: datetime | None = None
 
 
 class TripEventResponse(BaseModel):
@@ -76,7 +76,7 @@ class PlaywrightHealthResponse(BaseModel):
     circuit_open: bool
     consecutive_failures: int
     circuit_breaker_threshold: int
-    last_check: Optional[dict] = None
+    last_check: dict | None = None
 
 
 @router.get("/circuit-breakers", response_model=CircuitBreakersResponse)
@@ -130,10 +130,8 @@ async def get_playwright_health() -> PlaywrightHealthResponse:
         raw_health = r.get(_HEALTH_KEY)
         last_check: dict | None = None
         if raw_health:
-            try:
+            with contextlib.suppress(Exception):
                 last_check = json.loads(raw_health)
-            except Exception:
-                pass
     except Exception:
         logger.warning("playwright_health_redis_read_failed", exc_info=True)
         circuit_open = False

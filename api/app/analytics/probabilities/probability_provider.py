@@ -30,7 +30,6 @@ from app.analytics.sports.mlb.constants import (
     PA_EVENTS as MLB_PA_EVENTS,
 )
 
-
 # Maximum deviation from league-average baseline for ML fallback path.
 # Only applies when lineup_matchup mode fails and the system falls back
 # to ML-based team-level probability resolution.
@@ -150,12 +149,12 @@ def validate_probabilities(
         return issues
 
     for key, val in probs.items():
-        if not isinstance(val, (int, float)):
+        if not isinstance(val, int | float):
             issues.append(f"non_numeric:{key}")
         elif val < 0:
             issues.append(f"negative:{key}")
 
-    total = sum(float(v) for v in probs.values() if isinstance(v, (int, float)))
+    total = sum(float(v) for v in probs.values() if isinstance(v, int | float))
     if abs(total - 1.0) > tolerance:
         issues.append(f"sum_not_one:{total:.4f}")
 

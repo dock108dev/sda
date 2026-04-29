@@ -7,8 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from ....services.game_status import compute_status_flags
 from .common import (
-    ScoreObject,
     LiveSnapshot,
     MLBBatterStat,
     MLBPitcherStat,
@@ -18,6 +18,7 @@ from .common import (
     OddsEntry,
     PlayEntry,
     PlayerStat,
+    ScoreObject,
     SocialPostEntry,
     TeamStat,
     TieredPlayGroup,
@@ -45,8 +46,6 @@ from .nhl_advanced import (
     NHLGoalieAdvancedStats,
     NHLSkaterAdvancedStats,
 )
-
-from ....services.game_status import compute_status_flags
 
 
 class GameSummary(BaseModel):
@@ -213,34 +212,34 @@ class GameDetailResponse(BaseModel):
         None, alias="mlbFieldingStats"
     )
     # NBA advanced stats (only populated for NBA games)
-    nba_advanced_stats: list["NBAAdvancedTeamStats"] | None = Field(
+    nba_advanced_stats: list[NBAAdvancedTeamStats] | None = Field(
         None, alias="nbaAdvancedStats"
     )
-    nba_player_advanced_stats: list["NBAAdvancedPlayerStats"] | None = Field(
+    nba_player_advanced_stats: list[NBAAdvancedPlayerStats] | None = Field(
         None, alias="nbaPlayerAdvancedStats"
     )
     # NHL advanced stats (only populated for NHL games)
-    nhl_advanced_stats: list["NHLAdvancedTeamStats"] | None = Field(
+    nhl_advanced_stats: list[NHLAdvancedTeamStats] | None = Field(
         None, alias="nhlAdvancedStats"
     )
-    nhl_skater_advanced_stats: list["NHLSkaterAdvancedStats"] | None = Field(
+    nhl_skater_advanced_stats: list[NHLSkaterAdvancedStats] | None = Field(
         None, alias="nhlSkaterAdvancedStats"
     )
-    nhl_goalie_advanced_stats: list["NHLGoalieAdvancedStats"] | None = Field(
+    nhl_goalie_advanced_stats: list[NHLGoalieAdvancedStats] | None = Field(
         None, alias="nhlGoalieAdvancedStats"
     )
     # NFL advanced stats (only populated for NFL games)
-    nfl_advanced_stats: list["NFLAdvancedTeamStats"] | None = Field(
+    nfl_advanced_stats: list[NFLAdvancedTeamStats] | None = Field(
         None, alias="nflAdvancedStats"
     )
-    nfl_player_advanced_stats: list["NFLAdvancedPlayerStats"] | None = Field(
+    nfl_player_advanced_stats: list[NFLAdvancedPlayerStats] | None = Field(
         None, alias="nflPlayerAdvancedStats"
     )
     # NCAAB advanced stats (only populated for NCAAB games)
-    ncaab_advanced_stats: list["NCAABAdvancedTeamStats"] | None = Field(
+    ncaab_advanced_stats: list[NCAABAdvancedTeamStats] | None = Field(
         None, alias="ncaabAdvancedStats"
     )
-    ncaab_player_advanced_stats: list["NCAABAdvancedPlayerStats"] | None = Field(
+    ncaab_player_advanced_stats: list[NCAABAdvancedPlayerStats] | None = Field(
         None, alias="ncaabPlayerAdvancedStats"
     )
     odds: list[OddsEntry]

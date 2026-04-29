@@ -27,6 +27,7 @@ from ...services.fairbet_runtime import (
     normalize_query_dict,
     set_cached_response,
 )
+from ...services.single_flight import SingleFlight
 from .odds_core import (
     apply_keyset_where,
     build_base_filters,
@@ -36,7 +37,6 @@ from .odds_core import (
 )
 from .odds_enrichment import enrich_and_finalize
 from .odds_models import BetDefinition, FairbetOddsResponse
-from ...services.single_flight import SingleFlight
 
 logger = logging.getLogger(__name__)
 

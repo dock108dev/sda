@@ -169,8 +169,7 @@ class BaseSportsReferenceScraper:
                 games = self.fetch_games_for_date(day)
                 games_list = list(games)  # Convert to list to get count
                 logger.debug("scraper_date_complete", day=str(day), games_found=len(games_list), league=self.league_code)
-                for game in games_list:
-                    yield game
+                yield from games_list
                 time.sleep(random.uniform(self._day_delay_min, self._day_delay_max))
             except NoGamesFoundError:
                 # No games for this date - not an error, just continue to next date

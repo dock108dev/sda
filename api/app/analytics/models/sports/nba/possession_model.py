@@ -85,5 +85,5 @@ class NBAPossessionModel(BaseModel):
         if hasattr(self._model, "predict_proba"):
             proba = self._model.predict_proba([fv])[0]
             classes = list(self._model.classes_)
-            return {str(c): round(float(p), 4) for c, p in zip(classes, proba)}
+            return {str(c): round(float(p), 4) for c, p in zip(classes, proba, strict=False)}
         return self._predict_rule_based(features)

@@ -48,7 +48,7 @@ class SimulationAnalysis:
         home_wins = sum(1 for r in simulation_results if r.get("winner") == "home")
         home_scores = [r.get("home_score", 0) for r in simulation_results]
         away_scores = [r.get("away_score", 0) for r in simulation_results]
-        totals = [h + a for h, a in zip(home_scores, away_scores)]
+        totals = [h + a for h, a in zip(home_scores, away_scores, strict=False)]
 
         home_wp = round(home_wins / n, 4)
         away_wp = round((n - home_wins) / n, 4)

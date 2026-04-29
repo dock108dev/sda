@@ -366,7 +366,7 @@ async def _execute_backtest(
             if hasattr(sklearn_model, "predict_proba"):
                 proba = sklearn_model.predict_proba(features_2d)[0]
                 classes = list(sklearn_model.classes_)
-                pred_proba = {str(c): round(float(p), 4) for c, p in zip(classes, proba)}
+                pred_proba = {str(c): round(float(p), 4) for c, p in zip(classes, proba, strict=False)}
 
             is_correct = y_pred == actual_label
             if is_correct:

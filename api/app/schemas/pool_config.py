@@ -6,7 +6,7 @@ packages/js-core/src/pool-config.ts.  Both must stay in sync.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
@@ -37,7 +37,7 @@ class CrestmontPoolConfig(BaseModel):
 
 
 PoolConfig = Annotated[
-    Union[RvccPoolConfig, CrestmontPoolConfig],
+    RvccPoolConfig | CrestmontPoolConfig,
     Field(discriminator="variant"),
 ]
 

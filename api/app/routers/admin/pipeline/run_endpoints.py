@@ -76,7 +76,7 @@ async def start_pipeline(
 
     except PipelineExecutionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception("start_pipeline_error", extra={"game_id": game_id})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

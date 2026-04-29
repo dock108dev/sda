@@ -111,9 +111,8 @@ def should_prefer_close_moment(
             return True, BoundaryReason.SCORING_PLAY
 
     # SOFT: Turnovers are weaker boundaries - only close if moment is moderately sized
-    if play_count >= (SOFT_CAP_PLAYS // 2):
-        if is_turnover_play(current_event):
-            return True, BoundaryReason.POSSESSION_CHANGE
+    if play_count >= (SOFT_CAP_PLAYS // 2) and is_turnover_play(current_event):
+        return True, BoundaryReason.POSSESSION_CHANGE
 
     # SOFT: Too many explicitly narrated plays (now allows up to PREFERRED_EXPLICIT_PLAYS)
     narrated = select_explicitly_narrated_plays(

@@ -41,7 +41,7 @@ class GateDecision:
 
 
 def apply_grade_gate(
-    grader_result: "GraderResult | None",
+    grader_result: GraderResult | None,
     regen_attempt: int = 0,
     threshold: float = GATE_THRESHOLD,
 ) -> GateDecision:

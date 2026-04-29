@@ -269,10 +269,7 @@ def _try_extrapolated_ev(
         abs_shift = (target_abs_line - best_ref["abs_line"]) / 0.5
         # Over: prob decreases with higher line → negate shift
         # Under: prob increases with higher line → keep shift
-        if "under" in sel_a.lower():
-            n_half_points = abs_shift
-        else:
-            n_half_points = -abs_shift
+        n_half_points = abs_shift if "under" in sel_a.lower() else -abs_shift
 
     hp_map = MAX_EXTRAPOLATION_HALF_POINTS.get(league_code)
     if hp_map is None:

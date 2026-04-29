@@ -16,14 +16,13 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import date
-
-from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 from app.analytics.datasets._profile_mixin import ProfileMixin
 from app.analytics.datasets.mlb_pa_labeler import label_pa_event
 from app.tasks._training_helpers import build_rolling_profile, stats_to_metrics
+from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

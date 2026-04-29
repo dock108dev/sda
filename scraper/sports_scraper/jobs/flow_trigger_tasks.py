@@ -20,6 +20,8 @@ trigger_flow_for_game prevents double-dispatch.
 
 from __future__ import annotations
 
+from datetime import UTC
+
 from celery import shared_task
 
 from ..db import get_session
@@ -229,10 +231,10 @@ def sweep_missing_flows() -> dict:
     Returns:
         dict with count of game IDs enqueued.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    from sqlalchemy import not_, or_
     from sqlalchemy import exists as sa_exists
+    from sqlalchemy import not_, or_
 
     from ..db import db_models
     from ..utils.redis_lock import LOCK_TIMEOUT_5MIN, acquire_redis_lock, release_redis_lock
@@ -244,7 +246,7 @@ def sweep_missing_flows() -> dict:
         return {"status": "skipped", "reason": "locked"}
 
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        cutoff = datetime.now(UTC) - timedelta(hours=24)
 
         with get_session() as session:
             games = (
@@ -294,10 +296,10 @@ def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
     Returns:
         dict with ``found``, ``enqueued`` (or ``would_enqueue`` in dry-run), and ``status``.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    from sqlalchemy import not_, or_
     from sqlalchemy import exists as sa_exists
+    from sqlalchemy import not_, or_
 
     from ..db import db_models
     from ..utils.redis_lock import LOCK_TIMEOUT_10MIN, acquire_redis_lock, release_redis_lock
@@ -309,7 +311,7 @@ def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
         return {"status": "skipped", "reason": "locked"}
 
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         with get_session() as session:
             games = (

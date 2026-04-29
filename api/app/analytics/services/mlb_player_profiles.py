@@ -70,7 +70,7 @@ async def get_player_rolling_profile(
 
     player_profile: dict[str, float] = {}
     for key in all_metrics[0]:
-        vw = [(m[key], w) for m, w in zip(all_metrics, weights) if key in m]
+        vw = [(m[key], w) for m, w in zip(all_metrics, weights, strict=False) if key in m]
         if vw:
             player_profile[key] = round(_weighted_mean(vw), 4)
 
@@ -183,7 +183,7 @@ async def _pitcher_profile_from_statcast(
 
         # Verify the first row is actually an MLBPitcherGameStats instance
         first_row = rows[0][0]
-        if not isinstance(getattr(first_row, "batters_faced", None), (int, float, type(None))):
+        if not isinstance(getattr(first_row, "batters_faced", None), int | float | type(None)):
             return None
     except Exception:
         logger.warning("pitcher_statcast_query_failed", exc_info=True)
@@ -224,7 +224,7 @@ async def _pitcher_profile_from_statcast(
 
     aggregated: dict[str, float] = {}
     for key in per_game[0]:
-        vw = [(gm[key], w) for gm, w in zip(per_game, weights)]
+        vw = [(gm[key], w) for gm, w in zip(per_game, weights, strict=False)]
         aggregated[key] = round(_weighted_mean(vw), 4)
 
     return aggregated
@@ -301,7 +301,7 @@ async def _pitcher_profile_from_boxscore(
 
     aggregated: dict[str, float] = {}
     for key in per_game_metrics[0]:
-        vw = [(m[key], w) for m, w in zip(per_game_metrics, weights)]
+        vw = [(m[key], w) for m, w in zip(per_game_metrics, weights, strict=False)]
         aggregated[key] = round(_weighted_mean(vw), 4)
 
     return aggregated

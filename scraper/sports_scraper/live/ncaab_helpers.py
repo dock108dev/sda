@@ -49,7 +49,7 @@ def parse_minutes(value: str | int | float | None) -> float | None:
     if value is None:
         return None
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
 
     if isinstance(value, str):

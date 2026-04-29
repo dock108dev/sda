@@ -18,7 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.services.lineup_weights import (
     _STARTER_IP_THRESHOLD,
+)
+from app.analytics.services.lineup_weights import (
     pitching_metrics_from_profile as _pitching_metrics_from_profile,
+)
+from app.analytics.services.lineup_weights import (
     regress_pitcher_profile as _regress_pitcher_profile,
 )
 from app.analytics.services.profile_service import (

@@ -92,7 +92,7 @@ class MLBPlateAppearanceModel(BaseModel):
         if hasattr(self._model, "predict_proba"):
             proba = self._model.predict_proba([feature_vector])[0]
             classes = list(self._model.classes_)
-            return {str(c): round(float(p), 4) for c, p in zip(classes, proba)}
+            return {str(c): round(float(p), 4) for c, p in zip(classes, proba, strict=False)}
 
         # Fallback: model only has predict()
         return self._predict_rule_based(features)

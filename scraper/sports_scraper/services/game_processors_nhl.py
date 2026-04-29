@@ -72,7 +72,6 @@ def check_game_status_nhl(session, game, *, client=None) -> GameProcessResult:
 
 def process_game_pbp_nhl(session, game, *, client=None) -> GameProcessResult:
     """Fetch and persist PBP for a single NHL game."""
-    from ..db import db_models
     from ..live.nhl import NHLLiveFeedClient
     from ..persistence.plays import upsert_plays
     from ..utils.datetime_utils import now_utc

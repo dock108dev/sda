@@ -19,7 +19,13 @@ from ...db.sports import GameStatus, SportsGame, SportsLeague, SportsTeam
 from ...game_metadata.models import GameContext, StandingsEntry, TeamRatings
 from ...services.game_status import compute_status_flags
 from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
-from .schemas import GameSummary, JobResponse, LiveSnapshot, ScrapeRunConfig, ScoreObject, SocialPostEntry
+from .schemas import (
+    GameSummary,
+    JobResponse,
+    LiveSnapshot,
+    ScrapeRunConfig,
+    SocialPostEntry,
+)
 from .schemas.common import _score_obj
 
 
@@ -242,7 +248,7 @@ def summarize_game(
     game: SportsGame,
     has_flow: bool | None = None,
     *,
-    flags: "_GameSummaryFlags | None" = None,
+    flags: _GameSummaryFlags | None = None,
     latest_play_period: int | None = None,
     latest_play_clock: str | None = None,
 ) -> GameSummary:

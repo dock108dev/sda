@@ -62,7 +62,7 @@ class ModelMetrics:
         if n == 0:
             return {"accuracy": 0.0, "sample_count": 0}
 
-        correct = sum(1 for a, p in zip(y_true, y_pred) if a == p)
+        correct = sum(1 for a, p in zip(y_true, y_pred, strict=False) if a == p)
         accuracy = correct / n
 
         result: dict[str, Any] = {
@@ -100,8 +100,8 @@ class ModelMetrics:
         if n == 0:
             return {"mae": 0.0, "rmse": 0.0, "sample_count": 0}
 
-        abs_errors = [abs(a - p) for a, p in zip(y_true, y_pred)]
-        sq_errors = [(a - p) ** 2 for a, p in zip(y_true, y_pred)]
+        abs_errors = [abs(a - p) for a, p in zip(y_true, y_pred, strict=False)]
+        sq_errors = [(a - p) ** 2 for a, p in zip(y_true, y_pred, strict=False)]
 
         mae = sum(abs_errors) / n
         rmse = math.sqrt(sum(sq_errors) / n)
@@ -184,7 +184,7 @@ class ModelMetrics:
         for key in all_keys:
             val_a = metrics_a.get(key)
             val_b = metrics_b.get(key)
-            if not isinstance(val_a, (int, float)) or not isinstance(val_b, (int, float)):
+            if not isinstance(val_a, int | float) or not isinstance(val_b, int | float):
                 continue
 
             diff = val_b - val_a
@@ -229,7 +229,7 @@ def _ensure_2d(proba: list[list[float]] | list[float]) -> list[list[float]]:
     """Convert 1-D probability list to 2-D (binary classification)."""
     if not proba:
         return []
-    if isinstance(proba[0], (list, tuple)):
+    if isinstance(proba[0], list | tuple):
         return proba  # type: ignore[return-value]
     # 1-D: treat as positive class probability for binary
     return [[1.0 - p, p] for p in proba]  # type: ignore[union-attr]
@@ -256,7 +256,7 @@ def _log_loss(
     total = 0.0
     n = len(y_true)
 
-    for true_label, probs in zip(y_true, y_proba):
+    for true_label, probs in zip(y_true, y_proba, strict=False):
         idx = label_to_idx.get(true_label)
         if idx is None or idx >= len(probs):
             total += -math.log(eps)
@@ -288,7 +288,7 @@ def _brier_score(
     total = 0.0
     n = len(y_true)
 
-    for true_label, probs in zip(y_true, y_proba):
+    for true_label, probs in zip(y_true, y_proba, strict=False):
         one_hot = [0.0] * n_classes
         idx = label_to_idx.get(true_label)
         if idx is not None and idx < n_classes:

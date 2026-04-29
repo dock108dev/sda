@@ -12,7 +12,6 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 logger = logging.getLogger(__name__)
 
 

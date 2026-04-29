@@ -37,7 +37,7 @@ def generate_pipeline_coverage_report(self, report_date_str: str | None = None) 
 
 async def _run_coverage_report(report_date_str: str | None) -> dict:
     """Compute and upsert the coverage report for the given date."""
-    from sqlalchemy import and_, select
+    from sqlalchemy import select
 
     import app.db.flow  # noqa: F401 — resolve SportsGame relationships
     import app.db.mlb_advanced  # noqa: F401
@@ -66,8 +66,7 @@ async def _run_coverage_report(report_date_str: str | None) -> dict:
 
     logger.info("coverage_report_start", extra={"report_date": str(report_date)})
 
-    async with _task_db() as sf:
-        async with sf() as db:
+    async with _task_db() as sf, sf() as db:
             # ── 1. FINAL/archived games for the target day ────────────────────
             games_stmt = (
                 select(SportsGame.id, SportsLeague.code)

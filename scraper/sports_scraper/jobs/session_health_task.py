@@ -19,7 +19,6 @@ from ..config import settings
 from ..logging import logger
 from ..social.session_health import (
     CIRCUIT_BREAKER_THRESHOLD,
-    get_cached_health,
     get_consecutive_failures,
     probe_session_health,
     record_health,

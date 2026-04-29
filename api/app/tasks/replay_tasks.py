@@ -11,13 +11,12 @@ import logging
 import traceback
 from collections import defaultdict
 from datetime import UTC, date, datetime
-
-from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 from typing import Any
 
 from app.celery_app import celery_app
 from app.tasks._task_infra import _complete_job_run, _start_job_run, _task_db
 from app.tasks._training_helpers import build_rolling_profile
+from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 logger = logging.getLogger(__name__)
 

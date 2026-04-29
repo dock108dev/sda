@@ -12,8 +12,8 @@ from app.db import AsyncSession, get_db
 from app.db.flow import SportsGameFlow
 from app.db.sports import GameStatus, SportsGame, SportsGamePlay
 from app.routers.sports.game_timeline import (
-    FLOW_VERSION,
     _GAME_STATUS_TO_FLOW_STATUS,
+    FLOW_VERSION,
     _compute_eta_minutes,
     _to_score,
 )

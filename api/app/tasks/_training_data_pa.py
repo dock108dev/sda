@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import UTC, date, datetime
-
-from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
+from datetime import date
 from typing import TYPE_CHECKING
 
 from app.tasks._training_helpers import build_rolling_profile, stats_to_metrics
+from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

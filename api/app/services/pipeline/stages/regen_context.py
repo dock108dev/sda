@@ -31,7 +31,7 @@ class RegenFailureContext(BaseModel):
         cls,
         reasons: list[str],
         regen_attempt: int = 1,
-    ) -> "RegenFailureContext":
+    ) -> RegenFailureContext:
         """Build from the flat GateDecision.failures list.
 
         Args:

@@ -363,7 +363,7 @@ async def load_and_attach_embedded_tweets(
 
 
 async def validate_embedded_tweet_ids(
-    session: "AsyncSession",
+    session: AsyncSession,
     blocks: list[dict[str, Any]],
     game_id: int | None = None,
 ) -> list[dict[str, Any]]:

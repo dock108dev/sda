@@ -170,7 +170,7 @@ def _extract_minutes(stats: dict[str, Any]) -> float | None:
             minutes_val = float(minutes_val)
         except ValueError:
             minutes_val = None
-    return float(minutes_val) if isinstance(minutes_val, (int, float)) else None
+    return float(minutes_val) if isinstance(minutes_val, int | float) else None
 
 
 def _get_int_stat(stats: dict[str, Any], key: str) -> int | None:
@@ -253,13 +253,13 @@ def _extract_toi(stats: dict[str, Any]) -> str | None:
 
     # Try minutes field (stored as decimal, e.g., 21.2 means 21 min 12 sec)
     minutes_val = stats.get("minutes")
-    if isinstance(minutes_val, (int, float)) and minutes_val > 0:
+    if isinstance(minutes_val, int | float) and minutes_val > 0:
         mins = int(minutes_val)
         secs = int(round((minutes_val - mins) * 60))
         return f"{mins}:{secs:02d}"
 
     # If toi stored as seconds, convert to MM:SS
-    if isinstance(toi, (int, float)):
+    if isinstance(toi, int | float):
         minutes = int(toi) // 60
         seconds = int(toi) % 60
         return f"{minutes}:{seconds:02d}"

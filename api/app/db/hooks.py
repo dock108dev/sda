@@ -16,9 +16,9 @@ import threading
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session
 
-from .sports import GameStatus, SportsGame
 from . import external_id_validators as _ext_validators  # noqa: F401 — registers JSONB validators
 from . import jsonb_validators as _jsonb_validators  # noqa: F401 — registers JSONB validators
+from .sports import GameStatus, SportsGame
 
 _pending = threading.local()
 

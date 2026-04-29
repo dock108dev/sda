@@ -43,8 +43,9 @@ def _render(template_name: str, context: dict) -> str:  # type: ignore[type-arg]
 
 async def _send_smtp(*, to: str, subject: str, html: str) -> None:
     """Deliver via SMTP using aiosmtplib."""
-    import aiosmtplib
     from email.message import EmailMessage
+
+    import aiosmtplib
 
     msg = EmailMessage()
     msg["From"] = settings.mail_from

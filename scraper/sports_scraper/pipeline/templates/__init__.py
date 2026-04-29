@@ -13,9 +13,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .mlb import render_blocks as _mlb_blocks
 from .nba import render_blocks as _nba_blocks
 from .nfl import render_blocks as _nfl_blocks
-from .mlb import render_blocks as _mlb_blocks
 from .nhl import render_blocks as _nhl_blocks
 
 

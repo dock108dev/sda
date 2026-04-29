@@ -18,15 +18,25 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from .base import Base
 from . import hooks as _hooks  # noqa: F401 — registers ORM event listeners
 from . import telemetry as _telemetry  # noqa: F401 — registers CircuitBreakerTripEvent mapper
-from .club import Club  # noqa: F401 — register ORM model for Alembic autogenerate
-from .magic_link import MagicLinkToken  # noqa: F401 — register ORM model for Alembic autogenerate
-from .onboarding import ClubClaim, OnboardingSession  # noqa: F401 — register ORM models for Alembic autogenerate
-from .stripe import ProcessedStripeEvent, StripeCustomer, StripeSubscription, WebhookDeliveryAttempt  # noqa: F401
 from .audit import AuditEvent  # noqa: F401 — register ORM model for Alembic autogenerate
-from .golf_pools import PoolLifecycleEvent  # noqa: F401 — register ORM model for Alembic autogenerate
+from .base import Base
+from .club import Club  # noqa: F401 — register ORM model for Alembic autogenerate
+from .golf_pools import (
+    PoolLifecycleEvent,  # noqa: F401 — register ORM model for Alembic autogenerate
+)
+from .magic_link import MagicLinkToken  # noqa: F401 — register ORM model for Alembic autogenerate
+from .onboarding import (  # noqa: F401 — register ORM models for Alembic autogenerate
+    ClubClaim,
+    OnboardingSession,
+)
+from .stripe import (  # noqa: F401
+    ProcessedStripeEvent,
+    StripeCustomer,
+    StripeSubscription,
+    WebhookDeliveryAttempt,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine

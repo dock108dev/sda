@@ -168,7 +168,7 @@ async def _lineup_from_boxscores(
     def _sort_key(r):
         s = r.stats or {}
         order = s.get("battingOrder", s.get("batting_order", 999))
-        if isinstance(order, (int, float)) and order < 900:
+        if isinstance(order, int | float) and order < 900:
             return (0, order)
         ab = s.get("atBats", s.get("at_bats", 0)) or 0
         return (1, -ab)

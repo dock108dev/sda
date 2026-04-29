@@ -24,7 +24,6 @@ from .flow_tasks import (
 )
 from .flow_trigger_tasks import (
     backfill_missing_flows,
-    sweep_missing_flows,
     trigger_flow_for_game,
 )
 from .golf_tasks import (  # noqa: F401
@@ -56,9 +55,11 @@ from .polling_tasks import (
 # Re-export all tasks for Celery discovery
 from .scrape_tasks import (
     poll_game_calendars,
-    run_bulk_backfill,
     run_scheduled_ingestion,
     run_scrape_job,
+)
+from .session_health_task import (  # noqa: F401
+    check_playwright_session_health,
 )
 from .social_tasks import (
     collect_game_social,
@@ -77,9 +78,6 @@ from .timeline_tasks import (
 )
 from .utility_tasks import (
     clear_scraper_cache_task,
-)
-from .session_health_task import (  # noqa: F401
-    check_playwright_session_health,
 )
 
 __all__ = [

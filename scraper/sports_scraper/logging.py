@@ -16,10 +16,7 @@ from .config import settings
 
 def _normalize_log_level(level: str | None, environment: str) -> int:
     env = environment.lower()
-    if level:
-        normalized = level.strip().upper()
-    else:
-        normalized = "INFO" if env == "production" else "DEBUG"
+    normalized = level.strip().upper() if level else "INFO" if env == "production" else "DEBUG"
     return logging._nameToLevel.get(normalized, logging.INFO)
 
 

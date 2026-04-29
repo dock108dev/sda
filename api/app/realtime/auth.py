@@ -18,10 +18,8 @@ logger = logging.getLogger(__name__)
 def _check_api_key(api_key: str | None, *, client_label: str) -> bool:
     """Validate an API key. Returns True if valid."""
     if not settings.api_key:
-        if settings.environment in {"production", "staging"}:
-            return False
-        # Dev mode: allow unauthenticated
-        return True
+        # Without a configured key: reject in prod/staging; allow unauthenticated in dev.
+        return settings.environment not in {"production", "staging"}
 
     if not api_key:
         logger.warning("realtime_auth_missing_key", extra={"client": client_label})

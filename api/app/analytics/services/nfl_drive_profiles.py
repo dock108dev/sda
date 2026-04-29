@@ -8,11 +8,9 @@ converted into drive outcome probabilities by ``nfl_drive_weights``.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 logger = logging.getLogger(__name__)
 

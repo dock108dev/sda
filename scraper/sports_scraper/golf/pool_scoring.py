@@ -31,7 +31,7 @@ Column naming conventions (from the Alembic migration):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
@@ -69,7 +69,7 @@ def _auto_activate_pools(session: Session) -> list[dict[str, Any]]:
 
     Returns list of activation events for logging.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     events: list[dict[str, Any]] = []
 
     # --- Auto-lock: entry_deadline has passed ---
@@ -128,7 +128,7 @@ def _auto_activate_pools(session: Session) -> list[dict[str, Any]]:
         try:
             starts_at = datetime.fromisoformat(starts_at_str)
             if starts_at.tzinfo is None:
-                starts_at = starts_at.replace(tzinfo=timezone.utc)
+                starts_at = starts_at.replace(tzinfo=UTC)
         except (ValueError, TypeError):
             logger.warning(
                 "golf_pool_bad_scoring_starts_at",

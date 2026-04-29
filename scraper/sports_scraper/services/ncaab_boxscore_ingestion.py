@@ -43,7 +43,6 @@ def populate_ncaab_games_from_schedule(
 
     Returns number of new games created.
     """
-    from ..db import db_models
     from ..live.ncaab import NCAABLiveFeedClient
     from ..models import TeamIdentity
     from ..persistence.games import upsert_game_stub

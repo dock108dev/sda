@@ -87,7 +87,7 @@ class MLBPitchOutcomeModel(BaseModel):
         if hasattr(self._model, "predict_proba"):
             proba = self._model.predict_proba([vec])[0]
             classes = list(self._model.classes_)
-            return _normalize({str(c): float(p) for c, p in zip(classes, proba)})
+            return _normalize({str(c): float(p) for c, p in zip(classes, proba, strict=False)})
         return self._predict_rule_based(features)
 
     def _predict_rule_based(self, features: dict[str, Any]) -> dict[str, float]:

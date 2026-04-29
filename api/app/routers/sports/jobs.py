@@ -103,6 +103,7 @@ async def cancel_job_run(
     if run.phase == "data_backfill" and run.leagues:
         try:
             import redis.asyncio as aioredis
+
             from ...config import settings
 
             r = aioredis.from_url(settings.redis_url, decode_responses=True)

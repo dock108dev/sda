@@ -16,10 +16,10 @@ from celery import shared_task
 from sqlalchemy import select
 
 from ..config_sports import get_odds_enabled_leagues, validate_league_code
-from ..odds.client import QuotaExceededError
 from ..db import db_models, get_session
 from ..logging import logger
 from ..models import IngestionConfig
+from ..odds.client import QuotaExceededError
 from ..odds.synchronizer import OddsSynchronizer
 from ..utils.datetime_utils import today_et
 from ..utils.redis_lock import (

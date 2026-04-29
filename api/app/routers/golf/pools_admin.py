@@ -5,8 +5,9 @@ from __future__ import annotations
 import csv
 import io
 import uuid
+from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any, AsyncIterator
+from typing import Any
 
 from fastapi import Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -25,7 +26,6 @@ from app.db.golf_pools import (
     GolfPoolEntryScore,
     GolfPoolEntryScorePlayer,
 )
-
 from app.dependencies.roles import require_admin
 from app.services.entitlement import EntitlementService
 from app.services.pool_lifecycle import ACTION_MAP, PoolStateMachine, TransitionError

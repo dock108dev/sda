@@ -67,7 +67,6 @@ def check_game_status_nba(session, game, *, client=None) -> GameProcessResult:
 
 def process_game_pbp_nba(session, game, *, client=None) -> GameProcessResult:
     """Fetch and persist PBP for a single NBA game."""
-    from ..db import db_models
     from ..live.nba import NBALiveFeedClient
     from ..persistence.plays import upsert_plays
     from ..utils.datetime_utils import now_utc

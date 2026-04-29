@@ -80,7 +80,7 @@ class HTMLCache:
             filename = f"scoreboard_{parsed.query.replace('&', '_').replace('=', '')}.html"
         else:
             # Fallback: hash the URL
-            url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+            url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()[:12]
             filename = f"page_{url_hash}.html"
 
         # Drop year/season directory to avoid mis-bucketing when season differs from current year

@@ -9,7 +9,8 @@ strategy and a Redis-based match cache shared across all Celery workers.
 from __future__ import annotations
 
 import json
-from datetime import date as _date_type, datetime, timedelta
+from datetime import date as _date_type
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
@@ -61,6 +62,7 @@ def _cache_get(key: str) -> int | None:
     """Get a game_id from Redis cache. Returns None on miss or error."""
     try:
         import redis as redis_lib
+
         from ..config import settings
         r = redis_lib.from_url(settings.redis_url, decode_responses=True)
         val = r.get(key)
@@ -75,6 +77,7 @@ def _cache_set(key: str, game_id: int) -> None:
     """Cache a positive match. NEVER cache negatives (None)."""
     try:
         import redis as redis_lib
+
         from ..config import settings
         r = redis_lib.from_url(settings.redis_url, decode_responses=True)
         r.set(key, str(game_id), ex=_GAME_CACHE_TTL)
@@ -86,6 +89,7 @@ def _cache_delete(key: str) -> None:
     """Delete a cache entry (used when a game is deleted)."""
     try:
         import redis as redis_lib
+
         from ..config import settings
         r = redis_lib.from_url(settings.redis_url, decode_responses=True)
         r.delete(key)

@@ -85,7 +85,10 @@ def build_odds_table(
             if not side_lines:
                 continue
             # Higher price is better for the bettor in American odds
-            best = max(side_lines, key=lambda l: l["price"] if l["price"] is not None else float("-inf"))
+            best = max(
+                side_lines,
+                key=lambda line: line["price"] if line["price"] is not None else float("-inf"),
+            )
             best["isBest"] = True
 
         result.append({

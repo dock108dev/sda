@@ -269,10 +269,7 @@ def compute_derived_metrics(
             win_price = metrics.get(win_ml_key)
             is_upset = metrics.get("moneyline_upset", False)
             odds_str = _fmt_american_odds(win_price)
-            if is_upset:
-                lbl = f"{win_abbr} upset"
-            else:
-                lbl = f"{win_abbr} won"
+            lbl = f"{win_abbr} upset" if is_upset else f"{win_abbr} won"
             if odds_str:
                 lbl += f" ({odds_str})"
             metrics["ml_outcome_label"] = lbl

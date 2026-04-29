@@ -7,7 +7,7 @@ Pure computational helpers are in render_prompt_helpers.py.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from .regen_context import RegenFailureContext
 from .render_helpers import detect_overtime_info

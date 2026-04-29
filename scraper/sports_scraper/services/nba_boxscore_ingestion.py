@@ -23,13 +23,12 @@ from sqlalchemy.orm import Session
 from ..db import db_models
 from ..logging import logger
 from ..models import TeamIdentity
-from ..persistence.games import upsert_game_stub
 from ..persistence.boxscores import (
     PlayerBoxscoreStats,
     upsert_player_boxscores,
     upsert_team_boxscores,
 )
-from ..persistence.games import _normalize_status, resolve_status_transition
+from ..persistence.games import _normalize_status, resolve_status_transition, upsert_game_stub
 from ..utils.datetime_utils import end_of_et_day_utc, now_utc, start_of_et_day_utc, to_et_date
 from .pbp_nba import populate_nba_game_ids
 

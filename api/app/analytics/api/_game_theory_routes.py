@@ -261,7 +261,7 @@ def _build_game_node(req: MinimaxTreeAction) -> GameNode | float:
 async def post_minimax(req: MinimaxRequest) -> dict[str, Any]:
     """Solve a sequential game tree using minimax with alpha-beta pruning."""
     root = _build_game_node(req.tree)
-    if isinstance(root, (int, float)):
+    if isinstance(root, int | float):
         return {"optimal_action": "", "action_values": {}, "depth": 0}
     try:
         result = solve_minimax(root, depth=req.depth)

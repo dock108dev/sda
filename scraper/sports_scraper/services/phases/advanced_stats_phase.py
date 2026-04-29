@@ -6,7 +6,7 @@ itself so it can be backfilled standalone.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 from ...db import db_models
 from ...logging import logger

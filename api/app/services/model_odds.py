@@ -20,7 +20,6 @@ from app.analytics.calibration.uncertainty import (
 )
 from app.services.ev import american_to_implied, implied_to_american
 
-
 # ---------------------------------------------------------------------------
 # Data types
 # ---------------------------------------------------------------------------
@@ -114,10 +113,7 @@ def compute_model_odds(
     target_bet_line = implied_to_american(target_p) if 0.01 < target_p < 0.99 else 0.0
 
     # Strong = target + additional 2% edge (same direction, same clamp)
-    if is_favorite:
-        strong_p = max(0.501, target_p - 0.02)
-    else:
-        strong_p = min(0.499, target_p + 0.02)
+    strong_p = max(0.501, target_p - 0.02) if is_favorite else min(0.499, target_p + 0.02)
     strong_p = max(0.01, min(0.99, strong_p))
     strong_bet_line = implied_to_american(strong_p) if 0.01 < strong_p < 0.99 else 0.0
 

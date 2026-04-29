@@ -36,14 +36,7 @@ def _should_fetch_pbp(game, status_result) -> bool:
         return True
 
     # If the game just went final in this cycle, do one last PBP fetch
-    if (
-        status_result
-        and status_result.transition
-        and status_result.transition.get("to") == db_models.GameStatus.final.value
-    ):
-        return True
-
-    return False
+    return bool(status_result and status_result.transition and status_result.transition.get("to") == db_models.GameStatus.final.value)
 
 
 def _poll_single_game_pbp(session, game) -> dict:
@@ -77,7 +70,6 @@ def _poll_single_game_pbp(session, game) -> dict:
 
 def _poll_nba_game(session, game) -> dict:
     """Poll a single NBA game via the NBA live API."""
-    from ..db import db_models
     from ..live.nba import NBALiveFeedClient
     from ..services.game_processors import (
         check_game_status_nba,
@@ -123,7 +115,6 @@ def _poll_nba_game(session, game) -> dict:
 
 def _poll_nhl_game(session, game) -> dict:
     """Poll a single NHL game via the NHL live API."""
-    from ..db import db_models
     from ..live.nhl import NHLLiveFeedClient
     from ..services.game_processors import (
         check_game_status_nhl,
@@ -175,7 +166,6 @@ def _poll_nhl_game(session, game) -> dict:
 
 def _poll_mlb_game(session, game) -> dict:
     """Poll a single MLB game via the MLB Stats API."""
-    from ..db import db_models
     from ..live.mlb import MLBLiveFeedClient
     from ..services.game_processors import (
         check_game_status_mlb,
@@ -227,7 +217,6 @@ def _poll_mlb_game(session, game) -> dict:
 
 def _poll_nfl_game(session, game) -> dict:
     """Poll a single NFL game via the ESPN API."""
-    from ..db import db_models
     from ..live.nfl import NFLLiveFeedClient
     from ..services.game_processors import (
         check_game_status_nfl,

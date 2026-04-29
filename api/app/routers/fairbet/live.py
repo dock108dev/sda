@@ -437,7 +437,7 @@ async def fairbet_live(
         bets_map, {"Pinnacle"}, max_age_seconds=SHARP_REF_MAX_AGE_SECONDS
     )
 
-    for group_key, bet_keys in market_groups.items():
+    for _group_key, bet_keys in market_groups.items():
         pairs, unpaired = _pair_opposite_sides(bet_keys)
 
         for key_a, key_b in pairs:

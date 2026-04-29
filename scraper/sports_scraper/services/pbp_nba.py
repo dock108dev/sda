@@ -91,8 +91,8 @@ def _probe_historical_game_ids(
     """
     import httpx
 
-    from ..utils.cache import APICache
     from ..config import settings
+    from ..utils.cache import APICache
     from ..utils.date_utils import season_from_date
 
     season = season_from_date(start_date, "NBA")

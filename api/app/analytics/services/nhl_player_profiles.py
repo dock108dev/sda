@@ -9,6 +9,7 @@ adjust goal probability.
 from __future__ import annotations
 
 import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -162,7 +163,7 @@ def _aggregate_to_shot_probs(
     missed = DEFAULT_EVENT_PROBS["missed_shot"]
 
     # Save absorbs remainder
-    save_prob = max(0.0, 1.0 - goal_prob - blocked - missed)
+    max(0.0, 1.0 - goal_prob - blocked - missed)
 
     return {
         "goal_probability": round(goal_prob, 4),

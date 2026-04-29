@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from ..models import NormalizedPlay
 
 
-def _notify_pbp_event(session: "Session", game_id: int) -> None:
+def _notify_pbp_event(session: Session, game_id: int) -> None:
     """Emit pg_notify('pbp_event', ...) within the current transaction. Best-effort."""
     try:
         payload = json.dumps({"game_id": game_id, "event_type": "pbp_event"})

@@ -76,7 +76,7 @@ def minimax(
     if node.is_maximizer:
         value = -math.inf
         for action, child in node.actions.items():
-            if isinstance(child, (int, float)):
+            if isinstance(child, int | float):
                 child_value = float(child)
             else:
                 _, child_value = minimax(child, depth - 1, alpha, beta)
@@ -89,7 +89,7 @@ def minimax(
     else:
         value = math.inf
         for action, child in node.actions.items():
-            if isinstance(child, (int, float)):
+            if isinstance(child, int | float):
                 child_value = float(child)
             else:
                 _, child_value = minimax(child, depth - 1, alpha, beta)
@@ -113,7 +113,7 @@ def _evaluate_at_cutoff(node: GameNode) -> tuple[str, float]:
     if node.is_maximizer:
         value = -math.inf
         for action, child in node.actions.items():
-            if isinstance(child, (int, float)):
+            if isinstance(child, int | float):
                 child_value = float(child)
             else:
                 raise ValueError(
@@ -125,7 +125,7 @@ def _evaluate_at_cutoff(node: GameNode) -> tuple[str, float]:
     else:
         value = math.inf
         for action, child in node.actions.items():
-            if isinstance(child, (int, float)):
+            if isinstance(child, int | float):
                 child_value = float(child)
             else:
                 raise ValueError(
@@ -156,7 +156,7 @@ def solve_minimax(
     action_values: dict[str, float] = {}
 
     for action, child in node.actions.items():
-        if isinstance(child, (int, float)):
+        if isinstance(child, int | float):
             action_values[action] = float(child)
         else:
             _, val = minimax(child, depth - 1)

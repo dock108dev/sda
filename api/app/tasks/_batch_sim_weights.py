@@ -300,9 +300,6 @@ async def try_build_lineup_weights(
         fetch_consensus_lineup,
         get_team_external_ref,
     )
-    from app.analytics.services.mlb_rotation_service import (
-        predict_probable_starter,
-    )
     from app.analytics.services.lineup_reconstruction import (
         get_starting_pitcher,
         reconstruct_lineup_from_pbp,
@@ -311,6 +308,9 @@ async def try_build_lineup_weights(
         build_lineup_weights,
         pitching_metrics_from_profile,
         regress_pitcher_profile,
+    )
+    from app.analytics.services.mlb_rotation_service import (
+        predict_probable_starter,
     )
     from app.analytics.services.profile_service import get_pitcher_rolling_profile
 

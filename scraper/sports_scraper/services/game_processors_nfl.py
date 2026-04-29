@@ -72,7 +72,6 @@ def check_game_status_nfl(session, game, *, client=None) -> GameProcessResult:
 
 def process_game_pbp_nfl(session, game, *, client=None) -> GameProcessResult:
     """Fetch and persist PBP for a single NFL game."""
-    from ..db import db_models
     from ..live.nfl import NFLLiveFeedClient
     from ..persistence.plays import upsert_plays
     from ..utils.datetime_utils import now_utc

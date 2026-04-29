@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -41,7 +40,7 @@ class CoverageReportEntryResponse(BaseModel):
     sport: str
     game_id: int
     has_flow: bool
-    gap_reason: Optional[str] = None
+    gap_reason: str | None = None
     created_at: datetime
 
 
@@ -58,8 +57,8 @@ class PaginatedCoverageReportResponse(BaseModel):
 async def get_coverage_report_entries(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=50, ge=1, le=200),
-    sport: Optional[str] = Query(default=None),
-    report_date: Optional[date] = Query(default=None),
+    sport: str | None = Query(default=None),
+    report_date: date | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedCoverageReportResponse:
     """Return paginated per-game pipeline coverage entries sorted by report_date desc."""
@@ -120,7 +119,7 @@ class SportBreakdownEntry(BaseModel):
     flows_count: int
     missing_count: int
     fallback_count: int
-    avg_quality_score: Optional[float] = None
+    avg_quality_score: float | None = None
 
 
 class CoverageReportResponse(BaseModel):
@@ -134,7 +133,7 @@ class CoverageReportResponse(BaseModel):
     total_flows: int
     total_missing: int
     total_fallbacks: int
-    avg_quality_score: Optional[float] = None
+    avg_quality_score: float | None = None
     created_at: datetime
     updated_at: datetime
 

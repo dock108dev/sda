@@ -343,10 +343,7 @@ def _find_team_by_name(
                 db_name_norm = _normalize_ncaab_name_for_matching(db_name or "")
                 db_short_norm = _normalize_ncaab_name_for_matching(db_short_name or "")
                 if (
-                    normalized_input == db_name_norm or
-                    normalized_input == db_short_norm or
-                    _ncaab_substring_match(normalized_input, db_name_norm) or
-                    _ncaab_substring_match(normalized_input, db_short_norm)
+                    normalized_input in (db_name_norm, db_short_norm) or _ncaab_substring_match(normalized_input, db_name_norm) or _ncaab_substring_match(normalized_input, db_short_norm)
                 ):
                     candidate_ids.append(team_id)
     else:
@@ -465,7 +462,7 @@ def _find_team_by_name(
             elif normalized_input:
                 db_name_norm = _normalize_ncaab_name_for_matching(team.name or "")
                 db_short_norm = _normalize_ncaab_name_for_matching(team.short_name or "")
-                if normalized_input == db_name_norm or normalized_input == db_short_norm:
+                if normalized_input in (db_name_norm, db_short_norm):
                     exact_matches.append(cid)
 
         if exact_matches:

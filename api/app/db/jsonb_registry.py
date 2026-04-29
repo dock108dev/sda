@@ -22,7 +22,6 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
-
 # ---------------------------------------------------------------------------
 # Typed error
 # ---------------------------------------------------------------------------
@@ -46,13 +45,13 @@ class ExternalIdsSchema(RootModel[dict[str, Any]]):
     """Flat dict[str, str | int] — no nested objects, arrays, booleans, or nulls."""
 
     @model_validator(mode="after")
-    def _check_flat_str_or_int(self) -> "ExternalIdsSchema":
+    def _check_flat_str_or_int(self) -> ExternalIdsSchema:
         for key, val in self.root.items():
             if not isinstance(key, str):
                 raise ValueError(
                     f"all keys must be strings, got key {key!r} ({type(key).__name__})"
                 )
-            if isinstance(val, bool) or not isinstance(val, (str, int)):
+            if isinstance(val, bool) or not isinstance(val, str | int):
                 raise ValueError(
                     f"[{key!r}] must be str or int, got {type(val).__name__!r}"
                 )

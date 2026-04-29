@@ -34,10 +34,10 @@ import re
 from dataclasses import dataclass, field
 
 from .grader_rules.generic_phrases import (
-    DENSITY_THRESHOLD,
     GENERIC_PHRASE_WEIGHT,
+)
+from .grader_rules.generic_phrases import (
     detect_per_block as _detect_generic_per_block,
-    phrase_density as _generic_phrase_density,
 )
 
 logger = logging.getLogger(__name__)

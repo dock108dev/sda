@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import UTC, date, datetime
-
-from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
+from datetime import date
 from typing import TYPE_CHECKING
 
 from app.tasks._training_data_pa import _derive_pa_outcome  # noqa: F401
 from app.tasks._training_helpers import build_rolling_profile, get_game_score
+from app.utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -357,7 +356,7 @@ async def _load_mlb_game_training_data_impl(
 
 
 async def _load_sport_game_training_data_impl(
-    db: "AsyncSession",
+    db: AsyncSession,
     date_start: str | None,
     date_end: str | None,
     *,
@@ -554,7 +553,7 @@ async def _load_nba_game_training_data(
     date_end: str | None,
     *,
     rolling_window: int = 30,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """Load NBA game training data using rolling team profiles."""
     from app.db.nba_advanced import NBAGameAdvancedStats
@@ -586,7 +585,7 @@ async def _load_nhl_game_training_data(
     date_end: str | None,
     *,
     rolling_window: int = 30,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """Load NHL game training data using rolling team profiles."""
     from app.db.nhl_advanced import NHLGameAdvancedStats
@@ -618,7 +617,7 @@ async def _load_ncaab_game_training_data(
     date_end: str | None,
     *,
     rolling_window: int = 30,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """Load NCAAB game training data using rolling team profiles."""
     from app.db.ncaab_advanced import NCAABGameAdvancedStats
@@ -650,7 +649,7 @@ async def _load_nfl_game_training_data(
     date_end: str | None,
     *,
     rolling_window: int = 30,
-    db: "AsyncSession | None" = None,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
     """Load NFL game training data using rolling team profiles."""
     from app.db.nfl_advanced import NFLGameAdvancedStats

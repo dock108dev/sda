@@ -270,7 +270,7 @@ async def execute_analyze_drama(stage_input: StageInput) -> StageOutput:
     quarter_weights = drama_result.get("quarter_weights", DEFAULT_QUARTER_WEIGHTS)
 
     # Ensure all quarters in the game have weights
-    for q_key in quarter_summary.keys():
+    for q_key in quarter_summary:
         if q_key not in quarter_weights:
             quarter_weights[q_key] = 1.0
 

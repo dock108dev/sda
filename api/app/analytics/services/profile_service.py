@@ -227,7 +227,7 @@ async def get_team_rolling_profile(
 
     aggregated: dict[str, float] = {}
     for key in all_metrics[0]:
-        vw = [(m[key], w) for m, w in zip(all_metrics, weights) if key in m]
+        vw = [(m[key], w) for m, w in zip(all_metrics, weights, strict=False) if key in m]
         if vw:
             aggregated[key] = round(_weighted_mean(vw), 4)
 
@@ -401,7 +401,7 @@ def profile_to_nhl_probabilities(profile: dict[str, float]) -> dict[str, float]:
     for use by the NHL game simulator.
     """
     shooting = profile.get("shooting_pct", 0.09)
-    save = profile.get("save_pct", 0.91)
+    profile.get("save_pct", 0.91)
     xgoals_pct = profile.get("xgoals_pct", 0.50)
     corsi = profile.get("corsi_pct", 0.50)
 

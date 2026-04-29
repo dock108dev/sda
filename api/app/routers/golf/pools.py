@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func as sa_func, select
+from sqlalchemy import func as sa_func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.audit as audit
@@ -24,7 +25,6 @@ from app.db.golf_pools import (
     GolfPoolEntryScore,
     GolfPoolEntryScorePlayer,
 )
-
 from app.services.entitlement import EntitlementService
 from app.services.entry_rate_limit import (
     ENTRY_RATE_WINDOW_SECONDS,
@@ -39,6 +39,7 @@ from .pools_helpers import (
     get_player_names,
     get_pool_or_404,
     serialize_entry,
+    serialize_pick,
     serialize_pool,
     validate_entry_picks,
 )
@@ -359,9 +360,8 @@ async def submit_entry(
     if pool.status not in ("open", "draft"):
         raise HTTPException(status_code=400, detail="Pool is not accepting entries")
 
-    if pool.entry_deadline:
-        if datetime.now(timezone.utc) > pool.entry_deadline:
-            raise HTTPException(status_code=400, detail="Entry deadline has passed")
+    if pool.entry_deadline and datetime.now(UTC) > pool.entry_deadline:
+        raise HTTPException(status_code=400, detail="Entry deadline has passed")
 
     effective_max = (
         pool.max_entries_per_email

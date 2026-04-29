@@ -14,7 +14,6 @@ from .game_stats_helpers import (
     format_player_stat_hint,
 )
 
-
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 

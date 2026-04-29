@@ -14,10 +14,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.inference.model_inference_engine import ModelInferenceEngine
-from app.dependencies.roles import require_admin
 from app.analytics.models.core.model_registry import ModelRegistry
 from app.analytics.services.model_service import ModelService
 from app.db import get_db
+from app.dependencies.roles import require_admin
 
 router = APIRouter()
 
@@ -161,14 +161,15 @@ async def get_models(
 
     # Sort
     if sort_by:
-        key_fn: Any
-        if sort_by == "created_at":
-            key_fn = lambda m: m.get("created_at") or ""
-        elif sort_by == "version":
-            key_fn = lambda m: m.get("version") or 0
-        else:
-            key_fn = lambda m: m.get("metrics", {}).get(sort_by, 0) or 0
-        models.sort(key=key_fn, reverse=sort_desc)
+
+        def model_sort_key(m: dict[str, Any]) -> Any:
+            if sort_by == "created_at":
+                return m.get("created_at") or ""
+            if sort_by == "version":
+                return m.get("version") or 0
+            return m.get("metrics", {}).get(sort_by, 0) or 0
+
+        models.sort(key=model_sort_key, reverse=sort_desc)
 
     return {"models": models, "count": len(models)}
 

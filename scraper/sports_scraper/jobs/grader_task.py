@@ -8,11 +8,15 @@ finalize_moments.py immediately after the flow is persisted to the DB.
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from celery import shared_task
 
 from ..celery_app import DEFAULT_QUEUE
 from ..logging import logger as scraper_logger
+
+if TYPE_CHECKING:
+    from ..pipeline.grader import GraderResult
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +60,7 @@ def grade_flow_task(
 
     from ..config import settings
     from ..db import db_models, get_session
-    from ..pipeline.grader import GraderResult, grade_flow
+    from ..pipeline.grader import grade_flow
 
     if is_template_fallback:
         scraper_logger.info(
@@ -237,9 +241,9 @@ def grade_flow_task(
     }
 
 
-def _escalate_flow(result: "GraderResult", game_id: int, reason: str = "low_combined_score") -> None:
+def _escalate_flow(result: GraderResult, game_id: int, reason: str = "low_combined_score") -> None:
     """Write a quality_review_queue row for a flow that scored below threshold."""
-    from ..db import db_models, get_session
+    from ..db import get_session
 
     tier_breakdown: dict = {
         "tier1": {

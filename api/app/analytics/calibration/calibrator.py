@@ -65,7 +65,7 @@ class SimCalibrator:
         y = [1.0 if o else 0.0 for o in actual_outcomes]
 
         # Brier before calibration
-        brier_before = sum((p - a) ** 2 for p, a in zip(sim_wps, y)) / len(y)
+        brier_before = sum((p - a) ** 2 for p, a in zip(sim_wps, y, strict=False)) / len(y)
 
         # Fit isotonic regression
         self._model = IsotonicRegression(
@@ -76,7 +76,7 @@ class SimCalibrator:
 
         # Brier after calibration
         calibrated = [self.calibrate(p) for p in sim_wps]
-        brier_after = sum((c - a) ** 2 for c, a in zip(calibrated, y)) / len(y)
+        brier_after = sum((c - a) ** 2 for c, a in zip(calibrated, y, strict=False)) / len(y)
 
         # Reliability diagram bins
         bins = _reliability_bins(sim_wps, calibrated, y)
@@ -143,10 +143,10 @@ class SimCalibrator:
             raise RuntimeError("Calibrator has not been trained.")
 
         y = [1.0 if o else 0.0 for o in actual_outcomes]
-        brier_before = sum((p - a) ** 2 for p, a in zip(sim_wps, y)) / len(y)
+        brier_before = sum((p - a) ** 2 for p, a in zip(sim_wps, y, strict=False)) / len(y)
 
         calibrated = [self.calibrate(p) for p in sim_wps]
-        brier_after = sum((c - a) ** 2 for c, a in zip(calibrated, y)) / len(y)
+        brier_after = sum((c - a) ** 2 for c, a in zip(calibrated, y, strict=False)) / len(y)
 
         bins = _reliability_bins(sim_wps, calibrated, y)
 

@@ -13,16 +13,16 @@ import logging
 import math
 from dataclasses import dataclass, field
 
-from .ev_config import (
-    INCLUDED_BOOKS,
-    EVStrategyConfig,
-    market_confidence_tier,
-)
 from .ev_confidence import (  # noqa: F401 — re-exported
     book_spread_factor,
     extrapolation_distance_factor,
     pinnacle_alignment_factor,
     probability_confidence,
+)
+from .ev_config import (
+    INCLUDED_BOOKS,
+    EVStrategyConfig,
+    market_confidence_tier,
 )
 from .ev_eligibility import (  # noqa: F401 — re-exported
     _evaluate_consensus_eligibility,

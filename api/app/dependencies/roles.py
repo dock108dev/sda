@@ -9,8 +9,8 @@ Provides:
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlparse
 from typing import Any
+from urllib.parse import urlparse
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
@@ -169,7 +169,7 @@ def _is_admin_origin(request: Request) -> bool:
         except ValueError:
             pass
     origins_cfg = getattr(settings, "admin_origins", ())
-    if not isinstance(origins_cfg, (list, tuple, set, frozenset)):
+    if not isinstance(origins_cfg, list | tuple | set | frozenset):
         origins_cfg = ()
     allowed_origins = {str(origin) for origin in origins_cfg if origin}
     return any(candidate in allowed_origins for candidate in candidates)

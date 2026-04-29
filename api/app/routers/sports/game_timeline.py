@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import timedelta, timezone
+from datetime import UTC, timedelta
 from datetime import datetime as dt
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -50,10 +50,10 @@ _GAME_STATUS_TO_FLOW_STATUS: dict[str, str] = {
 
 def _compute_eta_minutes(game: SportsGame) -> int:
     """Minutes until recap is expected (clamped to 0 when overdue)."""
-    now = dt.now(timezone.utc)
+    now = dt.now(UTC)
     end = game.end_time
     if end is not None and end.tzinfo is None:
-        end = end.replace(tzinfo=timezone.utc)
+        end = end.replace(tzinfo=UTC)
     eta_dt = (end if end else now) + timedelta(minutes=15)
     return max(0, math.ceil((eta_dt - now).total_seconds() / 60))
 

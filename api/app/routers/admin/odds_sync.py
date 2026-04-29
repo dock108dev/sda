@@ -6,7 +6,6 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
-
 from ...celery_client import get_celery_app
 
 router = APIRouter()

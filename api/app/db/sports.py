@@ -26,7 +26,12 @@ from .base import Base
 
 if TYPE_CHECKING:
     from .flow import SportsGameTimelineArtifact
-    from .mlb_advanced import MLBGameAdvancedStats, MLBPlayerFieldingStats, MLBPitcherGameStats, MLBPlayerAdvancedStats
+    from .mlb_advanced import (
+        MLBGameAdvancedStats,
+        MLBPitcherGameStats,
+        MLBPlayerAdvancedStats,
+        MLBPlayerFieldingStats,
+    )
     from .nba_advanced import NBAGameAdvancedStats, NBAPlayerAdvancedStats
     from .ncaab_advanced import NCAABGameAdvancedStats, NCAABPlayerAdvancedStats
     from .nfl_advanced import NFLGameAdvancedStats, NFLPlayerAdvancedStats

@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import json
 import os
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from ..logging import logger
@@ -53,13 +54,13 @@ def _probe_impl(auth_token: str | None, ct0: str | None) -> SessionHealthResult:
     if find_spec("playwright.sync_api") is None:
         return SessionHealthResult(
             is_valid=False,
-            checked_at=datetime.now(timezone.utc).isoformat(),
+            checked_at=datetime.now(UTC).isoformat(),
             failure_reason="playwright not installed",
         )
 
     from playwright.sync_api import sync_playwright
 
-    checked_at = datetime.now(timezone.utc).isoformat()
+    checked_at = datetime.now(UTC).isoformat()
     pw = None
     browser = None
     try:
@@ -162,7 +163,7 @@ def probe_session_health(
     if not resolved_token or not resolved_ct0:
         return SessionHealthResult(
             is_valid=False,
-            checked_at=datetime.now(timezone.utc).isoformat(),
+            checked_at=datetime.now(UTC).isoformat(),
             failure_reason="X_AUTH_TOKEN or X_CT0 not configured",
             auth_token_present=bool(resolved_token),
             ct0_present=bool(resolved_ct0),
@@ -179,7 +180,7 @@ def probe_session_health(
         ex.shutdown(wait=False)
         return SessionHealthResult(
             is_valid=False,
-            checked_at=datetime.now(timezone.utc).isoformat(),
+            checked_at=datetime.now(UTC).isoformat(),
             failure_reason=f"probe timed out after {_PROBE_THREAD_TIMEOUT_SECONDS}s",
             auth_token_present=bool(resolved_token),
             ct0_present=bool(resolved_ct0),

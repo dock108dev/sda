@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-
 _DEFAULT_HEADERS: tuple[tuple[bytes, bytes], ...] = (
     (b"content-security-policy", b"default-src 'self'"),
     (

@@ -261,7 +261,7 @@ def validate_social_independence(
 
         # Narrative content should be identical (excluding embedded tweets)
         for i, (with_social, without_social) in enumerate(
-            zip(blocks_with_social, blocks_without_social)
+            zip(blocks_with_social, blocks_without_social, strict=False)
         ):
             # Compare narratives
             if with_social.get("narrative") != without_social.get("narrative"):

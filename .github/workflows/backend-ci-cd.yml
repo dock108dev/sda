@@ -90,8 +90,29 @@ jobs:
             --cov-report=html:coverage_html \
             --cov-fail-under=80
 
+  lint-ruff:
+    name: Lint · Ruff (api + scraper)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install Ruff
+        run: |
+          uv venv --python 3.12
+          uv pip install ruff==0.8.6
+      - name: Ruff check
+        run: |
+          source .venv/bin/activate
+          ruff check api/app scraper/sports_scraper
+
   lint-web:
-    name: Lint & Type-check Web
+    name: Lint, type-check & test Web
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -109,6 +130,9 @@ jobs:
       - name: Lint
         working-directory: web
         run: pnpm lint
+      - name: CI smoke test (Vitest)
+        working-directory: web
+        run: pnpm test
 
   lint-no-swap-score:
     name: Lint · No _swap_score
@@ -232,7 +256,7 @@ jobs:
           python scripts/check_js_core_sync.py
 
   security-bandit:
-    name: Security · bandit scan (api/)
+    name: Security · bandit (api + scraper)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -245,6 +269,47 @@ jobs:
         run: |
           # -ll = fail only on medium+ severity. Config lives in api/pyproject.toml.
           bandit -r api/app -c api/pyproject.toml -ll
+      - name: Run bandit on scraper/sports_scraper
+        run: |
+          bandit -r scraper/sports_scraper -c scraper/pyproject.toml -ll
+
+  security-pip-audit:
+    name: Security · pip-audit (api + scraper)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install deps and audit
+        run: |
+          uv venv --python 3.12
+          source .venv/bin/activate
+          uv pip install pip-audit
+          uv pip install -r api/requirements.txt
+          uv pip install -e ./scraper
+          uv pip install --upgrade pip
+          pip-audit --skip-editable
+
+  security-pnpm-audit:
+    name: Security · pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Install and audit
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm audit
 
   security-detect-secrets:
     name: Security · detect-secrets scan
@@ -278,6 +343,7 @@ jobs:
     needs:
       - test-scraper
       - test-api
+      - lint-ruff
       - lint-web
       - lint-no-swap-score
       - lint-camel-case-schemas
@@ -287,6 +353,8 @@ jobs:
       - lint-fk-ondelete
       - lint-js-core-sync
       - security-bandit
+      - security-pip-audit
+      - security-pnpm-audit
       - security-detect-secrets
       - security-sql-interpolation
     steps:

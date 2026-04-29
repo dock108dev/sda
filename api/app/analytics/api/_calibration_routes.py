@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.dependencies.roles import require_admin
 from app.db.analytics import AnalyticsPredictionOutcome
+from app.dependencies.roles import require_admin
 
 router = APIRouter()
 

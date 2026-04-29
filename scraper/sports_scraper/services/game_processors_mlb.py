@@ -72,7 +72,6 @@ def check_game_status_mlb(session, game, *, client=None) -> GameProcessResult:
 
 def process_game_pbp_mlb(session, game, *, client=None) -> GameProcessResult:
     """Fetch and persist PBP for a single MLB game."""
-    from ..db import db_models
     from ..live.mlb import MLBLiveFeedClient
     from ..persistence.plays import upsert_plays
     from ..utils.datetime_utils import now_utc

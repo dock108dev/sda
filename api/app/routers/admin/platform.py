@@ -23,8 +23,8 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import AsyncGenerator
 from datetime import UTC, date, datetime, time, timedelta
-from typing import AsyncGenerator
 from zoneinfo import ZoneInfo
 
 import redis.asyncio as aioredis

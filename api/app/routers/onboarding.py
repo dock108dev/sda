@@ -15,8 +15,6 @@ from html import escape
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
-
-from app.utils.sanitize import sanitize_text
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +28,7 @@ from app.services.onboarding_state_machine import (
     SessionStatus,
     assert_can_transition,
 )
+from app.utils.sanitize import sanitize_text
 
 logger = logging.getLogger(__name__)
 

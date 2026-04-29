@@ -8,6 +8,7 @@ Protocol: JSON messages (subscribe/unsubscribe)
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 
@@ -146,8 +147,6 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         logger.exception("ws_error", extra={"conn": conn.id})
     finally:
         ping_task.cancel()
-        try:
+        with contextlib.suppress(TimeoutError, asyncio.CancelledError):
             await asyncio.wait_for(ping_task, timeout=1.0)
-        except (TimeoutError, asyncio.CancelledError):
-            pass
         realtime_manager.disconnect(conn)

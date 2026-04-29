@@ -35,7 +35,7 @@ def _validate_flat_str_or_int_dict(value: Any, field_name: str) -> None:
                 message=f"all keys must be strings, got key {key!r} of type {type(key).__name__!r}",
                 field_path=str(key),
             )
-        if isinstance(val, bool) or not isinstance(val, (str, int)):
+        if isinstance(val, bool) or not isinstance(val, str | int):
             raise JsonbValidationError(
                 column_name=field_name,
                 message=f"[{key!r}] must be a string or integer, got {type(val).__name__!r}",

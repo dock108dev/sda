@@ -82,10 +82,7 @@ def map_tweet_to_segment(
     elapsed = (tweet_time - game_start).total_seconds()
     duration_seconds = estimated_duration_mins * 60
 
-    if duration_seconds <= 0:
-        elapsed_ratio = 0.0
-    else:
-        elapsed_ratio = max(0.0, min(1.0, elapsed / duration_seconds))
+    elapsed_ratio = 0.0 if duration_seconds <= 0 else max(0.0, min(1.0, elapsed / duration_seconds))
 
     # Map ratio to segment based on league
     if league_upper == "NCAAB":

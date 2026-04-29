@@ -37,7 +37,6 @@ try:
         SportsGameFlow,
         SportsGameTimelineArtifact,
     )
-    from app.db.quality_review import QualityReviewQueue  # type: ignore
     from app.db.mlb_advanced import (  # type: ignore
         MLBGameAdvancedStats,
         MLBPitcherGameStats,
@@ -70,6 +69,7 @@ try:
         PipelineStageStatus,
         PipelineTrigger,
     )
+    from app.db.quality_review import QualityReviewQueue  # type: ignore
     from app.db.resolution import (  # type: ignore
         EntityResolution,
         PBPSnapshot,

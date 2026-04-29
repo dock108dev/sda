@@ -1049,7 +1049,8 @@ async def execute_validate_blocks(
     # deterministic template blocks guaranteed to pass all structural checks.
     fallback_used = False
     if decision == "FALLBACK":
-        from .templates import GameMiniBox as _TMiniBox, TemplateEngine as _TEngine
+        from .templates import GameMiniBox as _TMiniBox
+        from .templates import TemplateEngine as _TEngine
 
         _ctx = stage_input.game_context or {}
         _home_team = _ctx.get("home_team_name", _ctx.get("home_team", "Home Team"))

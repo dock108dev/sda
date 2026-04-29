@@ -14,7 +14,6 @@ from .flow import SportsGameFlow, SportsGameTimelineArtifact
 from .jsonb_registry import validate_jsonb_column
 from .sports import SportsGamePlay, SportsPlayerBoxscore, SportsTeamBoxscore
 
-
 # ---------------------------------------------------------------------------
 # SportsTeamBoxscore — raw_stats_json
 # ---------------------------------------------------------------------------

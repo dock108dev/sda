@@ -489,7 +489,7 @@ def _extract_feature_importance(
         return None
 
     items = []
-    for name, imp in zip(feature_names, importances):
+    for name, imp in zip(feature_names, importances, strict=False):
         items.append({"name": name, "importance": round(float(imp), 6)})
 
     items.sort(key=lambda x: x["importance"], reverse=True)

@@ -6,9 +6,8 @@ Used by render_prompts.py to format context lines and detect game patterns.
 
 from __future__ import annotations
 
-from typing import Any
-
 import re
+from typing import Any
 
 from .game_stats_helpers import _extract_last_name, compute_lead_context
 

@@ -57,10 +57,7 @@ def filter_stale_books(
         # consensus), fall back to the most recent book's timestamp as the
         # reference.  This catches a stale line at one book when the rest of
         # the market has already moved — the main source of phantom +40% edges.
-        if sharp_ts is None:
-            ref_ts = max(b["observed_at"] for b in books)
-        else:
-            ref_ts = sharp_ts
+        ref_ts = max(b["observed_at"] for b in books) if sharp_ts is None else sharp_ts
 
         fresh: list[dict[str, Any]] = []
         for b in books:

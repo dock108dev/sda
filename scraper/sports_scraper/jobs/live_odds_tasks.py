@@ -8,6 +8,7 @@ Dispatched by the live_orchestrator_tick task at sport-appropriate cadences.
 
 from __future__ import annotations
 
+import contextlib
 from collections import defaultdict
 
 from celery import shared_task
@@ -130,10 +131,8 @@ def poll_live_odds_mainline(league_code: str, game_ids: list[int]) -> dict:
             return {"status": "empty", "league": league_code}
 
         rate_remaining = None
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             rate_remaining = int(response.headers.get("x-requests-remaining", ""))
-        except (ValueError, TypeError):
-            pass
 
         # Build event_id -> game_id lookup
         event_to_game: dict[str, int] = {}
@@ -281,7 +280,8 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
     from ..config import settings
     from ..live_odds.redis_store import write_live_snapshot
     from ..odds.client import PROP_MARKETS, OddsAPIClient
-    from ..utils.odds_quota import is_quota_exceeded as _quota_exceeded, record_usage as _record
+    from ..utils.odds_quota import is_quota_exceeded as _quota_exceeded
+    from ..utils.odds_quota import record_usage as _record
     from ..utils.provider_request import provider_request
 
     lock_key = f"lock:live_odds_props:{league_code}"

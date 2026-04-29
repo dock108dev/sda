@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import date, datetime
 
 from sqlalchemy import exists, not_
@@ -57,10 +58,8 @@ def select_games_for_pbp_nfl_api(
     results = []
     for game_id, espn_game_id in rows:
         if espn_game_id:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 results.append((game_id, int(espn_game_id)))
-            except (ValueError, TypeError):
-                pass
     return results
 
 

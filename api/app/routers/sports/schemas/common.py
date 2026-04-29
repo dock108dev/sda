@@ -24,12 +24,12 @@ class ScoreObject(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def coerce_list(cls, v: Any) -> Any:
-        if isinstance(v, (list, tuple)) and len(v) >= 2:
+        if isinstance(v, list | tuple) and len(v) >= 2:
             return {"home": v[0], "away": v[1]}
         return v
 
 
-def _score_obj(home: int | None, away: int | None) -> "ScoreObject | None":
+def _score_obj(home: int | None, away: int | None) -> ScoreObject | None:
     """Build a ScoreObject from nullable ints; returns None if both are None."""
     if home is None and away is None:
         return None

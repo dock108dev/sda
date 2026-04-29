@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import redis
 from fastapi import APIRouter, HTTPException
@@ -59,8 +59,8 @@ class SessionHealthResponse(BaseModel):
     model_config = _ALIAS_CFG
 
     is_valid: bool
-    checked_at: Optional[str] = None
-    failure_reason: Optional[str] = None
+    checked_at: str | None = None
+    failure_reason: str | None = None
     auth_token_present: bool = False
     ct0_present: bool = False
     circuit_open: bool = False
@@ -339,7 +339,7 @@ async def get_session_health() -> SessionHealthResponse:
     if checked_at_str:
         try:
             checked_at = datetime.fromisoformat(checked_at_str)
-            age = (datetime.now(timezone.utc) - checked_at).total_seconds()
+            age = (datetime.now(UTC) - checked_at).total_seconds()
             stale = age > _HEALTH_STALE_SECONDS
         except Exception:
             stale = True
