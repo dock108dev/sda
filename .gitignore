@@ -27,7 +27,6 @@ out/
 .turbo/
 *.tsbuildinfo
 package-lock.json
-pnpm-lock.yaml
 yarn.lock
 
 # IDE
@@ -64,6 +63,7 @@ infra/social-scraper-profile/
 data/
 *.coverage
 coverage_html/
+web/coverage/
 
 # Benchmark artifacts
 .benchmarks/
