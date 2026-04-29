@@ -112,7 +112,7 @@ jobs:
           ruff check api/app scraper/sports_scraper
 
   lint-web:
-    name: Lint, type-check & test Web
+    name: Lint, type-check, test & coverage (Web)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -130,9 +130,17 @@ jobs:
       - name: Lint
         working-directory: web
         run: pnpm lint
-      - name: CI smoke test (Vitest)
+      # Fails if coverage is below 90% (statements, branches, lines, functions); see web/vitest.config.ts coverage.thresholds
+      - name: Unit tests + coverage (Vitest, ≥90% gates)
         working-directory: web
-        run: pnpm test
+        run: pnpm run test:coverage
+      - name: Upload web coverage report
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: web-coverage
+          path: web/coverage
+          if-no-files-found: warn
 
   lint-no-swap-score:
     name: Lint · No _swap_score

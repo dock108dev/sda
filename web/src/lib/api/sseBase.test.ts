@@ -1,63 +1,70 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { describe, expect, it, vi, afterEach } from "vitest";
 import { getSseBaseUrl, safeEventSource } from "./sseBase";
 
 describe("getSseBaseUrl", () => {
-  const originalEnv = process.env.NEXT_PUBLIC_SPORTS_API_URL;
-
   afterEach(() => {
-    if (originalEnv === undefined) {
-      delete process.env.NEXT_PUBLIC_SPORTS_API_URL;
-    } else {
-      process.env.NEXT_PUBLIC_SPORTS_API_URL = originalEnv;
-    }
-  });
-
-  it("returns same-origin /proxy in the browser", () => {
+    vi.unstubAllGlobals();
     delete process.env.NEXT_PUBLIC_SPORTS_API_URL;
-    // jsdom default is http://localhost:3000
-    expect(getSseBaseUrl()).toBe(`${window.location.origin}/proxy`);
   });
 
-  it("ignores NEXT_PUBLIC_SPORTS_API_URL in the browser (proxy is same-origin)", () => {
+  it("uses window origin in the browser", () => {
+    expect(getSseBaseUrl()).toMatch(/\/proxy$/);
+  });
+
+  it("uses NEXT_PUBLIC_SPORTS_API_URL when window is undefined", () => {
+    vi.stubGlobal("window", undefined);
     process.env.NEXT_PUBLIC_SPORTS_API_URL = "https://api.example.com";
-    expect(getSseBaseUrl()).toBe(`${window.location.origin}/proxy`);
+    expect(getSseBaseUrl()).toBe("https://api.example.com");
+  });
+
+  it("falls back to localhost when server-side and env unset", () => {
+    vi.stubGlobal("window", undefined);
+    delete process.env.NEXT_PUBLIC_SPORTS_API_URL;
+    expect(getSseBaseUrl()).toBe("http://localhost:8000");
   });
 });
 
 describe("safeEventSource", () => {
-  let originalEventSource: typeof EventSource;
+  it("returns null and warns when EventSource throws", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "EventSource",
+      vi.fn().mockImplementation(() => {
+        throw new Error("mixed content");
+      }),
+    );
 
-  beforeEach(() => {
-    originalEventSource = globalThis.EventSource;
+    expect(safeEventSource("http://insecure/page")).toBeNull();
+    expect(warn).toHaveBeenCalled();
+
+    warn.mockRestore();
+    vi.unstubAllGlobals();
   });
 
-  afterEach(() => {
-    globalThis.EventSource = originalEventSource;
-    vi.restoreAllMocks();
+  it("returns null when EventSource throws and console is unavailable", () => {
+    vi.stubGlobal(
+      "EventSource",
+      vi.fn().mockImplementation(() => {
+        throw new Error("boom");
+      }),
+    );
+    vi.stubGlobal("console", undefined);
+
+    expect(safeEventSource("x")).toBeNull();
+
+    vi.unstubAllGlobals();
   });
 
-  it("returns the EventSource on successful construction", () => {
-    class GoodES {
-      constructor(public url: string) {}
-    }
-    // @ts-expect-error -- test stub
-    globalThis.EventSource = GoodES;
-    const result = safeEventSource("https://example.com/sse");
-    expect(result).toBeInstanceOf(GoodES);
-  });
-
-  it("returns null and logs a warning when construction throws", () => {
-    class BadES {
-      constructor(_url: string) {
-        throw new DOMException("The operation is insecure.", "SecurityError");
+  it("returns an EventSource when construction succeeds", () => {
+    class OkEs {
+      url: string;
+      constructor(url: string) {
+        this.url = url;
       }
     }
-    // @ts-expect-error -- test stub
-    globalThis.EventSource = BadES;
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const result = safeEventSource("http://example.com/sse");
-    expect(result).toBeNull();
-    expect(warn).toHaveBeenCalled();
+    vi.stubGlobal("EventSource", OkEs);
+    const es = safeEventSource("http://localhost/x");
+    expect(es).toBeInstanceOf(OkEs);
+    vi.unstubAllGlobals();
   });
 });

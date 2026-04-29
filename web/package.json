@@ -8,7 +8,8 @@
     "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "eslint .",
     "test": "vitest run src/ci-smoke.test.ts",
-    "test:all": "vitest run"
+    "test:all": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@dock108/js-core": "file:../packages/js-core",
@@ -25,6 +26,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "jsdom": "^29.0.2",

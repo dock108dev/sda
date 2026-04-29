@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
-import { handleClubRouting } from "./proxy";
+import { handleClubRouting, proxy } from "./proxy";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -77,6 +77,15 @@ describe("subdomain routing (SUBDOMAIN_ROUTING=true)", () => {
     expect(location.replace(/\/$/, "")).toBe("https://the-pines-gc.app.example.com");
   });
 
+  it("uses localhost as default BASE_DOMAIN for subdomain redirects", () => {
+    const prev = process.env.BASE_DOMAIN;
+    delete process.env.BASE_DOMAIN;
+    const req = makeRequest("http://localhost/clubs/foo-bar");
+    const res = handleClubRouting(req);
+    expect(res?.headers.get("location")).toContain("foo-bar.localhost");
+    if (prev !== undefined) process.env.BASE_DOMAIN = prev;
+  });
+
   it("301-redirects /clubs/<slug>/path preserving trailing path", () => {
     const req = makeRequest("http://app.example.com/clubs/the-pines-gc/leaderboard");
     const res = handleClubRouting(req);
@@ -131,5 +140,74 @@ describe("subdomain routing (SUBDOMAIN_ROUTING=true)", () => {
     expect(pathSlug).toBe("riverside-cc");
     expect(subdomainSlug).toBe("riverside-cc");
     expect(pathSlug).toBe(subdomainSlug);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// proxy() — admin Basic auth (runs after club routing)
+// ---------------------------------------------------------------------------
+
+describe("proxy() admin Basic auth", () => {
+  beforeEach(() => {
+    vi.stubEnv("SUBDOMAIN_ROUTING", "false");
+    vi.stubEnv("BASE_DOMAIN", "localhost");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("returns 500 when ADMIN_PASSWORD is not set", async () => {
+    vi.stubEnv("ADMIN_PASSWORD", "");
+    const req = new NextRequest("http://localhost:3000/admin/sports");
+    const res = await proxy(req);
+    expect(res.status).toBe(500);
+  });
+
+  it("returns 401 when Authorization header is missing", async () => {
+    vi.stubEnv("ADMIN_PASSWORD", "secret");
+    const req = new NextRequest("http://localhost:3000/admin/sports");
+    expect((await proxy(req)).status).toBe(401);
+  });
+
+  it("returns 401 for non-Basic authorization", async () => {
+    vi.stubEnv("ADMIN_PASSWORD", "secret");
+    const req = new NextRequest("http://localhost:3000/admin/sports", {
+      headers: { authorization: "Bearer token" },
+    });
+    expect((await proxy(req)).status).toBe(401);
+  });
+
+  it("returns 401 when Basic payload omits colon", async () => {
+    vi.stubEnv("ADMIN_PASSWORD", "secret");
+    const encoded = Buffer.from("nocolonhere", "utf8").toString("base64");
+    const req = new NextRequest("http://localhost:3000/admin/sports", {
+      headers: { authorization: `Basic ${encoded}` },
+    });
+    expect((await proxy(req)).status).toBe(401);
+  });
+
+  it("returns 401 for wrong password", async () => {
+    vi.stubEnv("ADMIN_PASSWORD", "secret");
+    const encoded = Buffer.from("admin:wrongpass", "utf8").toString("base64");
+    const req = new NextRequest("http://localhost:3000/admin/sports", {
+      headers: { authorization: `Basic ${encoded}` },
+    });
+    expect((await proxy(req)).status).toBe(401);
+  });
+
+  it("returns 200 for valid admin Basic credentials", async () => {
+    vi.stubEnv("ADMIN_PASSWORD", "secret");
+    const encoded = Buffer.from("admin:secret", "utf8").toString("base64");
+    const req = new NextRequest("http://localhost:3000/admin/sports", {
+      headers: { authorization: `Basic ${encoded}` },
+    });
+    const res = await proxy(req);
+    expect(res.status).toBe(200);
+  });
+
+  it("applies club routing before requiring admin auth", async () => {
+    vi.stubEnv("ADMIN_PASSWORD", "secret");
+    const req = new NextRequest("http://localhost:3000/clubs/my-club");
+    const res = await proxy(req);
+    expect(res.status).not.toBe(401);
+    expect(slug(res)).toBe("my-club");
   });
 });

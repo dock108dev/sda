@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useLiveOdds } from "./useLiveOdds";
 import type { OddsSnapshot } from "@dock108/js-core";
+import * as fairbet from "@/lib/api/fairbet";
 
 // ---------------------------------------------------------------------------
 // Mock EventSource
@@ -34,6 +35,12 @@ class MockEventSource {
   simulateMessage(data: object) {
     act(() => {
       this.onmessage?.({ data: JSON.stringify(data) });
+    });
+  }
+
+  simulateRawMessage(data: string) {
+    act(() => {
+      this.onmessage?.({ data } as MessageEvent);
     });
   }
 
@@ -113,6 +120,15 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("useLiveOdds", () => {
+  it("swallows errors from initial fetchFairbetLiveOdds", async () => {
+    vi.spyOn(fairbet, "fetchFairbetLiveOdds").mockRejectedValueOnce(new Error("offline"));
+    renderHook(() => useLiveOdds(99));
+    MockEventSource.instances[0].simulateOpen();
+    await act(async () => {
+      await Promise.resolve();
+    });
+  });
+
   it("starts disconnected and subscribes to fairbet:odds channel", () => {
     const { result } = renderHook(() => useLiveOdds(99));
 
@@ -195,6 +211,14 @@ describe("useLiveOdds", () => {
       lastUpdatedAt: null,
     });
 
+    expect(result.current.odds).toHaveLength(0);
+  });
+
+  it("ignores non-JSON SSE payloads", () => {
+    const { result } = renderHook(() => useLiveOdds(99));
+    const es = MockEventSource.instances[0];
+    es.simulateOpen();
+    es.simulateRawMessage("{{{");
     expect(result.current.odds).toHaveLength(0);
   });
 

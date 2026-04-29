@@ -36,6 +36,13 @@ class MockEventSource {
     });
   }
 
+  /** Raw SSE payload (not JSON) to exercise the parse error branch. */
+  simulateRawMessage(data: string) {
+    act(() => {
+      this.onmessage?.({ data } as MessageEvent);
+    });
+  }
+
   simulateError() {
     this.readyState = 2;
     act(() => {
@@ -64,6 +71,19 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("useLiveGameScore", () => {
+  it("swallows errors from initial REST fetch", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    renderHook(() => useLiveGameScore(42));
+    MockEventSource.instances[0].simulateOpen();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+  });
+
   it("starts disconnected and creates an EventSource on mount", () => {
     const { result } = renderHook(() => useLiveGameScore(42));
 
@@ -97,6 +117,26 @@ describe("useLiveGameScore", () => {
     expect(result.current.clock).toBe("10:23");
     expect(result.current.status).toBe("live");
     expect(result.current.isConnected).toBe(true);
+  });
+
+  it("ignores non-JSON SSE payloads", () => {
+    const { result } = renderHook(() => useLiveGameScore(42));
+    const es = MockEventSource.instances[0];
+    es.simulateOpen();
+    es.simulateRawMessage("not valid json{");
+    expect(result.current.score).toBeNull();
+  });
+
+  it("stops scheduling reconnects after max attempts", () => {
+    renderHook(() => useLiveGameScore(42));
+    for (let n = 0; n < 20; n++) {
+      const es = MockEventSource.instances[MockEventSource.instances.length - 1];
+      es.simulateError();
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+    }
+    expect(MockEventSource.instances.length).toBeLessThanOrEqual(11);
   });
 
   it("ignores subscribed and unknown event types without throwing", () => {
