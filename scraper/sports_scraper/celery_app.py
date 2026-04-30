@@ -20,6 +20,8 @@ init_telemetry(environment=settings.environment)
 init_odds_metrics()
 
 HOLD_KEY = "sports:tasks_held"
+STARTUP_HEALTH_PROBE_LOCK_KEY = "playwright:session:startup_probe_dispatched"
+STARTUP_HEALTH_PROBE_LOCK_SECONDS = 5 * 60
 
 
 def _is_held() -> bool:
@@ -436,6 +438,15 @@ def on_worker_ready(sender=None, **kwargs):
     # populated before the first beat-scheduled probe fires at :10/:40.
     # Dispatch async so it doesn't block worker initialisation.
     try:
+        r = _redis.from_url(settings.redis_url, decode_responses=True)
+        if not r.set(
+            STARTUP_HEALTH_PROBE_LOCK_KEY,
+            worker_name,
+            nx=True,
+            ex=STARTUP_HEALTH_PROBE_LOCK_SECONDS,
+        ):
+            logger.info("playwright_session_health_startup_probe_skipped_recent", worker=worker_name)
+            return
         app.send_task("check_playwright_session_health", queue=SOCIAL_QUEUE)
         logger.info("playwright_session_health_startup_probe_dispatched")
     except Exception:

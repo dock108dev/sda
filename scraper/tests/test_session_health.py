@@ -10,8 +10,6 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRAPER_ROOT = REPO_ROOT / "scraper"
 if str(SCRAPER_ROOT) not in sys.path:
@@ -54,6 +52,7 @@ record_health = sh_mod.record_health
 get_cached_health = sh_mod.get_cached_health
 get_consecutive_failures = sh_mod.get_consecutive_failures
 is_circuit_open = sh_mod.is_circuit_open
+is_indeterminate_result = sh_mod.is_indeterminate_result
 probe_session_health = sh_mod.probe_session_health
 
 
@@ -122,6 +121,16 @@ def _valid_result():
     )
 
 
+def _indeterminate_result():
+    return SessionHealthResult(
+        is_valid=False,
+        checked_at="2026-04-18T12:00:00+00:00",
+        failure_reason="indeterminate — neither login wall nor authenticated shell found",
+        auth_token_present=True,
+        ct0_present=True,
+    )
+
+
 class TestRedisHelpers:
     def test_record_health_valid_clears_circuit(self):
         r, store = _make_redis()
@@ -143,6 +152,16 @@ class TestRedisHelpers:
         assert json.loads(store[HEALTH_KEY])["is_valid"] is False
         assert CIRCUIT_OPEN_KEY not in store
         assert int(store[CONSECUTIVE_FAILURES_KEY]) == 1
+        assert returned is False
+
+    def test_record_health_indeterminate_does_not_increment_failure_counter(self):
+        r, store = _make_redis()
+
+        returned = record_health(r, _indeterminate_result())
+
+        assert json.loads(store[HEALTH_KEY])["is_valid"] is False
+        assert CIRCUIT_OPEN_KEY not in store
+        assert CONSECUTIVE_FAILURES_KEY not in store
         assert returned is False
 
     def test_record_health_two_failures_do_not_trip_circuit(self):
@@ -226,6 +245,10 @@ class TestRedisHelpers:
     def test_is_circuit_open_false_when_absent(self):
         r, _ = _make_redis()
         assert is_circuit_open(r) is False
+
+    def test_is_indeterminate_result(self):
+        assert is_indeterminate_result(_indeterminate_result()) is True
+        assert is_indeterminate_result(_invalid_result()) is False
 
 
 # ============================================================================

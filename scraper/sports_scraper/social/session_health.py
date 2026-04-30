@@ -37,6 +37,8 @@ _KEY_TTL_SECONDS = 60 * 60
 # Hard cap for the entire browser session inside the worker thread.
 _PROBE_THREAD_TIMEOUT_SECONDS = 12
 
+_INDETERMINATE_PREFIX = "indeterminate"
+
 
 @dataclass
 class SessionHealthResult:
@@ -45,6 +47,11 @@ class SessionHealthResult:
     failure_reason: str | None = None
     auth_token_present: bool = False
     ct0_present: bool = False
+
+
+def is_indeterminate_result(result: SessionHealthResult) -> bool:
+    """Return True when the probe could not classify X's rendered page."""
+    return bool(result.failure_reason and result.failure_reason.startswith(_INDETERMINATE_PREFIX))
 
 
 def _probe_impl(auth_token: str | None, ct0: str | None) -> SessionHealthResult:
@@ -82,6 +89,7 @@ def _probe_impl(auth_token: str | None, ct0: str | None) -> SessionHealthResult:
         page = context.new_page()
         try:
             page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=7_000)
+            page.wait_for_timeout(1_500)
         except Exception as nav_exc:
             return SessionHealthResult(
                 is_valid=False,
@@ -91,8 +99,10 @@ def _probe_impl(auth_token: str | None, ct0: str | None) -> SessionHealthResult:
                 ct0_present=bool(ct0),
             )
 
-        # Redirect to /login means session is dead
-        if page.url and "/login" in page.url:
+        current_url = page.url or ""
+
+        # Redirect to /login or login flow means session is dead.
+        if "/login" in current_url or "/i/flow/login" in current_url:
             return SessionHealthResult(
                 is_valid=False,
                 checked_at=checked_at,
@@ -101,8 +111,13 @@ def _probe_impl(auth_token: str | None, ct0: str | None) -> SessionHealthResult:
                 ct0_present=bool(ct0),
             )
 
-        login_btn = page.query_selector('[data-testid="loginButton"]')
-        if login_btn:
+        content = page.content()
+        if (
+            page.query_selector('[data-testid="loginButton"]')
+            or page.query_selector('a[href="/login"]')
+            or "Log in to X" in content
+            or "Sign in to X" in content
+        ):
             return SessionHealthResult(
                 is_valid=False,
                 checked_at=checked_at,
@@ -111,8 +126,16 @@ def _probe_impl(auth_token: str | None, ct0: str | None) -> SessionHealthResult:
                 ct0_present=bool(ct0),
             )
 
-        home_link = page.query_selector('[data-testid="AppTabBar_Home_Link"]')
-        if home_link:
+        auth_shell_selectors = (
+            '[data-testid="AppTabBar_Home_Link"]',
+            '[data-testid="AppTabBar_Profile_Link"]',
+            '[data-testid="SideNav_NewTweet_Button"]',
+            '[data-testid="SearchBox_Search_Input"]',
+            'a[aria-label="Home"]',
+            'a[href="/home"]',
+            'a[href="/compose/post"]',
+        )
+        if any(page.query_selector(selector) for selector in auth_shell_selectors):
             return SessionHealthResult(
                 is_valid=True,
                 checked_at=checked_at,
@@ -120,11 +143,11 @@ def _probe_impl(auth_token: str | None, ct0: str | None) -> SessionHealthResult:
                 ct0_present=bool(ct0),
             )
 
-        # Indeterminate — neither login button nor home nav found
+        # Indeterminate: X rendered, but not into a known auth or login state.
         return SessionHealthResult(
             is_valid=False,
             checked_at=checked_at,
-            failure_reason="indeterminate — neither login button nor home nav found",
+            failure_reason=f"{_INDETERMINATE_PREFIX} — neither login wall nor authenticated shell found (url={current_url})",
             auth_token_present=bool(auth_token),
             ct0_present=bool(ct0),
         )
@@ -200,6 +223,9 @@ def record_health(redis_client: Any, result: SessionHealthResult) -> bool:
     if result.is_valid:
         redis_client.delete(CIRCUIT_OPEN_KEY)
         redis_client.delete(CONSECUTIVE_FAILURES_KEY)
+        return False
+
+    if is_indeterminate_result(result):
         return False
 
     # Increment the consecutive-failure counter (atomic; creates key at 0 first).

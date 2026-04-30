@@ -20,6 +20,7 @@ from ..logging import logger
 from ..social.session_health import (
     CIRCUIT_BREAKER_THRESHOLD,
     get_consecutive_failures,
+    is_indeterminate_result,
     probe_session_health,
     record_health,
 )
@@ -63,6 +64,15 @@ def check_playwright_session_health() -> dict:
         logger.info(
             "playwright_session_health_ok",
             checked_at=result.checked_at,
+        )
+    elif is_indeterminate_result(result):
+        logger.warning(
+            "playwright_session_health_indeterminate",
+            reason=result.failure_reason,
+            checked_at=result.checked_at,
+            auth_token_present=result.auth_token_present,
+            ct0_present=result.ct0_present,
+            consecutive_failures=consecutive,
         )
     else:
         logger.error(

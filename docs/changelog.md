@@ -35,6 +35,12 @@ Downstream integration hardening; consumer-facing JSON conventions are summarize
 **CI:**
 - `.github/workflows/backend-ci-cd.yml`: `build` job no longer runs on `pull_request` events. Tests/lint/type-check still run on PRs; image build/push happens only on push-to-main and `workflow_dispatch` with `full_deploy=true`.
 
+**Social scraping:**
+- Playwright session health probes now treat X DOM/interstitial ambiguity as an indeterminate warning instead of an auth failure, preserving the circuit breaker for clear login redirects/login walls. Startup health probes are Redis-throttled so multiple Celery workers cannot enqueue back-to-back probes during deployment.
+
+**Live polling:**
+- Per-game boxscore polling now rolls back aborted DB transactions before continuing, preventing one PostgreSQL deadlock from poisoning the rest of `poll_live_pbp`. Transient DB conflicts such as deadlocks and serialization failures are retried once for the affected game.
+
 ## [2026-04-22]
 
 ### Club Provisioning Domain (Phases 0–3)
