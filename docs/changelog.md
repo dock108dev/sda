@@ -21,6 +21,7 @@ Downstream integration hardening; consumer-facing JSON conventions are summarize
 
 **Rate limiting** (`api/app/middleware/rate_limit.py`):
 - The global tier now keys on `X-API-Key` (separate bucket, default 600 req/min) when present, falling back to per-IP (default 120 req/min). Same key from different IPs shares one bucket; missing key falls back to per-IP. Configurable via `RATE_LIMIT_REQUESTS_KEYED` and `RATE_LIMIT_WINDOW_SECONDS_KEYED`.
+- Admin routes now use a keyed admin bucket when `X-API-Key` is present (default 600 req/min via `ADMIN_RATE_LIMIT_REQUESTS_KEYED`), while no-key admin traffic keeps the tighter per-IP bucket. `/health`, `/healthz`, and `/ready` bypass rate limiting.
 
 **Caching** (new module `app/services/response_cache.py`):
 - `GET /api/games` (TTL 15s) and `GET /api/fairbet/live` (TTL 5s) now Redis-cache by query-param hash. Both emit `Cache-Control: public, max-age=<ttl>` and `X-Cache: HIT|MISS|BYPASS`. Authenticated requests (any `Authorization` or `Cookie` header) bypass the cache to avoid leaking per-user state through a shared key.

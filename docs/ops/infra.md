@@ -215,8 +215,10 @@ docker exec sports-postgres psql -U sports -d sports -c "SELECT COUNT(*) FROM sp
 | `RATE_LIMIT_WINDOW_SECONDS` | No | Per-IP global window in seconds (default: 60) |
 | `RATE_LIMIT_REQUESTS_KEYED` | No | Per-`X-API-Key` global limit, requests per window (default: 600) |
 | `RATE_LIMIT_WINDOW_SECONDS_KEYED` | No | Per-`X-API-Key` global window in seconds (default: 60) |
-| `ADMIN_RATE_LIMIT_REQUESTS` | No | Per-IP admin-tier limit (default: 20) |
+| `ADMIN_RATE_LIMIT_REQUESTS` | No | Per-IP admin-tier limit when no `X-API-Key` is present (default: 20) |
 | `ADMIN_RATE_LIMIT_WINDOW_SECONDS` | No | Per-IP admin-tier window in seconds (default: 60) |
+| `ADMIN_RATE_LIMIT_REQUESTS_KEYED` | No | Per-`X-API-Key` admin-tier limit for proxied/admin clients (default: 600) |
+| `ADMIN_RATE_LIMIT_WINDOW_SECONDS_KEYED` | No | Per-`X-API-Key` admin-tier window in seconds (default: 60) |
 | `FAIRBET_ODDS_CACHE_ENABLED` | No | Enable FairBet odds Redis cache (default: `true`) |
 | `FAIRBET_ODDS_CACHE_TTL_SECONDS` | No | FairBet odds response cache TTL (default: 15) |
 | `FAIRBET_ODDS_SNAPSHOT_TTL_SECONDS` | No | FairBet odds EV-sort snapshot TTL (default: 60) |
@@ -233,7 +235,7 @@ docker compose ps
 docker inspect --format='{{.State.Health.Status}}' sports-api
 ```
 
-The API container health check calls `GET /healthz`, which performs a lightweight database connectivity check and returns `503` when the database is unavailable. Use the same endpoint for deploy verification.
+The API container health check calls `GET /healthz`, which performs a lightweight database connectivity check and returns `503` when the database is unavailable. `/health`, `/healthz`, and `/ready` bypass application rate limiting so probes do not consume request quota.
 
 ---
 

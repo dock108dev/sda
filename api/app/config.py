@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     base_domain: str = Field(default="localhost", alias="BASE_DOMAIN")
 
     # API Authentication
-    # Required in production - all endpoints except /healthz require this key
+    # Required in production - all non-auth, non-health endpoints require this key
     api_key: str | None = Field(default=None, alias="API_KEY")
     # Consumer-scoped API key for /api/v1/ routes. When set, admin and consumer
     # keys are distinct; each is rejected on the other's namespace. When unset,
@@ -91,9 +91,17 @@ class Settings(BaseSettings):
 
     # Per-class rate limits enforced by RateLimitMiddleware.
     # Consumer routes (/api/v1/) use rate_limit_requests / rate_limit_window_seconds.
-    # Admin routes (/api/admin/) use the tighter limits below.
+    # Admin routes (/api/admin/) use tighter IP limits or keyed admin limits.
     admin_rate_limit_requests: int = Field(default=20, alias="ADMIN_RATE_LIMIT_REQUESTS")
-    admin_rate_limit_window_seconds: int = Field(default=60, alias="ADMIN_RATE_LIMIT_WINDOW_SECONDS")
+    admin_rate_limit_window_seconds: int = Field(
+        default=60, alias="ADMIN_RATE_LIMIT_WINDOW_SECONDS"
+    )
+    admin_rate_limit_requests_keyed: int = Field(
+        default=600, alias="ADMIN_RATE_LIMIT_REQUESTS_KEYED"
+    )
+    admin_rate_limit_window_seconds_keyed: int = Field(
+        default=60, alias="ADMIN_RATE_LIMIT_WINDOW_SECONDS_KEYED"
+    )
 
     # JWT / User Authentication
     # AUTH_ENABLED=false skips JWT verification (dev-only; rejected in production by validator)
@@ -244,6 +252,15 @@ class Settings(BaseSettings):
             )
         if self.rate_limit_requests <= 0 or self.rate_limit_window_seconds <= 0:
             raise ValueError("Rate limit settings must be positive integers.")
+        if self.rate_limit_requests_keyed <= 0 or self.rate_limit_window_seconds_keyed <= 0:
+            raise ValueError("Keyed rate limit settings must be positive integers.")
+        if self.admin_rate_limit_requests <= 0 or self.admin_rate_limit_window_seconds <= 0:
+            raise ValueError("Admin rate limit settings must be positive integers.")
+        if (
+            self.admin_rate_limit_requests_keyed <= 0
+            or self.admin_rate_limit_window_seconds_keyed <= 0
+        ):
+            raise ValueError("Keyed admin rate limit settings must be positive integers.")
         if self.fairbet_odds_cache_ttl_seconds <= 0:
             raise ValueError("FAIRBET_ODDS_CACHE_TTL_SECONDS must be positive.")
         if self.fairbet_odds_snapshot_ttl_seconds <= 0:

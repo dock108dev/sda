@@ -334,3 +334,95 @@ class TestPerKeyRateLimiting:
             middleware, _make_scope("/api/games", client_ip="2.2.2.2"), 3
         )
         assert results.count(429) == 1
+
+
+class TestAdminAndHealthRateLimiting:
+    """Admin keyed limits and health endpoint bypasses."""
+
+    async def _drive(self, middleware, scope, count: int) -> list[int]:
+        statuses: list[int] = []
+        last_status: list[int] = []
+
+        async def mock_receive():
+            return {"type": "http.request", "body": b""}
+
+        async def capture_send(message):
+            if message.get("type") == "http.response.start":
+                last_status.append(message.get("status"))
+
+        for _ in range(count):
+            last_status.clear()
+            await middleware(scope, mock_receive, capture_send)
+            statuses.append(last_status[-1] if last_status else 200)
+        return statuses
+
+    @pytest.mark.asyncio
+    async def test_health_paths_bypass_rate_limits(self, monkeypatch):
+        monkeypatch.setattr(settings, "rate_limit_requests", 1)
+        monkeypatch.setattr(settings, "rate_limit_window_seconds", 60)
+        monkeypatch.setattr(settings, "admin_rate_limit_requests", 1)
+        monkeypatch.setattr(settings, "admin_rate_limit_window_seconds", 60)
+
+        async def mock_app(scope, receive, send):
+            pass
+
+        middleware = RateLimitMiddleware(mock_app)
+
+        for path in ("/health", "/healthz", "/ready"):
+            results = await self._drive(
+                middleware,
+                _make_scope(path, client_ip="7.7.7.7"),
+                5,
+            )
+            assert 429 not in results
+
+    @pytest.mark.asyncio
+    async def test_admin_with_api_key_uses_keyed_budget(self, monkeypatch):
+        monkeypatch.setattr(settings, "admin_rate_limit_requests", 1)
+        monkeypatch.setattr(settings, "admin_rate_limit_window_seconds", 60)
+        monkeypatch.setattr(settings, "admin_rate_limit_requests_keyed", 3)
+        monkeypatch.setattr(settings, "admin_rate_limit_window_seconds_keyed", 60)
+
+        async def mock_app(scope, receive, send):
+            pass
+
+        middleware = RateLimitMiddleware(mock_app)
+        path = "/api/admin/sports/games"
+
+        # Same API key across IPs shares the keyed admin bucket.
+        first = await self._drive(
+            middleware,
+            _make_scope(path, client_ip="10.0.0.1", api_key="admin-key"),
+            2,
+        )
+        second = await self._drive(
+            middleware,
+            _make_scope(path, client_ip="10.0.0.2", api_key="admin-key"),
+            1,
+        )
+        assert 429 not in first + second
+
+        fourth = await self._drive(
+            middleware,
+            _make_scope(path, client_ip="10.0.0.3", api_key="admin-key"),
+            1,
+        )
+        assert fourth == [429]
+
+    @pytest.mark.asyncio
+    async def test_admin_without_api_key_still_uses_ip_budget(self, monkeypatch):
+        monkeypatch.setattr(settings, "admin_rate_limit_requests", 1)
+        monkeypatch.setattr(settings, "admin_rate_limit_window_seconds", 60)
+        monkeypatch.setattr(settings, "admin_rate_limit_requests_keyed", 100)
+        monkeypatch.setattr(settings, "admin_rate_limit_window_seconds_keyed", 60)
+
+        async def mock_app(scope, receive, send):
+            pass
+
+        middleware = RateLimitMiddleware(mock_app)
+        results = await self._drive(
+            middleware,
+            _make_scope("/api/admin/sports/games", client_ip="3.3.3.3"),
+            2,
+        )
+        assert results == [200, 429]
