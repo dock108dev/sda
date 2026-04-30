@@ -21,7 +21,6 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # _ColMock — fake SQLAlchemy column that returns a MagicMock for comparisons.
 # Python resolves >= via type(left).__ge__, so this must be a class method.
@@ -295,16 +294,16 @@ class TestSweepMissingFlows:
             patch.object(redis_lock_mod, "acquire_redis_lock", return_value="tok"),
             patch.object(redis_lock_mod, "release_redis_lock") as m_release,
             patch.object(_task_mod, "get_session", return_value=broken_ctx),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                _task_mod.sweep_missing_flows()
+            _task_mod.sweep_missing_flows()
 
         m_release.assert_called_once_with(SWEEP_LOCK, "tok")
 
 
-class TestSweepIncludesRecapFailed:
-    def test_or_filter_called_with_final_and_recap_failed(self):
-        """Sweep must pass both final and recap_failed values to or_() filter."""
+class TestSweepIncludesDispatchStatuses:
+    def test_or_filter_called_with_flow_dispatch_statuses(self):
+        """Sweep must filter by every GameStatus flow-dispatch status."""
         sa_stub = _sa_stub
 
         # Reset call history so we can inspect what this run produces
@@ -314,5 +313,4 @@ class TestSweepIncludesRecapFailed:
 
         assert sa_stub.or_.called, "or_() must be called in the sweep filter"
         call_args = sa_stub.or_.call_args[0]
-        # Two comparisons should be passed to or_() — one for final, one for recap_failed
-        assert len(call_args) == 2
+        assert len(call_args) == len(_task_mod._flow_dispatch_values(_db_models_stub))
