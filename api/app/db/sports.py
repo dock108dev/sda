@@ -58,6 +58,31 @@ class GameStatus(str, Enum):
     recap_ready = "recap_ready"      # Flow generated successfully
     recap_failed = "recap_failed"    # Flow generation failed; eligible for retry via sweep
 
+    @classmethod
+    def final_or_post_final_values(cls) -> frozenset[str]:
+        """Statuses for games that have reached final game state."""
+        return frozenset(
+            {
+                cls.final.value,
+                "completed",
+                "official",
+                cls.recap_pending.value,
+                cls.recap_ready.value,
+                cls.recap_failed.value,
+                cls.archived.value,
+            }
+        )
+
+    @classmethod
+    def flow_dispatch_values(cls) -> frozenset[str]:
+        """Statuses eligible for missing-flow dispatch or retry."""
+        return cls.final_or_post_final_values() - {cls.archived.value}
+
+    @classmethod
+    def is_final_or_post_final_status(cls, status: str | None) -> bool:
+        """Return true when a raw game status has reached final/post-final state."""
+        return bool(status) and status.lower().strip() in cls.final_or_post_final_values()
+
 
 class SportsLeague(Base):
     """Sports leagues (NFL, NCAAF, NBA, NCAAB, MLB, NHL)."""

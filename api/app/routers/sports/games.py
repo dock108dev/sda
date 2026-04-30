@@ -71,7 +71,7 @@ async def list_games(
     finalOnly: bool = Query(
         False,
         alias="finalOnly",
-        description="Only include games with final/completed/official status",
+        description="Only include games that have reached final or post-final status",
     ),
     safe: bool = Query(
         False,

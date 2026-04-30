@@ -5,17 +5,18 @@ One assertion per predicate per GameStatus variant to satisfy ISSUE-008 criteria
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from app.routers.sports.schemas.games import GameMeta, GameSummary
+from app.services.game_status import FINAL_OR_POST_FINAL_STATUSES
 
 # ---------------------------------------------------------------------------
 # Minimal fixture helpers
 # ---------------------------------------------------------------------------
 
-_NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+_NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _make_summary(status: str | None) -> GameSummary:
@@ -130,6 +131,19 @@ def test_game_summary_none_status_all_false(predicate: str) -> None:
     summary = _make_summary(None)
     data = summary.model_dump(by_alias=True)
     assert data[predicate] is False
+
+
+def test_admin_final_filter_statuses_cover_post_final_lifecycle() -> None:
+    """The admin final-only filter includes games after flow/archival status transitions."""
+    assert {
+        "final",
+        "completed",
+        "official",
+        "recap_pending",
+        "recap_ready",
+        "recap_failed",
+        "archived",
+    } == FINAL_OR_POST_FINAL_STATUSES
 
 
 # ---------------------------------------------------------------------------

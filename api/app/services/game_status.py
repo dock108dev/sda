@@ -6,10 +6,16 @@ don't need to duplicate status-parsing logic.
 
 from __future__ import annotations
 
+from ..db.sports import GameStatus
+
 # Statuses that indicate a game is truly done (no more data updates expected)
 FINAL_STATUSES = frozenset({"final", "completed", "official"})
 LIVE_STATUSES = frozenset({"in_progress", "live", "halftime"})
 PREGAME_STATUSES = frozenset({"scheduled", "pregame", "pre_game", "created"})
+
+# Games that have reached final game state, even if downstream recap/archival
+# work has moved them past the literal "final" status.
+FINAL_OR_POST_FINAL_STATUSES = GameStatus.final_or_post_final_values()
 
 # "Truly completed" means final AND no pending corrections — safe to render
 # as fully settled (e.g., for bet grading, final box score display).

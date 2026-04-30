@@ -42,8 +42,7 @@ def ingest_advanced_stats_for_game(session: Session, game_id: int) -> dict:
         logger.warning("ncaab_adv_stats_game_not_found", game_id=game_id)
         return {"game_id": game_id, "status": "not_found"}
 
-    _COMPLETED = {db_models.GameStatus.final.value, db_models.GameStatus.archived.value}
-    if game.status not in _COMPLETED:
+    if not db_models.GameStatus.is_final_or_post_final_status(game.status):
         logger.info("ncaab_adv_stats_skip_not_final", game_id=game_id, status=game.status)
         return {"game_id": game_id, "status": "skipped", "reason": "not_final"}
 

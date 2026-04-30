@@ -34,7 +34,7 @@ from ..db import AsyncSession
 from ..db.flow import SportsGameTimelineArtifact
 from ..db.odds import SportsGameOdds
 from ..db.social import TeamSocialPost
-from ..db.sports import SportsGame, SportsGamePlay
+from ..db.sports import GameStatus, SportsGame, SportsGamePlay
 from ..utils.datetime_utils import now_utc
 from .odds_events import build_odds_events
 from .social_events import build_social_events
@@ -88,7 +88,7 @@ async def generate_timeline_artifact(
         if not game:
             raise TimelineGenerationError("Game not found", status_code=404)
 
-        if not game.is_final:
+        if not GameStatus.is_final_or_post_final_status(game.status):
             raise TimelineGenerationError("Game is not final", status_code=409)
 
         league_code = game.league.code if game.league else "UNK"

@@ -26,7 +26,7 @@ from app.metrics import pipeline_stage_failures_total
 
 from ...db import AsyncSession
 from ...db.pipeline import GamePipelineRun, GamePipelineStage
-from ...db.sports import SportsGame, SportsPlayerBoxscore
+from ...db.sports import GameStatus, SportsGame, SportsPlayerBoxscore
 from ...utils.datetime_utils import now_utc
 from .metrics import increment_published, record_stage_duration
 from .models import PipelineStage, StageInput, StageOutput, StageResult
@@ -123,7 +123,7 @@ class PipelineExecutor:
         if not game:
             raise PipelineExecutionError(f"Game {game_id} not found")
 
-        if not game.is_final:
+        if not GameStatus.is_final_or_post_final_status(game.status):
             raise PipelineExecutionError(f"Game {game_id} is not final (status: {game.status})")
 
         # Create pipeline run

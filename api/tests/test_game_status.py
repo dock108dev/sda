@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from app.services.game_status import compute_status_flags
+from app.db.sports import GameStatus
+from app.services.game_status import FINAL_OR_POST_FINAL_STATUSES, compute_status_flags
 
 
 @pytest.mark.parametrize(
@@ -49,6 +52,24 @@ def test_case_insensitive() -> None:
 def test_whitespace_handling() -> None:
     flags = compute_status_flags("  final  ")
     assert flags["is_final"] is True
+
+
+def test_final_or_post_final_statuses_cover_recap_lifecycle() -> None:
+    assert {
+        "final",
+        "completed",
+        "official",
+        "recap_pending",
+        "recap_ready",
+        "recap_failed",
+        "archived",
+    } == FINAL_OR_POST_FINAL_STATUSES
+    assert GameStatus.final_or_post_final_values() == FINAL_OR_POST_FINAL_STATUSES
+
+
+def test_scraper_status_duplicate_helper_is_absent() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    assert not (repo_root / "scraper/sports_scraper/utils/game_status.py").exists()
 
 
 def test_mutual_exclusivity() -> None:
