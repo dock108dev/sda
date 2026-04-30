@@ -49,6 +49,7 @@ _ONBOARDING_STRICT_WINDOW = 3600
 
 _ADMIN_PREFIX = "/api/admin/"
 _SSE_PREFIX = "/v1/sse"
+_HEALTH_PATHS = frozenset({"/health", "/healthz", "/ready"})
 
 _rl_redis: Any = None
 
@@ -94,6 +95,10 @@ class RateLimitMiddleware:
         request = Request(scope, receive=receive)
         client_ip = request.client.host if request.client else "unknown"
         now = time.time()
+
+        if path in _HEALTH_PATHS:
+            await self.app(scope, receive, send)
+            return
 
         # --- SSE tier (was fully exempt; now keyed, generous budget) ---
         if path.startswith(_SSE_PREFIX):
@@ -206,9 +211,16 @@ class RateLimitMiddleware:
 
         # --- Admin tier ---
         if path.startswith(_ADMIN_PREFIX):
-            admin_limit = settings.admin_rate_limit_requests
-            admin_window = settings.admin_rate_limit_window_seconds
-            admin_times = self._admin_requests[client_ip]
+            api_key = request.headers.get("x-api-key")
+            if api_key:
+                admin_limit = settings.admin_rate_limit_requests_keyed
+                admin_window = settings.admin_rate_limit_window_seconds_keyed
+                bucket_key = f"admin:key:{api_key[:200]}"
+            else:
+                admin_limit = settings.admin_rate_limit_requests
+                admin_window = settings.admin_rate_limit_window_seconds
+                bucket_key = f"admin:ip:{client_ip}"
+            admin_times = self._admin_requests[bucket_key]
             while admin_times and admin_times[0] <= now - admin_window:
                 admin_times.popleft()
             if len(admin_times) >= admin_limit:

@@ -43,12 +43,12 @@
 ## Authentication
 
 Authentication is layered: the API key is the base requirement for all
-endpoints (except `/auth/*` and `/healthz`), and JWT bearer tokens add
+endpoints (except `/auth/*`, `/health`, `/healthz`, and `/ready`), and JWT bearer tokens add
 role-based access on top.
 
 ### 1. API Key (Required for all non-auth endpoints)
 
-Every request (except `/auth/*` signup/login/reset/magic-link and `/healthz`) must
+Every request (except `/auth/*` signup/login/reset/magic-link and health probes) must
 include the `X-API-Key` header. This applies to both admin UI routes
 **and** downstream consumer routes:
 
@@ -333,7 +333,8 @@ Admin-only endpoints for managing user accounts. Secured by API key (admin UI).
 
 ### Health Check Exception
 
-The `/healthz` endpoint does not require authentication to support infrastructure monitoring.
+The `/health`, `/healthz`, and `/ready` endpoints do not require authentication
+or consume rate-limit quota, so infrastructure probes stay isolated from app traffic.
 
 ### Request Correlation
 
@@ -349,13 +350,15 @@ Sliding-window per-tier limits enforced by `api/app/middleware/rate_limit.py`. L
 |---|---|---|---|---|---|
 | **Auth-strict** | `/auth/login`, `/auth/signup`, `/auth/forgot-password`, `/auth/magic-link`, `/auth/reset-password` | 10 req | 60s | client IP + path | hardcoded |
 | **Onboarding-strict** | `/api/onboarding/` | 5 req | 3600s | client IP | hardcoded |
-| **Admin** | `/api/admin/` | 20 req | 60s | client IP | `ADMIN_RATE_LIMIT_REQUESTS`, `ADMIN_RATE_LIMIT_WINDOW_SECONDS` |
+| **Admin / keyed** | `/api/admin/` with `X-API-Key` | **600 req** | 60s | API key | `ADMIN_RATE_LIMIT_REQUESTS_KEYED`, `ADMIN_RATE_LIMIT_WINDOW_SECONDS_KEYED` |
+| **Admin / IP** | `/api/admin/` without `X-API-Key` | 20 req | 60s | client IP | `ADMIN_RATE_LIMIT_REQUESTS`, `ADMIN_RATE_LIMIT_WINDOW_SECONDS` |
 | **Global / keyed** | everything else, when `X-API-Key` is present | **600 req** | 60s | API key | `RATE_LIMIT_REQUESTS_KEYED`, `RATE_LIMIT_WINDOW_SECONDS_KEYED` |
 | **Global / IP** | everything else, no `X-API-Key` | 120 req | 60s | client IP | `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS` |
 
 **Notes:**
-- The keyed and IP buckets on the global tier are independent. Multiple workers behind one IP that all send the same `X-API-Key` share a single keyed bucket.
-- Exempt prefix: `/v1/sse`.
+- The keyed and IP buckets are independent. Multiple workers behind one IP that all send the same `X-API-Key` share a single keyed bucket.
+- Health endpoints `/health`, `/healthz`, and `/ready` bypass rate limiting.
+- SSE `/v1/sse` uses the keyed budget (`X-API-Key`, `api_key` query parameter, or client IP).
 - Store is in-memory per process (single-instance deployments). Horizontal scaling requires a Redis-backed limiter (per-key keying here is the prerequisite).
 
 ---
