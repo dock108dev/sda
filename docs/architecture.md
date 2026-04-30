@@ -47,7 +47,7 @@ Sports Data Admin is the **centralized sports data hub for all Dock108 apps**.
 - **Sports:** NBA, NHL, NCAAB, MLB, NFL
 - **Sources:** NBA CDN API (cdn.nba.com — boxscores + PBP, current season), Basketball Reference (NBA historical), NHL API (api-web.nhle.com — boxscores + PBP), CBB API (collegebasketballdata.com — NCAAB historical + boxscores + PBP), NCAA API (ncaa-api.henrygd.me — NCAAB live only), MLB Stats API (boxscores + PBP + Statcast), ESPN API (NFL boxscores + PBP), nflverse (NFL advanced stats), MoneyPuck (NHL advanced stats), DataGolf API (golf), The Odds API (all leagues), X/Twitter
 - **Data Types:** Play-by-play, box scores, odds, social media
-- **Scheduling:** Celery task queue with Redis
+- **Scheduling:** Celery task queue with Redis — beat schedule and queues are documented in [Scheduler & background jobs](scheduler-and-jobs.md)
 - **Output:** Normalized data to PostgreSQL
 
 ### 2. REST API (`api/`)

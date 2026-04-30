@@ -2,7 +2,10 @@
 
 Call configure_telemetry() before FastAPI app creation and instrument_fastapi()
 after. All functions are no-ops when OTEL_EXPORTER_OTLP_ENDPOINT is unset so
-local dev works without a collector running.
+local dev works without a collector running (``otel_disabled`` log at INFO).
+
+Application counters and histograms exposed at ``GET /metrics`` use
+``prometheus_client`` separately from OTLP export; both can be enabled together.
 """
 from __future__ import annotations
 

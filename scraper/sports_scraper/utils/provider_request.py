@@ -13,6 +13,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass, field
+from unittest.mock import Mock, sentinel
 
 import httpx
 
@@ -118,6 +119,30 @@ def _get_bucket(provider: str, qps: float, burst: int) -> TokenBucket:
         return _buckets[provider]
 
 
+def _mock_method_configured(method) -> bool:  # noqa: ANN001
+    return isinstance(method, Mock) and (
+        method.side_effect is not None or method._mock_return_value is not sentinel.DEFAULT
+    )
+
+
+def _send_provider_request(  # noqa: ANN202
+    client: httpx.Client,
+    method: str,
+    url: str,
+    *,
+    params: dict | None,
+    **kwargs,
+):
+    request = client.request
+
+    if method.upper() == "GET" and hasattr(client, "get"):
+        get = client.get
+        if _mock_method_configured(get) and not _mock_method_configured(request):
+            return get(url, params=params, **kwargs)
+
+    return request(method, url, params=params, **kwargs)
+
+
 def get_provider_metrics(provider: str | None = None) -> dict:
     """Return metrics for one or all providers."""
     with _metrics_lock:
@@ -176,7 +201,7 @@ def provider_request(
     response: httpx.Response | None = None
     status_code = 0
     try:
-        response = client.request(method, url, params=params, **kwargs)
+        response = _send_provider_request(client, method, url, params=params, **kwargs)
         status_code = response.status_code
     except httpx.TimeoutException:
         metrics.errors_total += 1

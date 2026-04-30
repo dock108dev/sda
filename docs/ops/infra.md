@@ -2,6 +2,8 @@
 
 Docker configuration and local setup for the sports-data-admin stack.
 
+**Related:** [Environment & configuration](../env-and-config.md) (API/scraper env validation and flags), [Scheduler & background jobs](../scheduler-and-jobs.md) (Celery beat and queues).
+
 ## Quick Start (Docker)
 
 ```bash

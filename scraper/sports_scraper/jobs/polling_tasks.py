@@ -58,7 +58,12 @@ def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
         from ..live_odds.closing_lines import capture_closing_lines
         capture_closing_lines(game_id, league_code)
     except Exception as exc:
-        logger.warning("closing_lines_capture_error", game_id=game_id, error=str(exc))
+        logger.warning(
+            "closing_lines_capture_error",
+            game_id=game_id,
+            error=str(exc),
+            exc_info=True,
+        )
 
     try:
         from .flow_trigger_tasks import trigger_flow_for_game
@@ -69,7 +74,12 @@ def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
         )
         logger.info("flow_trigger_dispatched", game_id=game_id, countdown=3600)
     except Exception as exc:
-        logger.warning("flow_trigger_dispatch_error", game_id=game_id, error=str(exc))
+        logger.warning(
+            "flow_trigger_dispatch_error",
+            game_id=game_id,
+            error=str(exc),
+            exc_info=True,
+        )
 
     # Dispatch advanced stats ingestion for the league (all use same pattern)
     _ADVANCED_STATS_TASKS = {
@@ -94,6 +104,7 @@ def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
                 f"{league_code.lower()}_advanced_stats_dispatch_error",
                 game_id=game_id,
                 error=str(exc),
+                exc_info=True,
             )
 
 
@@ -127,18 +138,22 @@ def update_game_states_task() -> dict:
 
 
 @shared_task(name="poll_live_pbp")
-def poll_live_pbp_task() -> dict:
-    """Poll PBP, boxscores, and status for pregame/live games (runs every 5 min).
+def poll_live_pbp_task(live_only: bool = False) -> dict:
+    """Poll PBP, boxscores, and status for games that need live data.
 
     Phases:
     1. NBA/NHL PBP polling (existing — per-game scoreboard + PBP fetch)
     2. NBA/NHL boxscore polling for live games (per-game fetch)
     3. NCAAB batch polling (PBP per-game + boxscores via batch endpoint)
+
+    ``live_only=True`` is used by the 5-second schedule and intentionally
+    excludes pregame/postgame backfill work.
     """
     from ..services.active_games import ActiveGamesResolver
     from ..services.job_runs import complete_job_run, start_job_run
 
-    lock_token = _acquire_redis_lock("lock:poll_live_pbp", timeout=LOCK_TIMEOUT_5MIN)
+    lock_key = "lock:poll_live_pbp:live" if live_only else "lock:poll_live_pbp"
+    lock_token = _acquire_redis_lock(lock_key, timeout=LOCK_TIMEOUT_5MIN)
     if not lock_token:
         logger.debug("poll_live_pbp_skipped_locked")
         return {"skipped": True, "reason": "locked"}
@@ -149,7 +164,7 @@ def poll_live_pbp_task() -> dict:
 
         with get_session() as session:
             # --- Phase 1: NBA/NHL PBP polling (existing) ---
-            pbp_games = resolver.get_games_needing_pbp(session)
+            pbp_games = resolver.get_games_needing_pbp(session, live_only=live_only)
 
             api_calls = 0
             games_polled = 0
@@ -191,29 +206,73 @@ def poll_live_pbp_task() -> dict:
                     start = min(game_dates)
                     end = max(game_dates)
 
-                    try:
-                        populate_nba_game_ids(session, start_date=start, end_date=end)
-                    except Exception as exc:
-                        session.rollback()
-                        logger.warning("poll_populate_nba_ids_error", error=str(exc))
+                    missing_external_ids = {
+                        "NBA": any(
+                            league_map.get(g.league_id) == "NBA"
+                            and not (g.external_ids or {}).get("nba_game_id")
+                            for g in pbp_games
+                        ),
+                        "NHL": any(
+                            league_map.get(g.league_id) == "NHL"
+                            and not (g.external_ids or {}).get("nhl_game_pk")
+                            for g in pbp_games
+                        ),
+                        "MLB": any(
+                            league_map.get(g.league_id) == "MLB"
+                            and not (g.external_ids or {}).get("mlb_game_pk")
+                            for g in pbp_games
+                        ),
+                        "NCAAB": any(
+                            league_map.get(g.league_id) == "NCAAB"
+                            and not (g.external_ids or {}).get("cbb_game_id")
+                            and not (g.external_ids or {}).get("ncaa_game_id")
+                            for g in pbp_games
+                        ),
+                    }
 
-                    try:
-                        populate_nhl_game_ids(session, start_date=start, end_date=end)
-                    except Exception as exc:
-                        session.rollback()
-                        logger.warning("poll_populate_nhl_ids_error", error=str(exc))
+                    if missing_external_ids["NBA"]:
+                        try:
+                            populate_nba_game_ids(session, start_date=start, end_date=end)
+                        except Exception as exc:
+                            session.rollback()
+                            logger.warning(
+                                "poll_populate_nba_ids_error",
+                                error=str(exc),
+                                exc_info=True,
+                            )
 
-                    try:
-                        populate_mlb_game_ids(session, start_date=start, end_date=end)
-                    except Exception as exc:
-                        session.rollback()
-                        logger.warning("poll_populate_mlb_ids_error", error=str(exc))
+                    if missing_external_ids["NHL"]:
+                        try:
+                            populate_nhl_game_ids(session, start_date=start, end_date=end)
+                        except Exception as exc:
+                            session.rollback()
+                            logger.warning(
+                                "poll_populate_nhl_ids_error",
+                                error=str(exc),
+                                exc_info=True,
+                            )
 
-                    try:
-                        populate_ncaab_game_ids(session, start_date=start, end_date=end)
-                    except Exception as exc:
-                        session.rollback()
-                        logger.warning("poll_populate_ncaab_ids_error", error=str(exc))
+                    if missing_external_ids["MLB"]:
+                        try:
+                            populate_mlb_game_ids(session, start_date=start, end_date=end)
+                        except Exception as exc:
+                            session.rollback()
+                            logger.warning(
+                                "poll_populate_mlb_ids_error",
+                                error=str(exc),
+                                exc_info=True,
+                            )
+
+                    if missing_external_ids["NCAAB"]:
+                        try:
+                            populate_ncaab_game_ids(session, start_date=start, end_date=end)
+                        except Exception as exc:
+                            session.rollback()
+                            logger.warning(
+                                "poll_populate_ncaab_ids_error",
+                                error=str(exc),
+                                exc_info=True,
+                            )
 
                     # Refresh game objects to pick up newly-set external_ids
                     for game in pbp_games:
@@ -244,7 +303,7 @@ def poll_live_pbp_task() -> dict:
                     time.sleep(random.uniform(_JITTER_MIN, _JITTER_MAX))
 
                 try:
-                    result = _poll_single_game_pbp(session, game)
+                    result = _poll_single_game_pbp(session, game, live_poll=live_only)
                     api_calls += result.get("api_calls", 1)
                     games_polled += 1
 
@@ -273,6 +332,7 @@ def poll_live_pbp_task() -> dict:
                         "poll_live_pbp_game_error",
                         game_id=game.id,
                         error=str(exc),
+                        exc_info=True,
                     )
                     continue
 
@@ -281,7 +341,7 @@ def poll_live_pbp_task() -> dict:
             boxscores_updated = 0
 
             if not rate_limited:
-                boxscore_games = resolver.get_games_needing_boxscore(session)
+                boxscore_games = resolver.get_games_needing_boxscore(session, live_only=live_only)
                 # Filter to NBA/NHL/MLB (NCAAB boxscores handled in batch phase)
                 nba_nhl_box_games = [
                     g
@@ -344,6 +404,7 @@ def poll_live_pbp_task() -> dict:
                             "poll_boxscore_game_error",
                             game_id=game.id,
                             error=str(exc),
+                            exc_info=True,
                         )
                         continue
 
@@ -367,7 +428,11 @@ def poll_live_pbp_task() -> dict:
                     rate_limited = True
                 except Exception as exc:
                     session.rollback()
-                    logger.warning("poll_ncaab_batch_error", error=str(exc))
+                    logger.warning(
+                        "poll_ncaab_batch_error",
+                        error=str(exc),
+                        exc_info=True,
+                    )
 
             total_api_calls = api_calls + boxscore_calls
 
@@ -380,6 +445,7 @@ def poll_live_pbp_task() -> dict:
                 boxscores_updated=boxscores_updated,
                 ncaab_games=len(ncaab_pbp_games),
                 rate_limited=rate_limited,
+                live_only=live_only,
             )
 
             result = {
@@ -389,6 +455,7 @@ def poll_live_pbp_task() -> dict:
                 "pbp_updated": pbp_updated,
                 "boxscores_updated": boxscores_updated,
                 "rate_limited": rate_limited,
+                "live_only": live_only,
             }
             summary = {k: v for k, v in result.items() if k != "transitions"}
             summary["transitions"] = len(transitions)
@@ -399,4 +466,4 @@ def poll_live_pbp_task() -> dict:
         complete_job_run(job_run_id, status="error", error_summary=str(exc)[:500])
         raise
     finally:
-        _release_redis_lock("lock:poll_live_pbp", lock_token)
+        _release_redis_lock(lock_key, lock_token)

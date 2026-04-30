@@ -7,7 +7,12 @@ public dispatcher API.
 from __future__ import annotations
 
 from ..logging import logger
-from .game_processors import GameProcessResult, try_promote_to_live
+from .game_processors import (
+    GameProcessResult,
+    live_pbp_payload_unchanged,
+    should_create_live_pbp_snapshot,
+    try_promote_to_live,
+)
 
 
 def check_game_status_nba(session, game, *, client=None) -> GameProcessResult:
@@ -65,7 +70,7 @@ def check_game_status_nba(session, game, *, client=None) -> GameProcessResult:
     return result
 
 
-def process_game_pbp_nba(session, game, *, client=None) -> GameProcessResult:
+def process_game_pbp_nba(session, game, *, client=None, live_poll: bool = False) -> GameProcessResult:
     """Fetch and persist PBP for a single NBA game."""
     from ..live.nba import NBALiveFeedClient
     from ..persistence.plays import upsert_plays
@@ -83,7 +88,19 @@ def process_game_pbp_nba(session, game, *, client=None) -> GameProcessResult:
     result.api_calls += 1
 
     if payload.plays:
-        inserted = upsert_plays(session, game.id, payload.plays, source="nba_api")
+        if live_poll and live_pbp_payload_unchanged("NBA", game.id, payload.plays):
+            return result
+
+        upsert_kwargs = {"source": "nba_api"}
+        if live_poll:
+            upsert_kwargs["create_snapshot"] = should_create_live_pbp_snapshot("NBA", game.id)
+
+        inserted = upsert_plays(
+            session,
+            game.id,
+            payload.plays,
+            **upsert_kwargs,
+        )
         result.events_inserted = inserted or 0
         game.last_pbp_at = now_utc()
 

@@ -15,6 +15,7 @@ from ..models import (
 )
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .mlb_constants import MLB_BOXSCORE_URL
 from .mlb_helpers import build_team_identity_from_api
 from .mlb_models import MLBBoxscore
@@ -50,9 +51,22 @@ class MLBBoxscoreFetcher:
         logger.info("mlb_boxscore_fetch", url=url, game_pk=game_pk)
 
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="mlb-stats-api",
+                endpoint="boxscore",
+                league="MLB",
+                game_id=game_pk,
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.error("mlb_boxscore_fetch_error", game_pk=game_pk, error=str(exc))
+            return None
+
+        if response is None:
             return None
 
         if response.status_code == 404:
@@ -106,9 +120,22 @@ class MLBBoxscoreFetcher:
         logger.info("mlb_boxscore_raw_fetch", url=url, game_pk=game_pk)
 
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="mlb-stats-api",
+                endpoint="boxscore_raw",
+                league="MLB",
+                game_id=game_pk,
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.error("mlb_boxscore_raw_fetch_error", game_pk=game_pk, error=str(exc))
+            return None
+
+        if response is None:
             return None
 
         if response.status_code != 200:

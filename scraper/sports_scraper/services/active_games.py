@@ -27,6 +27,7 @@ WindowState = Literal["PRE", "IN", "POST", "NONE"]
 _DEFAULT_PREGAME_HOURS = LeagueConfig(code="", display_name="").pregame_window_hours
 _DEFAULT_POSTGAME_HOURS = LeagueConfig(code="", display_name="").postgame_window_hours
 _DEFAULT_PBP_STALE_MINUTES = 4
+_DEFAULT_LIVE_STALE_SECONDS = 5
 
 
 class ActiveGamesResolver:
@@ -41,10 +42,12 @@ class ActiveGamesResolver:
         pregame_hours: int = _DEFAULT_PREGAME_HOURS,
         postgame_hours: int = _DEFAULT_POSTGAME_HOURS,
         pbp_stale_minutes: int = _DEFAULT_PBP_STALE_MINUTES,
+        live_stale_seconds: int = _DEFAULT_LIVE_STALE_SECONDS,
     ) -> None:
         self.pregame_hours = pregame_hours
         self.postgame_hours = postgame_hours
         self.pbp_stale_minutes = pbp_stale_minutes
+        self.live_stale_seconds = live_stale_seconds
 
     @staticmethod
     def _window_state_expression(
@@ -147,14 +150,18 @@ class ActiveGamesResolver:
     def get_games_needing_pbp(
         self,
         session: Session,
+        *,
+        live_only: bool = False,
     ) -> list[db_models.SportsGame]:
         """Return pregame/live games where PBP data is stale.
 
         Only includes leagues with live_pbp_enabled=True.
-        A game needs PBP if last_pbp_at is NULL or older than pbp_stale_minutes.
+        Live games use the short live_stale_seconds cadence. Pregame and
+        postgame backfill keep the slower pbp_stale_minutes cadence.
         """
         now = now_utc()
         stale_threshold = now - timedelta(minutes=self.pbp_stale_minutes)
+        live_stale_threshold = now - timedelta(seconds=self.live_stale_seconds)
 
         # Get league IDs where live PBP is enabled
         enabled_leagues = [
@@ -178,43 +185,54 @@ class ActiveGamesResolver:
             db_models.SportsGamePlay.game_id == db_models.SportsGame.id
         )
 
+        live_stale_clause = (
+            (db_models.SportsGame.status == db_models.GameStatus.live.value)
+            & or_(
+                db_models.SportsGame.last_pbp_at.is_(None),
+                db_models.SportsGame.last_pbp_at < live_stale_threshold,
+            )
+        )
+
+        if live_only:
+            stale_filter = live_stale_clause
+        else:
+            stale_filter = or_(
+                # Pregame stays on the existing slower cadence.
+                (
+                    (db_models.SportsGame.status == db_models.GameStatus.pregame.value)
+                    & or_(
+                        db_models.SportsGame.last_pbp_at.is_(None),
+                        db_models.SportsGame.last_pbp_at < stale_threshold,
+                    )
+                ),
+                live_stale_clause,
+                # Backfill: final games from last 48 hours with no play data at all
+                (
+                    (db_models.SportsGame.status == db_models.GameStatus.final.value)
+                    & (db_models.SportsGame.game_date > now - timedelta(hours=48))
+                    & not_(has_plays)
+                ),
+                # Backfill: final games from last 48 hours where PBP was captured
+                # before the game was finalized (incomplete due to rain delays,
+                # stale timeout, etc). Only triggers when PBP hasn't been
+                # refreshed in the last hour, preventing repeated re-fetches
+                # from routine boxscore updates.
+                (
+                    (db_models.SportsGame.status == db_models.GameStatus.final.value)
+                    & (db_models.SportsGame.game_date > now - timedelta(hours=48))
+                    & (db_models.SportsGame.home_score.isnot(None))
+                    & (db_models.SportsGame.last_pbp_at.isnot(None))
+                    & (db_models.SportsGame.last_boxscore_at.isnot(None))
+                    & (db_models.SportsGame.last_pbp_at < db_models.SportsGame.last_boxscore_at)
+                    & (db_models.SportsGame.last_pbp_at < now - timedelta(hours=1))
+                ),
+            )
+
         games = (
             session.query(db_models.SportsGame)
             .filter(
                 db_models.SportsGame.league_id.in_(league_id_list),
-                or_(
-                    # Normal: pregame/live with stale PBP
-                    (
-                        db_models.SportsGame.status.in_([
-                            db_models.GameStatus.pregame.value,
-                            db_models.GameStatus.live.value,
-                        ])
-                        & or_(
-                            db_models.SportsGame.last_pbp_at.is_(None),
-                            db_models.SportsGame.last_pbp_at < stale_threshold,
-                        )
-                    ),
-                    # Backfill: final games from last 48 hours with no play data at all
-                    (
-                        (db_models.SportsGame.status == db_models.GameStatus.final.value)
-                        & (db_models.SportsGame.game_date > now - timedelta(hours=48))
-                        & not_(has_plays)
-                    ),
-                    # Backfill: final games from last 48 hours where PBP was captured
-                    # before the game was finalized (incomplete due to rain delays,
-                    # stale timeout, etc). Only triggers when PBP hasn't been
-                    # refreshed in the last hour, preventing repeated re-fetches
-                    # from routine boxscore updates.
-                    (
-                        (db_models.SportsGame.status == db_models.GameStatus.final.value)
-                        & (db_models.SportsGame.game_date > now - timedelta(hours=48))
-                        & (db_models.SportsGame.home_score.isnot(None))
-                        & (db_models.SportsGame.last_pbp_at.isnot(None))
-                        & (db_models.SportsGame.last_boxscore_at.isnot(None))
-                        & (db_models.SportsGame.last_pbp_at < db_models.SportsGame.last_boxscore_at)
-                        & (db_models.SportsGame.last_pbp_at < now - timedelta(hours=1))
-                    ),
-                ),
+                stale_filter,
             )
             .order_by(db_models.SportsGame.game_date.asc().nullslast())
             .all()
@@ -226,15 +244,18 @@ class ActiveGamesResolver:
     def get_games_needing_boxscore(
         self,
         session: Session,
+        *,
+        live_only: bool = False,
     ) -> list[db_models.SportsGame]:
         """Return live and recently-final games within postgame window where boxscore data is stale.
 
         Only includes leagues with live_boxscore_enabled=True.
-        A game needs a boxscore refresh if last_boxscore_at is NULL or older
-        than pbp_stale_minutes (same staleness window as PBP).
+        Live games use the short live_stale_seconds cadence. Recently-final
+        games keep the slower pbp_stale_minutes cadence.
         """
         now = now_utc()
         stale_threshold = now - timedelta(minutes=self.pbp_stale_minutes)
+        live_stale_threshold = now - timedelta(seconds=self.live_stale_seconds)
 
         enabled_leagues = [
             code for code, cfg in LEAGUE_CONFIG.items() if cfg.live_boxscore_enabled
@@ -257,33 +278,42 @@ class ActiveGamesResolver:
             db_models.SportsTeamBoxscore.game_id == db_models.SportsGame.id
         )
 
+        live_stale_clause = (
+            (db_models.SportsGame.status == db_models.GameStatus.live.value)
+            & or_(
+                db_models.SportsGame.last_boxscore_at.is_(None),
+                db_models.SportsGame.last_boxscore_at < live_stale_threshold,
+            )
+        )
+
+        if live_only:
+            stale_filter = live_stale_clause
+        else:
+            stale_filter = or_(
+                live_stale_clause,
+                # Recently-final with stale boxscore.
+                (
+                    (db_models.SportsGame.status == db_models.GameStatus.final.value)
+                    & (db_models.SportsGame.end_time.isnot(None))
+                    & (db_models.SportsGame.end_time > now - timedelta(hours=self.postgame_hours))
+                    & or_(
+                        db_models.SportsGame.last_boxscore_at.is_(None),
+                        db_models.SportsGame.last_boxscore_at < stale_threshold,
+                    )
+                ),
+                # Backfill: final games from last 48 hours with no boxscore data at all
+                (
+                    (db_models.SportsGame.status == db_models.GameStatus.final.value)
+                    & (db_models.SportsGame.game_date > now - timedelta(hours=48))
+                    & not_(has_boxscores)
+                ),
+            )
+
         games = (
             session.query(db_models.SportsGame)
             .filter(
                 db_models.SportsGame.league_id.in_(league_id_list),
-                or_(
-                    # Normal: live or recently-final with stale boxscore
-                    (
-                        or_(
-                            db_models.SportsGame.status == db_models.GameStatus.live.value,
-                            (
-                                (db_models.SportsGame.status == db_models.GameStatus.final.value)
-                                & (db_models.SportsGame.end_time.isnot(None))
-                                & (db_models.SportsGame.end_time > now - timedelta(hours=self.postgame_hours))
-                            ),
-                        )
-                        & or_(
-                            db_models.SportsGame.last_boxscore_at.is_(None),
-                            db_models.SportsGame.last_boxscore_at < stale_threshold,
-                        )
-                    ),
-                    # Backfill: final games from last 48 hours with no boxscore data at all
-                    (
-                        (db_models.SportsGame.status == db_models.GameStatus.final.value)
-                        & (db_models.SportsGame.game_date > now - timedelta(hours=48))
-                        & not_(has_boxscores)
-                    ),
-                ),
+                stale_filter,
             )
             .order_by(db_models.SportsGame.game_date.asc().nullslast())
             .all()

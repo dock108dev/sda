@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from sports_scraper.services.active_games import (
+    _DEFAULT_LIVE_STALE_SECONDS,
     _DEFAULT_PBP_STALE_MINUTES,
     _DEFAULT_POSTGAME_HOURS,
     _DEFAULT_PREGAME_HOURS,
@@ -39,12 +40,19 @@ class TestActiveGamesResolverInit:
         assert resolver.pregame_hours == _DEFAULT_PREGAME_HOURS
         assert resolver.postgame_hours == _DEFAULT_POSTGAME_HOURS
         assert resolver.pbp_stale_minutes == _DEFAULT_PBP_STALE_MINUTES
+        assert resolver.live_stale_seconds == _DEFAULT_LIVE_STALE_SECONDS
 
     def test_custom_params(self):
-        resolver = ActiveGamesResolver(pregame_hours=12, postgame_hours=6, pbp_stale_minutes=10)
+        resolver = ActiveGamesResolver(
+            pregame_hours=12,
+            postgame_hours=6,
+            pbp_stale_minutes=10,
+            live_stale_seconds=7,
+        )
         assert resolver.pregame_hours == 12
         assert resolver.postgame_hours == 6
         assert resolver.pbp_stale_minutes == 10
+        assert resolver.live_stale_seconds == 7
 
 
 # ---------------------------------------------------------------------------

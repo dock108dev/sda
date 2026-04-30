@@ -1,7 +1,10 @@
 """WebSocket endpoint for realtime subscriptions.
 
 URL: /v1/ws
-Auth: X-API-Key header or api_key query param
+Auth: ``X-API-Key`` header or ``api_key`` query param.
+
+``Origin`` is checked when present; clients without an ``Origin`` header (many
+non-browser integrations) are still allowed after API key verification.
 Protocol: JSON messages (subscribe/unsubscribe)
 """
 

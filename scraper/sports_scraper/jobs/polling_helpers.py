@@ -39,7 +39,7 @@ def _should_fetch_pbp(game, status_result) -> bool:
     return bool(status_result and status_result.transition and status_result.transition.get("to") == db_models.GameStatus.final.value)
 
 
-def _poll_single_game_pbp(session, game) -> dict:
+def _poll_single_game_pbp(session, game, *, live_poll: bool = False) -> dict:
     """Poll a single game for status + PBP updates.
 
     Returns dict with api_calls count, transition info, and pbp_events.
@@ -55,20 +55,20 @@ def _poll_single_game_pbp(session, game) -> dict:
     result: dict = {"api_calls": 0}
 
     if league_code == "NBA":
-        result = _poll_nba_game(session, game)
+        result = _poll_nba_game(session, game, live_poll=live_poll)
     elif league_code == "NHL":
-        result = _poll_nhl_game(session, game)
+        result = _poll_nhl_game(session, game, live_poll=live_poll)
     elif league_code == "MLB":
-        result = _poll_mlb_game(session, game)
+        result = _poll_mlb_game(session, game, live_poll=live_poll)
     elif league_code == "NFL":
-        result = _poll_nfl_game(session, game)
+        result = _poll_nfl_game(session, game, live_poll=live_poll)
     elif league_code == "NCAAB":
         pass  # Handled by _poll_ncaab_games_batch
 
     return result
 
 
-def _poll_nba_game(session, game) -> dict:
+def _poll_nba_game(session, game, *, live_poll: bool = False) -> dict:
     """Poll a single NBA game via the NBA live API."""
     from ..live.nba import NBALiveFeedClient
     from ..services.game_processors import (
@@ -99,7 +99,7 @@ def _poll_nba_game(session, game) -> dict:
     # Fetch PBP if game is live, pregame, or just transitioned to final
     if _should_fetch_pbp(game, status_result):
         try:
-            pbp_result = process_game_pbp_nba(session, game, client=client)
+            pbp_result = process_game_pbp_nba(session, game, client=client, live_poll=live_poll)
             result["api_calls"] += pbp_result.api_calls
             if pbp_result.events_inserted:
                 result["pbp_events"] = pbp_result.events_inserted
@@ -113,7 +113,7 @@ def _poll_nba_game(session, game) -> dict:
     return result
 
 
-def _poll_nhl_game(session, game) -> dict:
+def _poll_nhl_game(session, game, *, live_poll: bool = False) -> dict:
     """Poll a single NHL game via the NHL live API."""
     from ..live.nhl import NHLLiveFeedClient
     from ..services.game_processors import (
@@ -150,7 +150,7 @@ def _poll_nhl_game(session, game) -> dict:
     # Fetch PBP if game is live, pregame, or just transitioned to final
     if _should_fetch_pbp(game, status_result):
         try:
-            pbp_result = process_game_pbp_nhl(session, game, client=client)
+            pbp_result = process_game_pbp_nhl(session, game, client=client, live_poll=live_poll)
             result["api_calls"] += pbp_result.api_calls
             if pbp_result.events_inserted:
                 result["pbp_events"] = pbp_result.events_inserted
@@ -164,7 +164,7 @@ def _poll_nhl_game(session, game) -> dict:
     return result
 
 
-def _poll_mlb_game(session, game) -> dict:
+def _poll_mlb_game(session, game, *, live_poll: bool = False) -> dict:
     """Poll a single MLB game via the MLB Stats API."""
     from ..live.mlb import MLBLiveFeedClient
     from ..services.game_processors import (
@@ -201,7 +201,7 @@ def _poll_mlb_game(session, game) -> dict:
     # Fetch PBP if game is live, pregame, or just transitioned to final
     if _should_fetch_pbp(game, status_result):
         try:
-            pbp_result = process_game_pbp_mlb(session, game, client=client)
+            pbp_result = process_game_pbp_mlb(session, game, client=client, live_poll=live_poll)
             result["api_calls"] += pbp_result.api_calls
             if pbp_result.events_inserted:
                 result["pbp_events"] = pbp_result.events_inserted
@@ -215,7 +215,7 @@ def _poll_mlb_game(session, game) -> dict:
     return result
 
 
-def _poll_nfl_game(session, game) -> dict:
+def _poll_nfl_game(session, game, *, live_poll: bool = False) -> dict:
     """Poll a single NFL game via the ESPN API."""
     from ..live.nfl import NFLLiveFeedClient
     from ..services.game_processors import (
@@ -252,7 +252,7 @@ def _poll_nfl_game(session, game) -> dict:
     # Fetch PBP if game is live, pregame, or just transitioned to final
     if _should_fetch_pbp(game, status_result):
         try:
-            pbp_result = process_game_pbp_nfl(session, game, client=client)
+            pbp_result = process_game_pbp_nfl(session, game, client=client, live_poll=live_poll)
             result["api_calls"] += pbp_result.api_calls
             if pbp_result.events_inserted:
                 result["pbp_events"] = pbp_result.events_inserted

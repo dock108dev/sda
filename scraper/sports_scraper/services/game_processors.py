@@ -16,6 +16,8 @@ public re-exports.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 
 from ..logging import logger
@@ -50,6 +52,89 @@ def has_game_action(plays: list) -> bool:
         getattr(p, "quarter", None) is not None and getattr(p, "quarter", 0) >= 1
         for p in plays
     )
+
+
+def _get_redis_client():  # noqa: ANN202
+    import redis as redis_lib
+
+    from ..config import settings
+
+    return redis_lib.from_url(settings.redis_url, decode_responses=True)
+
+
+def _pbp_signature(plays: list) -> str:
+    """Build a stable fingerprint for normalized PBP payloads."""
+    rows = [
+        {
+            "play_index": getattr(play, "play_index", None),
+            "event_id": getattr(play, "event_id", None),
+            "quarter": getattr(play, "quarter", None),
+            "game_clock": getattr(play, "game_clock", None),
+            "play_type": getattr(play, "play_type", None),
+            "team_abbreviation": getattr(play, "team_abbreviation", None),
+            "player_id": getattr(play, "player_id", None),
+            "description": getattr(play, "description", None),
+            "home_score": getattr(play, "home_score", None),
+            "away_score": getattr(play, "away_score", None),
+        }
+        for play in plays
+    ]
+    raw = json.dumps(rows, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def live_pbp_payload_unchanged(league: str, game_id: int, plays: list) -> bool:
+    """Return True when a live PBP payload matches the last observed payload.
+
+    This is intentionally best-effort. If Redis is unavailable, callers should
+    proceed with normal persistence so live data is not silently dropped.
+    """
+    if not plays:
+        return False
+
+    signature = _pbp_signature(plays)
+    key = f"live:pbp_hash:{league}:{game_id}"
+    try:
+        r = _get_redis_client()
+        previous = r.get(key)
+        r.set(key, signature, ex=6 * 60 * 60)
+        if previous == signature:
+            logger.debug(
+                "live_pbp_payload_unchanged",
+                league=league,
+                game_id=game_id,
+                play_count=len(plays),
+            )
+            return True
+    except Exception as exc:
+        logger.debug(
+            "live_pbp_hash_check_failed",
+            league=league,
+            game_id=game_id,
+            error=str(exc),
+        )
+    return False
+
+
+def should_create_live_pbp_snapshot(
+    league: str,
+    game_id: int,
+    *,
+    throttle_seconds: int = 60,
+) -> bool:
+    """Throttle raw PBP snapshots for high-frequency live polling."""
+    key = f"live:pbp_snapshot:{league}:{game_id}"
+    try:
+        r = _get_redis_client()
+        return bool(r.set(key, "1", nx=True, ex=throttle_seconds))
+    except Exception as exc:
+        logger.debug(
+            "live_pbp_snapshot_throttle_failed",
+            league=league,
+            game_id=game_id,
+            error=str(exc),
+        )
+        return True
 
 
 def try_promote_to_live(

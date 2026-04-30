@@ -105,9 +105,10 @@ ignore = [
 known-first-party = ["app"]
 
 [tool.ruff.lint.per-file-ignores]
+# Single consolidated block reads better than isort splitting ``app.routers.admin``.
+"main.py" = ["I001"]
 # Deferred imports / lazy imports for heavy analytics stacks (TYPE_CHECKING or circular deps).
 "app/analytics/**/*.py" = ["E402"]
-"app/services/pipeline/stages/validate_blocks.py" = ["E402"]
 "app/routers/fairbet/live.py" = ["E402"]
 "app/db/pipeline.py" = ["E402"]
 "app/routers/simulator.py" = ["E402"]

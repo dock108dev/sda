@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { detailFromUnknownBody, readJsonResponse } from "@/lib/readJsonResponse";
 import styles from "./styles.module.css";
 
 interface TierBreakdown {
@@ -95,8 +96,10 @@ export default function QualityReviewPage() {
         method: "POST",
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Action failed (${res.status})`);
+        const body = await readJsonResponse(res);
+        throw new Error(
+          detailFromUnknownBody(body) ?? `Action failed (${res.status})`,
+        );
       }
       await fetchQueue(true);
     } catch (err) {

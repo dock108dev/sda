@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { detailFromUnknownBody, readJsonResponse } from "@/lib/readJsonResponse";
 import styles from "./styles.module.css";
 
 interface UserRecord {
@@ -34,8 +35,11 @@ export default function UsersPage() {
       setLoading(true);
       const res = await fetch("/proxy/api/admin/users");
       if (!res.ok) throw new Error(`Failed to load users (${res.status})`);
-      const data = await res.json();
-      setUsers(data);
+      const data = await readJsonResponse(res);
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid users response (expected a JSON array)");
+      }
+      setUsers(data as UserRecord[]);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load users");
@@ -58,8 +62,10 @@ export default function UsersPage() {
         body: JSON.stringify({ email: newEmail, password: newPassword, role: newRole }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Failed to create user (${res.status})`);
+        const body = await readJsonResponse(res);
+        throw new Error(
+          detailFromUnknownBody(body) ?? `Failed to create user (${res.status})`,
+        );
       }
       setNewEmail("");
       setNewPassword("");
@@ -109,8 +115,10 @@ export default function UsersPage() {
         body: JSON.stringify({ email: editEmailValue }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Failed to update email (${res.status})`);
+        const body = await readJsonResponse(res);
+        throw new Error(
+          detailFromUnknownBody(body) ?? `Failed to update email (${res.status})`,
+        );
       }
       setEditingEmailId(null);
       setEditEmailValue("");
@@ -128,8 +136,10 @@ export default function UsersPage() {
         body: JSON.stringify({ password: resetPasswordValue }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Failed to reset password (${res.status})`);
+        const body = await readJsonResponse(res);
+        throw new Error(
+          detailFromUnknownBody(body) ?? `Failed to reset password (${res.status})`,
+        );
       }
       setResetPasswordId(null);
       setResetPasswordValue("");

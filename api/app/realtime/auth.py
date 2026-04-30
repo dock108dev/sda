@@ -19,7 +19,13 @@ def _check_api_key(api_key: str | None, *, client_label: str) -> bool:
     """Validate an API key. Returns True if valid."""
     if not settings.api_key:
         # Without a configured key: reject in prod/staging; allow unauthenticated in dev.
-        return settings.environment not in {"production", "staging"}
+        allow = settings.environment not in {"production", "staging"}
+        if allow:
+            logger.info(
+                "realtime_auth_api_key_unset_allowing_nonprod",
+                extra={"client": client_label, "environment": settings.environment},
+            )
+        return allow
 
     if not api_key:
         logger.warning("realtime_auth_missing_key", extra={"client": client_label})

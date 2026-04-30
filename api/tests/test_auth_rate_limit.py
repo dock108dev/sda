@@ -178,8 +178,8 @@ class TestAuthStrictRateLimiting:
             assert 429 not in captured_status
 
     @pytest.mark.asyncio
-    async def test_exempt_endpoints_bypass_all_limits(self):
-        """SSE and /auth/me should never be rate-limited."""
+    async def test_sse_uses_high_keyed_budget_by_default(self):
+        """SSE is no longer fully exempt; default keyed budget is large enough for bursts."""
         captured_status = []
 
         async def mock_app(scope, receive, send):

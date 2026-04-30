@@ -97,6 +97,7 @@ class RealtimeManager:
         self._boot_epoch: str = str(uuid.uuid4())
         self._on_first_subscriber: OnFirstSubscriberCallback | None = None
         self._bridge: RedisStreamsBridge | None = None
+        self._publish_warned_no_bridge: bool = False
 
         self._publish_count: int = 0
         self._error_count: int = 0
@@ -199,6 +200,18 @@ class RealtimeManager:
 
         if self._bridge is not None:
             return await self._bridge.publish(channel, event_type, payload)
+
+        from app.config import settings as _settings
+
+        if _settings.environment in {"production", "staging"} and not self._publish_warned_no_bridge:
+            self._publish_warned_no_bridge = True
+            logger.error(
+                "realtime_publish_without_redis_bridge",
+                extra={
+                    "channel": channel,
+                    "environment": _settings.environment,
+                },
+            )
 
         # In-process fallback (no Redis, used in unit tests).
         seq = self._seq.get(channel, 0) + 1

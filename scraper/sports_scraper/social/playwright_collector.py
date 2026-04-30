@@ -247,8 +247,12 @@ class PlaywrightXCollector:
             try:
                 page.wait_for_selector(tweet_selector, timeout=15000, state="attached")
                 tweets_found = True
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug(
+                    "x_tweet_selector_wait_timeout",
+                    handle=x_handle,
+                    error=str(exc),
+                )
 
             if not tweets_found:
                 # Check for explicit error pages before giving up

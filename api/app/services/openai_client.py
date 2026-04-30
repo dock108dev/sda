@@ -62,8 +62,10 @@ class OpenAIClient:
             Exception: If generation fails after all retries
         """
         last_error = None
+        # Cap retry fan-out on malformed responses / flakes (audit F-012).
+        attempts = max(1, min(max_retries, 5))
 
-        for attempt in range(max_retries):
+        for attempt in range(attempts):
             try:
                 response = self.client.chat.completions.create(
                     model=self.model,
@@ -104,19 +106,19 @@ class OpenAIClient:
             except json.JSONDecodeError as e:
                 last_error = e
                 logger.warning(
-                    f"OpenAI returned malformed JSON (attempt {attempt + 1}/{max_retries}): {e}"
+                    f"OpenAI returned malformed JSON (attempt {attempt + 1}/{attempts}): {e}"
                 )
                 # Continue to retry
 
             except Exception as e:
                 last_error = e
                 logger.error(
-                    f"OpenAI generation failed (attempt {attempt + 1}/{max_retries}): {e}"
+                    f"OpenAI generation failed (attempt {attempt + 1}/{attempts}): {e}"
                 )
                 # For non-JSON errors, also retry (could be transient API issues)
 
         logger.error(
-            f"OpenAI generation failed after {max_retries} attempts: {last_error}"
+            f"OpenAI generation failed after {attempts} attempts: {last_error}"
         )
         raise last_error or Exception("OpenAI generation failed")
 

@@ -51,7 +51,11 @@ def _social_task_exists_for_league(league_code: str) -> bool:
             )
             return existing is not None
     except Exception as exc:
-        logger.warning("social_task_exists_check_failed", error=str(exc))
+        logger.warning(
+            "social_task_exists_check_failed",
+            error=str(exc),
+            exc_info=True,
+        )
         return True  # Fail-closed: assume task exists to prevent duplicate dispatch
 
 
@@ -311,7 +315,12 @@ class ScrapeRunManager:
                     self._sync_odds(run_id, config, summary, start, end)
                 except Exception as exc:
                     phase_errors.append("odds")
-                    logger.error("phase_failed_odds", run_id=run_id, error=str(exc))
+                    logger.error(
+                        "phase_failed_odds",
+                        run_id=run_id,
+                        error=str(exc),
+                        exc_info=True,
+                    )
 
             if config.boxscores:
                 ingest_run_id = start_job_run("ingest", [config.league_code])
@@ -323,7 +332,12 @@ class ScrapeRunManager:
                     )
                 except Exception as exc:
                     phase_errors.append("boxscores")
-                    logger.error("phase_failed_boxscores", run_id=run_id, error=str(exc))
+                    logger.error(
+                        "phase_failed_boxscores",
+                        run_id=run_id,
+                        error=str(exc),
+                        exc_info=True,
+                    )
 
             if ingest_run_id is not None:
                 complete_job_run(ingest_run_id, "success")
@@ -334,21 +348,36 @@ class ScrapeRunManager:
                     self._ingest_pbp(run_id, config, summary, start, end, updated_before_dt)
                 except Exception as exc:
                     phase_errors.append("pbp")
-                    logger.error("phase_failed_pbp", run_id=run_id, error=str(exc))
+                    logger.error(
+                        "phase_failed_pbp",
+                        run_id=run_id,
+                        error=str(exc),
+                        exc_info=True,
+                    )
 
             if config.social:
                 try:
                     self._dispatch_social(run_id, config, summary, start, end)
                 except Exception as exc:
                     phase_errors.append("social")
-                    logger.error("phase_failed_social", run_id=run_id, error=str(exc))
+                    logger.error(
+                        "phase_failed_social",
+                        run_id=run_id,
+                        error=str(exc),
+                        exc_info=True,
+                    )
 
             if config.advanced_stats:
                 try:
                     self._ingest_advanced_stats(run_id, config, summary, start, end, updated_before_dt)
                 except Exception as exc:
                     phase_errors.append("advanced_stats")
-                    logger.error("phase_failed_advanced_stats", run_id=run_id, error=str(exc))
+                    logger.error(
+                        "phase_failed_advanced_stats",
+                        run_id=run_id,
+                        error=str(exc),
+                        exc_info=True,
+                    )
 
             self._run_diagnostics(config)
             phases_requested = sum([

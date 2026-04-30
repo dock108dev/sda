@@ -14,7 +14,11 @@ from app.utils.validation_base import (
 
 @lru_cache(maxsize=1)
 def validate_env() -> None:
-    """Validate required environment variables before the API starts."""
+    """Validate required environment variables before the API starts.
+
+    Note: ``Settings`` uses ``extra="ignore"``, so misspelled optional env keys
+    are dropped silently; only variables mapped on ``Settings`` participate in loading.
+    """
     environment = require_env("ENVIRONMENT")
     validate_environment_value(environment)
 

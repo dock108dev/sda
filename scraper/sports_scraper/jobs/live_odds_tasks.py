@@ -29,6 +29,7 @@ def poll_live_odds_mainline(league_code: str, game_ids: list[int]) -> dict:
     snapshot so the API can compute fair-bet / +EV across books.
     """
     from ..config import settings
+    from ..config_sports import is_live_odds_enabled
     from ..live_odds.closing_lines import capture_closing_lines
     from ..live_odds.redis_store import write_live_snapshot
     from ..odds.client import MARKET_TYPES, OddsAPIClient
@@ -45,6 +46,8 @@ def poll_live_odds_mainline(league_code: str, game_ids: list[int]) -> dict:
         sport_key = client._sport_key(league_code)
         if not sport_key or not settings.odds_api_key:
             return {"skipped": True, "reason": "no_sport_key_or_api_key"}
+        if not is_live_odds_enabled():
+            return {"skipped": True, "reason": "live_odds_disabled", "league": league_code}
 
         # Build game_id -> external mapping for matching
         game_id_set = set(game_ids)
@@ -278,6 +281,7 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
     by the orchestrator.
     """
     from ..config import settings
+    from ..config_sports import is_live_odds_enabled
     from ..live_odds.redis_store import write_live_snapshot
     from ..odds.client import PROP_MARKETS, OddsAPIClient
     from ..utils.odds_quota import is_quota_exceeded as _quota_exceeded
@@ -294,6 +298,8 @@ def poll_live_odds_props(league_code: str, game_ids: list[int]) -> dict:
         sport_key = client._sport_key(league_code)
         if not sport_key or not settings.odds_api_key:
             return {"skipped": True, "reason": "no_sport_key_or_api_key"}
+        if not is_live_odds_enabled():
+            return {"skipped": True, "reason": "live_odds_disabled", "league": league_code}
 
         # Get event IDs for our live games — extract data inside session
         # to avoid DetachedInstanceError when accessing attributes later.

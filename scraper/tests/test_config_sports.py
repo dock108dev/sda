@@ -301,14 +301,16 @@ class TestIsTimelineEnabled:
 
 
 class TestLiveOddsDisabled:
-    """Tests for live_odds_enabled safety invariant."""
+    """Tests for the platform-wide live odds switch."""
 
-    def test_all_leagues_have_live_odds_disabled(self):
-        """All configured leagues must have live_odds_enabled=False."""
-        for code, cfg in LEAGUE_CONFIG.items():
-            assert cfg.live_odds_enabled is False, f"{code} has live_odds_enabled=True"
+    def test_live_odds_disabled_globally(self):
+        """Live odds are controlled globally, not per league."""
+        from sports_scraper.config_sports import LIVE_ODDS_ENABLED, is_live_odds_enabled
 
-    def test_default_live_odds_disabled(self):
-        """Default LeagueConfig has live_odds_enabled=False."""
+        assert LIVE_ODDS_ENABLED is False
+        assert is_live_odds_enabled() is False
+
+    def test_default_league_config_has_no_live_odds_field(self):
+        """LeagueConfig does not expose per-league live odds control."""
         config = LeagueConfig(code="TEST", display_name="Test")
-        assert config.live_odds_enabled is False
+        assert not hasattr(config, "live_odds_enabled")

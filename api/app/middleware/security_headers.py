@@ -3,11 +3,15 @@
 Injects a conservative baseline of browser hardening headers on every
 non-``OPTIONS`` HTTP response:
 
-- ``Content-Security-Policy: default-src 'self'``
+- ``Content-Security-Policy`` baseline: ``default-src 'self'`` plus
+  ``base-uri 'self'``, ``form-action 'self'``, ``object-src 'none'``
 - ``Strict-Transport-Security: max-age=31536000; includeSubDomains``
 - ``X-Frame-Options: DENY``
 - ``X-Content-Type-Options: nosniff``
 - ``Referrer-Policy: same-origin``
+- ``Permissions-Policy`` — disable camera, microphone, geolocation (API
+  responses are not a document UI, but the header is harmless and aligns
+  with the admin Next.js ``next.config.ts`` baseline)
 
 CORS preflight (``OPTIONS``) responses are passed through untouched so the
 CORS middleware's negotiation headers are the only ones on the wire.
@@ -17,8 +21,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+_CSP_BASELINE = (
+    b"default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+)
+
 _DEFAULT_HEADERS: tuple[tuple[bytes, bytes], ...] = (
-    (b"content-security-policy", b"default-src 'self'"),
+    (b"content-security-policy", _CSP_BASELINE),
     (
         b"strict-transport-security",
         b"max-age=31536000; includeSubDomains",
@@ -26,6 +34,10 @@ _DEFAULT_HEADERS: tuple[tuple[bytes, bytes], ...] = (
     (b"x-frame-options", b"DENY"),
     (b"x-content-type-options", b"nosniff"),
     (b"referrer-policy", b"same-origin"),
+    (
+        b"permissions-policy",
+        b"camera=(), microphone=(), geolocation=()",
+    ),
 )
 
 

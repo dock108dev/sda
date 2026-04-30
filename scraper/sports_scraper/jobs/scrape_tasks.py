@@ -21,7 +21,12 @@ def _append_pbp_to_run_summary(run_id: int | None, pbp_games: int) -> None:
             if run and run.summary:
                 run.summary = f"{run.summary}, PBP: {pbp_games}"
     except Exception as exc:
-        logger.warning("pbp_summary_append_failed", run_id=run_id, error=str(exc))
+        logger.warning(
+            "pbp_summary_append_failed",
+            run_id=run_id,
+            error=str(exc),
+            exc_info=True,
+        )
 
 
 @shared_task(name="run_scrape_job")
@@ -433,7 +438,12 @@ def poll_game_calendars() -> dict:
             for day in days:
                 try:
                     scoreboard_games = client.fetch_scoreboard(day)
-                except Exception:
+                except Exception as exc:
+                    logger.debug(
+                        "ncaa_scoreboard_day_unavailable",
+                        day=str(day),
+                        error=str(exc),
+                    )
                     continue  # NCAA API may not support all future dates
                 for game in scoreboard_games:
                     try:

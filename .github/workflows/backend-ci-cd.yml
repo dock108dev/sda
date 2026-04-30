@@ -90,6 +90,35 @@ jobs:
             --cov-report=html:coverage_html \
             --cov-fail-under=80
 
+  security-dependency-audit:
+    name: Security · pip-audit + pnpm audit (advisory)
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: pip-audit (API requirements)
+        run: |
+          uv venv --python 3.12
+          source .venv/bin/activate
+          uv pip install pip-audit
+          pip-audit -r api/requirements.txt --desc on
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: pnpm audit (workspace)
+        run: |
+          pnpm install
+          pnpm audit --audit-level=high
+
   lint-ruff:
     name: Lint · Ruff (api + scraper)
     runs-on: ubuntu-latest

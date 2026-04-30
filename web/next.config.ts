@@ -17,7 +17,11 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // Next.js requires unsafe-inline for its runtime styles; tighten with nonces once on Next 14+
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+      // Next.js requires unsafe-inline for its runtime styles; nonces require
+      // experimental Next middleware wiring — tracked separately.
       "style-src 'self' 'unsafe-inline'",
       // Twitter embed widget
       "script-src 'self' 'unsafe-inline' https://platform.twitter.com",
