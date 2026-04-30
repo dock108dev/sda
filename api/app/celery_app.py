@@ -6,7 +6,7 @@ from celery import Celery
 
 # OTel must be configured before the Celery app is created so CeleryInstrumentor
 # can attach to signals and propagate W3C traceparent headers on apply_async calls.
-# configure_telemetry is a no-op when OTEL_EXPORTER_OTLP_ENDPOINT is unset.
+# configure_telemetry is a no-op when OTEL_EXPORTER_OTLP_ENDPOINT is unset (same as API).
 from app.otel import configure_telemetry
 
 configure_telemetry(

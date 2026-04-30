@@ -13,6 +13,7 @@ from ..logging import logger
 from ..models import NormalizedPlay, NormalizedPlayByPlay
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .nhl_constants import (
     NHL_EVENT_TYPE_MAP,
     NHL_MIN_EXPECTED_PLAYS,
@@ -68,9 +69,22 @@ class NHLPbpFetcher:
         logger.info("nhl_pbp_fetch", url=url, game_id=game_id)
 
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="nhl-api",
+                endpoint="playbyplay",
+                league="NHL",
+                game_id=game_id,
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.error("nhl_pbp_fetch_error", game_id=game_id, error=str(exc))
+            return NormalizedPlayByPlay(source_game_key=str(game_id), plays=[])
+
+        if response is None:
             return NormalizedPlayByPlay(source_game_key=str(game_id), plays=[])
 
         if response.status_code == 404:

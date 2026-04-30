@@ -20,6 +20,7 @@ from ..models import NormalizedPlay, NormalizedPlayByPlay
 from ..utils.cache import APICache
 from ..utils.datetime_utils import now_utc
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .nba_boxscore import NBABoxscoreFetcher
 from .nba_models import NBABoxscore
 
@@ -100,9 +101,21 @@ class NBALiveFeedClient:
         url = NBA_SCOREBOARD_URL
         logger.info("nba_scoreboard_fetch", url=url, date=str(day))
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="nba-cdn",
+                endpoint="scoreboard",
+                league="NBA",
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.warning("nba_scoreboard_fetch_error", date=str(day), error=str(exc))
+            return []
+
+        if response is None:
             return []
 
         if response.status_code == 403:
@@ -154,7 +167,19 @@ class NBALiveFeedClient:
         """
         logger.info("nba_schedule_fetch", url=NBA_SCHEDULE_URL, date=str(day))
         try:
-            response = self.client.get(NBA_SCHEDULE_URL, timeout=30.0)
+            response = provider_request(
+                self.client,
+                "GET",
+                NBA_SCHEDULE_URL,
+                provider="nba-cdn",
+                endpoint="schedule",
+                league="NBA",
+                qps_budget=5.0,
+                qps_burst=10,
+                timeout=30.0,
+            )
+            if response is None:
+                return []
             if response.status_code != 200:
                 logger.warning("nba_schedule_fetch_failed", status=response.status_code)
                 return []
@@ -205,7 +230,19 @@ class NBALiveFeedClient:
     def fetch_play_by_play(self, game_id: str) -> NormalizedPlayByPlay:
         url = NBA_PBP_URL.format(game_id=game_id)
         logger.info("nba_pbp_fetch", url=url, game_id=game_id)
-        response = self.client.get(url)
+        response = provider_request(
+            self.client,
+            "GET",
+            url,
+            provider="nba-cdn",
+            endpoint="playbyplay",
+            league="NBA",
+            game_id=game_id,
+            qps_budget=5.0,
+            qps_burst=10,
+        )
+        if response is None:
+            return NormalizedPlayByPlay(source_game_key=game_id, plays=[])
         if response.status_code == 403:
             logger.debug("nba_pbp_blocked", game_id=game_id, status=403)
             return NormalizedPlayByPlay(source_game_key=game_id, plays=[])
@@ -276,5 +313,4 @@ def _parse_nba_clock(value: str | None) -> str | None:
             seconds = float(match.group(2) or 0)
             return f"{minutes}:{int(seconds):02d}"
     return value
-
 

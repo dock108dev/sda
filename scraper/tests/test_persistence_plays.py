@@ -25,6 +25,15 @@ from sports_scraper.persistence.plays import (
     upsert_plays,
 )
 
+PLAYS_PY = REPO_ROOT / "scraper" / "sports_scraper" / "persistence" / "plays.py"
+
+
+def test_no_optional_pbpsnapshot_hasattr_gate() -> None:
+    """PBPSnapshot lives on db_models SSOT; optional-deployment skip path was removed."""
+    text = PLAYS_PY.read_text()
+    assert "hasattr(db_models, 'PBPSnapshot')" not in text
+    assert 'hasattr(db_models, "PBPSnapshot")' not in text
+
 
 class TestUpsertPlays:
     """Tests for upsert_plays function."""
@@ -520,27 +529,6 @@ class TestCreateRawPbpSnapshotWithPlays:
         assert stats["plays_with_score"] == 1
         assert stats["plays_without_score"] == 1
         assert stats["clock_missing"] == 1
-
-    @patch("sports_scraper.persistence.plays.db_models")
-    def test_handles_missing_pbp_snapshot_model(self, mock_db_models):
-        """Returns None when PBPSnapshot model doesn't exist."""
-        mock_session = MagicMock()
-        # Remove PBPSnapshot attribute
-        del mock_db_models.PBPSnapshot
-
-        plays = [
-            NormalizedPlay(
-                play_index=1,
-                quarter=1,
-                game_clock="12:00",
-                play_type="shot",
-                description="Shot",
-            ),
-        ]
-
-        result = create_raw_pbp_snapshot(mock_session, game_id=1, plays=plays, source="test")
-
-        assert result is None
 
     @patch("sports_scraper.persistence.plays.db_models")
     def test_handles_exception_during_snapshot(self, mock_db_models):

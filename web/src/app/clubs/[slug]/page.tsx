@@ -39,11 +39,14 @@ export default async function ClubPage({ params }: PageProps) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.5rem" }}>
         {club.branding?.logo_url && (
-          <img
-            src={club.branding.logo_url}
-            alt={`${club.name} logo`}
-            style={{ height: "48px", width: "auto", objectFit: "contain" }}
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- operator HTTPS logos; origins not fixed */}
+            <img
+              src={club.branding.logo_url}
+              alt={`${club.name} logo`}
+              style={{ height: "48px", width: "auto", objectFit: "contain" }}
+            />
+          </>
         )}
         <h1
           style={{

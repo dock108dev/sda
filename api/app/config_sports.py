@@ -21,8 +21,6 @@ class LeagueConfig:
     This is the Single Source of Truth (SSOT) for per-league live-data behavior:
     - live_pbp_enabled: poll live play-by-play data
     - live_boxscore_enabled: poll live boxscores during games
-    - live_odds_enabled: persist odds for live games (must remain False —
-      closing-line architecture requires pre-game odds only)
     """
 
     code: str                       # "NBA", "NHL", "NCAAB", "MLB"
@@ -44,7 +42,6 @@ class LeagueConfig:
     live_pbp_poll_minutes: int = 5      # Minutes between PBP polls for live games
     live_pbp_enabled: bool = True       # Whether to poll live PBP for this league
     live_boxscore_enabled: bool = True  # Whether to poll live boxscores for this league
-    live_odds_enabled: bool = False   # Must remain False — closing-line-only architecture
     estimated_game_duration_hours: float = 3.0  # Typical game length for time-based fallback
 
     # Season audit baselines (total league-wide unique games, not per-team)
@@ -59,6 +56,15 @@ class LeagueConfig:
     season_end_month: int | None = None      # Month the season typically ends
     season_end_day: int | None = None        # Day the season typically ends
     season_crosses_year: bool = False         # True if season spans two calendar years
+
+
+# Global switch for in-game Odds API polling.
+#
+# This is intentionally not per-league: live odds are either enabled for the
+# whole platform or disabled for the whole platform. Current architecture uses
+# pregame odds and closing lines only, so this must remain False unless we
+# intentionally decide to spend Odds API credits on live markets.
+LIVE_ODDS_ENABLED = False
 
 
 # Master configuration for all leagues
@@ -148,14 +154,9 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
     ),
 }
 
-# --- Static validation: live_odds_enabled must remain False for all leagues ---
-# Live odds would overwrite pre-game closing lines. This assertion catches
-# accidental config changes at import time.
-for _code, _cfg in LEAGUE_CONFIG.items():
-    assert not _cfg.live_odds_enabled, (
-        f"live_odds_enabled must be False for {_code}. "
-        f"Live odds would overwrite pre-game closing lines."
-    )
+def is_live_odds_enabled() -> bool:
+    """Return whether in-game Odds API polling is enabled platform-wide."""
+    return LIVE_ODDS_ENABLED
 
 
 def get_league_config(league_code: str) -> LeagueConfig:

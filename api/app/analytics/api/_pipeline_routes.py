@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.dependencies.roles import require_admin
+from app.metrics import analytics_batch_sim_serialization_failures_total
 
 router = APIRouter()
 
@@ -274,6 +275,7 @@ async def list_batch_simulate_jobs(
             # Don't 500 the whole list because of one corrupted row. Surface
             # the row id and a marker so the caller can decide what to do.
             job_id = getattr(job, "id", None)
+            analytics_batch_sim_serialization_failures_total.inc()
             logger.exception(
                 "batch_sim_job_serialization_failed",
                 extra={"job_id": job_id},

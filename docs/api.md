@@ -12,30 +12,31 @@
 2. [Rate Limiting](#rate-limiting)
 3. [Caching](#caching)
 4. [Date & Time Convention](#date--time-convention)
-5. [Quick Start](#quick-start)
-6. [Reference Tables](#reference-tables)
-7. [Health Check](#health-check)
-8. [Games](#games)
-9. [Game Flow](#game-flow)
-10. [Timeline](#timeline)
-11. [Teams](#teams)
-12. [Scraper Runs](#scraper-runs)
-13. [Game Flow Pipeline](#game-flow-pipeline)
-14. [Diagnostics](#diagnostics)
-15. [Jobs](#jobs)
-16. [Task Control](#task-control)
-17. [PBP Inspection](#pbp-inspection)
-18. [Entity Resolution](#entity-resolution)
-19. [Social](#social)
-20. [FairBet](#fairbet)
-21. [Analytics](#analytics)
-22. [Simulator](#simulator)
-23. [Model Odds](#model-odds)
-24. [Realtime](#realtime)
-25. [Reading Positions](#reading-positions)
-26. [Golf API](#golf-api)
-27. [Golf Pools API](#golf-pools-api)
-28. [Response Models](#response-models)
+5. [Wire JSON conventions (consumer apps)](#wire-json-conventions-consumer-apps)
+6. [Quick Start](#quick-start)
+7. [Reference Tables](#reference-tables)
+8. [Health Check](#health-check)
+9. [Games](#games)
+10. [Game Flow](#game-flow)
+11. [Timeline](#timeline)
+12. [Teams](#teams)
+13. [Scraper Runs](#scraper-runs)
+14. [Game Flow Pipeline](#game-flow-pipeline)
+15. [Diagnostics](#diagnostics)
+16. [Jobs](#jobs)
+17. [Task Control](#task-control)
+18. [PBP Inspection](#pbp-inspection)
+19. [Entity Resolution](#entity-resolution)
+20. [Social](#social)
+21. [FairBet](#fairbet)
+22. [Analytics](#analytics)
+23. [Simulator](#simulator)
+24. [Model Odds](#model-odds)
+25. [Realtime](#realtime)
+26. [Reading Positions](#reading-positions)
+27. [Golf API](#golf-api)
+28. [Golf Pools API](#golf-pools-api)
+29. [Response Models](#response-models)
 
 ---
 
@@ -392,6 +393,14 @@ All datetime fields in responses are **UTC (ISO 8601)**.
 | `startDate` (request) | Eastern | `2026-01-22` |
 | `gameDate` (response) | UTC | `2026-01-23T03:00:00Z` |
 | `lastScrapedAt` (response) | UTC | `2026-01-23T05:30:00Z` |
+
+---
+
+## Wire JSON conventions (consumer apps)
+
+- **Response bodies** use **camelCase** JSON keys for public fields where Pydantic models define response aliases. Generated OpenAPI listings may still show Python identifiers; **validate integrations against actual HTTP responses** (e.g. `curl` / browser Network), not only the schema browser.
+- **Transient DB errors:** Some analytics list routes return **503** with a **`Retry-After`** header (seconds) when the database is temporarily unavailable — clients should backoff and retry ([changelog — 2026-04-25](changelog.md)).
+- **Authenticated throughput:** Requests including **`X-API-Key`** are counted in a separate keyed bucket (see [Rate limiting](#rate-limiting)).
 
 ---
 

@@ -156,14 +156,17 @@ app.conf.task_routes = {
 #
 # During EDT (March-November) all times shift 1 hour later.
 #
-# High-frequency polling (every 60s, staggered 15s apart via countdown):
+# High-frequency polling:
 #   :00  update_game_states  — disabled 3–11 AM EST (08–16 UTC)
-#   :15  poll_live_pbp       — disabled 3–11 AM EST (08–16 UTC)
+#   :15  poll_live_pbp       — pre/post fallback, disabled 3–11 AM EST (08–16 UTC)
+#   5s   poll_live_pbp(True) — live-game PBP/stat pulls only
 #   :30  sync_mainline_odds  — no quiet window
 #   :45  sync_prop_odds      — no quiet window
 
-# High-frequency polling — all fire every 60s, staggered by countdown offsets.
-# Stats/PBP disabled 3–11 AM EST (hour 08–16 UTC excluded from crontab).
+# High-frequency polling — minute jobs are staggered by countdown offsets.
+# Pregame/postgame Stats/PBP stays on the existing 60s schedule. The live-only
+# path runs every 5 seconds and uses resolver-level staleness gates so it only
+# touches games that are actually live and due for refresh.
 # High-frequency polling tasks use `expires` so stale tasks are dropped from the
 # queue rather than piling up behind backfill/ingestion jobs. If a task hasn't
 # been picked up within its interval, a fresh one will be dispatched by beat.
@@ -177,6 +180,12 @@ _polling_schedule = {
         "task": "poll_live_pbp",
         "schedule": crontab(minute="*/1", hour="0-7,16-23"),
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 15, "expires": 55},
+    },
+    "live-game-data-poll-every-5s": {
+        "task": "poll_live_pbp",
+        "schedule": 5.0,
+        "args": (True,),
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 4},
     },
     "mainline-odds-sync-every-3m": {
         "task": "sync_mainline_odds",

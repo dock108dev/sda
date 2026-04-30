@@ -18,6 +18,7 @@ import stripe
 from sqlalchemy import select
 
 from app.celery_app import celery_app
+from app.metrics import stripe_webhook_dead_letter_total
 from app.tasks._task_infra import _task_db
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ def process_stripe_webhook_event(self, event_id: str, payload: str) -> dict:
         return {"status": "ok", "event_id": event_id}
 
     if is_last:
+        stripe_webhook_dead_letter_total.inc()
         logger.error(
             "webhook_dead_letter",
             extra={

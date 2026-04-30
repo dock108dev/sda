@@ -34,11 +34,13 @@ def _app_with_headers() -> TestClient:
 
 
 class TestSecurityHeaders:
-    def test_all_five_headers_present(self) -> None:
+    def test_all_baseline_headers_present(self) -> None:
         client = _app_with_headers()
         resp = client.get("/ping")
         assert resp.status_code == 200
-        assert resp.headers["content-security-policy"] == "default-src 'self'"
+        assert resp.headers["content-security-policy"].startswith("default-src 'self'")
+        assert "base-uri 'self'" in resp.headers["content-security-policy"]
+        assert "object-src 'none'" in resp.headers["content-security-policy"]
         assert (
             resp.headers["strict-transport-security"]
             == "max-age=31536000; includeSubDomains"
@@ -46,6 +48,10 @@ class TestSecurityHeaders:
         assert resp.headers["x-frame-options"] == "DENY"
         assert resp.headers["x-content-type-options"] == "nosniff"
         assert resp.headers["referrer-policy"] == "same-origin"
+        assert (
+            resp.headers["permissions-policy"]
+            == "camera=(), microphone=(), geolocation=()"
+        )
 
     def test_headers_on_404(self) -> None:
         """Error responses must also carry the hardening headers."""
@@ -58,6 +64,7 @@ class TestSecurityHeaders:
             "x-frame-options",
             "x-content-type-options",
             "referrer-policy",
+            "permissions-policy",
         ):
             assert h in resp.headers, f"missing {h} on 404 response"
 

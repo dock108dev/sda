@@ -22,6 +22,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.metrics import pipeline_stage_failures_total
+
 from ...db import AsyncSession
 from ...db.pipeline import GamePipelineRun, GamePipelineStage
 from ...db.sports import SportsGame, SportsPlayerBoxscore
@@ -122,9 +124,7 @@ class PipelineExecutor:
             raise PipelineExecutionError(f"Game {game_id} not found")
 
         if not game.is_final:
-            raise PipelineExecutionError(
-                f"Game {game_id} is not final (status: {game.status})"
-            )
+            raise PipelineExecutionError(f"Game {game_id} is not final (status: {game.status})")
 
         # Create pipeline run
         run = GamePipelineRun(
@@ -187,9 +187,7 @@ class PipelineExecutor:
         stage_record = result.scalar_one_or_none()
 
         if not stage_record:
-            raise PipelineExecutionError(
-                f"Stage {stage.value} not found for run {run_id}"
-            )
+            raise PipelineExecutionError(f"Stage {stage.value} not found for run {run_id}")
 
         return stage_record
 
@@ -217,12 +215,8 @@ class PipelineExecutor:
             "sport": game.league.code if game.league else "NBA",
             "home_team_name": game.home_team.name if game.home_team else "Home",
             "away_team_name": game.away_team.name if game.away_team else "Away",
-            "home_team_abbrev": game.home_team.abbreviation
-            if game.home_team
-            else "HOME",
-            "away_team_abbrev": game.away_team.abbreviation
-            if game.away_team
-            else "AWAY",
+            "home_team_abbrev": game.home_team.abbreviation if game.home_team else "HOME",
+            "away_team_abbrev": game.away_team.abbreviation if game.away_team else "AWAY",
             "player_names": player_names,
         }
         # Thread quality-gate regen context from run_full_pipeline into every
@@ -440,6 +434,7 @@ class PipelineExecutor:
             )
 
         except Exception as e:
+            pipeline_stage_failures_total.labels(stage.value).inc()
             # Update stage record with failure
             stage_record.status = "failed"
             stage_record.error_details = str(e)
@@ -571,9 +566,7 @@ class PipelineExecutor:
         stages = []
         for stage_record in sorted(
             run.stages,
-            key=lambda s: PipelineStage(s.stage)
-            .ordered_stages()
-            .index(PipelineStage(s.stage)),
+            key=lambda s: PipelineStage(s.stage).ordered_stages().index(PipelineStage(s.stage)),
         ):
             stages.append(
                 {

@@ -20,6 +20,7 @@ from app.db import get_db
 from app.db.club import Club
 from app.db.onboarding import OnboardingSession
 from app.db.stripe import ProcessedStripeEvent, StripeSubscription
+from app.metrics import stripe_webhook_async_queued_total
 from app.services.email import send_dunning_email, send_payment_confirmation_email
 
 logger = logging.getLogger(__name__)
@@ -263,4 +264,5 @@ async def stripe_webhook(
         # Lazy import avoids circular dependency at module load time.
         from app.tasks.webhook_retry import process_stripe_webhook_event
         process_stripe_webhook_event.delay(event.id, payload.decode())
+        stripe_webhook_async_queued_total.inc()
         return JSONResponse({"status": "queued"}, status_code=202)

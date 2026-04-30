@@ -150,7 +150,9 @@ def _is_admin_origin(request: Request) -> bool:
 
     Accepts:
     - ``Origin`` from direct browser requests
-    - ``X-Forwarded-Origin`` from internal proxy routes
+    - ``X-Forwarded-Origin`` only when ``TRUST_FORWARDED_ORIGIN`` is true (set
+      this only if the edge strips untrusted values and injects this header
+      for trusted internal routes).
     - origin parsed from ``Referer`` as a fallback
     """
     candidates: set[str] = set()
@@ -159,7 +161,7 @@ def _is_admin_origin(request: Request) -> bool:
     referer = request.headers.get("referer")
     if origin:
         candidates.add(str(origin))
-    if fwd_origin:
+    if fwd_origin and settings.trust_forwarded_origin:
         candidates.add(str(fwd_origin))
     if referer:
         try:
@@ -185,7 +187,8 @@ async def resolve_role(
     * No JWT + request Origin matches ``ADMIN_ORIGINS`` → ``"admin"``
       (admin UI sits behind API-key auth and doesn't forward JWTs)
     * No JWT + unknown origin → ``"guest"``
-    * ``AUTH_ENABLED=false`` → ``"admin"`` (feature-flag fallback)
+    * ``AUTH_ENABLED=false`` → ``"admin"`` (feature-flag fallback for local dev;
+      ``validate_runtime_settings`` rejects this in production/staging)
     """
     if not settings.auth_enabled:
         return "admin"

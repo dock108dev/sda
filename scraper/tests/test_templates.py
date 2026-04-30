@@ -3,7 +3,7 @@
 Coverage:
 - TemplateEngine.render() for NFL, NBA, MLB, NHL
 - Output structure: 4 blocks, correct roles, score continuity
-- validate_blocks.py structural constraints (block count, word counts,
+- validate_blocks_* pipeline constraints (block count, word counts,
   role ordering, mini_box population, moment coverage)
 - Coverage constraints: final score present, winning team present, OT term (when applicable)
 - Edge cases: zero scores, overtime, tied game (OT)

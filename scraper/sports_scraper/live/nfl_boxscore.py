@@ -16,6 +16,7 @@ from ..models import (
 )
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .nfl_constants import NFL_STATUS_MAP, NFL_SUMMARY_URL
 from .nfl_helpers import build_team_identity_from_espn, parse_espn_datetime
 from .nfl_models import NFLBoxscore
@@ -40,9 +41,22 @@ class NFLBoxscoreFetcher:
         logger.info("nfl_boxscore_fetch", url=url, game_id=game_id)
 
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="espn-api",
+                endpoint="summary_boxscore",
+                league="NFL",
+                game_id=game_id,
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.error("nfl_boxscore_fetch_error", game_id=game_id, error=str(exc))
+            return None
+
+        if response is None:
             return None
 
         if response.status_code == 404:

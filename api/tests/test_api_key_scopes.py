@@ -68,6 +68,14 @@ class TestVerifyApiKeyScopeEnforcement:
         assert exc_info.value.status_code == 403
         assert "consumer" in exc_info.value.detail.lower()
 
+    def test_consumer_key_rejected_on_admin_platform_stats_path(self):
+        """Consumer key must not work on /api/admin/stats (platform dashboard)."""
+        req = _make_request("/api/admin/stats")
+        with patch("app.dependencies.auth.settings", _settings_both_keys()):
+            with pytest.raises(HTTPException) as exc_info:
+                asyncio.run(verify_api_key(request=req, api_key=_CONSUMER_KEY))
+        assert exc_info.value.status_code == 403
+
     def test_admin_key_accepted_on_admin_route(self):
         req = _make_request("/api/admin/sports/games")
         with patch("app.dependencies.auth.settings", _settings_both_keys()):
@@ -338,15 +346,26 @@ class TestAdminRateLimitTier:
 
         asyncio.run(run())
 
-    def test_exempt_endpoints_still_exempt(self):
-        """SSE endpoint is still exempt from all rate limits."""
+    def test_sse_endpoint_uses_dedicated_rate_bucket(self):
+        """GET /v1/sse is throttled on its own bucket (keyed budget), not unbounded."""
+
         async def mock_app(scope, receive, send):
             pass
 
         middleware = RateLimitMiddleware(mock_app)
 
+        def _sse_scope(api_key_qs: bytes = b"api_key=test-key-sse") -> dict:
+            return {
+                "type": "http",
+                "path": "/v1/sse",
+                "query_string": api_key_qs,
+                "headers": [],
+                "server": ("localhost", 8000),
+                "client": ("9.9.9.9", 12345),
+            }
+
         async def run():
-            captured = []
+            captured: list[int] = []
 
             async def mock_receive():
                 return {"type": "http.request", "body": b""}
@@ -360,10 +379,17 @@ class TestAdminRateLimitTier:
                 s.admin_rate_limit_window_seconds = 60
                 s.rate_limit_requests = 120
                 s.rate_limit_window_seconds = 60
-    
-                for _ in range(10):
-                    captured.clear()
-                    await middleware(_make_scope("/v1/sse"), mock_receive, capture_send)
-                    assert 429 not in captured
+                s.rate_limit_requests_keyed = 2
+                s.rate_limit_window_seconds_keyed = 60
+                s.rate_limit_use_redis = False
+
+                await middleware(_sse_scope(), mock_receive, capture_send)
+                assert 429 not in captured
+                captured.clear()
+                await middleware(_sse_scope(), mock_receive, capture_send)
+                assert 429 not in captured
+                captured.clear()
+                await middleware(_sse_scope(), mock_receive, capture_send)
+                assert 429 in captured
 
         asyncio.run(run())

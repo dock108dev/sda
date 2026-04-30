@@ -18,6 +18,7 @@ from ..logging import logger
 from ..models import NormalizedPlayByPlay
 from ..utils.cache import APICache
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .mlb_boxscore import MLBBoxscoreFetcher
 from .mlb_constants import MLB_SCHEDULE_URL
 from .mlb_helpers import (
@@ -80,9 +81,22 @@ class MLBLiveFeedClient:
             logger.info("mlb_schedule_fetch", url=url, date=date_str)
 
             try:
-                response = self.client.get(url)
+                response = provider_request(
+                    self.client,
+                    "GET",
+                    url,
+                    provider="mlb-stats-api",
+                    endpoint="schedule",
+                    league="MLB",
+                    qps_budget=5.0,
+                    qps_burst=10,
+                )
             except Exception as exc:
                 logger.error("mlb_schedule_fetch_error", date=date_str, error=str(exc))
+                current += one_day()
+                continue
+
+            if response is None:
                 current += one_day()
                 continue
 

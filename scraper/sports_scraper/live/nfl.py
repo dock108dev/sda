@@ -19,6 +19,7 @@ from ..models import NormalizedPlayByPlay
 from ..utils.cache import APICache
 from ..utils.datetime_utils import start_of_et_day_utc
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .nfl_boxscore import NFLBoxscoreFetcher
 from .nfl_constants import NFL_SCOREBOARD_URL, NFL_SEASON_TYPE_MAP
 from .nfl_helpers import build_team_identity_from_espn, map_espn_game_status, parse_espn_datetime
@@ -75,9 +76,22 @@ class NFLLiveFeedClient:
             logger.info("nfl_schedule_fetch", url=url, date=date_str)
 
             try:
-                response = self.client.get(url)
+                response = provider_request(
+                    self.client,
+                    "GET",
+                    url,
+                    provider="espn-api",
+                    endpoint="scoreboard",
+                    league="NFL",
+                    qps_budget=5.0,
+                    qps_burst=10,
+                )
             except Exception as exc:
                 logger.error("nfl_schedule_fetch_error", date=date_str, error=str(exc))
+                current += timedelta(days=1)
+                continue
+
+            if response is None:
                 current += timedelta(days=1)
                 continue
 

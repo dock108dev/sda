@@ -14,31 +14,26 @@ from starlette.responses import JSONResponse, Response
 from app.analytics.api.analytics_routes import router as analytics_router
 from app.config import settings
 from app.db import _get_engine, get_async_session
-from app.otel import configure_telemetry, instrument_fastapi
 from app.db.telemetry import CircuitBreakerTripEvent
 from app.dependencies.auth import verify_api_key
 from app.dependencies.roles import require_admin, require_user
 from app.logging_config import configure_logging
+from app.metrics import (
+    circuit_breaker_flush_errors_total,
+    unhandled_exceptions_total,
+)
 from app.middleware.head_method import HeadAsGetMiddleware
 from app.middleware.logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.otel import configure_telemetry, instrument_fastapi
 from app.realtime.listener import pg_listener
 from app.realtime.manager import realtime_manager
 from app.realtime.poller import db_poller
-from app.realtime.streams import RedisStreamsBridge
 from app.realtime.sse import router as sse_router
+from app.realtime.streams import RedisStreamsBridge
 from app.realtime.ws import router as ws_router
 from app.routers import auth, fairbet, onboarding, preferences, simulator, social, sports
-from app.routers.billing import router as billing_router
-from app.routers.clubs import router as clubs_router
-from app.routers.club_branding import router as club_branding_router
-from app.routers.club_memberships import router as club_memberships_router
-from app.routers.commerce import router as commerce_router
-from app.routers.webhooks import router as webhooks_router
-from app.routers.v1 import router as v1_router
-from app.routers.model_odds import router as model_odds_router
-from app.routers.golf import router as golf_router
 from app.routers.admin import (
     audit as admin_audit,
     circuit_breakers,
@@ -57,6 +52,15 @@ from app.routers.admin import (
     users,
     webhooks as admin_webhooks,
 )
+from app.routers.billing import router as billing_router
+from app.routers.club_branding import router as club_branding_router
+from app.routers.club_memberships import router as club_memberships_router
+from app.routers.clubs import router as clubs_router
+from app.routers.commerce import router as commerce_router
+from app.routers.golf import router as golf_router
+from app.routers.model_odds import router as model_odds_router
+from app.routers.v1 import router as v1_router
+from app.routers.webhooks import router as webhooks_router
 from app.services.circuit_breaker_registry import registry as _cb_registry
 from app.services.entitlement import EntitlementError, SeatLimitError, SubscriptionPastDueError
 from app.services.pool_lifecycle import TransitionError
@@ -90,6 +94,7 @@ async def _circuit_breaker_flush_loop() -> None:
                         )
                     )
         except Exception:
+            circuit_breaker_flush_errors_total.inc()
             _flush_logger.warning(
                 "circuit_breaker_flush_error",
                 exc_info=True,
@@ -100,6 +105,11 @@ async def _circuit_breaker_flush_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start background tasks: streams bridge, LISTEN/NOTIFY listener, CB flush."""
+    if not settings.auth_enabled and settings.environment not in {"production", "staging"}:
+        logging.getLogger("app.startup").warning(
+            "AUTH_ENABLED=false — JWT role resolution treats callers as admin; "
+            "intended for local development only (blocked in production/staging)."
+        )
     bridge = RedisStreamsBridge(settings.redis_url, realtime_manager.boot_epoch)
     realtime_manager.set_streams_bridge(bridge)
     await bridge.start(realtime_manager._dispatch_local)
@@ -234,6 +244,7 @@ async def _transition_exception_handler(request: Request, exc: TransitionError) 
 
 @app.exception_handler(Exception)
 async def _global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    unhandled_exceptions_total.inc()
     logger.exception(
         "unhandled_exception",
         extra={"path": request.url.path, "method": request.method},
@@ -242,6 +253,7 @@ async def _global_exception_handler(request: Request, exc: Exception) -> JSONRes
         status_code=500,
         content={"detail": "Internal server error"},
     )
+
 
 # ---------------------------------------------------------------------------
 # Admin-internal API key dependency (used by admin UI routers)
@@ -335,14 +347,15 @@ app.include_router(golf_router, dependencies=auth_dependency)
 # JWT-based for consumer apps)
 # ---------------------------------------------------------------------------
 # Admin SPA platform endpoints (/api/admin/stats, /api/admin/poll-health).
-# Gated by the admin-tier API key only — not JWT/role — because the admin
-# SPA reaches this backend through an nginx reverse proxy that injects the
-# admin API key, and Caddy Basic Auth already scopes the SPA to operators.
+# Uses ``admin_dependency`` (API key + ``require_admin``): valid admin API key
+# alone still yields admin role; if a ``Authorization: Bearer`` JWT is also
+# sent, the JWT role wins (so a non-admin user cannot ride the injected key).
+# Caddy Basic Auth still scopes the SPA to operators.
 app.include_router(
     admin_platform.router,
     prefix="/api/admin",
     tags=["admin", "platform"],
-    dependencies=auth_dependency,
+    dependencies=admin_dependency,
 )
 app.include_router(
     admin_clubs.router,
@@ -537,16 +550,16 @@ async def ready() -> JSONResponse:
 @app.get("/metrics", include_in_schema=False)
 async def metrics() -> Response:
     """Prometheus metrics endpoint — text/plain exposition format."""
+    from app import metrics as _metrics
     from app.db.golf_pools import GolfPool
     from app.db.stripe import WebhookDeliveryAttempt
-    from app import metrics as _metrics
 
     try:
         async with get_async_session() as db:
             pool_count = await db.scalar(
-                select(func.count()).select_from(GolfPool).where(
-                    GolfPool.status.in_(["open", "locked", "live"])
-                )
+                select(func.count())
+                .select_from(GolfPool)
+                .where(GolfPool.status.in_(["open", "locked", "live"]))
             )
             _metrics.active_pools_total.set(pool_count or 0)
     except Exception:

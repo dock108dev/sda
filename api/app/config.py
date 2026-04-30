@@ -13,12 +13,17 @@ from app.validate_env import validate_env
 
 
 class Settings(BaseSettings):
-    """Environment-driven settings with sensible defaults for local/Hetzner."""
+    """Environment-driven settings with sensible defaults for local/Hetzner.
+
+    Unknown environment variables are ignored (``extra="ignore"``): typos in
+    variable names are not surfaced at startup; validate critical keys explicitly
+    or use deployment checks (see ``validate_env`` / ``validate_runtime_settings``).
+    """
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
         env_file_encoding="utf-8",
-        extra="allow",
+        extra="ignore",
     )
 
     database_url: str = Field(
@@ -56,6 +61,12 @@ class Settings(BaseSettings):
     rate_limit_window_seconds_keyed: int = Field(
         default=60, alias="RATE_LIMIT_WINDOW_SECONDS_KEYED"
     )
+    # When true, auth-strict and onboarding-strict tiers use Redis fixed-window
+    # counters (shared across API replicas). Falls back to in-memory if Redis errors.
+    rate_limit_use_redis: bool = Field(default=False, alias="RATE_LIMIT_USE_REDIS")
+    # Only honor X-Forwarded-Origin for admin-origin role resolution when a trusted
+    # edge injects it (strip this header from untrusted clients at the load balancer).
+    trust_forwarded_origin: bool = Field(default=False, alias="TRUST_FORWARDED_ORIGIN")
     fairbet_odds_cache_enabled: bool = Field(
         default=True, alias="FAIRBET_ODDS_CACHE_ENABLED"
     )

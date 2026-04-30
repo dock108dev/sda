@@ -18,13 +18,14 @@ import time
 from celery import shared_task
 
 from ..celery_app import DEFAULT_QUEUE
+from ..config_sports import is_live_odds_enabled
 from ..db import db_models, get_session
 from ..logging import logger
 from ..utils.redis_lock import LOCK_TIMEOUT_5MIN, acquire_redis_lock, release_redis_lock
 
 # ---------------------------------------------------------------------------
 # Cadence configs (seconds) — live odds only.
-# PBP/stats polling is handled by the Beat-scheduled poll_live_pbp_task.
+# PBP/stats polling is handled by Beat-scheduled poll_live_pbp_task entries.
 # ---------------------------------------------------------------------------
 
 ODDS_MAINLINE_CADENCE = 15   # All leagues
@@ -104,11 +105,25 @@ def live_orchestrator_tick() -> dict:
         for game_id, _status, league_code in live_games:
             games_by_league.setdefault(league_code, []).append(game_id)
 
-            # PBP and boxscore polling are handled by the Beat-scheduled
-            # poll_live_pbp_task (every 60s). The orchestrator only manages
-            # live odds dispatch, which requires sport-specific cadences.
+            # PBP and boxscore polling are handled by Beat-scheduled
+            # poll_live_pbp_task entries. The orchestrator only manages live
+            # odds dispatch, which requires sport-specific cadences.
 
         # --- Live odds (league-batched) ---
+        if not is_live_odds_enabled():
+            logger.debug(
+                "orchestrator_live_odds_skipped",
+                reason="live_odds_disabled",
+                live_games=len(live_games),
+                leagues=list(games_by_league.keys()),
+            )
+            return {
+                "live_games": len(live_games),
+                "dispatched": dispatched,
+                "leagues": {k: len(v) for k, v in games_by_league.items()},
+                "live_odds_enabled": False,
+            }
+
         for league_code, game_ids in games_by_league.items():
             ml_key = _sched_key("odds:mainline", league_code, 0)
             if _is_due(r, ml_key, _jitter(ODDS_MAINLINE_CADENCE)):

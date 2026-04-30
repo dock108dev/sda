@@ -87,8 +87,8 @@ def _validate_timeline_artifact(
 # ---------------------------------------------------------------------------
 # GamePipelineStage — output_json, logs_json
 #
-# Registered lazily via Mapper.after_configured to avoid a circular import:
-# db.pipeline → services.pipeline (package __init__) → executor → db.pipeline
+# Registered lazily via Mapper.after_configured to avoid a circular import
+# (pipeline module ↔ services) during mapper setup.
 # ---------------------------------------------------------------------------
 
 

@@ -1,86 +1,78 @@
-# Documentation Index
+# Documentation index
 
-## Getting Started
-
-| Guide | Description |
-|-------|-------------|
-| [Infrastructure & Local Dev](ops/infra.md) | **Start here:** Docker setup, manual setup, environment variables |
-| [Architecture](architecture.md) | System components, data flow, database schema, key principles |
-| [API Reference](api.md) | FastAPI endpoints and usage |
-| [Roadmap](roadmap.md) | Phase-by-phase delivery plan with ✅/⬜ status and open architectural decisions |
-
-## External App Integration
+## Contributing & hygiene
 
 | Guide | Description |
 |-------|-------------|
-| [Game Flow Guide](gameflow/guide.md) | **Start here:** Compact timeline with blocks and mini box scores |
-| [API Reference](api.md) | Full API reference for consuming game data |
+| [Files over 500 LOC](file-size-inventory.md) | Inventory for optional splits / refactors (not a blocker) |
 
-## Development
-
-| Guide | Description |
-|-------|-------------|
-| [Adding New Sports](adding-sports.md) | How to enable a new league |
-| [Database Integration](database.md) | Querying the sports database |
-
-## Game Flow Generation
+## Getting started
 
 | Guide | Description |
 |-------|-------------|
-| [Game Flow Contract](gameflow/contract.md) | **Authoritative:** Block-based narrative model (3-7 blocks per game) |
-| [Game Flow Pipeline](gameflow/pipeline.md) | 8-stage pipeline from PBP to narratives |
-| [PBP Game Flow Assumptions](gameflow/pbp-assumptions.md) | Technical assumptions about PBP data |
-
-## Timeline System
-
-| Guide | Description |
-|-------|-------------|
-| [Timeline Assembly](gameflow/timeline-assembly.md) | Assembly recipe: PBP + social + odds merged by phase |
-| [Timeline Validation](gameflow/timeline-validation.md) | Validation rules (C1-C6 critical, W1-W4 warnings) |
-
-## FairBet & EV
-
-| Guide | Description |
-|-------|-------------|
-| [Odds & FairBet Pipeline](ingestion/odds-and-fairbet.md) | **Start here:** Full pipeline from ingestion to API consumption |
-| [EV Math](ingestion/ev-math.md) | Devig formulas (Shin's method), conversion math, and worked examples |
-
-## Data Ingestion
-
-| Guide | Description |
-|-------|-------------|
-| [Data Sources](ingestion/data-sources.md) | **Start here:** Where data comes from — NBA, NHL, NCAAB, MLB, NFL (boxscores, PBP, odds, social, advanced stats per sport) |
-
-## Golf & Club Provisioning
-
-| Guide | Description |
-|-------|-------------|
-| [Club Provisioning](clubs.md) | Self-serve club onboarding, Stripe commerce, entitlements, pool lifecycle |
-
-## Analytics & ML
-
-| Guide | Description |
-|-------|-------------|
-| [Analytics Engine](analytics.md) | **Start here:** Feature loadouts, model training, experiment sweeps, simulation, calibration, ensemble predictions, and model odds pipeline |
-| [Analytics Integration (Downstream)](analytics-downstream.md) | Integration guide for consuming apps — simulation flows, TypeScript types, navigation structure |
+| [README](../README.md) (repo root) | Clone, Docker quick start, repository layout |
+| [Infrastructure & local dev](ops/infra.md) | Docker Compose, services, migrations, backups |
+| [Environment & configuration](env-and-config.md) | Where env vars live, API/scraper settings, validation rules |
+| [Architecture](architecture.md) | Components, data flow, stack overview |
+| [API reference](api.md) | HTTP endpoints, auth, rate limits, response conventions |
+| [Roadmap](roadmap.md) | Delivery phases and status |
 
 ## Operations
 
 | Guide | Description |
 |-------|-------------|
-| [Operator Runbook](ops/runbook.md) | Production operations and monitoring |
-| [Deployment](ops/deployment.md) | Server setup, deploy flow, edge routing, rollbacks |
-| [Infrastructure & Local Dev](ops/infra.md) | Docker configuration, local setup, environment variables |
-| [Error Handling Audit](audits/abend-handling.md) | 188 exception blocks audited; all Critical/High findings fixed |
-| [SSOT Cleanup](audits/ssot-cleanup.md) | PipelineStage, GameStatus, story_version consolidation |
-| [Security Audit](audits/security-audit.md) | Auth, webhooks, CSP, SSRF, dependency surface review |
-| [Code Cleanup Report](audits/cleanup-report.md) | Lint / dead-code cleanup notes for the observability & security-hardening batch |
-| [Docs Consolidation](audits/docs-consolidation.md) | Documentation audit passes — what was fixed and what was verified |
-| [AIDLC Futures](audits/aidlc-futures.md) | Auto-generated finalization summary from the AIDLC tooling run |
-| [Changelog](changelog.md) | Recent changes and releases |
+| [Operator runbook](ops/runbook.md) | Production operations and monitoring |
+| [Deployment](ops/deployment.md) | Server setup, routing, rollbacks |
+| [Scheduler & background jobs](scheduler-and-jobs.md) | Celery beat, queues, hold switch, manual vs automatic work |
 
-## Research
+## Security & limits
 
 | Guide | Description |
 |-------|-------------|
-| [Research Index](archived/research/README.md) | Pre-implementation design research — commerce, auth, club tenancy, pool lifecycle, entitlements, operations |
+| [Security trust boundaries](security-trust-boundaries.md) | Admin origins, API key vs JWT, realtime, rate limiting |
+| [Known limitations](known-limitations.md) | Intentional tradeoffs (Redis fallback, Stripe 202 path, etc.) |
+
+## Data & ingestion
+
+| Guide | Description |
+|-------|-------------|
+| [Data sources](ingestion/data-sources.md) | External APIs, leagues, ingestion behavior |
+| [Odds & FairBet](ingestion/odds-and-fairbet.md) | Odds pipeline through FairBet APIs |
+| [EV math](ingestion/ev-math.md) | Devig and conversion formulas |
+| [Database integration](database.md) | Querying and schema orientation |
+| [DB conventions](conventions/db.md) | Naming patterns used in migrations |
+
+## Game flow & timelines
+
+| Guide | Description |
+|-------|-------------|
+| [Game flow guide](gameflow/guide.md) | Timeline blocks and mini box scores |
+| [Game flow contract](gameflow/contract.md) | Block-based narrative model |
+| [Game flow pipeline](gameflow/pipeline.md) | Stages from PBP to narratives |
+| [PBP assumptions](gameflow/pbp-assumptions.md) | Technical assumptions for PBP |
+| [Timeline assembly](gameflow/timeline-assembly.md) | Merging PBP, social, odds |
+| [Timeline validation](gameflow/timeline-validation.md) | Validation rules |
+| [Version semantics](gameflow/version-semantics.md) | Story versioning |
+
+## Domains
+
+| Guide | Description |
+|-------|-------------|
+| [Club provisioning](clubs.md) | Onboarding, Stripe, pools |
+| [Analytics engine](analytics.md) | ML, simulation, training, experiments |
+| [Analytics downstream](analytics-downstream.md) | Integration notes for consuming apps (`/api/analytics`) |
+| [Adding sports](adding-sports.md) | Enabling a new league |
+
+## Audits & history
+
+| Guide | Description |
+|-------|-------------|
+| [Abend-handling audit](audits/abend-handling.md) | Exception-handling and resilience review |
+| [SSOT cleanup](audits/ssot-cleanup.md) | Enum / single-source-of-truth consolidation |
+| [Security audit](audits/security-audit.md) | Auth, webhooks, headers, dependency surface |
+| [Code cleanup report](audits/cleanup-report.md) | Observability / hardening batch notes |
+| [Changelog](changelog.md) | Release-level changes |
+
+---
+
+Documentation is maintained against the **current** codebase. If something disagrees with code or `infra/`, treat **code + compose + CI workflows** as authoritative and file an update.

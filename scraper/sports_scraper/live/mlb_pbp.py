@@ -13,6 +13,7 @@ from ..logging import logger
 from ..models import NormalizedPlay, NormalizedPlayByPlay
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .mlb_constants import (
     MLB_EVENT_TYPE_MAP,
     MLB_HALF_INNING_BOTTOM_OFFSET,
@@ -53,9 +54,22 @@ class MLBPbpFetcher:
         logger.info("mlb_pbp_fetch", url=url, game_pk=game_pk)
 
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="mlb-stats-api",
+                endpoint="playbyplay",
+                league="MLB",
+                game_id=game_pk,
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.error("mlb_pbp_fetch_error", game_pk=game_pk, error=str(exc))
+            return NormalizedPlayByPlay(source_game_key=str(game_pk), plays=[])
+
+        if response is None:
             return NormalizedPlayByPlay(source_game_key=str(game_pk), plays=[])
 
         if response.status_code == 404:

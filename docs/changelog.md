@@ -6,7 +6,7 @@ All notable changes to Sports Data Admin.
 
 ### Downstream-driven hardening (`scrolldown_changes` branch)
 
-Response to `docs/handoff/scroll-down-web-2026-04-25-response.md`.
+Downstream integration hardening; consumer-facing JSON conventions are summarized under **Wire JSON conventions** in [`docs/api.md`](api.md).
 
 **API contract:**
 - `GET /api/simulator/{sport}/teams` now filters MLB, NBA, and NHL by canonical-abbreviation lists (`api/app/analytics/sports/team_filters.py`). Cross-sport rows are excluded server-side. NCAAB still relies on `league_id` only (350+ D-I teams, no canonical short list).

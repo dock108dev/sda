@@ -26,8 +26,13 @@ def _notify_pbp_event(session: Session, game_id: int) -> None:
         session.execute(
             text("SELECT pg_notify('pbp_event', :p)"), {"p": payload}
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(
+            "pbp_pg_notify_failed",
+            game_id=game_id,
+            error=str(exc),
+            exc_info=True,
+        )
 
 
 def create_raw_pbp_snapshot(
@@ -90,15 +95,6 @@ def create_raw_pbp_snapshot(
         "clock_missing": clock_missing,
     }
 
-    # Check if PBPSnapshot model exists in db_models
-    if not hasattr(db_models, 'PBPSnapshot'):
-        logger.warning(
-            "pbp_snapshot_model_missing",
-            game_id=game_id,
-            note="PBPSnapshot table not available; skipping snapshot creation",
-        )
-        return None
-
     try:
         snapshot = db_models.PBPSnapshot(
             game_id=game_id,
@@ -130,6 +126,7 @@ def create_raw_pbp_snapshot(
             "raw_pbp_snapshot_failed",
             game_id=game_id,
             error=str(e),
+            exc_info=True,
         )
         return None
 

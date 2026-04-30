@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that guardrails.ts and validate_blocks.py / block_types.py share the
+"""Check that guardrails.ts and validate_blocks_constants.py / block_types.py share the
 same block-type enumeration, required-role list, and numeric limits.
 
 Canonical source of truth: the Python backend files.
@@ -16,7 +16,9 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 
 BLOCK_TYPES_PY = ROOT / "api/app/services/pipeline/stages/block_types.py"
-VALIDATE_BLOCKS_PY = ROOT / "api/app/services/pipeline/stages/validate_blocks.py"
+VALIDATE_BLOCKS_CONSTANTS_PY = (
+    ROOT / "api/app/services/pipeline/stages/validate_blocks_constants.py"
+)
 GAME_FLOW_TYPES_TS = ROOT / "web/src/lib/api/sportsAdmin/gameFlowTypes.ts"
 GUARDRAILS_TS = ROOT / "web/src/lib/guardrails.ts"
 
@@ -42,10 +44,13 @@ def _extract_semantic_roles_py(path: Path) -> set[str]:
 
 
 def _extract_required_roles_py(path: Path) -> set[str]:
-    """Values from REQUIRED_BLOCK_TYPES frozenset in validate_blocks.py."""
+    """Values from REQUIRED_BLOCK_TYPES frozenset in validate_blocks_constants.py.
+
+    Accepts ``frozenset([...])`` or ``frozenset(\\n    [ ... ]\\n)`` (black/ruff style).
+    """
     text = path.read_text()
     match = re.search(
-        r'REQUIRED_BLOCK_TYPES\s*[:=].*?frozenset\(\[(.*?)\]\)',
+        r'REQUIRED_BLOCK_TYPES\s*[:=].*?frozenset\s*\(\s*\[(.*?)\]\s*\)',
         text,
         re.DOTALL,
     )
@@ -128,11 +133,11 @@ def main() -> int:
             )
 
     # ── 2. Required block types ──────────────────────────────────────────────
-    req_py = _extract_required_roles_py(VALIDATE_BLOCKS_PY)
+    req_py = _extract_required_roles_py(VALIDATE_BLOCKS_CONSTANTS_PY)
     req_ts = _extract_required_roles_ts(GUARDRAILS_TS)
 
     if not req_py:
-        errors.append(f"Could not extract REQUIRED_BLOCK_TYPES from {VALIDATE_BLOCKS_PY}")
+        errors.append(f"Could not extract REQUIRED_BLOCK_TYPES from {VALIDATE_BLOCKS_CONSTANTS_PY}")
     if not req_ts:
         errors.append(f"Could not extract REQUIRED_BLOCK_TYPE_ROLES from {GUARDRAILS_TS}")
 
@@ -141,11 +146,11 @@ def main() -> int:
         only_req_ts = req_ts - req_py
         if only_req_py:
             errors.append(
-                f"Required roles in validate_blocks.py but missing from guardrails.ts: {sorted(only_req_py)}"
+                f"Required roles in validate_blocks_constants.py but missing from guardrails.ts: {sorted(only_req_py)}"
             )
         if only_req_ts:
             errors.append(
-                f"Required roles in guardrails.ts but missing from validate_blocks.py: {sorted(only_req_ts)}"
+                f"Required roles in guardrails.ts but missing from validate_blocks_constants.py: {sorted(only_req_ts)}"
             )
 
     # ── 3. Numeric constants ─────────────────────────────────────────────────

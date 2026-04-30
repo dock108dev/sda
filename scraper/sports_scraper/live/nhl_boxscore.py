@@ -15,6 +15,7 @@ from ..models import (
 )
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .nhl_constants import NHL_BOXSCORE_URL
 from .nhl_helpers import (
     build_team_identity_from_api,
@@ -61,9 +62,22 @@ class NHLBoxscoreFetcher:
         logger.info("nhl_boxscore_fetch", url=url, game_id=game_id)
 
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="nhl-api",
+                endpoint="boxscore",
+                league="NHL",
+                game_id=game_id,
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.error("nhl_boxscore_fetch_error", game_id=game_id, error=str(exc))
+            return None
+
+        if response is None:
             return None
 
         if response.status_code == 404:

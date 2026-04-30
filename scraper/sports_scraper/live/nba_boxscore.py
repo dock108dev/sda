@@ -17,6 +17,7 @@ from ..models import (
 )
 from ..utils.cache import APICache, should_cache_final
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .nba_constants import NBA_BOXSCORE_URL
 from .nba_models import NBABoxscore
 
@@ -77,9 +78,22 @@ class NBABoxscoreFetcher:
         logger.info("nba_boxscore_fetch", url=url, game_id=game_id)
 
         try:
-            response = self.client.get(url)
+            response = provider_request(
+                self.client,
+                "GET",
+                url,
+                provider="nba-cdn",
+                endpoint="boxscore",
+                league="NBA",
+                game_id=game_id,
+                qps_budget=5.0,
+                qps_burst=10,
+            )
         except Exception as exc:
             logger.error("nba_boxscore_fetch_error", game_id=game_id, error=str(exc))
+            return None
+
+        if response is None:
             return None
 
         if response.status_code == 403:

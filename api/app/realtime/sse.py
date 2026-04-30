@@ -1,7 +1,9 @@
 """Server-Sent Events endpoint for realtime subscriptions.
 
 URL: GET /v1/sse?channels=games:NBA:2026-03-05,game:123:summary
-Auth: X-API-Key header or api_key query param
+Auth: prefer ``X-API-Key`` header (avoids query strings in logs and Referer
+leakage). ``api_key`` query is supported because browser ``EventSource`` cannot
+set custom headers; keep URLs out of shared logs where possible.
 
 Reconnect with ?lastSeq=N&lastEpoch=<uuid> to receive missed events since seq N.
 If the epoch has changed (server restarted), an `epoch_changed` event is sent

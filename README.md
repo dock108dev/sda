@@ -30,6 +30,15 @@ Local endpoints:
 - `infra/` Docker and deployment assets
 - `docs/` full technical documentation
 
-## Further Documentation
+## Further documentation
 
-Start at `docs/index.md` for architecture, API reference, data model guides, ingestion flow, and operations docs.
+Start at [`docs/index.md`](docs/index.md). For large-module inventory and lint conventions, see [`docs/file-size-inventory.md`](docs/file-size-inventory.md).
+
+Key references:
+
+| Topic | Doc |
+|-------|-----|
+| Env vars & settings | [`docs/env-and-config.md`](docs/env-and-config.md) |
+| Celery schedules & queues | [`docs/scheduler-and-jobs.md`](docs/scheduler-and-jobs.md) |
+| Ops (Docker, deploy, runbook) | [`docs/ops/`](docs/ops/) |
+| API contract | [`docs/api.md`](docs/api.md) |

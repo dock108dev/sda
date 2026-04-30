@@ -19,6 +19,7 @@ from ..models import NormalizedPlayByPlay
 from ..utils.cache import APICache
 from ..utils.datetime_utils import start_of_et_day_utc
 from ..utils.parsing import parse_int
+from ..utils.provider_request import provider_request
 from .nhl_boxscore import NHLBoxscoreFetcher
 from .nhl_constants import NHL_SCHEDULE_URL
 from .nhl_helpers import (
@@ -87,9 +88,22 @@ class NHLLiveFeedClient:
             logger.info("nhl_schedule_fetch", url=url, date=date_str)
 
             try:
-                response = self.client.get(url)
+                response = provider_request(
+                    self.client,
+                    "GET",
+                    url,
+                    provider="nhl-api",
+                    endpoint="schedule",
+                    league="NHL",
+                    qps_budget=5.0,
+                    qps_burst=10,
+                )
             except Exception as exc:
                 logger.error("nhl_schedule_fetch_error", date=date_str, error=str(exc))
+                current += one_day()
+                continue
+
+            if response is None:
                 current += one_day()
                 continue
 
