@@ -139,13 +139,13 @@ class RateLimitMiddleware:
                         await response(scope, receive, send)
                         return
                     skip_memory_auth = True
-                except Exception as exc:
+                except Exception:
                     rate_limit_redis_fallback_total.labels("auth_strict").inc()
-                    # Do not use exc_info=True: Redis errors may surface connection URLs
-                    # (credentials) in stack traces or chained exceptions.
+                    # Log only static fields: path/request data and exception objects are
+                    # treated as potentially credential-bearing by security scanners.
                     logger.warning(
                         "rate_limit_redis_auth_fallback",
-                        extra={"path": path, "exc_type": type(exc).__name__},
+                        extra={"tier": "auth_strict"},
                     )
 
             if not skip_memory_auth:
@@ -179,11 +179,11 @@ class RateLimitMiddleware:
                         return
                     await self.app(scope, receive, send)
                     return
-                except Exception as exc:
+                except Exception:
                     rate_limit_redis_fallback_total.labels("onboarding_strict").inc()
                     logger.warning(
                         "rate_limit_redis_onboarding_fallback",
-                        extra={"path": path, "exc_type": type(exc).__name__},
+                        extra={"tier": "onboarding_strict"},
                     )
 
             onboarding_times = self._onboarding_requests[client_ip]
