@@ -109,10 +109,9 @@ def ingest_advanced_stats(
                 )
                 .filter(
                     db_models.SportsLeague.code == config.league_code,
-                    db_models.SportsGame.status.in_([
-                        db_models.GameStatus.final.value,
-                        db_models.GameStatus.archived.value,
-                    ]),
+                    db_models.SportsGame.status.in_(
+                        db_models.GameStatus.final_or_post_final_values()
+                    ),
                     db_models.SportsGame.game_date >= window_start,
                     db_models.SportsGame.game_date <= window_end,
                 )

@@ -57,9 +57,6 @@ PREVIEW_TOTAL_MIN = 100.0
 PREVIEW_TOTAL_MAX = 180.0
 
 
-_FINAL_STATUSES = ("final", "completed", "official")
-
-
 def apply_game_filters(
     stmt: Select[tuple[SportsGame]],
     leagues: Sequence[str] | None,
@@ -81,7 +78,7 @@ def apply_game_filters(
         stmt = stmt.where(SportsGame.status.notin_(_EXCLUDED_STATUSES))
 
     if final_only:
-        stmt = stmt.where(SportsGame.status.in_(_FINAL_STATUSES))
+        stmt = stmt.where(SportsGame.status.in_(GameStatus.final_or_post_final_values()))
 
     if leagues:
         league_codes = [code.upper() for code in leagues]

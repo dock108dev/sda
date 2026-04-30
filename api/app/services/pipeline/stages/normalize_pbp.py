@@ -16,7 +16,7 @@ from sqlalchemy.orm import selectinload
 
 from ....db import AsyncSession
 from ....db.resolution import PBPSnapshot
-from ....db.sports import SportsGame, SportsGamePlay
+from ....db.sports import GameStatus, SportsGame, SportsGamePlay
 from ....services.resolution_tracker import ResolutionTracker
 from ..models import NormalizedPBPOutput, StageInput, StageOutput
 from .normalize_pbp_helpers import (
@@ -78,7 +78,7 @@ async def execute_normalize_pbp(
     if not game:
         raise ValueError(f"Game {game_id} not found")
 
-    if not game.is_final:
+    if not GameStatus.is_final_or_post_final_status(game.status):
         raise ValueError(f"Game {game_id} is not final (status: {game.status})")
 
     # Get league code for sport-specific handling

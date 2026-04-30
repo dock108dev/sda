@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from ....db import AsyncSession, get_db
 from ....db.flow import SportsGameTimelineArtifact
 from ....db.pipeline import GamePipelineRun
-from ....db.sports import SportsGame, SportsGamePlay
+from ....db.sports import GameStatus, SportsGame, SportsGamePlay
 from .helpers import (
     build_run_response,
     build_run_summary,
@@ -172,5 +172,5 @@ async def get_game_pipeline_summary(
         latest_artifact_at=artifact.generated_at.isoformat() if artifact else None,
         total_pipeline_runs=len(runs),
         latest_run=latest_run,
-        can_run_pipeline=game.status == "final" and has_pbp,
+        can_run_pipeline=GameStatus.is_final_or_post_final_status(game.status) and has_pbp,
     )

@@ -27,8 +27,39 @@ from celery import shared_task
 from ..db import get_session
 from ..logging import logger
 
-# Valid statuses for flow dispatch: newly final, already in-progress, or previously failed.
-_VALID_DISPATCH_STATUSES = frozenset({"final", "recap_pending", "recap_failed"})
+
+def _game_status_value(game_status, name: str, default: str) -> str:
+    """Return a GameStatus enum value while tolerating lightweight test doubles."""
+    status_member = getattr(game_status, name, None)
+    value = getattr(status_member, "value", None)
+    return value if isinstance(value, str) else default
+
+
+def _flow_dispatch_values(db_models) -> frozenset[str]:
+    """Statuses eligible for missing-flow dispatch, sourced from GameStatus SSOT."""
+    getter = getattr(db_models.GameStatus, "flow_dispatch_values", None)
+    if callable(getter):
+        values = getter()
+        if isinstance(values, set | frozenset | tuple | list) and all(
+            isinstance(value, str) for value in values
+        ):
+            return frozenset(values)
+
+    return frozenset(
+        {
+            _game_status_value(db_models.GameStatus, "final", "final"),
+            _game_status_value(db_models.GameStatus, "recap_pending", "recap_pending"),
+            _game_status_value(db_models.GameStatus, "recap_failed", "recap_failed"),
+            _game_status_value(db_models.GameStatus, "recap_ready", "recap_ready"),
+        }
+    )
+
+
+def _status_any_of(column, statuses: frozenset[str]):
+    """Build an OR status predicate without relying on Column.in_ test support."""
+    from sqlalchemy import or_
+
+    return or_(*(column == status for status in statuses))
 
 
 def _set_game_status(game_id: int, status: str) -> None:
@@ -87,7 +118,7 @@ def trigger_flow_for_game(game_id: int) -> dict:
             logger.warning("flow_trigger_game_not_found", game_id=game_id)
             return {"game_id": game_id, "status": "not_found"}
 
-        if game.status not in _VALID_DISPATCH_STATUSES:
+        if game.status not in _flow_dispatch_values(db_models):
             logger.info(
                 "flow_trigger_skip_not_eligible",
                 game_id=game_id,
@@ -234,7 +265,7 @@ def sweep_missing_flows() -> dict:
     from datetime import datetime, timedelta
 
     from sqlalchemy import exists as sa_exists
-    from sqlalchemy import not_, or_
+    from sqlalchemy import not_
 
     from ..db import db_models
     from ..utils.redis_lock import LOCK_TIMEOUT_5MIN, acquire_redis_lock, release_redis_lock
@@ -252,9 +283,9 @@ def sweep_missing_flows() -> dict:
             games = (
                 session.query(db_models.SportsGame)
                 .filter(
-                    or_(
-                        db_models.SportsGame.status == db_models.GameStatus.final.value,
-                        db_models.SportsGame.status == db_models.GameStatus.recap_failed.value,
+                    _status_any_of(
+                        db_models.SportsGame.status,
+                        _flow_dispatch_values(db_models),
                     ),
                     db_models.SportsGame.game_date >= cutoff,
                     not_(
@@ -299,7 +330,7 @@ def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
     from datetime import datetime, timedelta
 
     from sqlalchemy import exists as sa_exists
-    from sqlalchemy import not_, or_
+    from sqlalchemy import not_
 
     from ..db import db_models
     from ..utils.redis_lock import LOCK_TIMEOUT_10MIN, acquire_redis_lock, release_redis_lock
@@ -317,9 +348,9 @@ def backfill_missing_flows(dry_run: bool = False, days: int = 7) -> dict:
             games = (
                 session.query(db_models.SportsGame)
                 .filter(
-                    or_(
-                        db_models.SportsGame.status == db_models.GameStatus.final.value,
-                        db_models.SportsGame.status == db_models.GameStatus.recap_failed.value,
+                    _status_any_of(
+                        db_models.SportsGame.status,
+                        _flow_dispatch_values(db_models),
                     ),
                     db_models.SportsGame.game_date >= cutoff,
                     not_(
