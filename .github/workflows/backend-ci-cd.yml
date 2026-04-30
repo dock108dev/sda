@@ -38,6 +38,7 @@ jobs:
           uv venv --python 3.12
           source .venv/bin/activate
           uv pip install -e ./scraper
+          uv pip install -r api/requirements.txt
           uv pip install pytest pytest-cov
           python -c "import pytest_cov; print('pytest-cov', pytest_cov.__version__)"
       - name: Run scraper tests with coverage

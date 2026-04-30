@@ -44,10 +44,13 @@ def _extract_semantic_roles_py(path: Path) -> set[str]:
 
 
 def _extract_required_roles_py(path: Path) -> set[str]:
-    """Values from REQUIRED_BLOCK_TYPES frozenset in validate_blocks_constants.py."""
+    """Values from REQUIRED_BLOCK_TYPES frozenset in validate_blocks_constants.py.
+
+    Accepts ``frozenset([...])`` or ``frozenset(\\n    [ ... ]\\n)`` (black/ruff style).
+    """
     text = path.read_text()
     match = re.search(
-        r'REQUIRED_BLOCK_TYPES\s*[:=].*?frozenset\(\[(.*?)\]\)',
+        r'REQUIRED_BLOCK_TYPES\s*[:=].*?frozenset\s*\(\s*\[(.*?)\]\s*\)',
         text,
         re.DOTALL,
     )

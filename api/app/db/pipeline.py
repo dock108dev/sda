@@ -26,6 +26,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import text
 
 from .base import Base
+from .pipeline_stage import (
+    PipelineStage,  # noqa: F401 — re-export for `from app.db.pipeline import`
+)
 from .sports import SportsGame
 
 
@@ -282,9 +285,3 @@ class PipelineCoverageReportEntry(Base):
     __table_args__ = (
         UniqueConstraint("report_date", "game_id", name="uq_coverage_report_date_game"),
     )
-
-
-# Re-export so callers can do `from app.db.pipeline import PipelineStage`.
-# Placed at the bottom to avoid circular import: pipeline.py -> services.pipeline ->
-# executor -> pipeline.py (classes not yet defined if imported at top of file).
-from ..services.pipeline.models import PipelineStage  # noqa: F401 — single source of truth
