@@ -94,7 +94,13 @@ def live_pbp_payload_unchanged(league: str, game_id: int, plays: list) -> bool:
 
     signature = _pbp_signature(plays)
     key = f"live:pbp_hash:{league}:{game_id}"
+    # Narrow to RedisError + OSError (transport / connection refused). A
+    # programming bug (TypeError, NameError) must surface — degrading the
+    # dedupe to "always proceed" is fine, but doing so silently would hide
+    # the real fault. See docs/audits/error-handling-report.md §F-12.
     try:
+        import redis as redis_lib
+
         r = _get_redis_client()
         previous = r.get(key)
         r.set(key, signature, ex=6 * 60 * 60)
@@ -106,12 +112,12 @@ def live_pbp_payload_unchanged(league: str, game_id: int, plays: list) -> bool:
                 play_count=len(plays),
             )
             return True
-    except Exception as exc:
+    except (redis_lib.RedisError, OSError):
         logger.debug(
             "live_pbp_hash_check_failed",
             league=league,
             game_id=game_id,
-            error=str(exc),
+            exc_info=True,
         )
     return False
 
@@ -124,15 +130,21 @@ def should_create_live_pbp_snapshot(
 ) -> bool:
     """Throttle raw PBP snapshots for high-frequency live polling."""
     key = f"live:pbp_snapshot:{league}:{game_id}"
+    # See live_pbp_payload_unchanged above for rationale on the narrowed
+    # catch. Snapshot throttle fails open (returns True → write the snapshot)
+    # so a Redis outage does not cost us live data; programming bugs still
+    # propagate. See docs/audits/error-handling-report.md §F-13.
     try:
+        import redis as redis_lib
+
         r = _get_redis_client()
         return bool(r.set(key, "1", nx=True, ex=throttle_seconds))
-    except Exception as exc:
+    except (redis_lib.RedisError, OSError):
         logger.debug(
             "live_pbp_snapshot_throttle_failed",
             league=league,
             game_id=game_id,
-            error=str(exc),
+            exc_info=True,
         )
         return True
 

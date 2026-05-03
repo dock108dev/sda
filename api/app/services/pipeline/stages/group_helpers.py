@@ -23,35 +23,110 @@ def calculate_block_count(
     lead_changes: int,
     total_plays: int,
     is_blowout: bool = False,
+    archetype: str | None = None,
 ) -> int:
-    """Calculate optimal block count based on game intensity.
+    """Calculate optimal block count based on game shape and intensity.
 
     Args:
         moments: List of validated moments
         lead_changes: Number of lead changes in the game
         total_plays: Total play count
-        is_blowout: Whether the game was a blowout
+        is_blowout: Whether the game was a blowout (legacy detector)
+        archetype: Game shape from CLASSIFY_GAME_SHAPE. When supplied, drives
+            the floor: blowouts compress to 3, low-event games to 3, comebacks
+            and back-and-forth get 5+ to capture the swings.
 
     Returns:
         Block count in range [3, 7]
     """
-    # Blowouts with minimal lead changes get 3 blocks
+    # Archetype-driven shaping: more specific shapes override the lead-change /
+    # play-count formula so a long blowout doesn't bloat to 7 blocks.
+    if archetype in {"blowout", "early_avalanche_blowout", "low_event"}:
+        return MIN_BLOCKS  # 3
+
+    # Legacy is_blowout fallback (callers without archetype data).
     if is_blowout and lead_changes <= 1:
         return MIN_BLOCKS  # 3
 
-    base = 4  # Default base for non-blowout games
+    base = 5 if archetype in {"comeback", "back_and_forth"} else 4
 
-    # More lead changes = more dramatic game = more blocks
     if lead_changes >= 3:
         base += 1
     if lead_changes >= 6:
         base += 1
 
-    # Longer games need more blocks
     if total_plays > 400:
         base += 1
 
     return min(base, MAX_BLOCKS)
+
+
+_BLOWOUT_ARCHETYPES = {"blowout", "early_avalanche_blowout"}
+
+
+def compute_block_label(
+    block_index: int,
+    block_count: int,
+    score_before: tuple[int, int] | list[int],
+    score_after: tuple[int, int] | list[int],
+    archetype: str | None = None,
+    is_blowout: bool = False,
+) -> str:
+    """Assign a narrative-job label to a block.
+
+    Per ISSUE-011: position + archetype + score movement decide the label.
+
+    - Block 0                     -> ``"Opening break"``
+    - Final block, blowout shape  -> ``"Closeout"``
+    - Final block, otherwise      -> ``"Final bookkeeping"``
+    - Middle block, sign flips    -> ``"Swing"``
+    - Middle block, |margin| ↑    -> ``"Separation"``
+    - Middle block, |margin| ↓    -> ``"Response"``
+    - Middle block, score flat    -> ``"Stall"``
+
+    Comeback archetype: a tie that *immediately precedes* a flip is treated as
+    a swing (``score_before`` tied → ``score_after`` led).
+    """
+    if block_index == 0:
+        return "Opening break"
+
+    if block_index == block_count - 1:
+        if is_blowout or archetype in _BLOWOUT_ARCHETYPES:
+            return "Closeout"
+        return "Final bookkeeping"
+
+    home_before, away_before = score_before[0], score_before[1]
+    home_after, away_after = score_after[0], score_after[1]
+
+    # No scoring at all in this block.
+    if home_before == home_after and away_before == away_after:
+        return "Stall"
+
+    margin_before = home_before - away_before
+    margin_after = home_after - away_after
+    sign_before = 0 if margin_before == 0 else (1 if margin_before > 0 else -1)
+    sign_after = 0 if margin_after == 0 else (1 if margin_after > 0 else -1)
+
+    # Lead change: sign flipped, or moved off a tie into a lead. The comeback
+    # archetype's swing block lands here naturally.
+    if sign_before and sign_after and sign_before != sign_after:
+        return "Swing"
+    if sign_before == 0 and sign_after != 0:
+        return "Swing"
+    # Comeback-specific: tied within the block (deficit fully erased).
+    if archetype == "comeback" and sign_before != 0 and sign_after == 0:
+        return "Swing"
+
+    abs_before = abs(margin_before)
+    abs_after = abs(margin_after)
+    if abs_after > abs_before:
+        return "Separation"
+    if abs_after < abs_before:
+        return "Response"
+
+    # Both teams scored equally — margin held. Treat as a stall in margin
+    # movement even though points were scored.
+    return "Stall"
 
 
 def select_key_plays(

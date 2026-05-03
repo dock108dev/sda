@@ -5,9 +5,8 @@ from __future__ import annotations
 import os
 import sys
 from datetime import UTC, date, datetime
-from unittest.mock import MagicMock, patch
-
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRAPER_ROOT = REPO_ROOT / "scraper"
@@ -23,7 +22,6 @@ from sports_scraper.services.pbp_mlb import (
     ingest_pbp_via_mlb_api,
     select_games_for_pbp_mlb_api,
 )
-
 
 # ---------------------------------------------------------------------------
 # select_games_for_pbp_mlb_api

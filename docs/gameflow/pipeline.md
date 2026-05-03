@@ -4,10 +4,10 @@ Multi-stage pipeline for generating block-based game narratives from play-by-pla
 
 ## Overview
 
-The pipeline transforms raw PBP data into narrative game flows through 8 sequential stages. Each stage produces output consumed by the next stage.
+The pipeline transforms raw PBP data into narrative game flows through 9 sequential stages. Each stage produces output consumed by the next stage.
 
 ```
-NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → ANALYZE_DRAMA → GROUP_BLOCKS → RENDER_BLOCKS → VALIDATE_BLOCKS → FINALIZE_MOMENTS
+NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → CLASSIFY_GAME_SHAPE → ANALYZE_DRAMA → GROUP_BLOCKS → RENDER_BLOCKS → VALIDATE_BLOCKS → FINALIZE_MOMENTS
 ```
 
 **Location:** `api/app/services/pipeline/`
@@ -71,27 +71,49 @@ The pipeline produces **blocks** (consumer-facing narratives, 3-7 per game) and 
 4. Canonical ordering by play_index
 5. All play references exist in PBP data
 
-### 4. ANALYZE_DRAMA
+### 4. CLASSIFY_GAME_SHAPE
 
-**Purpose:** Use AI to identify the game's dramatic peak and assign quarter weights.
+**Purpose:** Deterministically classify the game's archetype before any drama-weighting or block allocation runs.
 
-**Input:** Validated moments + game context
+**Input:** Validated moments + normalized PBP events
+**Output:** Archetype label (one of `wire_to_wire`, `comeback`, `back_and_forth`, `blowout`, `early_avalanche_blowout`, `low_event`, `fake_close`, `late_separation`)
+
+**Implementation:** `stages/classify_game_shape.py`
+
+**How It Works:**
+- Pure-Python rules over the per-play `ScoreTimeline` and PBP events
+- Priority order: `low_event` → `comeback` → `fake_close` → `blowout` → `back_and_forth` → `late_separation` → `wire_to_wire`
+- No LLM call
+
+**Usage:**
+- Drives drama weighting in ANALYZE_DRAMA
+- Drives blowout compression and archetype-required pivots in GROUP_BLOCKS
+- Drives prompt framing in RENDER_BLOCKS
+
+### 5. ANALYZE_DRAMA
+
+**Purpose:** Compute deterministic per-quarter drama weights from the archetype + per-quarter score signals.
+
+**Input:** Validated moments + archetype from CLASSIFY_GAME_SHAPE
 **Output:** Quarter weights for drama-weighted block distribution
 
 **Implementation:** `stages/analyze_drama.py`
 
 **How It Works:**
-- OpenAI analyzes key plays and score progressions
-- Identifies which quarter(s) contain the dramatic climax
-- Returns weights like `{Q1: 1.0, Q2: 1.0, Q3: 1.5, Q4: 2.0}` for a late-game comeback
-- Higher weights mean more blocks allocated to that quarter
+- Pure-Python `compute_drama_weights(archetype, quarter_summary, league)` mapping
+- Wire-to-wire amplifies the opening lead-creation period; suppresses middle/late
+- Comeback amplifies the highest-swing turning period; suppresses Q1 unless Q1 *is* the turning period
+- Blowout / early-avalanche emphasize the decisive period; compress late
+- Back-and-forth and low-event use even weights
+- Fake-close and late-separation amplify the final period
+- Output is clamped to `[0.5, 2.5]` to match the range expected by `weighted_splits.find_weighted_split_points`
+- No LLM call
 
 **Usage:**
 - Weights feed into GROUP_BLOCKS for drama-centered block distribution
-- Ensures dramatic quarters get more narrative coverage
-- Low-drama quarters can be condensed
+- Dramatic quarters get more narrative coverage; low-drama quarters can be condensed
 
-### 5. GROUP_BLOCKS
+### 6. GROUP_BLOCKS
 
 **Purpose:** Group validated moments into 3-7 narrative blocks with semantic roles, using drama weights from ANALYZE_DRAMA.
 
@@ -134,7 +156,7 @@ return min(base, 7)
 }
 ```
 
-### 6. RENDER_BLOCKS
+### 7. RENDER_BLOCKS
 
 **Purpose:** Generate short narrative text for each block using OpenAI.
 
@@ -181,7 +203,7 @@ return min(base, 7)
 }
 ```
 
-### 7. VALIDATE_BLOCKS
+### 8. VALIDATE_BLOCKS
 
 **Purpose:** Validate blocks against guardrail invariants.
 
@@ -192,7 +214,7 @@ return min(base, 7)
 
 **Guardrail invariants and validation rules** are defined in [Game Flow Contract §6](contract.md). The pipeline enforces all invariants listed there.
 
-### 8. FINALIZE_MOMENTS
+### 9. FINALIZE_MOMENTS
 
 **Purpose:** Persist completed game flow to database.
 

@@ -1,7 +1,16 @@
-"""Prompt building functions for RENDER_BLOCKS stage.
+"""Prompt building for RENDER_BLOCKS stage.
 
-Contains prompt templates and builders for OpenAI calls.
-Pure computational helpers are in render_prompt_helpers.py.
+Archetype-aware, evidence-grounded prompts for narrative block generation.
+Per BRAINDUMP §Narrative generation rules:
+
+- 1-2 sentences per block, 25-55 words
+- Every block must explain why that segment mattered
+- No unsupported claims about rhythm/energy/composure/tactics/effort/intent
+- No generic sports phrases; banned-phrase list injected per-call
+- Structured per-segment evidence — never an undifferentiated play list
+
+Pure presentation helpers (period labels, contributors lines, game-winning play
+detection) live in ``render_prompt_helpers``.
 """
 
 from __future__ import annotations
@@ -9,109 +18,593 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from ..helpers.evidence_selection import SegmentEvidence
 from .regen_context import RegenFailureContext
 from .render_helpers import detect_overtime_info
 from .render_prompt_helpers import (
     _build_period_label,
-    _detect_big_lead_comeback,
-    _detect_close_game,
     _format_contributors_line,
-    _format_lead_line,
     detect_game_winning_play,
-    detect_sustained_lead,
 )
-from .render_validation import FORBIDDEN_WORDS
+from .render_validation import BANNED_PHRASES, SPECULATION_PATTERNS
 
-# Game-level flow pass prompt - intentionally tight and low-token
-GAME_FLOW_PASS_PROMPT = """You are given the full Game Flow for a single game as a sequence of blocks.
+# Player/team strings reach this prompt straight from PBP/boxscore ingestion
+# and (in NHL/NCAAB) from third-party feed JSON. Strip ASCII control bytes,
+# CR/LF/tab, and the markdown/JSON characters that could break the structured
+# prompt sections or be (mis)interpreted as instructions by the model. Length
+# is bounded to keep a single odd row from blowing the prompt budget.
+_PROMPT_STRING_MAX_LEN = 80
+_PROMPT_STRING_STRIP_RE = re.compile(r"[\x00-\x1f\x7f`{}\[\]\"]")
 
-Each block is already correct and final in structure, timing, and scoring.
-Your job is to rewrite for narrative coherence so the blocks flow naturally
-as a single game recap, while keeping each block as its own paragraph.
 
-Rules:
-- Preserve block order and boundaries
-- Preserve scores, players, and chronology. You may restructure sentences for flow.
-- Do not change scores or periods
-- Each block should be 1-5 sentences in one paragraph
-- Improve flow, reduce repetition, and acknowledge the passage of time across blocks
-- No hype, no speculation, no raw play-by-play
-- SETUP blocks must NOT foreshadow the outcome. Write as if the game is still unfolding.
-- RESPONSE blocks must reflect an actual scoring change. If the score didn't move, describe the state, not a "response."
-- Give each half/period proportional narrative weight. Don't compress late-game action into a throwaway line.
-- If a trailing team never got within single digits, don't call it a "comeback" — call it a rally that fell short.
-- Ensure player names appear in full only on first mention across the entire flow. Use last name thereafter.
-- Use full team name only once early. Rotate between short name and pronoun.
-- CRITICAL: If the game goes to overtime/OT/shootout, the narrative MUST mention this transition
-  (e.g., "the game headed to overtime", "forcing an extra period", "sending it to OT")
+def _sanitize_prompt_string(value: str | None, *, default: str = "") -> str:
+    """Strip prompt-breaking characters and bound the length of an LLM input.
 
-If a block already flows well, make minimal changes.
+    Defense-in-depth against malformed names from upstream feeds — not a
+    replacement for upstream validation. Preserves typical name punctuation
+    (apostrophes, hyphens, periods, accents) so legitimate names render
+    correctly.
+    """
+    if not value:
+        return default
+    cleaned = _PROMPT_STRING_STRIP_RE.sub("", str(value)).strip()
+    if not cleaned:
+        return default
+    if len(cleaned) > _PROMPT_STRING_MAX_LEN:
+        cleaned = cleaned[:_PROMPT_STRING_MAX_LEN]
+    return cleaned
 
-Return JSON: {"blocks": [{"i": block_index, "n": "revised narrative"}]}"""
+# System prompt — verbatim from BRAINDUMP §Prompt rules.
+SYSTEM_PROMPT_TEMPLATE = (
+    "Write Scroll Down Sports Game Flow blocks. You are not writing a generic "
+    "recap. You are explaining the shape of the game. Use only the supplied "
+    "game shape, segment evidence, score movement, and player stats. Every "
+    "block must explain why that segment mattered. Avoid unsupported claims "
+    "about rhythm, energy, composure, tactics, confidence, effort, or intent. "
+    "Avoid generic sports phrases. If the game was already decided, say so "
+    "plainly. If a segment was low leverage, compress it. Return strict JSON only."
+)
+
+WORD_COUNT_RULE = "Each block: 25-55 words, 1-2 sentences."
+
+
+# ---------------------------------------------------------------------------
+# Archetype-specific guidance
+# ---------------------------------------------------------------------------
+
+
+def _archetype_guidance(archetype: str | None) -> list[str]:
+    """Return prompt lines describing what the archetype demands of the narrative.
+
+    Each archetype gets concrete framing the writer must respect. Unknown
+    archetypes return no additional guidance — the system prompt's general
+    rules still apply.
+    """
+    if not archetype:
+        return []
+
+    lines: list[str] = [f"GAME SHAPE: {archetype}"]
+    if archetype in {"blowout", "early_avalanche_blowout"}:
+        lines += [
+            "- The game was decided early. Late blocks must compress: name the "
+            "final margin, do not narrate possession-by-possession action that "
+            "didn't change the outcome.",
+            "- Do not describe trailing-team scoring after the result is set as "
+            "a 'rally', 'surge', or 'response'.",
+        ]
+        if archetype == "early_avalanche_blowout":
+            lines.append(
+                "- Frame the early scoring outburst explicitly; the rest of the "
+                "game is denouement."
+            )
+    elif archetype == "comeback":
+        lines += [
+            "- The eventual winner trailed by a meaningful margin. Name the "
+            "deficit they faced and the swing moment that erased it.",
+            "- Do not bury the deficit — quantify it (e.g., 'down 14') and "
+            "describe what flipped.",
+        ]
+    elif archetype == "fake_close":
+        lines += [
+            "- The final margin is close, but one team controlled most of the "
+            "game by a wide margin. Do not describe this as a back-and-forth "
+            "contest — narrate the wide stretch and the late tightening.",
+        ]
+    elif archetype == "late_separation":
+        lines += [
+            "- The score was within one possession entering the final period, "
+            "then separated. Treat the separation as the decisive moment; "
+            "earlier blocks describe the close stretch.",
+        ]
+    elif archetype == "back_and_forth":
+        lines += [
+            "- Multiple lead changes. Honor the swings — do not flatten the "
+            "game into a single team's narrative.",
+        ]
+    elif archetype == "wire_to_wire":
+        lines += [
+            "- The eventual winner led from the first score; the lead never "
+            "flipped. Do not invent suspense or describe the trailing team as a "
+            "real threat unless evidence supports it.",
+        ]
+    elif archetype == "low_event":
+        lines += [
+            "- Low-scoring or one-sided shutout. Compress; describe the "
+            "quietness of the game directly. Do not manufacture drama from "
+            "scoreless stretches.",
+        ]
+    return lines
+
+
+# ---------------------------------------------------------------------------
+# Evidence formatting
+# ---------------------------------------------------------------------------
+
+
+def _format_evidence_block(
+    evidence: SegmentEvidence | None,
+    league_code: str,
+    home_team: str,
+    away_team: str,
+) -> list[str]:
+    """Render a SegmentEvidence as compact prompt lines.
+
+    Returns one or more `Evidence:` lines describing scoring plays, lead
+    changes, scoring runs, leverage, and special markers. Returns an empty
+    list when there is nothing to say (caller decides whether to skip).
+    """
+    if evidence is None:
+        return []
+
+    lines: list[str] = [f"Leverage: {evidence.leverage}"]
+
+    if evidence.scoring_plays:
+        scoring_pts = sum(
+            (sp.score_after[0] - sp.score_before[0])
+            + (sp.score_after[1] - sp.score_before[1])
+            for sp in evidence.scoring_plays
+        )
+        lines.append(
+            f"Scoring plays: {len(evidence.scoring_plays)} ({scoring_pts} total points/runs/goals)"
+        )
+    else:
+        lines.append("Scoring plays: none in this segment")
+
+    if evidence.lead_changes:
+        lines.append(f"Lead changes: {len(evidence.lead_changes)}")
+
+    for run in evidence.scoring_runs:
+        team_label = _resolve_team_label(run.team, home_team, away_team)
+        unit = _scoring_unit(league_code)
+        lines.append(
+            f"Scoring run: {team_label} +{run.points} {unit} over {run.duration_plays} plays"
+        )
+
+    if evidence.featured_players:
+        parts = []
+        for fp in evidence.featured_players:
+            team_label = _resolve_team_label(fp.team, home_team, away_team)
+            safe_name = _sanitize_prompt_string(fp.name, default="player")
+            parts.append(f"{safe_name} ({team_label}) +{fp.delta_contribution}")
+        lines.append("Featured players: " + ", ".join(parts))
+
+    markers: list[str] = []
+    if evidence.is_overtime:
+        markers.append("overtime")
+    if evidence.is_power_play_goal:
+        markers.append("power-play goal")
+    if evidence.is_short_handed_goal:
+        markers.append("short-handed goal")
+    if evidence.is_empty_net:
+        markers.append("empty-net goal")
+    if any(sp.is_home_run for sp in evidence.scoring_plays):
+        markers.append("home run")
+    if markers:
+        lines.append("Markers: " + ", ".join(markers))
+
+    if (league_code or "").upper() == "NHL" and evidence.is_empty_net:
+        lines.append(
+            "Note: empty-net goal changed the displayed final margin; the "
+            "deciding goal happened earlier."
+        )
+
+    return lines
+
+
+def _resolve_team_label(team: str | None, home_team: str, away_team: str) -> str:
+    """Map an evidence team token (HOME/AWAY/abbrev) to a readable name."""
+    if not team:
+        return "team"
+    upper = team.upper()
+    if upper == "HOME":
+        return home_team
+    if upper == "AWAY":
+        return away_team
+    return team
+
+
+def _scoring_unit(league_code: str) -> str:
+    code = (league_code or "NBA").upper()
+    if code == "MLB":
+        return "runs"
+    if code == "NHL":
+        return "goals"
+    return "pts"
+
+
+def _nhl_context_lines(
+    blocks: list[dict[str, Any]],
+    game_context: dict[str, Any],
+) -> list[str]:
+    """Render the NHL-specific prompt section.
+
+    Surfaces hockey-only narrative cues the writer should respect: empty-net
+    goals' effect on the final margin, OT/shootout treatment, and an optional
+    ``shots_by_period`` line when the caller threaded shot totals through
+    ``game_context``.
+    """
+    out: list[str] = ["", "NHL CONTEXT:"]
+    out.append(
+        "- Goals drive the narrative. Name who scored and when the lead "
+        "shifted; do not narrate every shift or stoppage."
+    )
+    out.append(
+        "- An empty-net goal changes the displayed final margin but is not the "
+        "deciding goal; describe the deciding goal first."
+    )
+
+    has_any_ot_block = any(
+        detect_overtime_info(block, "NHL")["has_overtime"] for block in blocks
+    )
+    if has_any_ot_block:
+        out.append(
+            "- Overtime / shootout gets its own dedicated block — the segment "
+            "ends in regulation tied and the OT/SO outcome decides the game."
+        )
+
+    shots_by_period = game_context.get("shots_by_period") if game_context else None
+    shots_line = _format_shots_by_period(shots_by_period)
+    if shots_line:
+        out.append(shots_line)
+
+    return out
+
+
+def _format_shots_by_period(shots_by_period: Any) -> str:
+    """Render the supplied shot totals as a single supporting-evidence line.
+
+    Accepts either a list/tuple of (home, away) pairs or a list of dicts with
+    home/away keys. Returns an empty string when the input is missing or
+    malformed — shots_by_period is supplementary context, never required.
+    """
+    if not shots_by_period:
+        return ""
+    parts: list[str] = []
+    try:
+        for i, item in enumerate(shots_by_period, start=1):
+            if isinstance(item, dict):
+                home = item.get("home")
+                away = item.get("away")
+            else:
+                home, away = item[0], item[1]
+            if home is None or away is None:
+                continue
+            parts.append(f"P{i} {int(home)}-{int(away)}")
+    except (TypeError, ValueError, IndexError, KeyError):
+        return ""
+    if not parts:
+        return ""
+    return "- Shots by period (supporting evidence, not required): " + ", ".join(parts)
+
+
+def _format_banned_phrases() -> str:
+    """Render the hard-banned phrase list as a single comma-joined string.
+
+    Combines BANNED_PHRASES (hard-failing) and SPECULATION_PATTERNS (regen
+    feedback) — both are forbidden in output and the model should treat them
+    identically when generating.
+    """
+    combined = sorted(set(BANNED_PHRASES) | set(SPECULATION_PATTERNS))
+    return ", ".join(f'"{p}"' for p in combined)
+
+
+# ---------------------------------------------------------------------------
+# Block prompt
+# ---------------------------------------------------------------------------
+
+
+def build_block_prompt(
+    blocks: list[dict[str, Any]],
+    game_context: dict[str, str],
+    pbp_events: list[dict[str, Any]],
+    *,
+    archetype: str | None = None,
+    evidence_by_block: dict[int, SegmentEvidence] | None = None,
+    regen_context: RegenFailureContext | None = None,
+) -> str:
+    """Build the per-block render prompt.
+
+    Args:
+        blocks: List of block dicts (without narratives).
+        game_context: Team names and league code.
+        pbp_events: Normalized PBP events; used only for player roster
+            extraction and game-winning-play detection on RESOLUTION blocks.
+            The undifferentiated play list is *not* fed to the model.
+        archetype: Game-shape archetype from CLASSIFY_GAME_SHAPE. Drives
+            archetype-specific narrative guidance.
+        evidence_by_block: Mapping of ``block_index`` → SegmentEvidence
+            (from the evidence_selection helper). Provides the structured
+            per-segment payload that replaces raw play lists.
+        regen_context: Optional quality-gate failure context for regen runs.
+
+    Returns:
+        The complete prompt string for the per-block OpenAI call.
+    """
+    home_team = _sanitize_prompt_string(
+        game_context.get("home_team_name"), default="Home"
+    )
+    away_team = _sanitize_prompt_string(
+        game_context.get("away_team_name"), default="Away"
+    )
+    home_abbrev = _sanitize_prompt_string(game_context.get("home_team_abbrev"))
+    away_abbrev = _sanitize_prompt_string(game_context.get("away_team_abbrev"))
+    league_code = game_context.get("sport", "NBA")
+    evidence_by_block = evidence_by_block or {}
+
+    has_any_overtime = any(
+        detect_overtime_info(block, league_code)["has_overtime"]
+        for block in blocks
+    )
+
+    home_players, away_players = _collect_rosters(
+        pbp_events, home_abbrev, away_abbrev
+    )
+
+    parts: list[str] = [SYSTEM_PROMPT_TEMPLATE, "", WORD_COUNT_RULE, ""]
+    parts.append(f"Teams: {away_team} (away) vs {home_team} (home)")
+
+    parts.extend(_archetype_guidance(archetype))
+
+    if home_players or away_players:
+        parts.append("")
+        parts.append("ROSTERS:")
+        if home_players:
+            parts.append(
+                f"{home_team} (home): {', '.join(sorted(home_players)[:10])}"
+            )
+        if away_players:
+            parts.append(
+                f"{away_team} (away): {', '.join(sorted(away_players)[:10])}"
+            )
+
+    parts.extend([
+        "",
+        "BANNED PHRASES (do not use any of these, in any tense or variation):",
+        _format_banned_phrases(),
+        "",
+        "STYLE:",
+        "- Full team name on first mention; short name or pronoun thereafter.",
+        "- Player full name on first mention across the flow; last name after.",
+        "- No 'X had Y points' stat-feed prose. Describe actions and effects.",
+        "- No subjective adjectives (incredible, amazing, dominant, clutch, etc.).",
+        "- No foreshadowing in early blocks; do not 'would-be' or 'would prove'.",
+    ])
+
+    if has_any_overtime:
+        parts.extend([
+            "",
+            "OVERTIME (CRITICAL):",
+            "- When a block transitions into overtime/extra innings/shootout, "
+            "the narrative MUST explicitly mention it.",
+        ])
+
+    if (league_code or "").upper() == "NHL":
+        parts.extend(_nhl_context_lines(blocks, game_context))
+
+    if regen_context is not None and regen_context.has_failures():
+        parts.extend(["", regen_context.render_for_prompt()])
+
+    parts.extend([
+        "",
+        'Return JSON: {"blocks": [{"i": block_index, "n": "narrative"}]}',
+        "",
+        "BLOCKS:",
+    ])
+
+    for block in blocks:
+        parts.extend(
+            _format_block_section(
+                block,
+                evidence_by_block.get(block["block_index"]),
+                pbp_events,
+                game_context,
+                archetype,
+            )
+        )
+
+    return "\n".join(parts)
+
+
+def _collect_rosters(
+    pbp_events: list[dict[str, Any]],
+    home_abbrev: str,
+    away_abbrev: str,
+) -> tuple[set[str], set[str]]:
+    home_players: set[str] = set()
+    away_players: set[str] = set()
+    if not (home_abbrev or away_abbrev):
+        return home_players, away_players
+    home_up = home_abbrev.upper()
+    away_up = away_abbrev.upper()
+    for evt in pbp_events:
+        # Sanitize before insertion so the prompt is never asked to carry an
+        # adversarially-shaped player_name from upstream feed data.
+        name = _sanitize_prompt_string(evt.get("player_name"))
+        evt_abbrev = (evt.get("team_abbreviation") or "").upper()
+        if not name or not evt_abbrev:
+            continue
+        if home_up and evt_abbrev == home_up:
+            home_players.add(name)
+        elif away_up and evt_abbrev == away_up:
+            away_players.add(name)
+    return home_players, away_players
+
+
+def _format_block_section(
+    block: dict[str, Any],
+    evidence: SegmentEvidence | None,
+    pbp_events: list[dict[str, Any]],
+    game_context: dict[str, str],
+    archetype: str | None,
+) -> list[str]:
+    home_team = game_context.get("home_team_name", "Home")
+    away_team = game_context.get("away_team_name", "Away")
+    league_code = game_context.get("sport", "NBA")
+
+    block_idx = block["block_index"]
+    role = block["role"]
+    score_before = block["score_before"]
+    score_after = block["score_after"]
+    period_start = block.get("period_start", 1)
+    period_end = block.get("period_end", period_start)
+
+    period_label = _build_period_label(league_code, period_start, period_end)
+    ot_info = detect_overtime_info(block, league_code)
+
+    section: list[str] = [
+        f"\nBlock {block_idx} ({role}, {period_label}):",
+        (
+            f"Score: {away_team} {score_before[1]}-{score_before[0]} {home_team} "
+            f"-> {away_team} {score_after[1]}-{score_after[0]} {home_team}"
+        ),
+    ]
+
+    if ot_info["enters_overtime"]:
+        section.append(
+            f"*** ENTERS {ot_info['ot_label'].upper()} — narrative MUST mention "
+            f"going to {ot_info['ot_label']} ***"
+        )
+    elif ot_info["has_overtime"] and not ot_info["enters_overtime"]:
+        section.append(f"(In {ot_info['ot_label']})")
+
+    section.extend(_format_evidence_block(evidence, league_code, home_team, away_team))
+
+    contributors_line = _format_contributors_line(block.get("mini_box"), league_code)
+    if contributors_line:
+        section.append(contributors_line)
+
+    if role == "RESOLUTION":
+        section.extend(
+            _format_resolution_extras(
+                block, score_after, pbp_events, home_team, away_team, league_code,
+                archetype,
+            )
+        )
+
+    return section
+
+
+def _format_resolution_extras(
+    block: dict[str, Any],
+    score_after: list[int],
+    pbp_events: list[dict[str, Any]],
+    home_team: str,
+    away_team: str,
+    league_code: str,
+    archetype: str | None,
+) -> list[str]:
+    final_margin = abs(score_after[0] - score_after[1])
+    extras: list[str] = []
+
+    if archetype in {"blowout", "early_avalanche_blowout"} or final_margin >= 15:
+        extras.append(
+            "(Outcome decided — state the final margin plainly; do not narrate garbage time.)"
+        )
+        return extras
+
+    gw_hint = detect_game_winning_play(
+        block, pbp_events, home_team, away_team, league_code,
+    )
+    if gw_hint:
+        extras.append(f"*** {gw_hint} ***")
+        extras.append(
+            "- This play decided the game. Name the player, the action, and "
+            "the moment — no generic 'held on' framing."
+        )
+    return extras
+
+
+# ---------------------------------------------------------------------------
+# Game-level flow pass prompt
+# ---------------------------------------------------------------------------
+
+
+GAME_FLOW_PASS_PROMPT = (
+    "You are given the full Game Flow as a sequence of blocks. Each block is "
+    "already correct in structure, scoring, and chronology. Rewrite for "
+    "narrative coherence so the blocks flow as a single recap, while keeping "
+    "each block as its own paragraph.\n\n"
+    "Rules:\n"
+    "- Preserve block order, boundaries, scores, periods, and player facts.\n"
+    "- Preserve word-count discipline: each block stays 25-55 words.\n"
+    "- Improve flow, reduce repetition, acknowledge time progression.\n"
+    "- No hype, no speculation, no raw play-by-play.\n"
+    "- SETUP blocks must NOT foreshadow the outcome.\n"
+    "- RESPONSE blocks must reflect actual scoring movement.\n"
+    "- Use full player/team name only on first mention across the whole flow; "
+    "last name / short name thereafter.\n"
+    "- If the game was already decided, say so plainly. If a segment was low "
+    "leverage, compress it.\n"
+    "- If the game went to overtime/OT/shootout/extra innings, the narrative "
+    "MUST mention the transition.\n\n"
+    'Return JSON: {"blocks": [{"i": block_index, "n": "revised narrative"}]}'
+)
 
 
 def build_game_flow_pass_prompt(
     blocks: list[dict[str, Any]],
     game_context: dict[str, str],
+    *,
+    archetype: str | None = None,
     regen_context: RegenFailureContext | None = None,
 ) -> str:
-    """Build prompt for game-level flow pass.
+    """Build the prompt for the game-level flow pass (second OpenAI call).
 
-    This is a single call that receives all blocks and smooths transitions
-    while preserving facts, scores, and structure.
-
-    Args:
-        blocks: List of block dicts with narratives already generated
-        game_context: Team names and context
-        regen_context: Optional quality-gate failure breakdown for regen runs.
-            Injected into the volatile/data layer only.
-
-    Returns:
-        Prompt string for the flow pass
+    Receives all blocks at once and smooths transitions while preserving facts.
+    Same archetype + banned-phrase constraints as the per-block prompt.
     """
-    home_team = game_context.get("home_team_name", "Home")
-    away_team = game_context.get("away_team_name", "Away")
+    home_team = _sanitize_prompt_string(
+        game_context.get("home_team_name"), default="Home"
+    )
+    away_team = _sanitize_prompt_string(
+        game_context.get("away_team_name"), default="Away"
+    )
     league_code = game_context.get("sport", "NBA")
 
-    is_close_game, max_margin = _detect_close_game(blocks)
-    is_comeback, game_peak_margin, final_margin = _detect_big_lead_comeback(blocks)
-
-    prompt_parts = [
+    parts: list[str] = [
         GAME_FLOW_PASS_PROMPT,
         "",
         f"Game: {away_team} (away) at {home_team} (home)",
     ]
+    parts.extend(_archetype_guidance(archetype))
 
     if league_code == "MLB":
-        prompt_parts.append(
+        parts.append(
             f"\nREMINDER: {away_team} bats first (top of each inning), "
             f"{home_team} bats second (bottom). Do not say the home team "
             f"'struck first' if the away team scored in the top of the inning."
         )
 
-    score_unit = "runs" if league_code == "MLB" else "pts"
-    if is_close_game:
-        prompt_parts.append(
-            f"\nNOTE: Close game (max margin: {max_margin} {score_unit}). Don't overstate leads. Detail the finish."
-        )
-
-    if is_comeback:
-        prompt_parts.append(
-            f"\nNOTE: Comeback game (peak margin: {game_peak_margin}, final: {final_margin}). "
-            f"A team led by {game_peak_margin} at one point — narrate the swing."
-        )
-
-    # Inject regen quality feedback into the data layer when this is a regen run.
-    if regen_context is not None and regen_context.has_failures():
-        prompt_parts.extend([
-            "",
-            regen_context.render_for_prompt(),
-        ])
-
-    prompt_parts.extend([
+    parts.extend([
         "",
-        "BLOCKS:",
+        "BANNED PHRASES (do not use any of these, in any tense or variation):",
+        _format_banned_phrases(),
     ])
+
+    if regen_context is not None and regen_context.has_failures():
+        parts.extend(["", regen_context.render_for_prompt()])
+
+    parts.extend(["", "BLOCKS:"])
 
     for block in blocks:
         block_idx = block["block_index"]
@@ -122,389 +615,18 @@ def build_game_flow_pass_prompt(
         score_after = block.get("score_after", [0, 0])
         narrative = block.get("narrative", "")
 
-        # Detect overtime info
         ot_info = detect_overtime_info(block, league_code)
-
-        # Period label (sport-aware)
         period_label = _build_period_label(league_code, period_start, period_end)
 
-        prompt_parts.append(f"\nBlock {block_idx} ({role}, {period_label}):")
-        prompt_parts.append(
+        parts.append(f"\nBlock {block_idx} ({role}, {period_label}):")
+        parts.append(
             f"Score: {away_team} {score_before[1]}-{score_before[0]} {home_team} "
             f"-> {away_team} {score_after[1]}-{score_after[0]} {home_team}"
         )
 
-        # Add OT flag if this block enters overtime
         if ot_info["enters_overtime"]:
-            prompt_parts.append(f"*** MUST MENTION: Game goes to {ot_info['ot_label']} ***")
+            parts.append(f"*** MUST MENTION: Game goes to {ot_info['ot_label']} ***")
 
-        # Add peak margin context for flow pass when meaningfully different
-        flow_peak = block.get("peak_margin", 0)
-        flow_boundary = max(abs(score_before[0] - score_before[1]),
-                            abs(score_after[0] - score_after[1]))
-        if flow_peak >= flow_boundary + 6:
-            prompt_parts.append(f"(Peak margin in this block: {flow_peak})")
+        parts.append(f"Current narrative: {narrative}")
 
-        prompt_parts.append(f"Current narrative: {narrative}")
-
-    return "\n".join(prompt_parts)
-
-
-def build_block_prompt(
-    blocks: list[dict[str, Any]],
-    game_context: dict[str, str],
-    pbp_events: list[dict[str, Any]],
-    regen_context: RegenFailureContext | None = None,
-) -> str:
-    """Build the prompt for generating block narratives.
-
-    Args:
-        blocks: List of block dicts (without narratives)
-        game_context: Team names and other context
-        pbp_events: PBP events for play descriptions
-        regen_context: Optional quality-gate failure breakdown for regen runs.
-            Injected into the volatile/data layer only; identity layer unchanged.
-
-    Returns:
-        Prompt string for OpenAI
-    """
-    home_team = game_context.get("home_team_name", "Home")
-    away_team = game_context.get("away_team_name", "Away")
-    home_abbrev = game_context.get("home_team_abbrev", "")
-    away_abbrev = game_context.get("away_team_abbrev", "")
-    league_code = game_context.get("sport", "NBA")
-
-    # Build abbreviation -> full team name lookup for key plays
-    abbrev_to_team: dict[str, str] = {}
-    if home_abbrev:
-        abbrev_to_team[home_abbrev.upper()] = home_team
-    if away_abbrev:
-        abbrev_to_team[away_abbrev.upper()] = away_team
-
-    # Check if any block involves overtime
-    has_any_overtime = any(
-        detect_overtime_info(block, league_code)["has_overtime"]
-        for block in blocks
-    )
-
-    # Detect close game for tone guidance
-    is_close_game, max_margin = _detect_close_game(blocks)
-
-    # Detect big lead / comeback
-    is_comeback, game_peak_margin, final_margin = _detect_big_lead_comeback(blocks)
-
-    # Detect sustained lead (one team in control throughout second half)
-    is_sustained, sustained_min_margin, sustained_leader = detect_sustained_lead(blocks)
-
-    # Build play lookup
-    play_lookup: dict[int, dict[str, Any]] = {
-        e["play_index"]: e for e in pbp_events if "play_index" in e
-    }
-
-    # Build player roster from PBP events
-    home_players: set[str] = set()
-    away_players: set[str] = set()
-    for evt in pbp_events:
-        name = evt.get("player_name", "")
-        evt_abbrev = (evt.get("team_abbreviation") or "").upper()
-        if not name or not evt_abbrev:
-            continue
-        if home_abbrev and evt_abbrev == home_abbrev.upper():
-            home_players.add(name)
-        elif away_abbrev and evt_abbrev == away_abbrev.upper():
-            away_players.add(name)
-
-    prompt_parts = [
-        "Generate broadcast-quality narrative blocks for a game recap.",
-        "",
-        f"Teams: {away_team} (away) vs {home_team} (home)",
-    ]
-
-    # Add player roster so OpenAI has authoritative player -> team mapping
-    if home_players or away_players:
-        prompt_parts.append("")
-        prompt_parts.append("ROSTERS:")
-        if home_players:
-            roster = ", ".join(sorted(home_players)[:10])
-            prompt_parts.append(f"{home_team} (home): {roster}")
-        if away_players:
-            roster = ", ".join(sorted(away_players)[:10])
-            prompt_parts.append(f"{away_team} (away): {roster}")
-
-    prompt_parts.extend([
-        "",
-        "NARRATIVE STRUCTURE:",
-        "- Write 1-5 sentences per block (~40-100 words). Vary length by role — RESOLUTION may be brief, DECISION_POINT may be detailed.",
-        "- Each block describes a STRETCH of play, not isolated events",
-        "- Connect plays with cause-and-effect",
-        "- Vary sentence openings",
-        "- Key plays are provided for context. Reference them when narratively important, but omission is acceptable editorial judgment.",
-        "- Describe stretches and effects, not individual events. Collapse consecutive scoring into runs where appropriate.",
-        "",
-    ])
-
-    # League-specific connecting phrases
-    if league_code == "MLB":
-        prompt_parts.extend([
-            "CONNECTING PHRASES TO USE:",
-            "- 'building on that', 'in response', 'shortly after'",
-            "- 'over the next several at-bats', 'as the inning progressed'",
-            "- 'trading runs', 'the teams exchanged leads'",
-        ])
-    else:
-        prompt_parts.extend([
-            "CONNECTING PHRASES TO USE:",
-            "- 'building on that', 'in response', 'shortly after'",
-            "- 'over the next several possessions', 'as the period progressed'",
-            "- 'trading baskets', 'the teams exchanged leads'",
-        ])
-
-    prompt_parts.extend([
-        "",
-        "ROLE-SPECIFIC GUIDANCE:",
-        "- SETUP: Establish tone and early shape. May contain zero specific plays. Abstraction encouraged.",
-        "  * NEVER foreshadow or spoil the outcome. No 'would be', 'would prove', 'would not recover'.",
-        "  * Write as if the game is unfolding — the reader doesn't know who wins yet.",
-        "- MOMENTUM_SHIFT: Name the trigger, summarize the effect. Describe the run, not each play.",
-        "- RESPONSE: Bridge narrative rhythm. Team-level summary preferred. Often abstract.",
-        "  * A RESPONSE block MUST describe an actual scoring response or tactical adjustment.",
-        "  * If the score did not change in this block, do NOT frame it as a 'response' — describe the state of play instead.",
-        "- DECISION_POINT: Highest specificity. Name exact plays and players. This block earns detail.",
-        "- RESOLUTION: Land the outcome with the defining play. For close games or game-winners, narrate the final moment — don't summarize generically. For blowouts, keep it short.",
-        "",
-        "PLAYER NAMES (CRITICAL):",
-        "- Use FULL NAME on first mention (e.g., 'Donovan Mitchell', 'Brandon Miller')",
-        "- NEVER use initials like 'D. Mitchell' or 'B. Miller' - always spell out first names",
-        "- After first mention, use LAST NAME only (e.g., 'Mitchell', 'Miller')",
-        "- Common names are fine abbreviated after first mention (Williams, Smith, Jones)",
-        "- Names apply across the entire flow, not per-block. If a player was named in a previous block, use last name only.",
-        "",
-        "TEAM ATTRIBUTION (CRITICAL):",
-        "- On FIRST mention of each player, tie them to their team naturally:",
-        f"  * \"{home_team}'s [Player Name]\" or \"{away_team}'s [Player Name]\" (possessive)",
-        f"  * \"[Player Name] for {home_team}\" or \"[Player Name] for {away_team}\" (scoring context)",
-        "- After first mention, just use last name without team",
-        "- Do NOT use parenthetical abbreviations like '(CHA)' or '(NOP)'",
-        "- Full team name once in SETUP. Rotate between short name, nickname, and pronoun thereafter.",
-        "- Avoid repeated 'Full Team Name's Player Name' constructions.",
-        "",
-        "STYLE REQUIREMENTS:",
-        "- Use broadcast tone, not stat-feed prose",
-        "- NO stat-listing patterns like 'X had Y points' or 'X finished with Y'",
-        "- NO subjective adjectives (incredible, amazing, unbelievable, insane)",
-        "- Describe ACTIONS, not statistics",
-        "- Keep individual sentences concise (under 30 words each)",
-        "",
-        "PROPORTIONAL COVERAGE:",
-        "- Give each half/period proportional narrative weight. Do NOT compress the entire second half into one brief block.",
-        "- If the game was close-ish throughout, each phase deserves real coverage — not just the early action.",
-        "- Late-game blocks should never feel like afterthoughts, even if the first half was more dramatic.",
-        "",
-        "NARRATIVE COMPRESSION:",
-        "- Collapse consecutive scoring into runs (e.g., 'went on a 3-run rally')" if league_code == "MLB" else "- Collapse consecutive scoring into runs (e.g., 'went on a 12-0 run')",
-        "- Use team-level descriptions for collective action",
-        "- Describe momentum through state change, not event enumeration",
-        "- Narrate consequences, not transactions",
-        "- Omitting routine scoring detail is acceptable",
-        "",
-        "CONTEXTUAL DATA USAGE:",
-        "- [Lead:] lines describe how the lead/deficit changed during this block",
-        "  Weave naturally: 'extending the lead to 8' or 'pulling within 3'",
-        "- [Peak:] lines show the largest lead WITHIN a block, even if it eroded by block's end",
-        "  Use this to anchor the high-water mark: 'built a 22-point lead before...'",
-        "- [Contributors:] lines show who drove the scoring in this block",
-        "  Integrate naturally: mention these players' actions, not their stat lines",
-        "- Do NOT quote these lines verbatim - use them as narrative fuel",
-        "",
-        "FORBIDDEN WORDS (do not use):",
-        ", ".join(FORBIDDEN_WORDS),
-        "",
-    ])
-
-    # Add league-specific sport guidance
-    if league_code == "MLB":
-        prompt_parts.extend([
-            "BASEBALL-SPECIFIC:",
-            "- Use 'innings' not 'quarters' or 'periods'",
-            "- Use 'runs' not 'points'",
-            "- Refer to 'at-bats', 'innings', 'pitching changes', 'defensive plays'",
-            "- Late-game = 7th inning onward",
-            "- Extra innings (10th+), not 'overtime'",
-            "- 'went on a 3-run rally' not 'went on a 12-0 run'",
-            "",
-            "INNING STRUCTURE (CRITICAL):",
-            f"- {away_team} is the AWAY team and bats FIRST in every inning (top half).",
-            f"- {home_team} is the HOME team and bats SECOND in every inning (bottom half).",
-            "- If the away team scores in the 1st inning, they 'struck first' — the home team has not batted yet.",
-            "- NEVER say the home team 'struck first' or 'set the tone' if the away team scored in the top of the same inning.",
-            "- When describing early action, respect batting order: away team's offense comes before home team's in every inning.",
-            "",
-            "SCORELESS INNINGS:",
-            "- If both teams went scoreless in an inning, describe it plainly — don't manufacture drama.",
-            "- Do NOT use phrases like 'the game tightened', 'momentum shifted', or 'the tide turned' for innings where no runs scored and no lead changed.",
-            "- A routine scoreless inning is fine to summarize briefly: 'Both teams went quietly in the third.'",
-            "- Only use tension language for scoreless innings if it's a 0-0 game in the late innings (7th+) — that's a genuine pitcher's duel.",
-            "- If a block covers innings where the score didn't change, focus on notable defensive plays or pitching, not manufactured narrative tension.",
-            "",
-        ])
-
-    # Add close-game-specific guidance
-    score_unit = "runs" if league_code == "MLB" else "pts"
-    if is_close_game:
-        prompt_parts.extend([
-            f"CLOSE GAME (max margin: {max_margin} {score_unit}):",
-            f"- Do NOT overstate leads when margin is 1-2 {score_unit}. Emphasize back-and-forth.",
-            "- RESOLUTION: Capture the tension of the finish with specificity.",
-            "",
-        ])
-
-    # Add big lead / comeback guidance
-    if is_comeback:
-        comeback_gap = game_peak_margin - final_margin
-        prompt_parts.extend([
-            f"BIG LEAD / COMEBACK (peak margin: {game_peak_margin}, final: {final_margin}):",
-            f"- A team led by {game_peak_margin} at one point. Do NOT describe this as a 'modest' or 'slim' lead.",
-            "- If the lead eroded, narrate the comeback arc — name the swing.",
-            "- Use [Peak:] data in blocks to anchor the high-water mark.",
-        ])
-        if comeback_gap < game_peak_margin // 2:
-            prompt_parts.append(
-                f"- The trailing team never got closer than {final_margin}. Do NOT oversell this as a 'comeback' — "
-                f"it was a rally that fell short. Frame it as tightening, not a real threat."
-            )
-        prompt_parts.append("")
-
-    # Add sustained-lead guidance — prevent manufacturing drama from small margin changes
-    if is_sustained and not is_close_game and not is_comeback:
-        leader_name = home_team if sustained_leader == "home" else away_team
-        prompt_parts.extend([
-            f"SUSTAINED LEAD ({leader_name} led by {sustained_min_margin}+ the entire second half):",
-            f"- {leader_name} was in firm control. Do NOT frame minor margin changes (1-3 {score_unit}) as 'runs', 'pushes', 'responses', or comeback attempts.",
-            "- If the trailing team cut the lead from 10 to 8, that is routine scoring — not a surge, rally, or threat.",
-            "- Use language like 'maintained control', 'kept the margin comfortable', 'never seriously threatened'.",
-            "- Only narrate an actual run if the margin drops by 6+ points in a single block.",
-            "",
-        ])
-
-    # Add overtime-specific guidance if game went to OT
-    if has_any_overtime:
-        prompt_parts.extend([
-            "OVERTIME/EXTRA PERIOD REQUIREMENTS (CRITICAL):",
-            "- When a block TRANSITIONS into overtime, you MUST explicitly mention it",
-            "- Use phrases like 'the game headed to overtime', 'forcing an extra period',",
-            "  'sending the game to OT', 'requiring overtime to decide'",
-            "- For NHL shootouts, mention 'heading to a shootout' or 'the shootout'",
-            "- This is MANDATORY - do NOT skip mentioning overtime when it occurs",
-            "",
-        ])
-
-    # Inject regen quality feedback into the data layer when this is a regen run.
-    # The stable identity/guardrail layers above are never modified.
-    if regen_context is not None and regen_context.has_failures():
-        prompt_parts.extend([
-            "",
-            regen_context.render_for_prompt(),
-            "",
-        ])
-
-    prompt_parts.extend([
-        "Return JSON: {\"blocks\": [{\"i\": block_index, \"n\": \"narrative\"}]}",
-        "",
-        "BLOCKS:",
-    ])
-
-    for block in blocks:
-        block_idx = block["block_index"]
-        role = block["role"]
-        score_before = block["score_before"]
-        score_after = block["score_after"]
-        key_play_ids = block["key_play_ids"]
-        period_start = block.get("period_start", 1)
-        period_end = block.get("period_end", period_start)
-
-        # Detect overtime info for this block
-        ot_info = detect_overtime_info(block, league_code)
-
-        # Build period label
-        period_label = _build_period_label(league_code, period_start, period_end)
-
-        # Get key play descriptions - replace team abbreviation brackets with
-        # full team names so OpenAI knows which team each play belongs to
-        key_plays_desc = []
-        for pid in key_play_ids:
-            play = play_lookup.get(pid, {})
-            desc = play.get("description", "")
-            if desc:
-                bracket_match = re.match(r"^\[([^\]]+)\]\s*", desc)
-                if bracket_match:
-                    abbrev = bracket_match.group(1).upper()
-                    team_name = abbrev_to_team.get(abbrev, bracket_match.group(1))
-                    clean_desc = f"({team_name}) {desc[bracket_match.end():]}"
-                else:
-                    clean_desc = desc
-                # Strip shot distance like "26'" but not "3's" (three-pointers)
-                clean_desc = re.sub(r"\b\d+'(?![a-zA-Z])\s*", "", clean_desc)
-                key_plays_desc.append(f"- {clean_desc}")
-
-        prompt_parts.append(f"\nBlock {block_idx} ({role}, {period_label}):")
-        prompt_parts.append(
-            f"Score: {away_team} {score_before[1]}-{score_before[0]} {home_team} "
-            f"-> {away_team} {score_after[1]}-{score_after[0]} {home_team}"
-        )
-
-        # Flag whether scoring actually happened in this block
-        total_runs_scored = abs(score_after[0] - score_before[0]) + abs(score_after[1] - score_before[1])
-        if total_runs_scored == 0 and league_code == "MLB":
-            prompt_parts.append("(No runs scored in this block — describe plainly, no manufactured drama)")
-
-        # Add explicit overtime flag when block enters/contains OT
-        if ot_info["enters_overtime"]:
-            prompt_parts.append(f"*** ENTERS {ot_info['ot_label'].upper()} - MUST mention going to {ot_info['ot_label']} ***")
-        elif ot_info["has_overtime"] and not ot_info["enters_overtime"]:
-            prompt_parts.append(f"(In {ot_info['ot_label']})")
-
-        # Flag decided games so RESOLUTION doesn't narrate garbage time
-        if role == "RESOLUTION":
-            final_margin = abs(score_after[0] - score_after[1])
-            if final_margin >= 15:
-                prompt_parts.append("(Outcome decided — summarize the final margin, skip garbage time)")
-            else:
-                # Detect buzzer beaters and game-winning plays
-                gw_hint = detect_game_winning_play(
-                    block, pbp_events, home_team, away_team, league_code,
-                )
-                if gw_hint:
-                    prompt_parts.append(f"*** {gw_hint} ***")
-                    prompt_parts.append(
-                        "- This play DECIDED the game. Narrate it with specificity — "
-                        "do NOT use generic 'held on' or 'managed to hold' framing. "
-                        "Name the player, the shot/play, and the moment."
-                    )
-
-        # Lead/margin context
-        lead_line = _format_lead_line(score_before, score_after, home_team, away_team)
-        if lead_line:
-            prompt_parts.append(lead_line)
-
-        # Peak margin context — only when peak is meaningfully larger than boundary margin
-        block_peak_margin = block.get("peak_margin", 0)
-        block_peak_leader = block.get("peak_leader", 0)
-        boundary_margin = max(abs(score_before[0] - score_before[1]),
-                              abs(score_after[0] - score_after[1]))
-        if block_peak_margin >= boundary_margin + 6:
-            peak_team = home_team if block_peak_leader == 1 else away_team
-            prompt_parts.append(
-                f"Peak: {peak_team} led by as many as {block_peak_margin} during this stretch"
-            )
-
-        # Block star contributors
-        mini_box = block.get("mini_box")
-        contributors_line = _format_contributors_line(mini_box, league_code)
-        if contributors_line:
-            prompt_parts.append(contributors_line)
-
-        if key_plays_desc:
-            prompt_parts.append("Key plays:")
-            prompt_parts.extend(key_plays_desc[:3])
-
-    return "\n".join(prompt_parts)
+    return "\n".join(parts)

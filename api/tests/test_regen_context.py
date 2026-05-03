@@ -10,14 +10,11 @@ Coverage:
 """
 from __future__ import annotations
 
-import pytest
-
 from app.services.pipeline.stages.regen_context import RegenFailureContext, _humanize
 from app.services.pipeline.stages.render_prompts import (
     build_block_prompt,
     build_game_flow_pass_prompt,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -234,9 +231,9 @@ class TestBuildBlockPromptRegenInjection:
             self._make_blocks(), _minimal_game_context(), [], regen_context=ctx
         )
         # Identity layer markers must still be present
-        assert "NARRATIVE STRUCTURE" in prompt
-        assert "FORBIDDEN WORDS" in prompt
-        assert "PLAYER NAMES" in prompt
+        assert "Scroll Down Sports Game Flow blocks" in prompt
+        assert "BANNED PHRASES" in prompt
+        assert "STYLE:" in prompt
 
     def test_empty_regen_context_omits_feedback_section(self):
         ctx = RegenFailureContext(tier1_failures=[], tier2_rubric_failures=[], regen_attempt=1)

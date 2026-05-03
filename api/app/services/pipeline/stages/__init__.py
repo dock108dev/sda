@@ -1,6 +1,7 @@
 """Pipeline stage implementations."""
 
 from .analyze_drama import execute_analyze_drama
+from .classify_game_shape import execute_classify_game_shape
 from .embedded_tweets import (
     DefaultTweetScorer,
     apply_embedded_tweets_to_blocks,
@@ -30,6 +31,7 @@ __all__ = [
     "execute_generate_moments",
     "execute_validate_moments",
     "execute_analyze_drama",
+    "execute_classify_game_shape",
     "execute_group_blocks",
     "execute_render_blocks",
     "execute_validate_blocks",

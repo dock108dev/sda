@@ -74,6 +74,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ..helpers.score_timeline import find_first_lead_created_play_idx
 from ..models import StageInput, StageOutput
 from .boundary_detection import (
     is_merge_eligible,
@@ -145,6 +146,7 @@ def _finalize_moment(
 
 def _segment_plays_into_moments(
     events: list[dict[str, Any]],
+    league_code: str = "NBA",
 ) -> tuple[list[dict[str, Any]], CompressionMetrics]:
     """Segment PBP events into condensed moments using soft-capped compression.
 
@@ -184,6 +186,13 @@ def _segment_plays_into_moments(
     """
     if not events:
         return [], CompressionMetrics()
+
+    # Pre-compute the play_index that first creates a meaningful lead so the
+    # HARD boundary trigger can fire exactly once per game rather than scanning
+    # the full event list on every call.
+    first_meaningful_lead_play_idx = find_first_lead_created_play_idx(
+        events, league_code=league_code
+    )
 
     moments: list[dict[str, Any]] = []
     current_moment_plays: list[dict[str, Any]] = []
@@ -249,6 +258,7 @@ def _segment_plays_into_moments(
             previous_event,
             events,
             current_moment_start_idx,
+            first_meaningful_lead_play_idx=first_meaningful_lead_play_idx,
         )
         if should_close_hard and hard_reason:
             finalize_current_moment(hard_reason)
@@ -401,8 +411,13 @@ async def execute_generate_moments(stage_input: StageInput) -> StageOutput:
 
     output.add_log("Verified play_index ordering")
 
+    # Resolve league code for boundary detection (drives the moment-level
+    # FIRST_MEANINGFUL_LEAD HARD trigger threshold).
+    game_context = stage_input.game_context
+    league_code = game_context.get("sport", "NBA") if game_context else "NBA"
+
     # Segment plays into moments with soft-capped compression
-    moments, metrics = _segment_plays_into_moments(pbp_events)
+    moments, metrics = _segment_plays_into_moments(pbp_events, league_code=league_code)
 
     output.add_log(f"Segmented into {len(moments)} moments")
 

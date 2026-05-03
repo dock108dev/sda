@@ -982,6 +982,14 @@ def _build_plays(
         )
         prev_h, prev_a = h, a
 
+    # Ensure clock-based sports have at least one final-window play in regulation
+    # (last 2 minutes of Q4) so the RESOLUTION specificity check has material.
+    if sport in ("NFL", "NBA"):
+        for play in reversed(plays):
+            if play["quarter"] == 4:
+                play["game_clock"] = "00:30"
+                break
+
     return plays
 
 

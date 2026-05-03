@@ -143,6 +143,12 @@ class GameFlowBlock(BaseModel):
     embedded_social_post_id: int | None = Field(None, alias="embeddedSocialPostId")
     start_clock: str | None = Field(None, alias="startClock")
     end_clock: str | None = Field(None, alias="endClock")
+    # v2 schema fields — nullable for backward compatibility with v1 readers.
+    reason: str | None = None
+    label: str | None = None
+    lead_before: int | None = Field(None, alias="leadBefore")
+    lead_after: int | None = Field(None, alias="leadAfter")
+    evidence: list[dict[str, Any]] | None = None
 
 
 class GameFlowResponse(BaseModel):
@@ -174,6 +180,13 @@ class GameFlowResponse(BaseModel):
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
     league_code: str | None = Field(None, alias="leagueCode")
+    # v2 schema top-level fields (BRAINDUMP §Output schema). Nullable so v1
+    # readers and historical rows without these columns continue to work.
+    version: str | None = None
+    archetype: str | None = None
+    winner_team_id: str | None = Field(None, alias="winnerTeamId")
+    source_counts: dict[str, Any] | None = Field(None, alias="sourceCounts")
+    validation: dict[str, Any] | None = None
 
 
 class ConsumerGameFlowResponse(BaseModel):
@@ -198,6 +211,12 @@ class ConsumerGameFlowResponse(BaseModel):
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
     league_code: str | None = Field(None, alias="leagueCode")
+    # v2 schema top-level fields. Nullable so older rows still serialize.
+    version: str | None = None
+    archetype: str | None = None
+    winner_team_id: str | None = Field(None, alias="winnerTeamId")
+    source_counts: dict[str, Any] | None = Field(None, alias="sourceCounts")
+    validation: dict[str, Any] | None = None
 
 
 class FlowStatusResponse(BaseModel):

@@ -68,12 +68,12 @@ export const WORDS_PER_MINUTE = 250;
 
 /**
  * Maximum total words across all blocks.
- * Matches MAX_TOTAL_WORDS = 600 in block_types.py.
+ * Matches MAX_TOTAL_WORDS = 400 in block_types.py.
  * The backend enforces this as a warning-level check; frontend mirrors it.
  * Value is intentionally higher than (MAX_READ_TIME_SECONDS/60)*WORDS_PER_MINUTE
  * to accommodate richer narratives (see block_types.py comment).
  */
-export const MAX_TOTAL_WORDS = 600;
+export const MAX_TOTAL_WORDS = 400;
 
 // =============================================================================
 // FLOW SOURCE CONSTANTS

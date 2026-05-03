@@ -822,7 +822,6 @@ class TestExecuteValidateBlocks:
     def test_block_count_warning_includes_game_id(self, mock_session) -> None:
         """Block count out of range emits a structured log warning with game_id."""
         import logging
-        from unittest.mock import patch
 
         from app.services.pipeline.models import StageInput
         from app.services.pipeline.stages.validate_blocks import execute_validate_blocks
@@ -1784,6 +1783,216 @@ class TestGenericPhraseDensity:
         assert errors == []
 
 
+# ── Banned phrases (hard-fail) ────────────────────────────────────────────────
+
+
+class TestBannedPhrases:
+    """Hard-banned cliché phrases must produce errors so REGENERATE fires."""
+
+    def setup_method(self) -> None:
+        from app.services.pipeline.stages.render_validation import (
+            BANNED_PHRASES,
+            SPECULATION_PATTERNS,
+        )
+        from app.services.pipeline.stages.validate_blocks_phrases import (
+            check_banned_phrases,
+        )
+
+        self._check = check_banned_phrases
+        self._banned = BANNED_PHRASES
+        self._speculation = SPECULATION_PATTERNS
+
+    def _block(self, idx: int, narrative: str) -> dict:
+        return {"block_index": idx, "narrative": narrative}
+
+    def test_clean_narrative_passes(self) -> None:
+        """A narrative free of banned and speculative language produces nothing."""
+        blocks = [self._block(0, "The Lakers led 30-28 after Davis hit a baseline jumper.")]
+        errors, warnings = self._check(blocks)
+        assert errors == []
+        assert warnings == []
+
+    def test_each_banned_phrase_produces_error(self) -> None:
+        """Every BANNED_PHRASES entry must be detected and reported as an error."""
+        for phrase in self._banned:
+            narrative = f"In the second quarter the home side {phrase} before halftime."
+            errors, warnings = self._check([self._block(0, narrative)])
+            assert errors, f"banned phrase not caught: {phrase!r}"
+            assert phrase in errors[0]
+
+    def test_banned_phrase_case_insensitive(self) -> None:
+        """Detection ignores casing."""
+        errors, _ = self._check([self._block(0, "They SECURED the VICTORY late.")])
+        assert errors
+        assert "secured the victory" in errors[0]
+
+    def test_multiple_banned_phrases_in_one_block(self) -> None:
+        """Two banned phrases in one block produce a single error listing both."""
+        narrative = (
+            "The home team came out strong and seized control of the rhythm "
+            "before halftime arrived."
+        )
+        errors, _ = self._check([self._block(0, narrative)])
+        assert len(errors) == 1
+        assert "came out strong" in errors[0]
+        assert "seized control" in errors[0]
+
+    def test_speculation_pattern_produces_warning_not_error(self) -> None:
+        """Speculation language is a warning, not an error."""
+        narrative = "The visiting bench made a coaching adjustment after the timeout."
+        errors, warnings = self._check([self._block(0, narrative)])
+        assert errors == []
+        assert warnings
+        assert "coaching adjustment" in warnings[0]
+
+    def test_speculation_does_not_double_report_banned(self) -> None:
+        """A phrase already flagged as banned is not echoed in the speculation warning."""
+        narrative = "After halftime the home side returned with renewed energy."
+        errors, warnings = self._check([self._block(0, narrative)])
+        # 'renewed energy' is in BANNED_PHRASES — error path owns it.
+        assert errors
+        assert "renewed energy" in errors[0]
+        # And it must not appear again in any warning to avoid double-reporting.
+        for w in warnings:
+            assert "renewed energy" not in w
+
+    def test_empty_narrative_skipped(self) -> None:
+        errors, warnings = self._check([self._block(0, "")])
+        assert errors == []
+        assert warnings == []
+
+    def test_braindump_phrases_present(self) -> None:
+        """Sanity: all 21 BRAINDUMP banned phrases are wired into the constant."""
+        expected = {
+            "came out strong",
+            "set the tone",
+            "found their rhythm",
+            "renewed energy",
+            "tactical adjustments",
+            "continued to press their advantage",
+            "reasserted control",
+            "seized control",
+            "unable to capitalize",
+            "sparked a surge",
+            "brief spark",
+            "valiant attempt",
+            "remained composed",
+            "secured the victory",
+            "dominant performance",
+            "offensive prowess",
+            "defense proved impenetrable",
+            "comfortable cushion",
+            "commanding lead",
+            "eager to set the tone",
+            "feeling each other out",
+        }
+        assert expected.issubset(set(self._banned))
+
+
+class TestBannedPhrasesEndToEndDecision:
+    """A banned phrase in a rendered block must drive the stage decision to REGENERATE."""
+
+    def test_banned_phrase_triggers_regenerate(self) -> None:
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        from app.services.pipeline.models import StageInput
+        from app.services.pipeline.stages.validate_blocks import execute_validate_blocks
+
+        valid_mini_box = {
+            "home": {"points": 30},
+            "away": {"points": 28},
+        }
+
+        # Structurally valid 4-block flow with one BRAINDUMP banned phrase.
+        # Must contain SETUP and RESOLUTION roles to avoid unrelated rule failures.
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "moment_indices": [0, 1],
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "play_ids": [1, 2, 3],
+                "key_play_ids": [2],
+                "narrative": (
+                    "The Lakers opened with a 10-8 lead in the first quarter "
+                    "behind quick perimeter ball movement and a Davis putback."
+                ),
+                "mini_box": valid_mini_box,
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.MOMENTUM_SHIFT.value,
+                "moment_indices": [2, 3],
+                "score_before": [10, 8],
+                "score_after": [15, 20],
+                "play_ids": [4, 5, 6],
+                "key_play_ids": [5],
+                "narrative": (
+                    "The Celtics responded with a 12-5 run powered by Tatum from the wing "
+                    "and pulled ahead 20-15 by the second-quarter media timeout."
+                ),
+                "mini_box": valid_mini_box,
+            },
+            {
+                "block_index": 2,
+                "role": SemanticRole.RESPONSE.value,
+                "moment_indices": [4, 5],
+                "score_before": [15, 20],
+                "score_after": [25, 22],
+                "play_ids": [7, 8, 9],
+                "key_play_ids": [8],
+                "narrative": (
+                    "The Lakers reasserted control in the third quarter with consecutive stops "
+                    "and a James three to retake the lead 25-22 entering the final frame."
+                ),
+                "mini_box": valid_mini_box,
+            },
+            {
+                "block_index": 3,
+                "role": SemanticRole.RESOLUTION.value,
+                "moment_indices": [6, 7],
+                "score_before": [25, 22],
+                "score_after": [30, 28],
+                "play_ids": [10, 11, 12],
+                "key_play_ids": [11],
+                "narrative": (
+                    "The Lakers closed it out 30-28 after Davis blocked a Tatum drive "
+                    "with under ten seconds left on the clock to seal the game."
+                ),
+                "mini_box": valid_mini_box,
+            },
+        ]
+
+        stage_input = StageInput(
+            game_id=1,
+            run_id=1,
+            previous_output={
+                "blocks_rendered": True,
+                "blocks": blocks,
+                "moments": [{} for _ in range(8)],
+                "pbp_events": [],
+                "validated": True,
+            },
+            game_context={
+                "home_team": "Lakers",
+                "away_team": "Celtics",
+                "home_score": 30,
+                "away_score": 28,
+                "sport": "NBA",
+                "regen_attempt": 0,
+            },
+        )
+
+        mock_session = AsyncMock()
+        result = asyncio.run(execute_validate_blocks(mock_session, stage_input))
+
+        assert result.data["blocks_validated"] is False
+        assert result.data["decision"] == "REGENERATE"
+        assert any("banned phrases" in e for e in result.data["errors"])
+
+
 # ── RESOLUTION specificity ────────────────────────────────────────────────────
 
 
@@ -2228,3 +2437,272 @@ class TestInformationDensity:
             assert len(warnings) == 1
             assert "NBA" in warnings[0]
             assert "threshold" in warnings[0].lower() or "0.60" in warnings[0]
+
+
+class TestValidateLeadConsistency:
+    """Tests for Rule 12 — lead consistency across block boundaries."""
+
+    def test_consistent_leads_pass(self) -> None:
+        """Adjacent lead_after / lead_before values that match produce no errors."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_lead_consistency,
+        )
+
+        blocks = [
+            {"lead_after": 2, "lead_before": 0},
+            {"lead_after": -3, "lead_before": 2},
+            {"lead_after": 5, "lead_before": -3},
+        ]
+        errors, warnings = _validate_lead_consistency(blocks)
+        assert errors == []
+        assert warnings == []
+
+    def test_lead_mismatch_is_error(self) -> None:
+        """Adjacent lead_after / lead_before mismatch produces an error."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_lead_consistency,
+        )
+
+        blocks = [
+            {"lead_after": 2, "lead_before": 0},
+            {"lead_after": -3, "lead_before": 7},  # 2 != 7
+        ]
+        errors, warnings = _validate_lead_consistency(blocks)
+        assert len(errors) == 1
+        assert "discontinuity" in errors[0].lower()
+        assert "0" in errors[0] and "1" in errors[0]
+
+    def test_missing_lead_fields_skipped(self) -> None:
+        """Blocks without lead metadata are skipped, not flagged."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_lead_consistency,
+        )
+
+        blocks = [
+            {"score_after": [10, 8]},
+            {"score_before": [10, 8]},
+        ]
+        errors, warnings = _validate_lead_consistency(blocks)
+        assert errors == []
+
+
+class TestValidateBlowoutLateLeverage:
+    """Tests for Rule 13 — outcome-uncertainty language in late blowout blocks."""
+
+    def test_late_block_uncertainty_language_is_error(self) -> None:
+        """Blowout archetype + late block + 'comeback' language → error."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_blowout_late_leverage,
+        )
+
+        blocks = [
+            {"block_index": 0, "narrative": "Hosts opened with a 20-2 run."},
+            {"block_index": 1, "narrative": "Margin grew through halftime."},
+            {
+                "block_index": 2,
+                "narrative": "Trailing side could still mount a comeback in the closing minutes.",
+            },
+        ]
+        errors, warnings = _validate_blowout_late_leverage(blocks, "blowout")
+        assert len(errors) == 1
+        assert "Block 2" in errors[0]
+        assert "leverage" in errors[0].lower()
+
+    def test_early_block_uncertainty_language_passes(self) -> None:
+        """Outcome-uncertainty language in early blocks does not trigger Rule 13."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_blowout_late_leverage,
+        )
+
+        blocks = [
+            {
+                "block_index": 0,
+                "narrative": "Visitors hoped for a comeback after the slow start.",
+            },
+            {"block_index": 1, "narrative": "Hosts extended the lead at halftime."},
+            {"block_index": 2, "narrative": "Final margin held steady."},
+        ]
+        errors, warnings = _validate_blowout_late_leverage(blocks, "blowout")
+        assert errors == []
+
+    def test_non_blowout_archetype_skipped(self) -> None:
+        """Non-blowout archetypes do not trigger Rule 13 even with uncertainty language."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_blowout_late_leverage,
+        )
+
+        blocks = [
+            {"block_index": 0, "narrative": "Opening exchange."},
+            {"block_index": 1, "narrative": "Middle frame."},
+            {
+                "block_index": 2,
+                "narrative": "Comeback bid finished one possession short.",
+            },
+        ]
+        errors, warnings = _validate_blowout_late_leverage(blocks, "comeback")
+        assert errors == []
+
+    def test_early_avalanche_blowout_also_triggers(self) -> None:
+        """The MLB sub-archetype is also subject to the late-leverage rule."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_blowout_late_leverage,
+        )
+
+        blocks = [
+            {"block_index": 0, "narrative": "Five runs in the first inning."},
+            {"block_index": 1, "narrative": "Lead held through the seventh."},
+            {
+                "block_index": 2,
+                "narrative": "Visitors still had a chance to rally with two outs.",
+            },
+        ]
+        errors, _ = _validate_blowout_late_leverage(
+            blocks, "early_avalanche_blowout"
+        )
+        assert len(errors) == 1
+
+
+class TestValidateLowEventDrama:
+    """Tests for Rule 14 — exaggerated descriptors in low-event games."""
+
+    def test_low_event_dominant_descriptor_is_error(self) -> None:
+        """Low-event archetype + 'dominant' descriptor → error."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_low_event_drama,
+        )
+
+        blocks = [
+            {
+                "block_index": 1,
+                "narrative": "The starter delivered a dominant outing through seven innings.",
+            },
+        ]
+        errors, _ = _validate_low_event_drama(blocks, "low_event")
+        assert len(errors) == 1
+        assert "Block 1" in errors[0]
+        assert "low-event" in errors[0].lower() or "drama" in errors[0].lower()
+
+    def test_low_event_neutral_language_passes(self) -> None:
+        """Low-event archetype with measured language → no error."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_low_event_drama,
+        )
+
+        blocks = [
+            {
+                "block_index": 0,
+                "narrative": "Both starters worked efficiently through six innings of two-hit ball.",
+            },
+        ]
+        errors, _ = _validate_low_event_drama(blocks, "low_event")
+        assert errors == []
+
+    def test_non_low_event_archetype_passes(self) -> None:
+        """A blowout-archetype game can use 'dominant' without triggering Rule 14."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_low_event_drama,
+        )
+
+        blocks = [
+            {
+                "block_index": 0,
+                "narrative": "Hosts authored a dominant first quarter run.",
+            },
+        ]
+        errors, _ = _validate_low_event_drama(blocks, "blowout")
+        assert errors == []
+
+
+class TestValidateReasonPresent:
+    """Tests for Rule 15 — block reason field present and informative."""
+
+    def test_long_reason_passes(self) -> None:
+        """Reason >= 10 chars produces no warnings."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_reason_present,
+        )
+
+        blocks = [
+            {"block_index": 0, "reason": "First scoring run separated the teams."},
+        ]
+        errors, warnings = _validate_reason_present(blocks)
+        assert errors == []
+        assert warnings == []
+
+    def test_missing_reason_is_warning(self) -> None:
+        """Missing reason field produces a warning."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_reason_present,
+        )
+
+        blocks = [{"block_index": 0}]
+        errors, warnings = _validate_reason_present(blocks)
+        assert errors == []
+        assert len(warnings) == 1
+        assert "Block 0" in warnings[0]
+        assert "reason" in warnings[0].lower()
+
+    def test_short_reason_is_warning(self) -> None:
+        """Reason < 10 characters produces a warning."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_reason_present,
+        )
+
+        blocks = [{"block_index": 0, "reason": "short"}]
+        errors, warnings = _validate_reason_present(blocks)
+        assert len(warnings) == 1
+
+
+class TestValidateEvidencePresent:
+    """Tests for Rule 16 — substantial blocks must cite evidence."""
+
+    def test_evidence_with_long_narrative_passes(self) -> None:
+        """Block with evidence and a long narrative produces no warnings."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_evidence_present,
+        )
+
+        blocks = [
+            {
+                "block_index": 0,
+                "evidence": [{"play_id": 1}],
+                "narrative": " ".join(["word"] * 50),
+            },
+        ]
+        errors, warnings = _validate_evidence_present(blocks)
+        assert errors == []
+        assert warnings == []
+
+    def test_no_evidence_with_long_narrative_is_warning(self) -> None:
+        """Block without evidence but with > 30 words produces a warning."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_evidence_present,
+        )
+
+        blocks = [
+            {
+                "block_index": 2,
+                "evidence": [],
+                "narrative": " ".join(["word"] * 40),
+            },
+        ]
+        errors, warnings = _validate_evidence_present(blocks)
+        assert len(warnings) == 1
+        assert "Block 2" in warnings[0]
+        assert "evidence" in warnings[0].lower()
+
+    def test_no_evidence_with_short_narrative_passes(self) -> None:
+        """Block without evidence and short narrative does not warn."""
+        from app.services.pipeline.stages.validate_blocks import (
+            _validate_evidence_present,
+        )
+
+        blocks = [
+            {
+                "block_index": 0,
+                "evidence": [],
+                "narrative": "Brief setup line.",
+            },
+        ]
+        errors, warnings = _validate_evidence_present(blocks)
+        assert warnings == []

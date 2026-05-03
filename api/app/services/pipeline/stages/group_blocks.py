@@ -44,23 +44,43 @@ from __future__ import annotations
 
 import logging
 
+from ..helpers.flow_debug_logger import get_logger as get_flow_debug_logger
 from ..models import StageInput, StageOutput
 from .block_analysis import (
     count_lead_changes,
     detect_blowout,
     find_garbage_time_start,
+    find_period_boundaries,
     find_scoring_runs,
 )
 from .block_types import MAX_BLOCKS, MIN_BLOCKS
-from .group_helpers import calculate_block_count, create_blocks
+from .group_helpers import calculate_block_count, compute_block_label, create_blocks
 from .group_roles import assign_roles
 
 # Import from split modules
 from .group_split_points import (
+    _collect_game_state_candidates,
     compress_blowout_blocks,
     find_split_points,
     find_weighted_split_points,
 )
+
+# Map split-point trigger priority numbers (defined in group_split_points) to
+# human-readable trigger names so the debug log carries readable reasons.
+_PRIORITY_TRIGGER_LABELS = {
+    1: "lead_change",
+    2: "first_meaningful_lead",
+    3: "scoring_run",
+    4: "comeback_pivot",
+    5: "ot_start",
+    9: "period_boundary",
+}
+
+
+def _label_for_priority(priority: int | None) -> str:
+    if priority is None:
+        return "unknown"
+    return _PRIORITY_TRIGGER_LABELS.get(priority, f"priority_{priority}")
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +130,10 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
     game_context = stage_input.game_context
     league_code = game_context.get("sport", "NBA") if game_context else "NBA"
 
+    # Archetype from CLASSIFY_GAME_SHAPE drives blowout compression refinement
+    # and trigger overrides (comeback pivots, wire_to_wire first-lead, …).
+    archetype = previous_output.get("archetype")
+
     # Calculate game metrics
     lead_changes = count_lead_changes(moments)
     total_plays = sum(len(m.get("play_ids", [])) for m in moments)
@@ -118,10 +142,22 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
 
     output.add_log(f"Game metrics: {lead_changes} lead changes, {total_plays} plays")
     output.add_log(f"Found {len(scoring_runs)} scoring runs, largest: {largest_run}")
+    if archetype:
+        output.add_log(f"Game archetype: {archetype}")
 
     # Check for blowout
     is_blowout, decisive_idx, max_margin = detect_blowout(moments, league_code=league_code)
     garbage_time_idx = find_garbage_time_start(moments, league_code=league_code) if is_blowout else None
+
+    # Treat archetype-classified blowouts the same as detect_blowout positives so
+    # MLB early avalanches (which detect_blowout may miss when the lead doesn't
+    # sustain across innings) still get compression.
+    if not is_blowout and archetype in {"blowout", "early_avalanche_blowout"}:
+        is_blowout = True
+        if decisive_idx is None:
+            decisive_idx = max(1, len(moments) // 3)
+        if garbage_time_idx is None:
+            garbage_time_idx = find_garbage_time_start(moments, league_code=league_code)
 
     if is_blowout:
         output.add_log(
@@ -135,13 +171,16 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
             )
 
         # Use blowout compression for split points
-        split_points = compress_blowout_blocks(moments, decisive_idx, garbage_time_idx)
+        split_points = compress_blowout_blocks(
+            moments, decisive_idx, garbage_time_idx, archetype=archetype,
+        )
         target_blocks = len(split_points) + 1
         output.add_log(f"Using blowout compression: {target_blocks} blocks")
     else:
         # Calculate target block count normally
         target_blocks = calculate_block_count(
-            moments, lead_changes, total_plays, is_blowout=is_blowout,
+            moments, lead_changes, total_plays,
+            is_blowout=is_blowout, archetype=archetype,
         )
         output.add_log(f"Target block count: {target_blocks}")
 
@@ -150,12 +189,52 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
         if quarter_weights:
             output.add_log(f"Using drama-weighted block distribution: {quarter_weights}")
             split_points = find_weighted_split_points(
-                moments, target_blocks, quarter_weights, league_code
+                moments, target_blocks, quarter_weights, league_code,
+                archetype=archetype,
             )
         else:
-            split_points = find_split_points(moments, target_blocks)
+            split_points = find_split_points(
+                moments, target_blocks, league_code=league_code, archetype=archetype,
+            )
 
     output.add_log(f"Split points: {split_points}")
+
+    # Structured debug log: record boundary decisions and rejected candidates.
+    # Re-derive the candidate map so each accepted boundary carries the trigger
+    # priority that placed it. Period boundaries that weren't selected are
+    # recorded as rejected with reason 'period_boundary_no_state_change' to
+    # surface the orphan-period filter applied in find_split_points.
+    debug = get_flow_debug_logger(stage_input.run_id)
+    if debug is not None:
+        scoring_event_count = sum(
+            1 for m in moments
+            if (m.get("score_after") or [0, 0]) != (m.get("score_before") or [0, 0])
+        )
+        debug.record_data_metrics(
+            source_play_count=total_plays,
+            scoring_event_count=scoring_event_count,
+            lead_change_count=lead_changes,
+        )
+        debug.record_archetype(archetype)
+
+        candidate_map = _collect_game_state_candidates(moments, league_code)
+        period_boundary_set = set(find_period_boundaries(moments))
+        for sp in split_points:
+            priority = candidate_map.get(sp)
+            if priority is None and sp in period_boundary_set:
+                trigger = "period_boundary"
+            else:
+                trigger = _label_for_priority(priority)
+            debug.record_boundary(moment_index=sp, trigger=trigger, priority=priority)
+
+        for boundary in period_boundary_set:
+            if boundary in split_points:
+                continue
+            if boundary not in candidate_map:
+                debug.record_rejected_boundary(
+                    moment_index=boundary,
+                    reason="period_boundary_no_state_change",
+                )
 
     # Create blocks with mini boxscores
     blocks = create_blocks(
@@ -171,6 +250,18 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
     for block in blocks:
         role_summary[block.role.value] = role_summary.get(block.role.value, 0) + 1
     output.add_log(f"Role assignments: {role_summary}")
+
+    # Compute per-block narrative-job label (ISSUE-009 v2 schema field).
+    # Done after roles so blowout/closeout decisions see the same archetype.
+    for block in blocks:
+        block.label = compute_block_label(
+            block_index=block.block_index,
+            block_count=len(blocks),
+            score_before=block.score_before,
+            score_after=block.score_after,
+            archetype=archetype,
+            is_blowout=is_blowout,
+        )
 
     # Verify block count constraints
     if len(blocks) < MIN_BLOCKS:
@@ -200,11 +291,15 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
         "max_margin": max_margin,
         "decisive_moment_idx": decisive_idx,
         "garbage_time_start_idx": garbage_time_idx,
-        # Drama analysis passthrough from ANALYZE_DRAMA
+        # Drama analysis passthrough from ANALYZE_DRAMA. ``headline`` is no
+        # longer emitted (deterministic stage); only weights and peak quarter
+        # remain in the public passthrough.
         "quarter_weights": previous_output.get("quarter_weights"),
         "peak_quarter": previous_output.get("peak_quarter"),
-        "story_type": previous_output.get("story_type"),
-        "headline": previous_output.get("headline"),
+        # Game-shape archetype passthrough from CLASSIFY_GAME_SHAPE so
+        # downstream stages (RENDER_BLOCKS, VALIDATE_BLOCKS) keep seeing it
+        # even when they read accumulated previous_output.
+        "archetype": archetype,
         # Pass through from previous stages
         "moments": moments,
         "pbp_events": pbp_events,

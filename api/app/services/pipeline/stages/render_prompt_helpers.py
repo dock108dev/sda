@@ -164,48 +164,6 @@ def _get_pre_play_margin(
     return None
 
 
-def detect_sustained_lead(
-    blocks: list[dict[str, Any]],
-) -> tuple[bool, int, str | None]:
-    """Detect if one team held a comfortable lead for most of the game.
-
-    A sustained lead = the leading team's margin never dropped below 5
-    after halftime (second half of blocks). This means there was no real
-    threat from the trailing team, even if the margin fluctuated by 1-3 pts.
-
-    Returns:
-        (is_sustained, min_margin_second_half, leading_side)
-        leading_side is "home" or "away" or None.
-    """
-    if len(blocks) < 3:
-        return False, 0, None
-
-    # Look at the second half of blocks (roughly halftime onward)
-    half_idx = len(blocks) // 2
-    second_half = blocks[half_idx:]
-
-    # Track the minimum margin and who leads
-    min_margin = 999
-    lead_sides: set[str] = set()
-    for block in second_half:
-        for score_key in ("score_before", "score_after"):
-            s = block.get(score_key, [0, 0])
-            margin = s[0] - s[1]  # positive = home leads
-            abs_margin = abs(margin)
-            if abs_margin < min_margin:
-                min_margin = abs_margin
-            if margin > 0:
-                lead_sides.add("home")
-            elif margin < 0:
-                lead_sides.add("away")
-
-    # Sustained lead: one team always ahead by 5+ in second half
-    if min_margin >= 5 and len(lead_sides) == 1:
-        return True, min_margin, lead_sides.pop()
-
-    return False, min_margin, None
-
-
 def _format_lead_line(
     score_before: list[int],
     score_after: list[int],
@@ -312,57 +270,6 @@ def _format_player_stat(
         if delta_pts:
             return f"{last_name} +{delta_pts} pts"
     return None
-
-
-def _detect_close_game(blocks: list[dict[str, Any]]) -> tuple[bool, int]:
-    """Detect if a game is close based on block score margins.
-
-    Returns:
-        Tuple of (is_close_game, max_margin_seen)
-    """
-    max_margin = 0
-    for block in blocks:
-        score_before = block.get("score_before", [0, 0])
-        score_after = block.get("score_after", [0, 0])
-        margin_before = abs(score_before[0] - score_before[1])
-        margin_after = abs(score_after[0] - score_after[1])
-        block_peak = block.get("peak_margin", 0)
-        max_margin = max(max_margin, margin_before, margin_after, block_peak)
-    # A game where no team ever led by more than 7 is a tight contest
-    return max_margin <= 7, max_margin
-
-
-def _detect_big_lead_comeback(
-    blocks: list[dict[str, Any]],
-) -> tuple[bool, int, int]:
-    """Detect if a game had a big lead that was overcome (comeback).
-
-    A comeback = peak_margin >= 15 AND final_margin < peak_margin * 0.5
-
-    Returns:
-        Tuple of (is_comeback, game_peak_margin, final_margin)
-    """
-    game_peak_margin = 0
-    for block in blocks:
-        # Check block-level peak_margin field
-        block_peak = block.get("peak_margin", 0)
-        if block_peak > game_peak_margin:
-            game_peak_margin = block_peak
-        # Also check boundary scores
-        score_before = block.get("score_before", [0, 0])
-        score_after = block.get("score_after", [0, 0])
-        for s in (score_before, score_after):
-            margin = abs(s[0] - s[1])
-            if margin > game_peak_margin:
-                game_peak_margin = margin
-
-    # Final margin from the last block
-    last_block = blocks[-1] if blocks else {}
-    final_score = last_block.get("score_after", [0, 0])
-    final_margin = abs(final_score[0] - final_score[1])
-
-    is_comeback = game_peak_margin >= 15 and final_margin < game_peak_margin * 0.5
-    return is_comeback, game_peak_margin, final_margin
 
 
 def _build_period_label(league_code: str, period_start: int, period_end: int) -> str:

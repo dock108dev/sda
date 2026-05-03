@@ -48,6 +48,7 @@ class BoundaryReason(str, Enum):
     # Hard boundaries (always close)
     PERIOD_BOUNDARY = "PERIOD_BOUNDARY"
     LEAD_CHANGE = "LEAD_CHANGE"
+    FIRST_MEANINGFUL_LEAD = "FIRST_MEANINGFUL_LEAD"
     EXPLICIT_PLAY_OVERFLOW = "EXPLICIT_PLAY_OVERFLOW"
     ABSOLUTE_MAX_PLAYS = "ABSOLUTE_MAX_PLAYS"
 
@@ -67,6 +68,7 @@ class BoundaryReason(str, Enum):
         return self in {
             BoundaryReason.PERIOD_BOUNDARY,
             BoundaryReason.LEAD_CHANGE,
+            BoundaryReason.FIRST_MEANINGFUL_LEAD,
             BoundaryReason.EXPLICIT_PLAY_OVERFLOW,
             BoundaryReason.ABSOLUTE_MAX_PLAYS,
         }

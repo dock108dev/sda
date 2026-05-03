@@ -30,6 +30,25 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _consumer_validation_view(
+    validation: dict | None,
+) -> dict | None:
+    """Strip pipeline-internal warning detail from the consumer validation block.
+
+    The persisted `validation` JSONB carries `{status, warnings}` where the
+    `warnings` list can quote specific narrative substrings that tripped the
+    banned-phrase / speculation gates (e.g. "Block 2: banned phrases detected
+    — ['set the tone']"). That detail is useful for admin debugging but
+    leaking it on the public consumer endpoint discloses internal validator
+    design and gives an exploitable signal for adversarial prompt crafting
+    against the LLM stage. Only the coarse status is consumer-safe.
+    """
+    if not validation:
+        return validation
+    status_value = validation.get("status")
+    return {"status": status_value} if status_value is not None else None
+
+
 @router.get(
     "/games/{game_id}/flow",
     summary="Get game flow (consumer)",
@@ -161,6 +180,11 @@ async def get_game_flow(
                 embeddedSocialPostId=block.get("embedded_social_post_id"),
                 startClock=block.get("start_clock"),
                 endClock=block.get("end_clock"),
+                reason=block.get("reason"),
+                label=block.get("label"),
+                leadBefore=block.get("lead_before"),
+                leadAfter=block.get("lead_after"),
+                evidence=block.get("evidence"),
             )
         )
     total_words = sum(len((b.narrative or "").split()) for b in response_blocks)
@@ -179,4 +203,9 @@ async def get_game_flow(
         awayTeamColorLight=matchup_colors["awayLightHex"],
         awayTeamColorDark=matchup_colors["awayDarkHex"],
         leagueCode=game.league.code if game and game.league else None,
+        version=flow_record.version,
+        archetype=flow_record.archetype,
+        winnerTeamId=flow_record.winner_team_id,
+        sourceCounts=flow_record.source_counts,
+        validation=_consumer_validation_view(flow_record.validation),
     )

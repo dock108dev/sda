@@ -28,10 +28,15 @@ from ...db import AsyncSession
 from ...db.pipeline import GamePipelineRun, GamePipelineStage
 from ...db.sports import GameStatus, SportsGame, SportsPlayerBoxscore
 from ...utils.datetime_utils import now_utc
+from .helpers.flow_debug_logger import (
+    get_or_create_logger as get_or_create_flow_debug_logger,
+)
+from .helpers.flow_debug_logger import pop_logger as pop_flow_debug_logger
 from .metrics import increment_published, record_stage_duration
 from .models import PipelineStage, StageInput, StageOutput, StageResult
 from .stages import (
     execute_analyze_drama,
+    execute_classify_game_shape,
     execute_finalize_moments,
     execute_generate_moments,
     execute_group_blocks,
@@ -229,6 +234,23 @@ class PipelineExecutor:
             ctx["grade_gate_failures"] = self._failure_reasons
         return ctx
 
+    async def _resolve_league_code(self, game_id: int) -> str | None:
+        """Look up the league code for a game without raising.
+
+        Used by the structured debug logger so it can be initialized before
+        any stage records data; returning None lets emission proceed even when
+        the game lookup fails (the rest of the run-final logging still fires).
+        """
+        result = await self.session.execute(
+            select(SportsGame)
+            .options(selectinload(SportsGame.league))
+            .where(SportsGame.id == game_id)
+        )
+        game = result.scalar_one_or_none()
+        if game is None or game.league is None:
+            return None
+        return game.league.code
+
     async def _build_player_name_mapping(self, game_id: int) -> dict[str, str]:
         """Build mapping from abbreviated names to full names.
 
@@ -379,6 +401,8 @@ class PipelineExecutor:
                 output = await execute_validate_moments(stage_input)
             elif stage == PipelineStage.ANALYZE_DRAMA:
                 output = await execute_analyze_drama(stage_input)
+            elif stage == PipelineStage.CLASSIFY_GAME_SHAPE:
+                output = await execute_classify_game_shape(stage_input)
             elif stage == PipelineStage.GROUP_BLOCKS:
                 output = await execute_group_blocks(stage_input)
             elif stage == PipelineStage.RENDER_BLOCKS:
@@ -433,6 +457,12 @@ class PipelineExecutor:
                 duration_seconds=duration,
             )
 
+        # Orchestration boundary: every stage's failures funnel here. We
+        # MUST catch ``Exception`` (not narrow further) because any stage's
+        # uncaught error needs to leave the run/stage in a consistent
+        # ``failed`` state and emit metrics. The full traceback is preserved
+        # via ``exc_info=True`` below; nothing is silently swallowed.
+        # See docs/audits/error-handling-report.md §F-11.
         except Exception as e:
             pipeline_stage_failures_total.labels(stage.value).inc()
             # Update stage record with failure
@@ -522,35 +552,46 @@ class PipelineExecutor:
         # Start pipeline
         run = await self.start_pipeline(game_id, triggered_by, auto_chain=True)
 
-        # Execute all stages
-        for stage in PipelineStage.ordered_stages():
-            result = await self.execute_stage(run.id, stage)
+        # Determine league early so the structured debug logger always carries
+        # it (even if the pipeline aborts before any stage records data).
+        league_code = await self._resolve_league_code(game_id)
+        flow_debug = get_or_create_flow_debug_logger(run.id, game_id, league_code)
 
-            if not result.success:
-                logger.error(
-                    "pipeline_failed",
-                    extra={
-                        "run_id": run.id,
-                        "stage": stage.value,
-                        "error": result.error,
-                    },
-                )
-                break
+        try:
+            # Execute all stages
+            for stage in PipelineStage.ordered_stages():
+                result = await self.execute_stage(run.id, stage)
 
-        # Refresh run to get final status
-        run = await self._get_run(run.id)
+                if not result.success:
+                    logger.error(
+                        "pipeline_failed",
+                        extra={
+                            "run_id": run.id,
+                            "stage": stage.value,
+                            "error": result.error,
+                        },
+                    )
+                    break
 
-        logger.info(
-            "pipeline_finished",
-            extra={
-                "run_id": run.id,
-                "run_uuid": str(run.run_uuid),
-                "game_id": game_id,
-                "status": run.status,
-            },
-        )
+            # Refresh run to get final status
+            run = await self._get_run(run.id)
 
-        return run
+            logger.info(
+                "pipeline_finished",
+                extra={
+                    "run_id": run.id,
+                    "run_uuid": str(run.run_uuid),
+                    "game_id": game_id,
+                    "status": run.status,
+                },
+            )
+
+            flow_debug.set_final_status(run.status)
+            return run
+        finally:
+            popped = pop_flow_debug_logger(run.id)
+            if popped is not None:
+                popped.emit()
 
     async def get_run_status(self, run_id: int) -> dict[str, Any]:
         """Get detailed status of a pipeline run.

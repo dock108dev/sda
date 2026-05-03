@@ -306,6 +306,11 @@ async def get_game_flow(
                     embeddedSocialPostId=block.get("embedded_social_post_id"),
                     startClock=block.get("start_clock") or _block_clock(moments_data, block, "start"),
                     endClock=block.get("end_clock") or _block_clock(moments_data, block, "end"),
+                    reason=block.get("reason"),
+                    label=block.get("label"),
+                    leadBefore=block.get("lead_before"),
+                    leadAfter=block.get("lead_after"),
+                    evidence=block.get("evidence"),
                 )
             )
         # Calculate total words from accepted block narratives
@@ -334,4 +339,9 @@ async def get_game_flow(
         awayTeamColorLight=matchup_colors["awayLightHex"],
         awayTeamColorDark=matchup_colors["awayDarkHex"],
         leagueCode=game.league.code if game and game.league else None,
+        version=flow_record.version,
+        archetype=flow_record.archetype,
+        winnerTeamId=flow_record.winner_team_id,
+        sourceCounts=flow_record.source_counts,
+        validation=flow_record.validation,
     )

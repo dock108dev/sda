@@ -20,17 +20,19 @@ class PipelineStage(str, Enum):
     1. NORMALIZE_PBP - Build normalized PBP events with phases
     2. GENERATE_MOMENTS - Partition game into narrative moments
     3. VALIDATE_MOMENTS - Run validation checks on moments
-    4. ANALYZE_DRAMA - Use AI to identify game's dramatic peak and weight quarters
-    5. GROUP_BLOCKS - Group moments into 4-7 narrative blocks (drama-weighted)
-    6. RENDER_BLOCKS - Generate short narratives for each block
-    7. VALIDATE_BLOCKS - Validate block constraints
-    8. FINALIZE_MOMENTS - Persist final game flow artifact
+    4. CLASSIFY_GAME_SHAPE - Deterministic archetype classification (no LLM)
+    5. ANALYZE_DRAMA - Deterministic per-quarter drama weights (no LLM)
+    6. GROUP_BLOCKS - Group moments into 4-7 narrative blocks (drama-weighted)
+    7. RENDER_BLOCKS - Generate short narratives for each block
+    8. VALIDATE_BLOCKS - Validate block constraints
+    9. FINALIZE_MOMENTS - Persist final game flow artifact
     """
 
     NORMALIZE_PBP = "NORMALIZE_PBP"
     GENERATE_MOMENTS = "GENERATE_MOMENTS"
     VALIDATE_MOMENTS = "VALIDATE_MOMENTS"
     ANALYZE_DRAMA = "ANALYZE_DRAMA"
+    CLASSIFY_GAME_SHAPE = "CLASSIFY_GAME_SHAPE"
     GROUP_BLOCKS = "GROUP_BLOCKS"
     RENDER_BLOCKS = "RENDER_BLOCKS"
     VALIDATE_BLOCKS = "VALIDATE_BLOCKS"
@@ -43,6 +45,7 @@ class PipelineStage(str, Enum):
             cls.NORMALIZE_PBP,
             cls.GENERATE_MOMENTS,
             cls.VALIDATE_MOMENTS,
+            cls.CLASSIFY_GAME_SHAPE,
             cls.ANALYZE_DRAMA,
             cls.GROUP_BLOCKS,
             cls.RENDER_BLOCKS,
@@ -51,23 +54,29 @@ class PipelineStage(str, Enum):
         ]
 
     def next_stage(self) -> PipelineStage | None:
-        """Return the next stage in the pipeline, or None if this is the last."""
+        """Return the next stage in the pipeline, or None if this is the last.
+
+        ``stages.index(self)`` raises ``ValueError`` only if a new enum member
+        was added without being added to ``ordered_stages()`` — i.e. an
+        invariant violation in this module. The previous version swallowed it
+        and returned ``None``, which would cause the executor to silently skip
+        the new stage. We let it propagate so the bug is loud at first call.
+        See docs/audits/error-handling-report.md §F-1.
+        """
         stages = self.ordered_stages()
-        try:
-            idx = stages.index(self)
-            if idx < len(stages) - 1:
-                return stages[idx + 1]
-            return None
-        except ValueError:
-            return None
+        idx = stages.index(self)
+        if idx < len(stages) - 1:
+            return stages[idx + 1]
+        return None
 
     def previous_stage(self) -> PipelineStage | None:
-        """Return the previous stage in the pipeline, or None if this is the first."""
+        """Return the previous stage in the pipeline, or None if this is the first.
+
+        See ``next_stage`` for why ``ValueError`` from ``stages.index`` is not
+        suppressed. (See docs/audits/error-handling-report.md §F-1.)
+        """
         stages = self.ordered_stages()
-        try:
-            idx = stages.index(self)
-            if idx > 0:
-                return stages[idx - 1]
-            return None
-        except ValueError:
-            return None
+        idx = stages.index(self)
+        if idx > 0:
+            return stages[idx - 1]
+        return None

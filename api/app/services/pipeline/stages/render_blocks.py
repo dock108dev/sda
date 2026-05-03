@@ -1,45 +1,13 @@
 """RENDER_BLOCKS Stage Implementation.
 
-This stage generates narrative text for each block using OpenAI.
-Each block gets 1-5 sentences (~65 words) describing that stretch of play.
+Generates narrative text for each block via two OpenAI calls — an
+archetype-aware, evidence-grounded per-block render, then a game-level flow
+pass that smooths transitions while preserving facts.
 
-TWO-PASS RENDERING
-==================
-1. Initial render: Per-block narrative generation with role-aware prompting
-2. Game-level flow pass: Single call that sees all blocks and smooths transitions
-
-RENDERING RULES
-===============
-The prompt REQUIRES:
-- 1-5 sentences per block (~40-100 words)
-- Role-aware context (SETUP, MOMENTUM_SHIFT, etc.)
-- Consequence-based narration over play enumeration
-- Concrete actions and score changes
-- SportsCenter-style prose describing stretches of play
-
-The prompt FORBIDS:
-- momentum, turning point, dominant, huge, clutch
-- Speculation or interpretation
-- References to plays not in the block
-- Raw PBP artifacts (initials like "j. smith")
-
-GAME-LEVEL FLOW PASS
-====================
-After initial narratives are generated, a second OpenAI call smooths
-the entire game flow:
-- Acknowledges time progression (early → middle → late)
-- Reduces repetition across blocks
-- Preserves all facts, scores, and structure
-- Uses low temperature (0.2) for consistency
-- If output count != input count, uses originals to preserve structure
-
-VALIDATION
-==========
-Post-generation validation ensures:
-- Non-empty narratives
-- Word count within limits (30-120 words)
-- Sentence count within limits (1-5 sentences)
-- No forbidden language
+Per BRAINDUMP §Narrative generation rules: 1-2 sentences and 25-55 words per
+block. Banned-phrase and speculation lists are injected into both prompts;
+structured per-segment evidence (from the evidence_selection helper) replaces
+the old undifferentiated play list.
 """
 
 from __future__ import annotations
@@ -50,6 +18,9 @@ import logging
 from typing import Any
 
 from ...openai_client import get_openai_client
+from ..helpers.evidence_selection import SegmentEvidence, select_evidence
+from ..helpers.flow_debug_logger import get_logger as get_flow_debug_logger
+from ..helpers.score_timeline import build_score_timeline
 from ..models import StageInput, StageOutput
 from .regen_context import RegenFailureContext
 from .render_helpers import (
@@ -63,11 +34,38 @@ from .render_validation import cleanup_pbp_artifacts, validate_block_narrative
 logger = logging.getLogger(__name__)
 
 
+def _build_evidence_by_block(
+    blocks: list[dict[str, Any]],
+    pbp_events: list[dict[str, Any]],
+    league_code: str,
+) -> dict[int, SegmentEvidence]:
+    """Compute structured evidence per block from the score timeline + PBP.
+
+    Each block's play_ids define a play_index range; the timeline +
+    evidence_selection helper produce the per-segment payload that replaces
+    the old undifferentiated play list in the prompt.
+    """
+    if not blocks or not pbp_events:
+        return {}
+    timeline = build_score_timeline(pbp_events, league_code=league_code)
+    evidence_by_block: dict[int, SegmentEvidence] = {}
+    for block in blocks:
+        play_ids = block.get("play_ids") or []
+        if not play_ids:
+            continue
+        play_range = (min(play_ids), max(play_ids))
+        evidence_by_block[block["block_index"]] = select_evidence(
+            play_range, timeline, pbp_events, league_code=league_code
+        )
+    return evidence_by_block
+
+
 async def _apply_game_level_flow_pass(
     blocks: list[dict[str, Any]],
     game_context: dict[str, str],
     openai_client: Any,
     output: StageOutput,
+    archetype: str | None = None,
     regen_context: RegenFailureContext | None = None,
 ) -> list[dict[str, Any]]:
     """Apply game-level flow pass to smooth transitions across blocks.
@@ -91,7 +89,12 @@ async def _apply_game_level_flow_pass(
 
     output.add_log(f"Applying game-level flow pass to {len(blocks)} blocks")
 
-    prompt = build_game_flow_pass_prompt(blocks, game_context, regen_context=regen_context)
+    prompt = build_game_flow_pass_prompt(
+        blocks,
+        game_context,
+        archetype=archetype,
+        regen_context=regen_context,
+    )
 
     try:
         # Low temperature for consistency, ~100 tokens per block
@@ -107,10 +110,26 @@ async def _apply_game_level_flow_pass(
 
     except json.JSONDecodeError as e:
         output.add_log(f"Flow pass returned invalid JSON, using originals: {e}", level="warning")
+        logger.warning(
+            "flow_pass_invalid_json",
+            extra={"block_count": len(blocks)},
+            exc_info=True,
+        )
         return blocks
 
+    # Broad catch: the flow pass is an optional smoothing step. Any failure
+    # (OpenAI transport, rate limit, value error, etc.) must fall back to the
+    # original per-block narratives rather than failing the whole pipeline.
+    # We emit ``exc_info=True`` here because ``output.add_log`` only captures
+    # the exception's str(); the traceback would otherwise be lost.
+    # See docs/audits/error-handling-report.md §F-2.
     except Exception as e:
         output.add_log(f"Flow pass failed, using originals: {e}", level="warning")
+        logger.warning(
+            "flow_pass_failed",
+            extra={"block_count": len(blocks)},
+            exc_info=True,
+        )
         return blocks
 
     # Extract revised narratives
@@ -152,7 +171,7 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     """Execute the RENDER_BLOCKS stage.
 
     Generates narrative text for each block using OpenAI.
-    Each block gets 1-5 sentences (~65 words).
+    Each block gets 1-2 sentences (25-55 words).
 
     Args:
         stage_input: Input containing previous_output with grouped blocks
@@ -195,6 +214,18 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
 
     pbp_events = previous_output.get("pbp_events", [])
     game_context = stage_input.game_context
+    league_code = game_context.get("sport", "NBA")
+
+    # Archetype from CLASSIFY_GAME_SHAPE drives prompt framing (compress
+    # blowout late blocks, name the deficit and swing for comeback, etc.).
+    archetype: str | None = previous_output.get("archetype")
+    if archetype:
+        output.add_log(f"Rendering with archetype={archetype}")
+
+    # Per-block structured evidence replaces the old undifferentiated play
+    # list. The evidence helper aggregates scoring plays, lead changes,
+    # scoring runs, featured players, and leverage from the timeline.
+    evidence_by_block = _build_evidence_by_block(blocks, pbp_events, league_code)
 
     # Build typed regen context from game_context when this is a regen run.
     # grade_gate_failures is threaded in by PipelineExecutor._get_game_context()
@@ -219,7 +250,22 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
         output.add_log("Processing blowout game with compressed narratives")
 
     # Build prompt and call OpenAI; inject typed regen context into data layer.
-    prompt = build_block_prompt(blocks, game_context, pbp_events, regen_context=regen_context)
+    prompt = build_block_prompt(
+        blocks,
+        game_context,
+        pbp_events,
+        archetype=archetype,
+        evidence_by_block=evidence_by_block,
+        regen_context=regen_context,
+    )
+
+    # Hash the prompt payload (and optionally save it when FLOW_DEBUG_SAVE=true)
+    # so post-hoc inspection can correlate a problem flow back to the exact
+    # prompt that produced it.
+    debug = get_flow_debug_logger(stage_input.run_id)
+    if debug is not None:
+        prompt_hash = debug.record_prompt_payload(prompt)
+        output.add_log(f"Prompt payload hash: {prompt_hash[:12]}…")
 
     try:
         # Estimate tokens: ~200 per block for 2-4 sentences
@@ -234,11 +280,15 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
         response_data = json.loads(response_json)
 
     except json.JSONDecodeError as e:
-        # Fail fast
+        # Fail fast — invalid JSON from the primary render is unrecoverable.
+        # The chain (`from e`) is preserved for the executor's structured log.
         raise ValueError(f"OpenAI returned invalid JSON: {e}") from e
 
+    # Fail fast for the primary block-render call. The executor's outer
+    # ``except Exception`` (executor.py:execute_stage) records the failure
+    # with ``exc_info=True`` and marks the stage failed, so we deliberately
+    # propagate rather than fall back. See docs/audits/error-handling-report.md §F-3.
     except Exception as e:
-        # Fail fast
         raise ValueError(f"OpenAI call failed: {e}") from e
 
     # Extract narratives from response
@@ -282,7 +332,6 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
             raise ValueError(f"Block {block_idx} validation failed: {errors}")
 
         # Check and inject overtime mention if needed
-        league_code = game_context.get("sport", "NBA")
         ot_info = detect_overtime_info(block, league_code)
         if ot_info["enters_overtime"]:
             if not check_overtime_mention(narrative, ot_info, league_code):
@@ -306,11 +355,15 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     # Game-level flow pass: smooth transitions across all blocks
     # This is a second OpenAI call that sees all blocks at once
     blocks = await _apply_game_level_flow_pass(
-        blocks, game_context, openai_client, output, regen_context=regen_context
+        blocks,
+        game_context,
+        openai_client,
+        output,
+        archetype=archetype,
+        regen_context=regen_context,
     )
 
     # Post-flow-pass: Ensure OT mentions weren't lost during flow pass
-    league_code = game_context.get("sport", "NBA")
     ot_injections = 0
     for block in blocks:
         ot_info = detect_overtime_info(block, league_code)
@@ -346,6 +399,8 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
         "pbp_events": pbp_events,
         "validated": True,
         "blocks_grouped": True,
+        # Keep archetype visible to VALIDATE_BLOCKS via accumulated context.
+        "archetype": archetype,
     }
 
     return output

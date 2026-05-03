@@ -12,8 +12,6 @@ from app.services.pipeline.stages.render_helpers import (
     inject_overtime_mention,
 )
 from app.services.pipeline.stages.render_prompt_helpers import (
-    _detect_big_lead_comeback,
-    _detect_close_game,
     _format_contributors_line,
     _format_lead_line,
 )
@@ -54,25 +52,6 @@ class TestBuildBlockPrompt:
         assert "Lakers" in prompt
         assert "Celtics" in prompt
 
-    def test_prompt_includes_forbidden_words_list(self) -> None:
-        """Prompt includes list of forbidden words."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [],
-            }
-        ]
-        game_context = {"home_team_name": "Home", "away_team_name": "Away"}
-        pbp_events: list[dict] = []
-
-        prompt = build_block_prompt(blocks, game_context, pbp_events)
-
-        for word in FORBIDDEN_WORDS:
-            assert word in prompt.lower()
-
     def test_prompt_includes_role_info(self) -> None:
         """Prompt includes semantic role for each block."""
         blocks = [
@@ -99,8 +78,8 @@ class TestBuildBlockPrompt:
         assert "SETUP" in prompt
         assert "RESOLUTION" in prompt
 
-    def test_prompt_includes_key_play_descriptions(self) -> None:
-        """Prompt includes descriptions of key plays with team names."""
+    def test_prompt_does_not_pass_raw_play_descriptions(self) -> None:
+        """Per ISSUE-007: prompt no longer feeds undifferentiated play list to model."""
         blocks = [
             {
                 "block_index": 0,
@@ -123,64 +102,10 @@ class TestBuildBlockPrompt:
 
         prompt = build_block_prompt(blocks, game_context, pbp_events)
 
-        # Key plays should have team name in parentheses, not brackets
-        assert "(Lakers) LeBron James makes 3-pointer" in prompt
-        assert "(Lakers) Anthony Davis dunks" in prompt
-        assert "[LAL]" not in prompt
-
-    def test_prompt_key_plays_include_team_name(self) -> None:
-        """Key plays from different teams render with full team names in parentheses."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [1, 2],
-            }
-        ]
-        game_context = {
-            "home_team_name": "Hawks",
-            "away_team_name": "Celtics",
-            "home_team_abbrev": "ATL",
-            "away_team_abbrev": "BOS",
-        }
-        pbp_events = [
-            {"play_index": 1, "description": "[ATL] Young makes 3-pointer", "team_abbreviation": "ATL"},
-            {"play_index": 2, "description": "[BOS] Tatum drives for layup", "team_abbreviation": "BOS"},
-        ]
-
-        prompt = build_block_prompt(blocks, game_context, pbp_events)
-
-        # Full team names should appear in parentheses
-        assert "(Hawks) Young makes 3-pointer" in prompt
-        assert "(Celtics) Tatum drives for layup" in prompt
-        # Abbreviation brackets should NOT appear
-        assert "[ATL]" not in prompt
-        assert "[BOS]" not in prompt
-
-    def test_prompt_key_plays_without_team_abbreviation(self) -> None:
-        """Plays without team_abbreviation render without empty brackets."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [1, 2],
-            }
-        ]
-        game_context = {"home_team_name": "Home", "away_team_name": "Away"}
-        pbp_events = [
-            {"play_index": 1, "description": "End of period"},
-            {"play_index": 2, "description": "Timeout called", "team_abbreviation": ""},
-        ]
-
-        prompt = build_block_prompt(blocks, game_context, pbp_events)
-
-        assert "- End of period" in prompt
-        assert "- Timeout called" in prompt
-        assert "[]" not in prompt
+        # Raw play descriptions are no longer in the per-block section
+        assert "makes 3-pointer" not in prompt
+        assert "dunks" not in prompt
+        assert "Key plays:" not in prompt
 
 
 class TestValidateBlockNarrative:
@@ -388,7 +313,7 @@ class TestGameLevelFlowPass:
     def test_flow_pass_prompt_constant_exists(self) -> None:
         """The game flow pass prompt constant is defined."""
         assert GAME_FLOW_PASS_PROMPT is not None
-        assert "flow naturally" in GAME_FLOW_PASS_PROMPT.lower()
+        assert "flow" in GAME_FLOW_PASS_PROMPT.lower()
         assert "preserve" in GAME_FLOW_PASS_PROMPT.lower()
 
     def test_flow_prompt_includes_scores(self) -> None:
@@ -808,26 +733,7 @@ class TestFormatContributorsLine:
 
 
 class TestLeadAndContributorsInPrompt:
-    """Integration tests verifying lead and contributors lines in full prompt."""
-
-    def test_lead_line_appears_in_prompt(self) -> None:
-        """Lead context line appears in block prompt when scores change."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [12, 5],
-                "key_play_ids": [],
-            }
-        ]
-        game_context = {
-            "home_team_name": "Hawks",
-            "away_team_name": "Celtics",
-            "sport": "NBA",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-        assert "Lead:" in prompt
+    """Integration tests verifying contributors lines in full prompt."""
 
     def test_contributors_line_appears_in_prompt(self) -> None:
         """Contributors line appears when mini_box has block stars, grouped by team."""
@@ -860,27 +766,6 @@ class TestLeadAndContributorsInPrompt:
         assert "Hawks" in prompt
         assert "Young +6 pts" in prompt
 
-    def test_no_lead_line_when_scores_unchanged(self) -> None:
-        """No Lead line when block scores don't change."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [10, 8],
-                "score_after": [10, 8],
-                "key_play_ids": [],
-            }
-        ]
-        game_context = {
-            "home_team_name": "Hawks",
-            "away_team_name": "Celtics",
-            "sport": "NBA",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-        # "Lead:" should only appear in the instruction section, not per-block
-        blocks_section = prompt.split("BLOCKS:")[-1]
-        assert "Lead:" not in blocks_section
-
     def test_no_contributors_without_mini_box(self) -> None:
         """No Contributors line when block has no mini_box."""
         blocks = [
@@ -900,26 +785,6 @@ class TestLeadAndContributorsInPrompt:
         prompt = build_block_prompt(blocks, game_context, [])
         blocks_section = prompt.split("BLOCKS:")[-1]
         assert "Contributors:" not in blocks_section
-
-    def test_contextual_data_usage_in_system_prompt(self) -> None:
-        """CONTEXTUAL DATA USAGE section present in prompt."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [],
-            }
-        ]
-        game_context = {
-            "home_team_name": "Home",
-            "away_team_name": "Away",
-            "sport": "NBA",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-        assert "CONTEXTUAL DATA USAGE:" in prompt
-        assert "narrative fuel" in prompt
 
 
 class TestContributorsGroupedByTeam:
@@ -1085,339 +950,9 @@ class TestPlayerRosterInPrompt:
         assert "ROSTERS:" in prompt
         # Count how many "Player" entries appear in the home roster line
         roster_section = prompt.split("ROSTERS:")[1].split("\n\n")[0]
-        home_line = [l for l in roster_section.split("\n") if "Hawks" in l][0]
+        home_line = [line for line in roster_section.split("\n") if "Hawks" in line][0]
         player_count = home_line.count("Player")
         assert player_count == 10
-
-
-class TestDetectBigLeadComeback:
-    """Tests for _detect_big_lead_comeback function."""
-
-    def test_comeback_detected(self) -> None:
-        """Detects comeback when peak margin >= 15 and final margin < half peak."""
-        blocks = [
-            {
-                "block_index": 0,
-                "score_before": [0, 0],
-                "score_after": [25, 18],
-                "peak_margin": 25,  # Home led by 25
-            },
-            {
-                "block_index": 1,
-                "score_before": [25, 18],
-                "score_after": [50, 43],
-                "peak_margin": 10,
-            },
-            {
-                "block_index": 2,
-                "score_before": [50, 43],
-                "score_after": [70, 68],
-                "peak_margin": 7,  # Final margin 2
-            },
-        ]
-        is_comeback, peak, final = _detect_big_lead_comeback(blocks)
-        assert is_comeback is True
-        assert peak == 25
-        assert final == 2
-
-    def test_no_comeback_when_margin_holds(self) -> None:
-        """No comeback when final margin >= half of peak margin."""
-        blocks = [
-            {
-                "block_index": 0,
-                "score_before": [0, 0],
-                "score_after": [20, 0],
-                "peak_margin": 20,
-            },
-            {
-                "block_index": 1,
-                "score_before": [20, 0],
-                "score_after": [40, 25],
-                "peak_margin": 20,  # Final margin 15 >= 20*0.5
-            },
-        ]
-        is_comeback, peak, final = _detect_big_lead_comeback(blocks)
-        assert is_comeback is False
-
-    def test_no_comeback_small_peak(self) -> None:
-        """No comeback when peak margin < 15."""
-        blocks = [
-            {
-                "block_index": 0,
-                "score_before": [0, 0],
-                "score_after": [12, 2],
-                "peak_margin": 12,
-            },
-            {
-                "block_index": 1,
-                "score_before": [12, 2],
-                "score_after": [15, 14],
-                "peak_margin": 10,
-            },
-        ]
-        is_comeback, peak, final = _detect_big_lead_comeback(blocks)
-        assert is_comeback is False
-        assert peak == 12
-
-    def test_empty_blocks(self) -> None:
-        """Empty blocks returns no comeback."""
-        is_comeback, peak, final = _detect_big_lead_comeback([])
-        assert is_comeback is False
-
-
-class TestDetectCloseGameWithPeakMargin:
-    """Tests for _detect_close_game including peak_margin."""
-
-    def test_peak_margin_prevents_close_game_misclassification(self) -> None:
-        """Game with hidden mid-block lead not misclassified as close."""
-        blocks = [
-            {
-                "score_before": [0, 0],
-                "score_after": [25, 22],
-                "peak_margin": 15,  # Home led by 15 mid-block
-            },
-            {
-                "score_before": [25, 22],
-                "score_after": [50, 48],
-                "peak_margin": 5,
-            },
-        ]
-        is_close, max_margin = _detect_close_game(blocks)
-        assert is_close is False
-        assert max_margin == 15
-
-    def test_truly_close_game_still_detected(self) -> None:
-        """Truly close game (peak_margin <= 7) still detected."""
-        blocks = [
-            {
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "peak_margin": 5,
-            },
-            {
-                "score_before": [10, 8],
-                "score_after": [20, 18],
-                "peak_margin": 4,
-            },
-        ]
-        is_close, max_margin = _detect_close_game(blocks)
-        assert is_close is True
-
-
-class TestPeakLineInPrompt:
-    """Tests for Peak: line appearing in block prompt."""
-
-    def test_peak_line_appears_when_threshold_met(self) -> None:
-        """Peak: line appears when peak_margin >= boundary_margin + 6."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [50, 43],  # boundary margin = 7
-                "key_play_ids": [],
-                "peak_margin": 22,  # 22 >= 7 + 6
-                "peak_leader": 1,
-            }
-        ]
-        game_context = {
-            "home_team_name": "Illinois",
-            "away_team_name": "UCLA",
-            "sport": "NCAAB",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-
-        assert "Peak: Illinois led by as many as 22 during this stretch" in prompt
-
-    def test_peak_line_suppressed_when_below_threshold(self) -> None:
-        """Peak: line suppressed when peak_margin < boundary_margin + 6."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [25, 18],  # boundary margin = 7
-                "key_play_ids": [],
-                "peak_margin": 10,  # 10 < 7 + 6
-                "peak_leader": 1,
-            }
-        ]
-        game_context = {
-            "home_team_name": "Illinois",
-            "away_team_name": "UCLA",
-            "sport": "NCAAB",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-        blocks_section = prompt.split("BLOCKS:")[-1]
-
-        assert "Peak:" not in blocks_section
-
-    def test_peak_line_away_team(self) -> None:
-        """Peak: line uses away team name when away led."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 12],  # boundary margin = 2
-                "key_play_ids": [],
-                "peak_margin": 15,
-                "peak_leader": -1,  # Away led
-            }
-        ]
-        game_context = {
-            "home_team_name": "Hawks",
-            "away_team_name": "Celtics",
-            "sport": "NBA",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-
-        assert "Peak: Celtics led by as many as 15 during this stretch" in prompt
-
-    def test_comeback_guidance_appears(self) -> None:
-        """BIG LEAD / COMEBACK guidance appears for comeback games."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [50, 43],
-                "key_play_ids": [],
-                "peak_margin": 22,
-                "peak_leader": 1,
-            },
-            {
-                "block_index": 1,
-                "role": SemanticRole.RESOLUTION.value,
-                "score_before": [50, 43],
-                "score_after": [70, 68],
-                "key_play_ids": [],
-                "peak_margin": 7,
-                "peak_leader": 1,
-            },
-        ]
-        game_context = {
-            "home_team_name": "Illinois",
-            "away_team_name": "UCLA",
-            "sport": "NCAAB",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-
-        assert "BIG LEAD / COMEBACK" in prompt
-        assert "Do NOT describe this as a 'modest' or 'slim' lead" in prompt
-
-    def test_no_comeback_guidance_for_normal_game(self) -> None:
-        """No BIG LEAD / COMEBACK guidance for normal games."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [],
-                "peak_margin": 5,
-                "peak_leader": 1,
-            },
-            {
-                "block_index": 1,
-                "role": SemanticRole.RESOLUTION.value,
-                "score_before": [10, 8],
-                "score_after": [20, 18],
-                "key_play_ids": [],
-                "peak_margin": 3,
-                "peak_leader": 1,
-            },
-        ]
-        game_context = {
-            "home_team_name": "Home",
-            "away_team_name": "Away",
-            "sport": "NBA",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-
-        assert "BIG LEAD / COMEBACK" not in prompt
-
-
-class TestKeyPlayTeamNames:
-    """Tests for team name replacement in key play descriptions."""
-
-    def test_bracket_replaced_with_team_name(self) -> None:
-        """[ATL] bracket replaced with (Hawks) in key play."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [1],
-            }
-        ]
-        game_context = {
-            "home_team_name": "Hawks",
-            "away_team_name": "Celtics",
-            "home_team_abbrev": "ATL",
-            "away_team_abbrev": "BOS",
-        }
-        pbp_events = [
-            {"play_index": 1, "description": "[ATL] Young makes 3-pointer"},
-        ]
-
-        prompt = build_block_prompt(blocks, game_context, pbp_events)
-
-        assert "(Hawks) Young makes 3-pointer" in prompt
-        assert "[ATL]" not in prompt
-
-    def test_unknown_bracket_falls_back_to_raw(self) -> None:
-        """Unknown abbreviation in brackets falls back to raw abbreviation text."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [1],
-            }
-        ]
-        game_context = {
-            "home_team_name": "Hawks",
-            "away_team_name": "Celtics",
-            "home_team_abbrev": "ATL",
-            "away_team_abbrev": "BOS",
-        }
-        pbp_events = [
-            {"play_index": 1, "description": "[UNK] Player does something"},
-        ]
-
-        prompt = build_block_prompt(blocks, game_context, pbp_events)
-
-        # Falls back to raw bracket content
-        assert "(UNK) Player does something" in prompt
-        assert "[UNK]" not in prompt
-
-    def test_no_bracket_passes_through(self) -> None:
-        """Play without brackets passes through unchanged."""
-        blocks = [
-            {
-                "block_index": 0,
-                "role": SemanticRole.SETUP.value,
-                "score_before": [0, 0],
-                "score_after": [10, 8],
-                "key_play_ids": [1],
-            }
-        ]
-        game_context = {
-            "home_team_name": "Hawks",
-            "away_team_name": "Celtics",
-            "home_team_abbrev": "ATL",
-            "away_team_abbrev": "BOS",
-        }
-        pbp_events = [
-            {"play_index": 1, "description": "End of period"},
-        ]
-
-        prompt = build_block_prompt(blocks, game_context, pbp_events)
-
-        assert "- End of period" in prompt
 
 
 class TestDetectGameWinningPlay:
@@ -1484,105 +1019,255 @@ class TestDetectGameWinningPlay:
         assert "Jaylen Brown" in result
 
 
-class TestSustainedLeadInPrompt:
-    """Tests for sustained-lead guidance in the block prompt."""
+class TestArchetypeGuidance:
+    """Tests for archetype-driven prompt framing."""
 
-    def _make_blocks(self, second_half_scores):
-        """Build a 4-block game with given second-half score pairs."""
+    def _basic_blocks(self) -> list[dict]:
+        return [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "key_play_ids": [],
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [10, 8],
+                "score_after": [20, 18],
+                "key_play_ids": [],
+            },
+        ]
+
+    def test_blowout_archetype_compresses_late(self) -> None:
+        """Blowout archetype tells model to compress late blocks."""
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
+        prompt = build_block_prompt(
+            self._basic_blocks(), game_context, [], archetype="blowout"
+        )
+        assert "GAME SHAPE: blowout" in prompt
+        assert "compress" in prompt.lower()
+
+    def test_comeback_archetype_describes_deficit(self) -> None:
+        """Comeback archetype tells model to name deficit and swing."""
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
+        prompt = build_block_prompt(
+            self._basic_blocks(), game_context, [], archetype="comeback"
+        )
+        assert "GAME SHAPE: comeback" in prompt
+        assert "deficit" in prompt.lower()
+        assert "swing" in prompt.lower()
+
+    def test_no_guidance_without_archetype(self) -> None:
+        """Without archetype, no GAME SHAPE block appears."""
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
+        prompt = build_block_prompt(self._basic_blocks(), game_context, [])
+        assert "GAME SHAPE" not in prompt
+
+    def test_archetype_propagates_to_flow_pass(self) -> None:
+        """Game flow pass prompt also receives archetype guidance."""
+        blocks = [
+            {
+                "block_index": 0,
+                "role": "SETUP",
+                "period_start": 1,
+                "period_end": 1,
+                "score_before": [0, 0],
+                "score_after": [25, 5],
+                "narrative": "n",
+            },
+            {
+                "block_index": 1,
+                "role": "RESOLUTION",
+                "period_start": 4,
+                "period_end": 4,
+                "score_before": [80, 60],
+                "score_after": [110, 80],
+                "narrative": "n",
+            },
+        ]
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
+        prompt = build_game_flow_pass_prompt(blocks, game_context, archetype="blowout")
+        assert "GAME SHAPE: blowout" in prompt
+
+
+class TestBannedPhrasesInPrompt:
+    """Tests for banned phrase injection."""
+
+    def _basic_blocks(self) -> list[dict]:
+        return [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "key_play_ids": [],
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [10, 8],
+                "score_after": [20, 18],
+                "key_play_ids": [],
+            },
+        ]
+
+    def test_banned_phrases_section_present(self) -> None:
+        """Block prompt contains a BANNED PHRASES section listing the hard-banned phrases."""
+        from app.services.pipeline.stages.render_validation import BANNED_PHRASES
+
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
+        prompt = build_block_prompt(self._basic_blocks(), game_context, [])
+        assert "BANNED PHRASES" in prompt
+        # Sample some BANNED_PHRASES entries
+        for phrase in list(BANNED_PHRASES)[:5]:
+            assert phrase in prompt
+
+    def test_banned_phrases_in_flow_pass(self) -> None:
+        """Flow pass prompt also contains BANNED PHRASES section."""
+        blocks = [
+            {
+                "block_index": 0,
+                "role": "SETUP",
+                "period_start": 1,
+                "period_end": 1,
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "narrative": "Opening narrative.",
+            },
+        ]
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
+        prompt = build_game_flow_pass_prompt(blocks, game_context)
+        assert "BANNED PHRASES" in prompt
+
+
+class TestEvidenceInPrompt:
+    """Tests for structured evidence injection (replaces raw play list)."""
+
+    def test_evidence_renders_leverage_and_scoring(self) -> None:
+        """SegmentEvidence emits Leverage line and scoring summary."""
+        from app.services.pipeline.helpers.evidence_selection import (
+            FeaturedPlayer,
+            ScoringPlay,
+            SegmentEvidence,
+        )
+
+        evidence = SegmentEvidence(
+            scoring_plays=[
+                ScoringPlay(
+                    play_index=1,
+                    player="LeBron James",
+                    team="HOME",
+                    score_before=(0, 0),
+                    score_after=(3, 0),
+                    play_type="3pt",
+                ),
+            ],
+            featured_players=[
+                FeaturedPlayer(name="LeBron James", team="HOME", delta_contribution=3),
+            ],
+            leverage="HIGH",
+        )
         blocks = [
             {
                 "block_index": 0,
                 "role": SemanticRole.SETUP.value,
                 "score_before": [0, 0],
-                "score_after": [20, 15],
+                "score_after": [3, 0],
+                "key_play_ids": [],
+                "play_ids": [1],
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [3, 0],
+                "score_after": [10, 8],
+                "key_play_ids": [],
+                "play_ids": [2],
+            },
+        ]
+        game_context = {"home_team_name": "Lakers", "away_team_name": "Celtics", "sport": "NBA"}
+        prompt = build_block_prompt(
+            blocks,
+            game_context,
+            [],
+            evidence_by_block={0: evidence},
+        )
+        assert "Leverage: HIGH" in prompt
+        assert "Featured players: LeBron James (Lakers) +3" in prompt
+
+    def test_no_evidence_block_omits_evidence_section(self) -> None:
+        """Block without evidence still renders, just without evidence lines."""
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [10, 8],
                 "key_play_ids": [],
             },
             {
                 "block_index": 1,
-                "role": SemanticRole.MOMENTUM_SHIFT.value,
-                "score_before": [20, 15],
-                "score_after": [40, 30],
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [10, 8],
+                "score_after": [20, 18],
                 "key_play_ids": [],
             },
         ]
-        for i, (sb, sa) in enumerate(second_half_scores):
-            blocks.append({
-                "block_index": i + 2,
-                "role": SemanticRole.RESPONSE.value if i == 0 else SemanticRole.RESOLUTION.value,
-                "score_before": list(sb),
-                "score_after": list(sa),
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
+        prompt = build_block_prompt(blocks, game_context, [])
+        # No leverage line in any block section because no evidence was supplied
+        blocks_section = prompt.split("BLOCKS:")[-1]
+        assert "Leverage:" not in blocks_section
+
+
+class TestSystemPromptTemplate:
+    """Tests that the new system prompt matches BRAINDUMP §Prompt rules."""
+
+    def test_system_prompt_contains_braindump_phrasing(self) -> None:
+        """Block prompt opens with the BRAINDUMP §Prompt rules system text."""
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [10, 8],
                 "key_play_ids": [],
-            })
-        return blocks
-
-    def test_sustained_lead_appears(self) -> None:
-        """Sustained-lead guidance appears when home leads by 8+ in second half."""
-        blocks = self._make_blocks([
-            ((40, 30), (60, 50)),   # margin: 10
-            ((60, 50), (80, 72)),   # margin: 8
-        ])
-        game_context = {
-            "home_team_name": "Purdue",
-            "away_team_name": "Michigan",
-            "sport": "NCAAB",
-        }
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [10, 8],
+                "score_after": [20, 18],
+                "key_play_ids": [],
+            },
+        ]
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
         prompt = build_block_prompt(blocks, game_context, [])
+        assert "Scroll Down Sports Game Flow blocks" in prompt
+        assert "explaining the shape of the game" in prompt
+        assert "explain why that segment mattered" in prompt
+        assert "Return strict JSON only" in prompt
 
-        assert "SUSTAINED LEAD" in prompt
-        assert "Purdue" in prompt
-        assert "Do NOT frame minor margin changes" in prompt
-
-    def test_sustained_lead_suppressed_for_close_game(self) -> None:
-        """No sustained-lead guidance when game is close (max margin <= 7)."""
-        blocks = self._make_blocks([
-            ((20, 15), (25, 20)),   # margin: 5
-            ((25, 20), (30, 26)),   # margin: 4
-        ])
-        # Override first half to be close too
-        blocks[0]["score_after"] = [10, 7]
-        blocks[1]["score_before"] = [10, 7]
-        blocks[1]["score_after"] = [20, 15]
-
-        game_context = {
-            "home_team_name": "Purdue",
-            "away_team_name": "Michigan",
-            "sport": "NCAAB",
-        }
+    def test_word_count_target_is_25_to_55(self) -> None:
+        """Prompt instructs the model to target 25-55 words per block."""
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "key_play_ids": [],
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [10, 8],
+                "score_after": [20, 18],
+                "key_play_ids": [],
+            },
+        ]
+        game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
         prompt = build_block_prompt(blocks, game_context, [])
-
-        assert "SUSTAINED LEAD" not in prompt
-
-    def test_sustained_lead_suppressed_when_lead_changes(self) -> None:
-        """No sustained-lead guidance when lead swaps in second half."""
-        blocks = self._make_blocks([
-            ((40, 30), (50, 55)),   # away takes lead
-            ((50, 55), (60, 58)),   # home retakes
-        ])
-        game_context = {
-            "home_team_name": "Purdue",
-            "away_team_name": "Michigan",
-            "sport": "NCAAB",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-
-        assert "SUSTAINED LEAD" not in prompt
-
-    def test_sustained_lead_shows_correct_leader_away(self) -> None:
-        """Sustained-lead guidance shows away team name when away leads."""
-        blocks = self._make_blocks([
-            ((30, 40), (50, 60)),   # away leads by 10
-            ((50, 60), (65, 80)),   # away leads by 15
-        ])
-        blocks[0]["score_after"] = [15, 25]
-        blocks[1]["score_before"] = [15, 25]
-        blocks[1]["score_after"] = [30, 40]
-
-        game_context = {
-            "home_team_name": "Purdue",
-            "away_team_name": "Michigan",
-            "sport": "NCAAB",
-        }
-        prompt = build_block_prompt(blocks, game_context, [])
-
-        assert "SUSTAINED LEAD" in prompt
-        assert "Michigan" in prompt
+        assert "25-55 words" in prompt

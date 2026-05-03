@@ -12,15 +12,13 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.db import get_db
 from app.db.sports import GameStatus
 from app.dependencies.consumer_auth import verify_consumer_api_key
 from app.routers.v1 import router as v1_router
-from app.routers.v1.games import router
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -98,6 +96,13 @@ def _mock_flow(game_id: int = 42) -> MagicMock:
         }
     ]
     flow.validated_at = datetime(2026, 1, 1, tzinfo=UTC)
+    # v2 schema columns — None keeps MagicMock from auto-generating attrs
+    # that fail pydantic validation on the response model.
+    flow.version = None
+    flow.archetype = None
+    flow.winner_team_id = None
+    flow.source_counts = None
+    flow.validation = None
     return flow
 
 

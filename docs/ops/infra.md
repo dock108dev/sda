@@ -28,26 +28,30 @@ docker compose --profile prod up -d --build
 |---------|----------|
 | `dev` | Local development |
 | `prod` | Production (same services, pulls pre-built GHCR images) |
+| `observability` | Optional OpenTelemetry + Prometheus + Grafana stack |
 
-Both profiles run the same set of services.
+`dev` and `prod` run the same set of application services. The observability profile is additive and can be combined with either (`docker compose --profile dev --profile observability up -d`).
 
 ## Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| postgres | 5432 | PostgreSQL database |
-| redis | 6379 | Redis for Celery queue |
-| api | 8000 | FastAPI backend |
-| api-worker | -- | Celery worker for general tasks (batch sims, flow gen, experiments orchestrator) — `celery` queue |
-| api-training-worker | -- | Celery worker for ML model training — `training` queue, fixed concurrency (default 2, configurable via `CELERY_TRAINING_CONCURRENCY`) |
-| scraper | -- | Celery worker for data ingestion |
-| scraper-beat | -- | Celery scheduler (see [Data Sources](../ingestion/data-sources.md) for full schedule) |
-| social-scraper | -- | Social media scraper (X/Twitter) -- live tasks only (`social-scraper` queue) |
-| social-bulk | -- | Bulk social collection worker (`social-bulk` queue) -- isolated from live tasks |
-| migrate | -- | One-shot Alembic migration runner |
-| web | 3000 | Next.js admin UI |
-| backup | -- | Daily backup service |
-| log-relay | -- | Docker log relay sidecar |
+| Service | Port | Profile | Description |
+|---------|------|---------|-------------|
+| postgres | 5432 | dev, prod | PostgreSQL database |
+| redis | 6379 | dev, prod | Redis for Celery queue |
+| api | 8000 | dev, prod | FastAPI backend |
+| api-worker | -- | dev, prod | Celery worker for general tasks (batch sims, flow gen, experiments orchestrator) — `celery` queue |
+| api-training-worker | -- | dev, prod | Celery worker for ML model training — `training` queue, fixed concurrency (default 2, configurable via `CELERY_TRAINING_CONCURRENCY`) |
+| scraper | -- | dev, prod | Celery worker for data ingestion |
+| scraper-beat | -- | dev, prod | Celery scheduler (see [Data Sources](../ingestion/data-sources.md) for full schedule) |
+| social-scraper | -- | dev, prod | Social media scraper (X/Twitter) -- live tasks only (`social-scraper` queue) |
+| social-bulk | -- | dev, prod | Bulk social collection worker (`social-bulk` queue) -- isolated from live tasks |
+| migrate | -- | dev, prod | One-shot Alembic migration runner |
+| web | 3000 | dev, prod | Next.js admin UI |
+| backup | -- | dev, prod | Daily PostgreSQL backup service |
+| log-relay | 9999 (internal) | dev, prod | Docker log relay sidecar |
+| otel-collector | -- | observability | OpenTelemetry collector (receives traces/metrics from API, scraper) |
+| prometheus | 9090 | observability | Prometheus metrics scraper |
+| grafana | 3001 | observability | Grafana dashboards (Prometheus + OTEL data source) |
 
 ### Log Relay Sidecar
 

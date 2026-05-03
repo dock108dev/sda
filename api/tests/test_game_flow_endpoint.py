@@ -16,7 +16,6 @@ from app.db import get_db
 from app.db.sports import GameStatus
 from app.routers.sports.game_timeline import router
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -80,6 +79,13 @@ def _mock_flow(game_id: int = 42) -> MagicMock:
     ]
     flow.blocks_json = None
     flow.validated_at = datetime(2026, 1, 1, tzinfo=UTC)
+    # v2 schema columns — explicit None so MagicMock doesn't auto-create
+    # attributes that fail pydantic validation on the response model.
+    flow.version = None
+    flow.archetype = None
+    flow.winner_team_id = None
+    flow.source_counts = None
+    flow.validation = None
     return flow
 
 

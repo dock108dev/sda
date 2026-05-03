@@ -96,6 +96,7 @@ class NarrativeBlock:
     peak_leader: int = 0  # 1=home led at peak, -1=away led at peak
     start_clock: str | None = None  # Game clock at block start (from first moment)
     end_clock: str | None = None  # Game clock at block end (from last moment)
+    label: str | None = None  # Narrative job (Opening break, Swing, Closeout, …)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict."""
@@ -120,6 +121,8 @@ class NarrativeBlock:
             result["start_clock"] = self.start_clock
         if self.end_clock is not None:
             result["end_clock"] = self.end_clock
+        if self.label is not None:
+            result["label"] = self.label
         return result
 
     @classmethod
@@ -141,6 +144,7 @@ class NarrativeBlock:
             peak_leader=data.get("peak_leader", 0),
             start_clock=data.get("start_clock"),
             end_clock=data.get("end_clock"),
+            label=data.get("label"),
         )
 
     @property
@@ -198,11 +202,12 @@ class BlocksOutput:
 MIN_BLOCKS = 3  # Allow 3-block flows for blowouts
 MAX_BLOCKS = 7
 
-# Narrative constraints
-MIN_WORDS_PER_BLOCK = 30  # Ensures meaningful content
-MAX_WORDS_PER_BLOCK = 120  # Allows up to 5 sentences; gives DECISION_POINT breathing room
-TARGET_WORDS_PER_BLOCK = 65  # ~3 sentences
-MAX_TOTAL_WORDS = 600  # Accommodates richer narratives
+# Narrative constraints — per BRAINDUMP §Narrative generation rules:
+# 1-2 sentences per block, 25-55 words normally.
+MIN_WORDS_PER_BLOCK = 25
+MAX_WORDS_PER_BLOCK = 55
+TARGET_WORDS_PER_BLOCK = 40
+MAX_TOTAL_WORDS = 400
 
 # Key play constraints
 MIN_KEY_PLAYS = 1

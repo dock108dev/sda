@@ -614,6 +614,7 @@ class TestUpdateGameFromLiveFeed:
 
         mock_session = MagicMock()
         mock_game = MagicMock()
+        mock_game.id = 1
         mock_game.status = "live"
         mock_game.home_score = 50
         mock_game.away_score = 48
@@ -638,6 +639,7 @@ class TestUpdateGameFromLiveFeed:
 
         mock_session = MagicMock()
         mock_game = MagicMock()
+        mock_game.id = 2
         mock_game.status = "scheduled"
         mock_game.home_score = None
         mock_game.away_score = None
@@ -662,6 +664,7 @@ class TestUpdateGameFromLiveFeed:
 
         mock_session = MagicMock()
         mock_game = MagicMock()
+        mock_game.id = 3
         mock_game.status = "scheduled"
         mock_game.home_score = None
         mock_game.away_score = None
@@ -823,15 +826,17 @@ class TestHasRealTime:
 
     def test_midnight_et_is_not_real(self):
         """Midnight ET placeholder (from _to_datetime on bare date)."""
-        from sports_scraper.utils.datetime_utils import start_of_et_day_utc
         from datetime import date
+
+        from sports_scraper.utils.datetime_utils import start_of_et_day_utc
         midnight = start_of_et_day_utc(date(2026, 4, 7))
         assert _has_real_time(midnight) is False
 
     def test_noon_et_is_not_real(self):
         """Noon ET placeholder (from NHL _et_noon_utc fallback)."""
-        from sports_scraper.utils.datetime_utils import start_of_et_day_utc
         from datetime import date, timedelta
+
+        from sports_scraper.utils.datetime_utils import start_of_et_day_utc
         noon = start_of_et_day_utc(date(2026, 4, 7)) + timedelta(hours=12)
         assert _has_real_time(noon) is False
 

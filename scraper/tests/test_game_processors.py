@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import UTC, date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -17,8 +16,6 @@ if str(SCRAPER_ROOT) not in sys.path:
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/test_db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
-
-import pytest
 
 from sports_scraper.services.game_processors import (
     GameProcessResult,
@@ -51,7 +48,6 @@ from sports_scraper.services.game_processors_nhl import (
     process_game_pbp_nhl,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -65,7 +61,7 @@ def _make_game(external_ids=None, status="pregame", game_date=None, **kwargs):
     game.game_date = game_date or datetime(2025, 3, 1, tzinfo=UTC)
     game.home_score = kwargs.get("home_score", 0)
     game.away_score = kwargs.get("away_score", 0)
-    game.end_time = kwargs.get("end_time", None)
+    game.end_time = kwargs.get("end_time")
     game.last_pbp_at = None
     game.last_boxscore_at = None
     game.updated_at = None

@@ -53,6 +53,10 @@ class MLBPbpFetcher:
         url = MLB_PBP_URL.format(game_pk=game_pk)
         logger.info("mlb_pbp_fetch", url=url, game_pk=game_pk)
 
+        # Narrow to httpx errors + RuntimeError (rate-limit guard from
+        # provider_request). A real bug (TypeError, AttributeError) must
+        # propagate so we don't silently start returning empty PBP for
+        # every game. See error-handling-report.md §F-16.
         try:
             response = provider_request(
                 self.client,
@@ -65,8 +69,8 @@ class MLBPbpFetcher:
                 qps_budget=5.0,
                 qps_burst=10,
             )
-        except Exception as exc:
-            logger.error("mlb_pbp_fetch_error", game_pk=game_pk, error=str(exc))
+        except (httpx.HTTPError, RuntimeError):
+            logger.error("mlb_pbp_fetch_error", game_pk=game_pk, exc_info=True)
             return NormalizedPlayByPlay(source_game_key=str(game_pk), plays=[])
 
         if response is None:

@@ -192,7 +192,9 @@ def _enrich_game_from_boxscore(
     normalized_status = _normalize_status(
         "completed" if boxscore.status == "final" else boxscore.status
     )
-    new_status = resolve_status_transition(game.status, normalized_status)
+    new_status = resolve_status_transition(
+        game.status, normalized_status, game_date=game.game_date
+    )
     if new_status != game.status:
         game.status = new_status
         updated = True
