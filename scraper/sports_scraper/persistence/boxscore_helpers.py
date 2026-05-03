@@ -261,7 +261,9 @@ def _enrich_game_with_boxscore(
 
     # Transition status (scheduled → final) with protection against regression
     normalized_status = _normalize_status(payload.status)
-    new_status = resolve_status_transition(game.status, normalized_status)
+    new_status = resolve_status_transition(
+        game.status, normalized_status, game_date=game.game_date
+    )
     if new_status != game.status:
         game.status = new_status
         updated = True

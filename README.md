@@ -32,7 +32,7 @@ Local endpoints:
 
 ## Further documentation
 
-Start at [`docs/index.md`](docs/index.md). For large-module inventory and lint conventions, see [`docs/file-size-inventory.md`](docs/file-size-inventory.md).
+Start at [`docs/index.md`](docs/index.md).
 
 Key references:
 

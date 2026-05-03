@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from ....db import AsyncSession
+from ..helpers.flow_debug_logger import get_logger as get_flow_debug_logger
 from ..metrics import increment_fallback, increment_regen
 from ..models import StageInput, StageOutput
 from .block_types import MAX_BLOCKS, MIN_BLOCKS
@@ -21,7 +22,7 @@ from .validate_blocks_constants import (
     MINI_BOX_UNKNOWN,
     REQUIRED_BLOCK_TYPES,
 )
-from .validate_blocks_phrases import check_generic_phrase_density
+from .validate_blocks_phrases import check_banned_phrases, check_generic_phrase_density
 from .validate_blocks_resolution import (
     check_resolution_specificity,
     get_final_window_plays,
@@ -36,6 +37,13 @@ from .validate_blocks_rules import (
     validate_role_constraints,
     validate_score_continuity,
     validate_word_counts,
+)
+from .validate_blocks_segments import (
+    validate_blowout_late_leverage,
+    validate_evidence_present,
+    validate_lead_consistency,
+    validate_low_event_drama,
+    validate_reason_present,
 )
 from .validate_blocks_text import (
     check_ot_present,
@@ -63,6 +71,12 @@ _validate_role_constraints = validate_role_constraints
 _validate_score_continuity = validate_score_continuity
 _validate_word_counts = validate_word_counts
 _check_generic_phrase_density = check_generic_phrase_density
+_check_banned_phrases = check_banned_phrases
+_validate_lead_consistency = validate_lead_consistency
+_validate_blowout_late_leverage = validate_blowout_late_leverage
+_validate_low_event_drama = validate_low_event_drama
+_validate_reason_present = validate_reason_present
+_validate_evidence_present = validate_evidence_present
 
 
 async def _attach_embedded_tweets(
@@ -234,6 +248,22 @@ async def execute_validate_blocks(
     else:
         output.add_log("Rule 9 PASSED")
 
+    banned_errors, speculation_warnings = check_banned_phrases(blocks)
+    all_errors.extend(banned_errors)
+    all_warnings.extend(speculation_warnings)
+    if banned_errors:
+        output.add_log(
+            f"Rule 9b FAILED: banned phrases in {len(banned_errors)} block(s) → {banned_errors}",
+            level="error",
+        )
+    elif speculation_warnings:
+        output.add_log(
+            f"Rule 9b WARNING: speculation language in {len(speculation_warnings)} block(s)",
+            level="warning",
+        )
+    else:
+        output.add_log("Rule 9b PASSED")
+
     pbp_events_for_check = previous_output.get("pbp_events", [])
     sport_for_check = (stage_input.game_context or {}).get("sport", "")
     _, specificity_warnings = check_resolution_specificity(
@@ -264,6 +294,55 @@ async def execute_validate_blocks(
     else:
         output.add_log(f"Rule 11 PASSED (jaccard={density_score:.2f})")
 
+    archetype = previous_output.get("archetype")
+
+    output.add_log("Checking Rule 12: Lead consistency across block boundaries")
+    errors, warnings = validate_lead_consistency(blocks)
+    all_errors.extend(errors)
+    all_warnings.extend(warnings)
+    if errors:
+        output.add_log(f"Rule 12 FAILED: {errors}", level="error")
+    else:
+        output.add_log("Rule 12 PASSED")
+
+    output.add_log("Checking Rule 13: Blowout late-block leverage language")
+    errors, warnings = validate_blowout_late_leverage(blocks, archetype)
+    all_errors.extend(errors)
+    all_warnings.extend(warnings)
+    if errors:
+        output.add_log(f"Rule 13 FAILED: {errors}", level="error")
+    else:
+        output.add_log("Rule 13 PASSED")
+
+    output.add_log("Checking Rule 14: Low-event drama descriptors")
+    errors, warnings = validate_low_event_drama(blocks, archetype)
+    all_errors.extend(errors)
+    all_warnings.extend(warnings)
+    if errors:
+        output.add_log(f"Rule 14 FAILED: {errors}", level="error")
+    else:
+        output.add_log("Rule 14 PASSED")
+
+    _, reason_warnings = validate_reason_present(blocks)
+    all_warnings.extend(reason_warnings)
+    if reason_warnings:
+        output.add_log(
+            f"Rule 15 WARNING: {len(reason_warnings)} block(s) missing or short reason",
+            level="warning",
+        )
+    else:
+        output.add_log("Rule 15 PASSED")
+
+    _, evidence_warnings = validate_evidence_present(blocks)
+    all_warnings.extend(evidence_warnings)
+    if evidence_warnings:
+        output.add_log(
+            f"Rule 16 WARNING: {len(evidence_warnings)} block(s) assert without evidence",
+            level="warning",
+        )
+    else:
+        output.add_log("Rule 16 PASSED")
+
     total_words = sum(len(b.get("narrative", "").split()) for b in blocks)
 
     passed = len(all_errors) == 0
@@ -292,6 +371,22 @@ async def execute_validate_blocks(
         )
 
     output.add_log(f"Total word count: {total_words}")
+
+    # Record validation + decision into the structured per-game debug log.
+    debug = get_flow_debug_logger(stage_input.run_id)
+    if debug is not None:
+        validation_status = "passed" if (passed and coverage_passed) else "failed"
+        merged_errors = list(all_errors) + list(coverage_errors)
+        debug.record_validation_result(
+            status=validation_status,
+            warnings=all_warnings,
+            errors=merged_errors,
+        )
+        if decision == "FALLBACK":
+            fb_reason = "coverage_fail" if coverage_errors else "quality_fail"
+            debug.record_generation_result(decision, fallback_reason=fb_reason)
+        else:
+            debug.record_generation_result(decision)
 
     fallback_used = False
     if decision == "FALLBACK":
@@ -363,6 +458,7 @@ __all__ = [
     "MINI_BOX_STAT_FIELDS",
     "MINI_BOX_UNKNOWN",
     "REQUIRED_BLOCK_TYPES",
+    "_check_banned_phrases",
     "_check_generic_phrase_density",
     "_check_ot_present",
     "_check_resolution_specificity",
@@ -371,10 +467,15 @@ __all__ = [
     "_count_sentences",
     "_get_final_window_plays",
     "_validate_block_count",
+    "_validate_blowout_late_leverage",
     "_validate_coverage",
+    "_validate_evidence_present",
     "_validate_key_plays",
+    "_validate_lead_consistency",
+    "_validate_low_event_drama",
     "_validate_mini_box",
     "_validate_moment_coverage",
+    "_validate_reason_present",
     "_validate_required_block_types",
     "_validate_role_constraints",
     "_validate_score_continuity",

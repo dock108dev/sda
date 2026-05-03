@@ -31,7 +31,15 @@ from ..logging import logger
     retry_kwargs={"max_retries": 2},
 )
 def run_daily_sweep() -> dict:
-    """Run all daily sweep operations."""
+    """Run all daily sweep operations.
+
+    Each phase below is wrapped in its own ``try / except Exception`` block
+    on purpose: this is a chained safety-net job — one failed phase must
+    not abort the others, since a missed sweep cycle is much more expensive
+    than a partial one. ``logger.exception`` captures the full traceback
+    and the failure is recorded in the per-phase ``results`` entry, so
+    nothing is silently swallowed. See error-handling-report.md §F-20.
+    """
     from ..services.job_runs import track_job_run
 
     results: dict = {}
@@ -157,12 +165,16 @@ def _run_social_scrape_2() -> dict:
                         end_date=next_day,
                     )
                     game_new += new_tweets
-                except Exception as exc:
+                except Exception:
+                    # Per-team isolation: one team's collector failure
+                    # must not skip the second team or the rest of the
+                    # game loop. exc_info preserves the traceback so a
+                    # systematic provider outage is diagnosable.
                     logger.warning(
                         "sweep_social_scrape_2_team_error",
                         game_id=game.id,
                         team_id=team_id,
-                        error=str(exc),
+                        exc_info=True,
                     )
 
             # Flush pending INSERTs so the mapper's query can see them
@@ -172,12 +184,12 @@ def _run_social_scrape_2() -> dict:
             for team_id in team_ids:
                 try:
                     map_tweets_for_team(session, team_id)
-                except Exception as exc:
+                except Exception:
                     logger.warning(
                         "sweep_social_scrape_2_map_error",
                         game_id=game.id,
                         team_id=team_id,
-                        error=str(exc),
+                        exc_info=True,
                     )
 
             # Count postgame posts for this game (the ones we care about)
@@ -296,7 +308,9 @@ def _repair_stale_statuses() -> dict:
                     nba_game_id = (game.external_ids or {}).get("nba_game_id")
                     if nba_game_id and nba_game_id in nba_status_map:
                         api_status = nba_status_map[nba_game_id]
-                        new_status = resolve_status_transition(game.status, api_status)
+                        new_status = resolve_status_transition(
+                            game.status, api_status, game_date=game.game_date
+                        )
                         if new_status != game.status:
                             logger.info(
                                 "sweep_status_repaired",
@@ -310,8 +324,11 @@ def _repair_stale_statuses() -> dict:
                             if new_status == db_models.GameStatus.final.value and game.end_time is None:
                                 game.end_time = now
                             repaired += 1
-            except Exception as exc:
-                logger.warning("sweep_nba_status_check_error", error=str(exc))
+            except Exception:
+                # League-bucket isolation: NBA outage must not skip the
+                # NHL bucket below. exc_info preserves the traceback so a
+                # systematic API change is diagnosable.
+                logger.warning("sweep_nba_status_check_error", exc_info=True)
 
         # Check NHL schedule
         if nhl_games:
@@ -335,7 +352,9 @@ def _repair_stale_statuses() -> dict:
                                 continue
                             if pk in nhl_status_map:
                                 api_status = nhl_status_map[pk]
-                                new_status = resolve_status_transition(game.status, api_status)
+                                new_status = resolve_status_transition(
+                                    game.status, api_status, game_date=game.game_date
+                                )
                                 if new_status != game.status:
                                     logger.info(
                                         "sweep_status_repaired",
@@ -349,8 +368,10 @@ def _repair_stale_statuses() -> dict:
                                     if new_status == db_models.GameStatus.final.value and game.end_time is None:
                                         game.end_time = now
                                     repaired += 1
-            except Exception as exc:
-                logger.warning("sweep_nhl_status_check_error", error=str(exc))
+            except Exception:
+                # League-bucket isolation: NHL outage must not abort the
+                # whole sweep. exc_info preserves the traceback.
+                logger.warning("sweep_nhl_status_check_error", exc_info=True)
 
     return {"stale_found": len(stale_games), "repaired": repaired}
 

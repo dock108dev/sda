@@ -44,7 +44,9 @@ def check_game_status_nhl(session, game, *, client=None) -> GameProcessResult:
 
     for sg in schedule_games:
         if sg.game_id == nhl_game_id:
-            new_status = resolve_status_transition(game.status, sg.status)
+            new_status = resolve_status_transition(
+                game.status, sg.status, game_date=game.game_date
+            )
             if new_status != game.status:
                 old_status = game.status
                 game.status = new_status

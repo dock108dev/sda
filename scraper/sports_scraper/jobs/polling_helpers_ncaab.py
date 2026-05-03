@@ -135,7 +135,9 @@ def _update_ncaab_statuses(session, games: list, client) -> list[dict]:
                 if not api_status:
                     continue
 
-                new_status = resolve_status_transition(game.status, api_status)
+                new_status = resolve_status_transition(
+                    game.status, api_status, game_date=game.game_date
+                )
                 if new_status != game.status:
                     old_status = game.status
                     game.status = new_status
@@ -167,8 +169,11 @@ def _update_ncaab_statuses(session, games: list, client) -> list[dict]:
                     if away_score is not None:
                         game.away_score = away_score
 
-    except Exception as exc:
-        logger.warning("ncaa_scoreboard_error", error=str(exc))
+    except Exception:
+        # NCAA scoreboard outage must not abort the per-game CBB fallback
+        # below. exc_info preserves the traceback so a systematic provider
+        # change is diagnosable.
+        logger.warning("ncaa_scoreboard_error", exc_info=True)
 
     # --- Phase 2: CBB API status for games without ncaa_game_id ---
     # Some games never appear on the NCAA scoreboard (name mismatch, lower
@@ -205,8 +210,10 @@ def _update_ncaab_statuses(session, games: list, client) -> list[dict]:
 
     try:
         cbb_games = client.fetch_games(start_date, end_date)
-    except Exception as exc:
-        logger.warning("ncaab_status_fetch_error", error=str(exc))
+    except Exception:
+        # CBB schedule outage: log full traceback then return any
+        # transitions already collected from NCAA Phase 1.
+        logger.warning("ncaab_status_fetch_error", exc_info=True)
         return transitions
 
     # Build cbb_game_id -> status and score maps
@@ -230,7 +237,9 @@ def _update_ncaab_statuses(session, games: list, client) -> list[dict]:
         if not api_status:
             continue
 
-        new_status = resolve_status_transition(game.status, api_status)
+        new_status = resolve_status_transition(
+            game.status, api_status, game_date=game.game_date
+        )
         if new_status != game.status:
             old_status = game.status
             game.status = new_status
@@ -338,10 +347,14 @@ def _poll_ncaab_games_batch(session, games: list) -> dict:
         except Exception as exc:
             if "429" in str(exc):
                 raise _RateLimitError() from exc
+            # Per-game isolation: one game's PBP failure must not skip
+            # the rest of the batch. exc_info keeps the traceback for
+            # diagnosis; non-429 errors only surface the message in the
+            # log payload alongside it.
             logger.warning(
                 "poll_ncaab_pbp_error",
                 game_id=game.id,
-                error=str(exc),
+                exc_info=True,
             )
 
     # --- Boxscores Phase 1: CBB API batch for live/final games ---
@@ -376,10 +389,12 @@ def _poll_ncaab_games_batch(session, games: list) -> dict:
         except Exception as exc:
             if "429" in str(exc):
                 raise _RateLimitError() from exc
+            # Phase isolation: a CBB batch failure must not skip the NCAA
+            # per-game fallback below. exc_info preserves the traceback.
             logger.warning(
                 "poll_ncaab_cbb_boxscore_batch_error",
                 game_count=len(cbb_live_or_final),
-                error=str(exc),
+                exc_info=True,
             )
 
     # --- Boxscores Phase 2: NCAA API fallback (per-game for missing boxscores) ---
@@ -401,11 +416,14 @@ def _poll_ncaab_games_batch(session, games: list) -> dict:
         except Exception as exc:
             if "429" in str(exc):
                 raise _RateLimitError() from exc
+            # Per-game isolation: one game's NCAA fallback failure must
+            # not skip the rest of the batch. exc_info preserves the
+            # traceback so a systematic NCAA endpoint change is visible.
             logger.warning(
                 "poll_ncaab_ncaa_boxscore_error",
                 game_id=game.id,
                 ncaa_game_id=(game.external_ids or {}).get("ncaa_game_id"),
-                error=str(exc),
+                exc_info=True,
             )
 
     logger.info(

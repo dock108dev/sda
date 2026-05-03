@@ -80,6 +80,11 @@ def summarize_output(stage: str, output: dict[str, Any]) -> dict[str, Any]:
             "validated": output.get("validated", False),
             "error_count": len(output.get("errors", [])),
         }
+    elif stage == "CLASSIFY_GAME_SHAPE":
+        return {
+            "shape_classified": output.get("shape_classified", False),
+            "archetype": output.get("archetype"),
+        }
     elif stage == "GROUP_BLOCKS":
         # Format: {"blocks_grouped": true, "blocks": [...], "block_count": N}
         return {
@@ -282,7 +287,8 @@ def get_stage_description(stage: PipelineStage) -> str:
         PipelineStage.NORMALIZE_PBP: "Read PBP data from database and normalize with phase assignments",
         PipelineStage.GENERATE_MOMENTS: "Segment plays into condensed moments with explicit narration targets",
         PipelineStage.VALIDATE_MOMENTS: "Validate moment structure, ordering, and coverage",
-        PipelineStage.ANALYZE_DRAMA: "Identify dramatic peak and weight quarters for block distribution",
+        PipelineStage.ANALYZE_DRAMA: "Compute deterministic per-quarter drama weights for block distribution",
+        PipelineStage.CLASSIFY_GAME_SHAPE: "Deterministically classify the game's archetype (wire-to-wire, comeback, blowout, etc.)",
         PipelineStage.GROUP_BLOCKS: "Group moments into 4-7 narrative blocks with semantic roles",
         PipelineStage.RENDER_BLOCKS: "Generate short narratives for each block using OpenAI",
         PipelineStage.VALIDATE_BLOCKS: "Validate block count, word limits, and constraints",

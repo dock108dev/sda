@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import UTC, date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -17,8 +16,6 @@ if str(SCRAPER_ROOT) not in sys.path:
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://user:pass@localhost:5432/test_db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "development")
-
-import pytest
 
 from sports_scraper.services.game_processors import (
     GameProcessResult,
@@ -51,7 +48,6 @@ from sports_scraper.services.game_processors_nhl import (
     process_game_pbp_nhl,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -65,7 +61,7 @@ def _make_game(external_ids=None, status="pregame", game_date=None, **kwargs):
     game.game_date = game_date or datetime(2025, 3, 1, tzinfo=UTC)
     game.home_score = kwargs.get("home_score", 0)
     game.away_score = kwargs.get("away_score", 0)
-    game.end_time = kwargs.get("end_time", None)
+    game.end_time = kwargs.get("end_time")
     game.last_pbp_at = None
     game.last_boxscore_at = None
     game.updated_at = None
@@ -763,6 +759,39 @@ class TestProcessGamePbpMlb:
             result = process_game_pbp_mlb(MagicMock(), game, client=client)
 
         # Should NOT promote — plays exist but are pre-game events
+        assert result.transition is None
+        assert game.status == "pregame"
+
+    @patch("sports_scraper.persistence.plays.upsert_plays")
+    @patch("sports_scraper.utils.datetime_utils.now_utc")
+    def test_does_not_promote_when_game_date_in_future(self, mock_now, mock_upsert):
+        """Even with quarter=1 plays, refuse promotion if tipoff is still in the future.
+
+        Reproduces the May 2026 bug where MLB API emitted a synthetic
+        Game Advisory play with inning=1 for Pre-Game state, flipping
+        not-yet-started games to LIVE. Defense-in-depth in
+        try_promote_to_live: future-dated games can never go live.
+        """
+        mock_now.return_value = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        mock_upsert.return_value = 1
+
+        play = MagicMock()
+        play.quarter = 1
+        client = MagicMock()
+        client.fetch_play_by_play.return_value = _mock_pbp_payload(plays=[play])
+
+        # Tipoff at 17:35 UTC, now is 16:00 UTC — 95 minutes in the future
+        game = _make_game(
+            external_ids={"mlb_game_pk": "717001"},
+            status="pregame",
+            game_date=datetime(2026, 5, 3, 17, 35, tzinfo=UTC),
+        )
+
+        with patch("sports_scraper.db.db_models") as mock_db:
+            mock_db.GameStatus.pregame.value = "pregame"
+            mock_db.GameStatus.live.value = "live"
+            result = process_game_pbp_mlb(MagicMock(), game, client=client)
+
         assert result.transition is None
         assert game.status == "pregame"
 

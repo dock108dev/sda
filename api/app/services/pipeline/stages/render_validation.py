@@ -23,6 +23,48 @@ FORBIDDEN_WORDS = [
     "incredible",
 ]
 
+# Hard-banned cliché phrases. Any occurrence is a validation failure that
+# triggers REGENERATE — these phrases make narratives feel interchangeable
+# and rarely have evidence in the underlying data.
+BANNED_PHRASES: list[str] = [
+    "came out strong",
+    "set the tone",
+    "found their rhythm",
+    "renewed energy",
+    "tactical adjustments",
+    "continued to press their advantage",
+    "reasserted control",
+    "seized control",
+    "unable to capitalize",
+    "sparked a surge",
+    "brief spark",
+    "valiant attempt",
+    "remained composed",
+    "secured the victory",
+    "dominant performance",
+    "offensive prowess",
+    "defense proved impenetrable",
+    "comfortable cushion",
+    "commanding lead",
+    "eager to set the tone",
+    "feeling each other out",
+]
+
+# Speculation language — claims about internal states, intent, or coaching
+# that source data cannot prove. Each entry is a substring matched
+# case-insensitively. Detection produces a warning and feeds regen feedback.
+SPECULATION_PATTERNS: list[str] = [
+    "their rhythm",
+    "confidence",
+    "renewed energy",
+    "composure",
+    "tactical",
+    "coaching adjustment",
+    "defensive intensity",
+    "offensive cohesion",
+    "wanted it more",
+]
+
 # Sentence style constraints - prohibited stat-feed patterns
 PROHIBITED_PATTERNS = [
     # "X had Y points" stat-feed patterns

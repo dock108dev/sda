@@ -46,6 +46,11 @@ export type NarrativeBlock = {
   miniBox?: BlockMiniBox | null;
   startClock?: string | null;
   endClock?: string | null;
+  reason?: string | null;
+  label?: string | null;
+  leadBefore?: number | null;
+  leadAfter?: number | null;
+  evidence?: Record<string, unknown>[] | null;
 };
 
 /** Consumer game flow response — blocks are the contract; moments are pipeline-internal. */
@@ -63,6 +68,11 @@ export type ConsumerGameFlowResponse = {
   awayTeamColorLight?: string | null;
   awayTeamColorDark?: string | null;
   leagueCode?: string | null;
+  version?: string | null;
+  archetype?: string | null;
+  winnerTeamId?: string | null;
+  sourceCounts?: Record<string, unknown> | null;
+  validation?: Record<string, unknown> | null;
 };
 
 export type FlowStatusResponse = {

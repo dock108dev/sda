@@ -52,14 +52,17 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
 from ....db.flow import SportsGameFlow
 from ....db.sports import SportsGame
 from ....utils.datetime_utils import now_utc
+from ..helpers.flow_debug_logger import get_logger as get_flow_debug_logger
+from ..helpers.score_timeline import build_score_timeline
 from ..metrics import increment_score_mismatch
 from ..models import StageInput, StageOutput
 from .embedded_tweets import validate_embedded_tweet_ids
@@ -82,6 +85,119 @@ def _extract_flow_score(blocks: list) -> tuple[int | None, int | None]:
 # Flow version identifiers. See docs/gameflow/version-semantics.md.
 FLOW_VERSION = "v2-blocks"
 BLOCKS_VERSION = "v1-blocks"
+
+# Top-level schema version literal recorded on the row for v2 readers
+# (BRAINDUMP §Output schema). Distinct from FLOW_VERSION which is part of
+# the upsert key and remains "v2-blocks" for table identity.
+SCHEMA_VERSION_V2 = "game-flow-v2"
+
+def _signed_lead(score: list | tuple | None) -> int | None:
+    """Return signed lead (home - away) from a [home, away] pair, or None.
+
+    The narrow ``(TypeError, ValueError)`` catch isolates the documented
+    contract: non-numeric or malformed score entries map to ``None`` so
+    callers can choose to omit the field rather than aborting persistence.
+    See docs/audits/error-handling-report.md §F-5.
+    """
+    if not score or len(score) < 2:
+        return None
+    try:
+        return int(score[0]) - int(score[1])
+    except (TypeError, ValueError):
+        return None
+
+
+def _ensure_v2_block_fields(blocks: list[dict]) -> list[dict]:
+    """Mutate-and-return: guarantee each block carries v2 fields with safe defaults.
+
+    Upstream stages may set ``reason``, ``evidence``, ``label`` directly when
+    they have signal; we never overwrite those. ``lead_before`` and
+    ``lead_after`` are derived from the block's existing ``score_before`` /
+    ``score_after`` whenever absent so consumers get a populated lead even on
+    older render paths.
+    """
+    for block in blocks:
+        if "reason" not in block:
+            block["reason"] = ""
+        if "evidence" not in block:
+            block["evidence"] = []
+        if "label" not in block:
+            block["label"] = None
+        if "lead_before" not in block:
+            block["lead_before"] = _signed_lead(block.get("score_before"))
+        if "lead_after" not in block:
+            block["lead_after"] = _signed_lead(block.get("score_after"))
+    return blocks
+
+
+def _resolve_winner_team_id(
+    game: SportsGame, flow_home: int | None, flow_away: int | None
+) -> str | None:
+    """Pick the winner's team abbreviation from the persisted final score.
+
+    Falls back to game.home_score / away_score when the flow score is
+    unavailable. Returns None when scores are missing or tied.
+    """
+    home = flow_home if flow_home is not None else game.home_score
+    away = flow_away if flow_away is not None else game.away_score
+    if home is None or away is None or home == away:
+        return None
+    home_abbr = getattr(getattr(game, "home_team", None), "abbreviation", None)
+    away_abbr = getattr(getattr(game, "away_team", None), "abbreviation", None)
+    return home_abbr if home > away else away_abbr
+
+
+def _compute_source_counts(
+    pbp_events: list[dict], league_code: str
+) -> dict[str, int]:
+    """Aggregate {plays, scoring_events, lead_changes, ties} from PBP events.
+
+    A scoring event is any play whose score differs from the prior baseline
+    (0-0 implicitly precedes the first event), so the opening basket is
+    counted just like every later transition.
+    """
+    timeline = build_score_timeline(pbp_events, league_code=league_code)
+    scoring_events = 0
+    prev_h = 0
+    prev_a = 0
+    for ev in pbp_events:
+        h = ev.get("home_score") or 0
+        a = ev.get("away_score") or 0
+        if h != prev_h or a != prev_a:
+            scoring_events += 1
+        prev_h, prev_a = h, a
+    ties = sum(1 for sp in timeline.per_play if sp.lead == 0)
+    return {
+        "plays": len(pbp_events),
+        "scoring_events": scoring_events,
+        "lead_changes": len(timeline.lead_change_events),
+        "ties": ties,
+    }
+
+
+def _build_validation_block(
+    previous_output: dict, fallback_used: bool
+) -> dict[str, Any]:
+    """Summarize pipeline validation state for the v2 schema.
+
+    status:
+      - "fallback" when the template fallback path produced the blocks
+      - "passed"   when both moments and blocks validators reported success
+      - "failed"   otherwise (blocks were still persisted, e.g. coverage warn)
+    warnings:
+      - the merged warning list from VALIDATE_BLOCKS, when present
+    """
+    if fallback_used:
+        status = "fallback"
+    elif (
+        previous_output.get("validated") is True
+        and previous_output.get("blocks_validated") is True
+    ):
+        status = "passed"
+    else:
+        status = "failed"
+    warnings = list(previous_output.get("warnings") or [])
+    return {"status": status, "warnings": warnings}
 
 
 async def execute_finalize_moments(
@@ -157,10 +273,15 @@ async def execute_finalize_moments(
 
     output.add_log(f"Persisting {len(moments)} moments and {len(blocks)} blocks")
 
-    # Get game to determine sport
+    # Get game to determine sport. Eager-load teams so winner_team_id can be
+    # resolved from the team abbreviations without extra round-trips.
     game_result = await session.execute(
         select(SportsGame)
-        .options(selectinload(SportsGame.league))
+        .options(
+            selectinload(SportsGame.league),
+            selectinload(SportsGame.home_team),
+            selectinload(SportsGame.away_team),
+        )
         .where(SportsGame.id == game_id)
     )
     game = game_result.scalar_one_or_none()
@@ -191,6 +312,12 @@ async def execute_finalize_moments(
                     "db_away": db_away,
                 },
             )
+            debug = get_flow_debug_logger(stage_input.run_id)
+            if debug is not None:
+                debug.record_persist_decision(
+                    persisted=False,
+                    skip_reason="score_mismatch_pre_write",
+                )
             output.data = {
                 "finalized": False,
                 "score_mismatch": True,
@@ -215,6 +342,18 @@ async def execute_finalize_moments(
     # Validate all embedded tweet references exist before writing.
     blocks = await validate_embedded_tweet_ids(session, blocks, game_id)
 
+    # v2 schema enrichment: backfill any per-block fields the upstream stages
+    # didn't supply, then compute top-level summary fields for the row.
+    blocks = _ensure_v2_block_fields(blocks)
+
+    archetype = previous_output.get("archetype")
+    winner_team_id = _resolve_winner_team_id(game, flow_home, flow_away)
+    source_counts = _compute_source_counts(
+        previous_output.get("pbp_events", []) or [], sport
+    )
+    fallback_used_pre = bool(previous_output.get("fallback_used", False))
+    validation_block = _build_validation_block(previous_output, fallback_used_pre)
+
     if existing_flow:
         # Update existing flow; upgrade legacy story_version on overwrite.
         output.add_log(f"Updating existing flow (id={existing_flow.id})")
@@ -231,6 +370,13 @@ async def execute_finalize_moments(
         existing_flow.blocks_version = BLOCKS_VERSION
         existing_flow.blocks_validated_at = validation_time
 
+        # v2 schema fields
+        existing_flow.version = SCHEMA_VERSION_V2
+        existing_flow.archetype = archetype
+        existing_flow.winner_team_id = winner_team_id
+        existing_flow.source_counts = source_counts
+        existing_flow.validation = validation_block
+
         flow_id = existing_flow.id
     else:
         # Create new flow record
@@ -244,6 +390,11 @@ async def execute_finalize_moments(
             validated_at=validation_time,
             generated_at=validation_time,
             total_ai_calls=openai_calls,
+            version=SCHEMA_VERSION_V2,
+            archetype=archetype,
+            winner_team_id=winner_team_id,
+            source_counts=source_counts,
+            validation=validation_block,
         )
 
         # Add blocks
@@ -279,6 +430,10 @@ async def execute_finalize_moments(
             )
 
     # Notify realtime subscribers that a new flow is available.
+    # Best-effort by design: the flow is already persisted; a NOTIFY failure
+    # must NOT roll back the row. Narrowed to SQLAlchemy/IO errors so genuine
+    # programming bugs (e.g. a TypeError from a future schema change) keep
+    # surfacing. See docs/audits/error-handling-report.md §F-6.
     try:
         notify_payload = json.dumps(
             {"game_id": game_id, "event_type": "flow_published", "flow_id": flow_id}
@@ -286,8 +441,12 @@ async def execute_finalize_moments(
         await session.execute(
             text("SELECT pg_notify('flow_published', :p)"), {"p": notify_payload}
         )
-    except Exception:
-        logger.warning("flow_published_notify_failed", extra={"game_id": game_id}, exc_info=True)
+    except (SQLAlchemyError, OSError):
+        logger.warning(
+            "flow_published_notify_failed",
+            extra={"game_id": game_id, "flow_id": flow_id},
+            exc_info=True,
+        )
 
     # Set flow_source based on whether the template fallback path was used.
     _is_fallback = bool(previous_output.get("fallback_used", False))
@@ -302,6 +461,12 @@ async def execute_finalize_moments(
     # grader.  regen_attempt is threaded through so the gate can decide
     # between regen and template_fallback on the second pass.
     _regen_attempt = int((stage_input.game_context or {}).get("regen_attempt", 0))
+    # Broad-but-loud catch: if the broker is down or send_task throws, we
+    # cannot re-raise — the flow row is already committed and rolling it back
+    # leaves the DB inconsistent with the persisted record. Instead we log at
+    # ERROR with all the fields needed for an ops sweep to discover and
+    # re-grade flows whose grader_run never started.
+    # See docs/audits/error-handling-report.md §F-7.
     try:
         from ....celery_app import celery_app as _celery_app
 
@@ -317,7 +482,21 @@ async def execute_finalize_moments(
             queue="sports-scraper",
         )
     except Exception:
-        logger.warning("grade_flow_task_dispatch_failed", exc_info=True, extra={"flow_id": flow_id})
+        logger.error(
+            "grade_flow_task_dispatch_failed",
+            exc_info=True,
+            extra={
+                "flow_id": flow_id,
+                "game_id": game_id,
+                "sport": sport,
+                "is_template_fallback": _is_fallback,
+                "regen_attempt": _regen_attempt,
+            },
+        )
+
+    debug = get_flow_debug_logger(stage_input.run_id)
+    if debug is not None:
+        debug.record_persist_decision(persisted=True)
 
     output.add_log(f"Flow persisted with id={flow_id}")
     output.add_log(f"moment_count={len(moments)}")
@@ -342,6 +521,11 @@ async def execute_finalize_moments(
         "blocks_version": BLOCKS_VERSION,
         "total_words": total_words,
         "blocks_validated_at": validation_time.isoformat(),
+        "version": SCHEMA_VERSION_V2,
+        "archetype": archetype,
+        "winner_team_id": winner_team_id,
+        "source_counts": source_counts,
+        "validation": validation_block,
     }
 
     return output

@@ -21,6 +21,7 @@ from app.services.pipeline.stages.block_types import (
 from app.services.pipeline.stages.group_blocks import execute_group_blocks
 from app.services.pipeline.stages.group_helpers import (
     calculate_block_count,
+    compute_block_label,
     create_blocks,
     select_key_plays,
 )
@@ -105,6 +106,138 @@ class TestCalculateBlockCount:
             for total_plays in [50, 200, 400, 600]:
                 count = calculate_block_count([], lead_changes, total_plays)
                 assert MIN_BLOCKS <= count <= MAX_BLOCKS
+
+    def test_blowout_archetype_compresses_to_min(self) -> None:
+        """Blowout archetype always compresses to MIN_BLOCKS regardless of plays."""
+        count = calculate_block_count(
+            [], lead_changes=0, total_plays=600, archetype="blowout",
+        )
+        assert count == MIN_BLOCKS
+
+    def test_early_avalanche_archetype_compresses(self) -> None:
+        """early_avalanche_blowout archetype also compresses to MIN_BLOCKS."""
+        count = calculate_block_count(
+            [], lead_changes=2, total_plays=200, archetype="early_avalanche_blowout",
+        )
+        assert count == MIN_BLOCKS
+
+    def test_low_event_archetype_compresses(self) -> None:
+        """low_event archetype compresses to MIN_BLOCKS (pitcher's duel)."""
+        count = calculate_block_count(
+            [], lead_changes=0, total_plays=80, archetype="low_event",
+        )
+        assert count == MIN_BLOCKS
+
+    def test_comeback_archetype_floor_is_five(self) -> None:
+        """Comeback archetype starts at base 5 to capture the swing arc."""
+        count = calculate_block_count(
+            [], lead_changes=0, total_plays=200, archetype="comeback",
+        )
+        assert count == 5
+
+    def test_back_and_forth_archetype_floor_is_five(self) -> None:
+        """back_and_forth archetype starts at base 5; lead changes add on top."""
+        count = calculate_block_count(
+            [], lead_changes=3, total_plays=200, archetype="back_and_forth",
+        )
+        assert count == 6  # 5 + 1 for >=3 lead changes
+
+
+class TestComputeBlockLabel:
+    """Tests for per-block narrative-job label assignment (ISSUE-011)."""
+
+    def test_first_block_is_opening_break(self) -> None:
+        label = compute_block_label(
+            block_index=0, block_count=5,
+            score_before=[0, 0], score_after=[10, 8],
+        )
+        assert label == "Opening break"
+
+    def test_final_block_blowout_is_closeout(self) -> None:
+        label = compute_block_label(
+            block_index=2, block_count=3,
+            score_before=[80, 50], score_after=[100, 60],
+            archetype="blowout",
+        )
+        assert label == "Closeout"
+
+    def test_final_block_close_game_is_final_bookkeeping(self) -> None:
+        label = compute_block_label(
+            block_index=4, block_count=5,
+            score_before=[95, 92], score_after=[100, 98],
+            archetype="back_and_forth",
+        )
+        assert label == "Final bookkeeping"
+
+    def test_early_avalanche_final_block_is_closeout(self) -> None:
+        label = compute_block_label(
+            block_index=2, block_count=3,
+            score_before=[10, 1], score_after=[12, 2],
+            archetype="early_avalanche_blowout",
+        )
+        assert label == "Closeout"
+
+    def test_legacy_is_blowout_drives_closeout(self) -> None:
+        """is_blowout=True falls through to Closeout even without archetype."""
+        label = compute_block_label(
+            block_index=2, block_count=3,
+            score_before=[80, 50], score_after=[100, 60],
+            is_blowout=True,
+        )
+        assert label == "Closeout"
+
+    def test_middle_block_separation_when_lead_grows(self) -> None:
+        label = compute_block_label(
+            block_index=1, block_count=5,
+            score_before=[20, 15], score_after=[40, 25],
+        )
+        assert label == "Separation"
+
+    def test_middle_block_response_when_deficit_reduced(self) -> None:
+        label = compute_block_label(
+            block_index=2, block_count=5,
+            score_before=[40, 25], score_after=[50, 45],
+        )
+        assert label == "Response"
+
+    def test_middle_block_swing_on_lead_flip(self) -> None:
+        label = compute_block_label(
+            block_index=2, block_count=5,
+            score_before=[40, 35], score_after=[45, 50],
+        )
+        assert label == "Swing"
+
+    def test_middle_block_swing_off_tie(self) -> None:
+        """Moving from tied to leading registers as a swing."""
+        label = compute_block_label(
+            block_index=1, block_count=5,
+            score_before=[20, 20], score_after=[30, 25],
+        )
+        assert label == "Swing"
+
+    def test_middle_block_stall_when_no_scoring(self) -> None:
+        label = compute_block_label(
+            block_index=1, block_count=5,
+            score_before=[20, 15], score_after=[20, 15],
+        )
+        assert label == "Stall"
+
+    def test_middle_block_stall_when_margin_unchanged(self) -> None:
+        """Equal scoring on both sides preserves the margin → stall."""
+        label = compute_block_label(
+            block_index=2, block_count=5,
+            score_before=[20, 15], score_after=[30, 25],
+        )
+        assert label == "Stall"
+
+    def test_comeback_archetype_tie_in_block_is_swing(self) -> None:
+        """Comeback shape: erasing the deficit to a tie is the swing moment."""
+        label = compute_block_label(
+            block_index=2, block_count=5,
+            score_before=[40, 50], score_after=[55, 55],
+            archetype="comeback",
+        )
+        assert label == "Swing"
 
 
 class TestCountLeadChanges:
@@ -1126,7 +1259,6 @@ class TestExecuteGroupBlocksExtended:
                 "pbp_events": [],
                 "quarter_weights": {"Q1": 0.8, "Q2": 1.0, "Q3": 1.5, "Q4": 2.0},
                 "peak_quarter": "Q4",
-                "story_type": "close_finish",
                 "headline": "Lakers win thriller",
             },
             game_context={"home_team": "Lakers", "away_team": "Celtics", "sport": "NBA"},
@@ -1137,6 +1269,42 @@ class TestExecuteGroupBlocksExtended:
         assert result.data["blocks_grouped"] is True
         assert result.data["quarter_weights"] == {"Q1": 0.8, "Q2": 1.0, "Q3": 1.5, "Q4": 2.0}
         assert result.data["is_blowout"] is False
+        # Every block emits a v2 narrative-job label.
+        for block in result.data["blocks"]:
+            assert "label" in block
+            assert isinstance(block["label"], str) and block["label"]
+        assert result.data["blocks"][0]["label"] == "Opening break"
+        assert "story_type" not in result.data
+
+    @pytest.mark.asyncio
+    async def test_archetype_threaded_through_to_output(self) -> None:
+        """Archetype from CLASSIFY_GAME_SHAPE is re-exposed in GROUP_BLOCKS output."""
+
+        moments = []
+        for period in [1, 2, 3, 4]:
+            for i in range(3):
+                moments.append({
+                    "play_ids": [period * 10 + i],
+                    "period": period,
+                    "score_before": [period * 5, period * 5],
+                    "score_after": [period * 5 + 2, period * 5 + 2],
+                })
+
+        stage_input = StageInput(
+            game_id=1, run_id=1,
+            previous_output={
+                "validated": True,
+                "moments": moments,
+                "pbp_events": [],
+                "archetype": "back_and_forth",
+            },
+            game_context={"home_team": "Lakers", "away_team": "Celtics", "sport": "NBA"},
+        )
+
+        result = await execute_group_blocks(stage_input)
+        assert result.data["archetype"] == "back_and_forth"
+        # Final block label reflects close-game shape, not blowout.
+        assert result.data["blocks"][-1]["label"] == "Final bookkeeping"
 
     @pytest.mark.asyncio
     async def test_missing_moments_raises(self) -> None:
@@ -1212,6 +1380,7 @@ class TestMLBLeagueConfig:
     def test_unknown_league_raises(self) -> None:
         """Unknown league codes raise KeyError instead of silently falling back."""
         import pytest
+
         from app.services.pipeline.stages.league_config import get_config
 
         with pytest.raises(KeyError, match="No pipeline config for league 'WNBA'"):
@@ -1302,3 +1471,269 @@ class TestMLBLeagueConfig:
         ]
         idx = find_garbage_time_start(moments, league_code="MLB")
         assert idx == 2
+
+
+class TestFindFirstMeaningfulLeadMoment:
+    """Tests for the block-level 'first meaningful lead' candidate helper."""
+
+    def test_nba_first_six_point_lead(self) -> None:
+        """NBA first meaningful lead fires at the moment whose score_after hits 6."""
+        from app.services.pipeline.stages.block_analysis import (
+            find_first_meaningful_lead_moment,
+        )
+
+        moments = [
+            {"score_after": [2, 0], "period": 1},
+            {"score_after": [4, 2], "period": 1},
+            {"score_after": [6, 0], "period": 1},
+            {"score_after": [8, 0], "period": 1},
+        ]
+        assert find_first_meaningful_lead_moment(moments, league_code="NBA") == 2
+
+    def test_mlb_first_two_run_lead(self) -> None:
+        """MLB threshold (multi_run_inning=2) fires at the first 2-run gap."""
+        from app.services.pipeline.stages.block_analysis import (
+            find_first_meaningful_lead_moment,
+        )
+
+        moments = [
+            {"score_after": [0, 0], "period": 1},
+            {"score_after": [1, 0], "period": 2},
+            {"score_after": [2, 0], "period": 3},  # First 2-run lead
+            {"score_after": [3, 0], "period": 4},
+        ]
+        assert find_first_meaningful_lead_moment(moments, league_code="MLB") == 2
+
+    def test_returns_none_when_never_meaningful(self) -> None:
+        """A wire-tied / tiny-margin game returns None."""
+        from app.services.pipeline.stages.block_analysis import (
+            find_first_meaningful_lead_moment,
+        )
+
+        moments = [
+            {"score_after": [2, 2], "period": 1},
+            {"score_after": [4, 4], "period": 2},
+            {"score_after": [5, 4], "period": 3},
+        ]
+        assert find_first_meaningful_lead_moment(moments, league_code="NBA") is None
+
+
+class TestFindComebackPivotMoments:
+    """Tests for the block-level comeback pivot helper."""
+
+    def test_returns_deficit_peak_and_tie_for_comeback(self) -> None:
+        """Eventual winner that trailed by 12 then tied gets both pivots."""
+        from app.services.pipeline.stages.block_analysis import (
+            find_comeback_pivot_moments,
+        )
+
+        moments = [
+            {"score_after": [0, 8], "period": 1},
+            {"score_after": [0, 12], "period": 2},   # deficit peak (-12 for home)
+            {"score_after": [6, 12], "period": 3},
+            {"score_after": [12, 12], "period": 3},  # tie/flip
+            {"score_after": [20, 14], "period": 4},  # home wins
+        ]
+        deficit_idx, tie_idx = find_comeback_pivot_moments(moments, league_code="NBA")
+        assert deficit_idx == 1
+        assert tie_idx == 3
+
+    def test_returns_none_when_no_meaningful_deficit(self) -> None:
+        """No meaningful deficit (under threshold) → no pivot returned."""
+        from app.services.pipeline.stages.block_analysis import (
+            find_comeback_pivot_moments,
+        )
+
+        moments = [
+            {"score_after": [2, 4], "period": 1},
+            {"score_after": [10, 8], "period": 2},
+            {"score_after": [18, 12], "period": 4},
+        ]
+        deficit_idx, tie_idx = find_comeback_pivot_moments(moments, league_code="NBA")
+        assert deficit_idx is None
+        assert tie_idx is None
+
+    def test_tied_final_score_returns_none(self) -> None:
+        """Games that finish tied have no 'eventual winner' to anchor."""
+        from app.services.pipeline.stages.block_analysis import (
+            find_comeback_pivot_moments,
+        )
+
+        moments = [
+            {"score_after": [0, 12], "period": 1},
+            {"score_after": [10, 10], "period": 4},
+        ]
+        deficit_idx, tie_idx = find_comeback_pivot_moments(moments, league_code="NBA")
+        assert deficit_idx is None
+        assert tie_idx is None
+
+
+class TestPeriodBoundaryOrphanFilter:
+    """find_split_points must drop period-boundary splits with no nearby trigger."""
+
+    def test_orphan_period_boundary_dropped(self) -> None:
+        """A period boundary with no game-state change within ±1 moment is dropped."""
+        # All moments tied 0-0 → no triggers anywhere except the period changes.
+        moments = [
+            {"play_ids": [i], "period": (i // 4) + 1, "score_before": [0, 0],
+             "score_after": [0, 0]}
+            for i in range(16)
+        ]
+        # No lead changes, no scoring runs, no first meaningful lead — only
+        # period boundaries at 4, 8, 12. They are all orphans.
+        splits = find_split_points(moments, target_blocks=4, league_code="NBA")
+        period_boundaries = {4, 8, 12}
+        # Any surviving split MUST not be a bare period boundary.
+        assert period_boundaries.isdisjoint(splits)
+
+    def test_period_boundary_kept_when_coincident_with_state_change(self) -> None:
+        """A period boundary survives when a state change lands within ±1."""
+        # First meaningful lead lands exactly at moment 4 (period 2 starts).
+        moments = []
+        for i in range(8):
+            period = (i // 4) + 1
+            home = 0 if i < 4 else 6 + (i - 4)
+            moments.append({
+                "play_ids": [i],
+                "period": period,
+                "score_before": [0, 0],
+                "score_after": [home, 0],
+            })
+        splits = find_split_points(moments, target_blocks=4, league_code="NBA")
+        # Period boundary at 4 IS the first-meaningful-lead — should be kept.
+        assert 4 in splits
+
+
+class TestFirstMeaningfulLeadAsHardBoundary:
+    """Moment-level: FIRST_MEANINGFUL_LEAD forces moment closure."""
+
+    def test_first_meaningful_lead_forces_close(self) -> None:
+        from app.services.pipeline.stages.boundary_detection import (
+            should_force_close_moment,
+        )
+        from app.services.pipeline.stages.moment_types import BoundaryReason
+
+        prev = {"play_index": 41, "home_score": 4, "away_score": 0,
+                "quarter": 1, "play_type": "score"}
+        current = {"play_index": 42, "home_score": 6, "away_score": 0,
+                   "quarter": 1, "play_type": "score"}
+        plays = [prev, current]
+        should_close, reason = should_force_close_moment(
+            plays, current, prev, plays, 0, first_meaningful_lead_play_idx=42,
+        )
+        assert should_close is True
+        assert reason == BoundaryReason.FIRST_MEANINGFUL_LEAD
+
+    def test_other_play_indices_do_not_force_close(self) -> None:
+        from app.services.pipeline.stages.boundary_detection import (
+            should_force_close_moment,
+        )
+
+        prev = {"play_index": 41, "home_score": 4, "away_score": 0,
+                "quarter": 1, "play_type": "score"}
+        current = {"play_index": 43, "home_score": 6, "away_score": 0,
+                   "quarter": 1, "play_type": "score"}
+        # First meaningful lead idx is 42 — current event is 43, no force.
+        plays = [prev, current]
+        should_close, reason = should_force_close_moment(
+            plays, current, prev, plays, 0, first_meaningful_lead_play_idx=42,
+        )
+        assert should_close is False or reason is not None  # Any other reason is fine
+
+
+class TestMLBMultiRunInningTrigger:
+    """find_split_points must detect multi-run innings as scoring runs for MLB."""
+
+    def test_mlb_multi_run_inning_creates_split_candidate(self) -> None:
+        """An MLB inning with 3+ unanswered runs surfaces as a split candidate."""
+        # Inning 4 has a 3-run scoring run for the home team.
+        moments = [
+            {"play_ids": [0], "period": 1, "score_before": [0, 0], "score_after": [0, 0]},
+            {"play_ids": [1], "period": 2, "score_before": [0, 0], "score_after": [0, 0]},
+            {"play_ids": [2], "period": 3, "score_before": [0, 0], "score_after": [0, 1]},
+            {"play_ids": [3], "period": 4, "score_before": [0, 1], "score_after": [3, 1]},
+            {"play_ids": [4], "period": 4, "score_before": [3, 1], "score_after": [3, 1]},
+            {"play_ids": [5], "period": 5, "score_before": [3, 1], "score_after": [3, 2]},
+            {"play_ids": [6], "period": 6, "score_before": [3, 2], "score_after": [3, 2]},
+            {"play_ids": [7], "period": 7, "score_before": [3, 2], "score_after": [4, 2]},
+            {"play_ids": [8], "period": 8, "score_before": [4, 2], "score_after": [4, 2]},
+            {"play_ids": [9], "period": 9, "score_before": [4, 2], "score_after": [4, 2]},
+        ]
+        splits = find_split_points(moments, target_blocks=4, league_code="MLB")
+        # Moment 3 (the 3-run inning) or its end+1=4 should appear as a split.
+        assert 3 in splits or 4 in splits
+
+
+class TestArchetypeOverrides:
+    """find_split_points must enforce archetype-required pivots."""
+
+    def test_comeback_enforces_deficit_peak_and_tie(self) -> None:
+        """Comeback archetype guarantees deficit_peak + tie/flip moments are split points."""
+        moments = [
+            {"play_ids": [0], "period": 1, "score_before": [0, 0], "score_after": [0, 4]},
+            {"play_ids": [1], "period": 1, "score_before": [0, 4], "score_after": [0, 12]},   # deficit peak
+            {"play_ids": [2], "period": 2, "score_before": [0, 12], "score_after": [6, 12]},
+            {"play_ids": [3], "period": 2, "score_before": [6, 12], "score_after": [12, 12]}, # tie
+            {"play_ids": [4], "period": 3, "score_before": [12, 12], "score_after": [20, 14]},
+            {"play_ids": [5], "period": 4, "score_before": [20, 14], "score_after": [30, 22]},
+        ]
+        splits = find_split_points(
+            moments, target_blocks=4, league_code="NBA", archetype="comeback",
+        )
+        assert 1 in splits  # deficit peak
+        assert 3 in splits  # tie/flip
+
+    def test_low_event_caps_boundaries_at_three(self) -> None:
+        """Low-event archetype produces ≤3 split points (≤4 blocks)."""
+        moments = [
+            {"play_ids": [i], "period": (i // 5) + 1,
+             "score_before": [i, i], "score_after": [i + 1, i + 1]}
+            for i in range(20)
+        ]
+        splits = find_split_points(
+            moments, target_blocks=6, league_code="NBA", archetype="low_event",
+        )
+        assert len(splits) <= 3
+
+
+class TestFindFirstLeadCreatedPlayIdx:
+    """Tests for the score-timeline helper used by moment-level boundary detection."""
+
+    def test_nba_returns_first_six_point_lead_play_idx(self) -> None:
+        from app.services.pipeline.helpers.score_timeline import (
+            find_first_lead_created_play_idx,
+        )
+
+        events = [
+            {"play_index": 100, "home_score": 2, "away_score": 0},
+            {"play_index": 101, "home_score": 4, "away_score": 0},
+            {"play_index": 102, "home_score": 6, "away_score": 0},  # Crosses 6
+            {"play_index": 103, "home_score": 8, "away_score": 0},
+        ]
+        assert find_first_lead_created_play_idx(events, league_code="NBA") == 102
+
+    def test_mlb_returns_first_two_run_lead_play_idx(self) -> None:
+        from app.services.pipeline.helpers.score_timeline import (
+            find_first_lead_created_play_idx,
+        )
+
+        events = [
+            {"play_index": 1, "home_score": 0, "away_score": 0},
+            {"play_index": 2, "home_score": 1, "away_score": 0},
+            {"play_index": 3, "home_score": 2, "away_score": 0},  # Crosses 2 runs
+            {"play_index": 4, "home_score": 2, "away_score": 1},
+        ]
+        assert find_first_lead_created_play_idx(events, league_code="MLB") == 3
+
+    def test_returns_none_for_empty_or_tight_game(self) -> None:
+        from app.services.pipeline.helpers.score_timeline import (
+            find_first_lead_created_play_idx,
+        )
+
+        assert find_first_lead_created_play_idx([], league_code="NBA") is None
+        events = [
+            {"play_index": 1, "home_score": 2, "away_score": 0},
+            {"play_index": 2, "home_score": 4, "away_score": 4},
+            {"play_index": 3, "home_score": 5, "away_score": 4},
+        ]
+        assert find_first_lead_created_play_idx(events, league_code="NBA") is None

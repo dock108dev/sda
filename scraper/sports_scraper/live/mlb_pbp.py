@@ -53,6 +53,10 @@ class MLBPbpFetcher:
         url = MLB_PBP_URL.format(game_pk=game_pk)
         logger.info("mlb_pbp_fetch", url=url, game_pk=game_pk)
 
+        # Narrow to httpx errors + RuntimeError (rate-limit guard from
+        # provider_request). A real bug (TypeError, AttributeError) must
+        # propagate so we don't silently start returning empty PBP for
+        # every game. See error-handling-report.md §F-16.
         try:
             response = provider_request(
                 self.client,
@@ -65,8 +69,8 @@ class MLBPbpFetcher:
                 qps_budget=5.0,
                 qps_burst=10,
             )
-        except Exception as exc:
-            logger.error("mlb_pbp_fetch_error", game_pk=game_pk, error=str(exc))
+        except (httpx.HTTPError, RuntimeError):
+            logger.error("mlb_pbp_fetch_error", game_pk=game_pk, exc_info=True)
             return NormalizedPlayByPlay(source_game_key=str(game_pk), plays=[])
 
         if response is None:
@@ -143,6 +147,15 @@ class MLBPbpFetcher:
         about = play.get("about", {})
         result = play.get("result", {})
 
+        # MLB Stats API emits a synthetic "Game Advisory" event for status
+        # changes (e.g. "Status Change - Pre-Game") with inning=1 and
+        # atBatIndex=0. These are API metadata, not real game events. If we
+        # accept them we hand the pregame→live promoter a fake "1st-inning
+        # play" and the game flips to LIVE before first pitch.
+        event_type = result.get("eventType", "")
+        if event_type == "game_advisory":
+            return None
+
         inning = parse_int(about.get("inning"))
         is_top = about.get("isTopInning", True)
         at_bat_index = parse_int(about.get("atBatIndex"))
@@ -154,8 +167,6 @@ class MLBPbpFetcher:
         half_offset = 0 if is_top else MLB_HALF_INNING_BOTTOM_OFFSET
         play_index = (inning or 0) * MLB_INNING_MULTIPLIER + half_offset + at_bat_index
 
-        # Get event type
-        event_type = result.get("eventType", "")
         play_type = self._map_event_type(event_type, game_pk)
 
         # Get batter info (primary player)

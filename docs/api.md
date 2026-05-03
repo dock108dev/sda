@@ -2,7 +2,19 @@
 
 > FastAPI backend for Sports Data Admin: centralized sports data hub.
 
-**Base URL:** `/api/admin/sports`
+**Path prefixes** are router-scoped — there is no single base URL. The major prefixes (set on the `APIRouter` instances in `api/app/routers/`) are:
+
+| Prefix | Purpose |
+|--------|---------|
+| `/api/v1` | Consumer (downstream-app) read-only endpoints |
+| `/api/admin` and `/api/admin/sports` | Admin SPA / operator endpoints |
+| `/auth`, `/auth/me` | Authentication and self-service preferences |
+| `/api/onboarding`, `/api/v1/clubs`, `/api/v1/commerce`, `/api/v1/billing`, `/api/webhooks` | Club provisioning + commerce |
+| `/api/fairbet`, `/api/model-odds`, `/api/simulator` | Odds and simulator |
+| `/api/analytics`, `/api/golf`, `/api/social` | Analytics, golf, and social endpoints |
+| `/v1/ws`, `/v1/sse`, `/v1/realtime/status` | Realtime streams |
+
+**Authoritative endpoint reference:** when running locally, FastAPI serves the live OpenAPI schema at `GET /openapi.json` and an interactive UI at `GET /docs` (both disabled when `ENVIRONMENT` is `production` or `staging` — see `api/main.py`). This document describes auth, conventions, and the response contracts; for the canonical list of paths and request/response shapes, prefer the OpenAPI schema.
 
 ---
 

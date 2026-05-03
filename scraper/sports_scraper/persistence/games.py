@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, object_session
 
 from ..db import db_models
@@ -31,8 +32,15 @@ if TYPE_CHECKING:
 def _notify_game_update(session: Session | None, game_id: int) -> None:
     """Emit pg_notify('game_score_update', ...) within the current transaction.
 
-    Best-effort — never raises. The notification fires on transaction commit
-    so the API LISTEN handler always sees consistent data.
+    Best-effort — never raises for known transport / DB failures. The
+    notification fires on transaction commit so the API LISTEN handler
+    always sees consistent data; consumers re-poll on disconnect, so a
+    missed NOTIFY is degraded UX, not data loss.
+
+    Catch is narrowed to ``(SQLAlchemyError, OSError)`` — programming bugs
+    (e.g. payload schema drift causing TypeError) propagate instead of
+    being silently swallowed. Mirrors the api-side hardening in F-6.
+    See docs/audits/error-handling-report.md §F-14.
     """
     if session is None:
         return
@@ -41,7 +49,7 @@ def _notify_game_update(session: Session | None, game_id: int) -> None:
         session.execute(
             text("SELECT pg_notify('game_score_update', :p)"), {"p": payload}
         )
-    except Exception:
+    except (SQLAlchemyError, OSError):
         logger.debug("pg_notify_game_update_failed", extra={"game_id": game_id}, exc_info=True)
 
 
@@ -59,41 +67,53 @@ def _cache_key(league_code: str, et_date, team_lo: int, team_hi: int) -> str:
 
 
 def _cache_get(key: str) -> int | None:
-    """Get a game_id from Redis cache. Returns None on miss or error."""
-    try:
-        import redis as redis_lib
+    """Get a game_id from Redis cache. Returns None on miss or transport error.
 
-        from ..config import settings
+    Catch is narrowed to ``RedisError`` (covers connection/protocol/timeout)
+    plus ``OSError`` (DNS failure / connection refused). A bug — e.g. a
+    refactor that changes the cache key shape and crashes ``int()`` — must
+    not be absorbed silently here. See error-handling-report.md §F-15.
+    """
+    import redis as redis_lib
+
+    from ..config import settings
+    try:
         r = redis_lib.from_url(settings.redis_url, decode_responses=True)
         val = r.get(key)
         if val is not None:
             return int(val)
-    except Exception:
+    except (redis_lib.RedisError, OSError):
         logger.debug("game_cache_get_failed", extra={"key": key}, exc_info=True)
     return None
 
 
 def _cache_set(key: str, game_id: int) -> None:
-    """Cache a positive match. NEVER cache negatives (None)."""
-    try:
-        import redis as redis_lib
+    """Cache a positive match. NEVER cache negatives (None).
 
-        from ..config import settings
+    See ``_cache_get`` for catch-narrowing rationale (§F-15).
+    """
+    import redis as redis_lib
+
+    from ..config import settings
+    try:
         r = redis_lib.from_url(settings.redis_url, decode_responses=True)
         r.set(key, str(game_id), ex=_GAME_CACHE_TTL)
-    except Exception:
+    except (redis_lib.RedisError, OSError):
         logger.debug("game_cache_set_failed", extra={"key": key}, exc_info=True)
 
 
 def _cache_delete(key: str) -> None:
-    """Delete a cache entry (used when a game is deleted)."""
-    try:
-        import redis as redis_lib
+    """Delete a cache entry (used when a game is deleted).
 
-        from ..config import settings
+    See ``_cache_get`` for catch-narrowing rationale (§F-15).
+    """
+    import redis as redis_lib
+
+    from ..config import settings
+    try:
         r = redis_lib.from_url(settings.redis_url, decode_responses=True)
         r.delete(key)
-    except Exception:
+    except (redis_lib.RedisError, OSError):
         logger.debug("game_cache_delete_failed", extra={"key": key}, exc_info=True)
 
 
@@ -323,7 +343,11 @@ def _enrich_existing(
 
     # Status: only advance forward
     if status:
-        new_status = resolve_status_transition(game.status, _normalize_status(status))
+        new_status = resolve_status_transition(
+            game.status,
+            _normalize_status(status),
+            game_date=game_date or game.game_date,
+        )
         if new_status != game.status:
             game.status = new_status
             updated = True
@@ -428,7 +452,19 @@ _STATUS_ORDER: dict[str, int] = {
 }
 
 
-def resolve_status_transition(current_status: str | None, incoming_status: str | None) -> str:
+# Margin before scheduled tipoff during which a stuck `live` game is allowed
+# to self-heal back to pregame/scheduled. Set conservatively so a true live
+# game whose scoreboard briefly reports "preview" near tipoff is never demoted.
+_LIVE_SELF_HEAL_MARGIN = timedelta(minutes=15)
+
+
+def resolve_status_transition(
+    current_status: str | None,
+    incoming_status: str | None,
+    *,
+    game_date: datetime | None = None,
+    now: datetime | None = None,
+) -> str:
     """Resolve a safe status transition without regressing games.
 
     Rules:
@@ -437,6 +473,12 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
       only move forward within the post-final lane
     - Generally, status only moves forward in the lifecycle
     - Non-lifecycle statuses (postponed, cancelled) are accepted as-is
+
+    Self-heal: a `live` game that the upstream feed now reports as
+    pregame/scheduled is allowed to regress, but only when ``game_date``
+    is comfortably in the future (>15min from ``now``). This recovers
+    games that were wrongly promoted to live by spurious upstream signals
+    without undoing a correct promotion that briefly flickered near tipoff.
     """
     current = _normalize_status(current_status)
     incoming = _normalize_status(incoming_status)
@@ -458,12 +500,27 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
                 return incoming
         return current
 
-    # For lifecycle states, only allow forward progression
+    # For lifecycle states, only allow forward progression — except for the
+    # narrow self-heal escape hatch: live → pregame/scheduled is allowed when
+    # tipoff is still meaningfully in the future, since "live before tipoff"
+    # is necessarily a past write error.
     current_order = _STATUS_ORDER.get(current)
     incoming_order = _STATUS_ORDER.get(incoming)
 
     if current_order is not None and incoming_order is not None:
         if incoming_order < current_order:
+            if (
+                current == db_models.GameStatus.live.value
+                and incoming
+                in (
+                    db_models.GameStatus.pregame.value,
+                    db_models.GameStatus.scheduled.value,
+                )
+                and game_date is not None
+            ):
+                _now = now if now is not None else now_utc()
+                if game_date > _now + _LIVE_SELF_HEAL_MARGIN:
+                    return incoming
             return current  # Don't regress
         return incoming
 
@@ -533,7 +590,9 @@ def update_game_from_live_feed(
     external_ids: dict[str, Any] | None = None,
 ) -> bool:
     """Apply live feed updates while preventing status regression."""
-    updated_status = resolve_status_transition(game.status, status)
+    updated_status = resolve_status_transition(
+        game.status, status, game_date=game.game_date
+    )
     merged_external_ids = merge_external_ids(game.external_ids, external_ids)
     updated = False
 

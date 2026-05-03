@@ -1,11 +1,5 @@
 # Documentation index
 
-## Contributing & hygiene
-
-| Guide | Description |
-|-------|-------------|
-| [Files over 500 LOC](file-size-inventory.md) | Inventory for optional splits / refactors (not a blocker) |
-
 ## Getting started
 
 | Guide | Description |
@@ -71,6 +65,10 @@
 | [SSOT cleanup](audits/ssot-cleanup.md) | Enum / single-source-of-truth consolidation |
 | [Security audit](audits/security-audit.md) | Auth, webhooks, headers, dependency surface |
 | [Code cleanup report](audits/cleanup-report.md) | Observability / hardening batch notes |
+| [Error-handling report](audits/error-handling-report.md) | Branch-scoped exception narrowing pass (`flow`) |
+| [Security report (flow)](audits/security-report.md) | Branch-scoped security hardening pass (`flow`) |
+| [SSOT report (flow)](audits/ssot-report.md) | Branch-scoped SSOT propagation pass (`flow`) |
+| [Docs consolidation](audits/docs-consolidation.md) | Documentation review pass record |
 | [Changelog](changelog.md) | Release-level changes |
 
 ---

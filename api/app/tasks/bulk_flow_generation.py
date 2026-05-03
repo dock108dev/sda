@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import selectinload
 
@@ -39,6 +39,59 @@ from ..db.sports import SportsGame, SportsGamePlay, SportsLeague
 from ..services.pipeline import PipelineExecutor
 
 logger = logging.getLogger(__name__)
+
+# Hard ceiling on the number of games a single bulk job may process. The job
+# record's ``max_games`` is supplied by an admin caller; a typo or compromised
+# admin key could otherwise queue a multi-year window with no bound, tying a
+# Celery worker for hours. Bounded here as a defense-in-depth backstop.
+_BULK_JOB_HARD_GAME_CAP = 2000
+
+# Cap stored per-game failure strings so unexpected exceptions (e.g. SQL state
+# strings, raw provider responses) cannot bloat ``errors_json`` indefinitely
+# nor smuggle large payloads into the admin UI.
+_FAILURE_REASON_MAX_CHARS = 500
+
+
+def _truncate_failure_reason(reason: str) -> str:
+    if len(reason) <= _FAILURE_REASON_MAX_CHARS:
+        return reason
+    return reason[: _FAILURE_REASON_MAX_CHARS - 1] + "…"
+
+
+async def _count_pbp_and_goals(
+    session: AsyncSession, game_id: int
+) -> tuple[int, int]:
+    """Return (play_count, scoring_play_count) for a game.
+
+    A scoring play is any play where ``home_score`` or ``away_score``
+    differs from the prior play (or is non-zero on the first play). This
+    matches ``score_detection.is_scoring_play`` and is league-agnostic, so
+    it correctly counts NHL goals as scoring plays.
+    """
+    result = await session.execute(
+        select(SportsGamePlay.home_score, SportsGamePlay.away_score)
+        .where(SportsGamePlay.game_id == game_id)
+        .order_by(SportsGamePlay.play_index)
+    )
+    rows = list(result.all())
+    if not rows:
+        return 0, 0
+
+    scoring = 0
+    prev_home: int | None = None
+    prev_away: int | None = None
+    for home, away in rows:
+        h = home or 0
+        a = away or 0
+        if prev_home is None:
+            if h > 0 or a > 0:
+                scoring += 1
+        elif h != prev_home or a != prev_away:
+            scoring += 1
+        prev_home = h
+        prev_away = a
+
+    return len(rows), scoring
 
 
 async def _run_bulk_generation_async(job_id: int) -> None:
@@ -115,37 +168,97 @@ async def _run_bulk_generation_async(job_id: int) -> None:
                         SportsGame.id.notin_(existing_flow_game_ids)
                     )
 
+                # Eager-load league so per-game logs can include the league
+                # code (especially important for NHL diagnostics).
+                query = query.options(selectinload(SportsGame.league))
                 result = await session.execute(query)
-                games = result.scalars().all()
+                games = list(result.scalars().all())
 
-                # Filter to games that have PBP data
-                games_with_pbp = []
-                for game in games:
-                    pbp_count = await session.execute(
-                        select(func.count(SportsGamePlay.id)).where(
-                            SportsGamePlay.game_id == game.id
-                        )
+                # Apply max_games limit before per-game work so caps are
+                # respected even when many games would otherwise be skipped.
+                # Always enforce the hard ceiling: a missing/oversized
+                # ``max_games`` must not produce an unbounded job.
+                requested_cap = (
+                    job.max_games
+                    if (job.max_games is not None and job.max_games > 0)
+                    else _BULK_JOB_HARD_GAME_CAP
+                )
+                effective_cap = min(requested_cap, _BULK_JOB_HARD_GAME_CAP)
+                if effective_cap < requested_cap:
+                    logger.warning(
+                        "bulk_flow_max_games_clamped",
+                        extra={
+                            "job_id": job_id,
+                            "requested": requested_cap,
+                            "effective": effective_cap,
+                            "hard_cap": _BULK_JOB_HARD_GAME_CAP,
+                        },
                     )
-                    if (pbp_count.scalar() or 0) > 0:
-                        games_with_pbp.append(game)
-
-                # Apply max_games limit if specified
-                if job.max_games is not None and job.max_games > 0:
-                    games_with_pbp = games_with_pbp[: job.max_games]
+                if len(games) > effective_cap:
+                    games = games[:effective_cap]
                     logger.info(
-                        f"Job {job_id}: Limited to {job.max_games} games (max_games)"
+                        f"Job {job_id}: Limited to {effective_cap} games "
+                        f"(requested={requested_cap}, hard_cap={_BULK_JOB_HARD_GAME_CAP})"
                     )
 
-                job.total_games = len(games_with_pbp)
+                job.total_games = len(games)
                 await session.commit()
 
-                logger.info(f"Job {job_id}: Found {len(games_with_pbp)} games with PBP")
+                logger.info(f"Job {job_id}: Found {len(games)} candidate games")
 
                 errors_list: list[dict[str, Any]] = []
 
-                for i, game in enumerate(games_with_pbp):
+                for i, game in enumerate(games):
                     job.current_game = i + 1
                     await session.commit()
+
+                    league_code = game.league.code if game.league else None
+                    pbp_count, goals_found = await _count_pbp_and_goals(
+                        session, game.id
+                    )
+                    pbp_exists = pbp_count > 0
+
+                    # Skip games without PBP — log explicit reason instead of
+                    # silently dropping. This matters for NHL where missing
+                    # PBP is the most common cause of empty flows.
+                    if not pbp_exists:
+                        job.skipped += 1
+                        await session.commit()
+                        logger.info(
+                            "bulk_flow_skip",
+                            extra={
+                                "job_id": job_id,
+                                "game_id": game.id,
+                                "league": league_code,
+                                "pbp_exists": False,
+                                "goals_found": 0,
+                                "flow_attempted": False,
+                                "skip_reason": "no_pbp_data",
+                            },
+                        )
+                        await asyncio.sleep(0.2)
+                        continue
+
+                    # Skip games with PBP but zero scoring plays — a flow with
+                    # no scoring events cannot satisfy the minimum NHL flow
+                    # contract (final score, goals by period, scoring team).
+                    if goals_found == 0:
+                        job.skipped += 1
+                        await session.commit()
+                        logger.info(
+                            "bulk_flow_skip",
+                            extra={
+                                "job_id": job_id,
+                                "game_id": game.id,
+                                "league": league_code,
+                                "pbp_exists": True,
+                                "goals_found": 0,
+                                "flow_attempted": False,
+                                "skip_reason": "no_scoring_plays",
+                            },
+                        )
+                        await asyncio.sleep(0.2)
+                        continue
 
                     # Run the full pipeline
                     try:
@@ -158,9 +271,26 @@ async def _run_bulk_generation_async(job_id: int) -> None:
                         job.successful += 1
                         await session.commit()
                         logger.info(
-                            f"Job {job_id}: Generated game flow for game {game.id}"
+                            "bulk_flow_success",
+                            extra={
+                                "job_id": job_id,
+                                "game_id": game.id,
+                                "league": league_code,
+                                "pbp_exists": True,
+                                "goals_found": goals_found,
+                                "flow_attempted": True,
+                                "failure_reason": None,
+                            },
                         )
+                    # Per-game broad catch: a single bad game must NOT kill
+                    # the bulk job. Failure is fully recorded — DB row updated
+                    # via job.failed/errors_list, structured WARNING with
+                    # exc_info=True, and the loop continues. The traceback is
+                    # preserved in the log; the per-game error string is
+                    # persisted in errors_json for the admin UI.
+                    # See docs/audits/error-handling-report.md §F-8.
                     except Exception as e:
+                        failure_reason = _truncate_failure_reason(str(e))
                         await session.rollback()
                         # Re-fetch job after rollback
                         job_result = await session.execute(
@@ -170,9 +300,27 @@ async def _run_bulk_generation_async(job_id: int) -> None:
                         )
                         job = job_result.scalar_one()
                         job.failed += 1
-                        errors_list.append({"game_id": game.id, "error": str(e)})
+                        errors_list.append(
+                            {
+                                "game_id": game.id,
+                                "league": league_code,
+                                "error": failure_reason,
+                            }
+                        )
                         await session.commit()
-                        logger.warning(f"Job {job_id}: Failed game {game.id}: {e}")
+                        logger.warning(
+                            "bulk_flow_failure",
+                            extra={
+                                "job_id": job_id,
+                                "game_id": game.id,
+                                "league": league_code,
+                                "pbp_exists": True,
+                                "goals_found": goals_found,
+                                "flow_attempted": True,
+                                "failure_reason": failure_reason,
+                            },
+                            exc_info=True,
+                        )
 
                     # Small delay to avoid overwhelming the system
                     await asyncio.sleep(0.2)
@@ -189,6 +337,11 @@ async def _run_bulk_generation_async(job_id: int) -> None:
                     f"{job.skipped} skipped"
                 )
 
+            # Top-level broad catch for the whole bulk loop. Any error not
+            # already handled per-game (e.g. DB connection drop, query-side
+            # failure) marks the job ``failed`` with the error captured in
+            # ``errors_json``. ``logger.exception`` includes the traceback.
+            # See docs/audits/error-handling-report.md §F-9.
             except Exception as e:
                 # Mark job as failed on unexpected error
                 logger.exception(f"Job {job_id} failed with unexpected error: {e}")
@@ -202,7 +355,7 @@ async def _run_bulk_generation_async(job_id: int) -> None:
                 if job:
                     job.status = "failed"
                     job.finished_at = datetime.utcnow()
-                    job.errors_json = [{"error": str(e)}]
+                    job.errors_json = [{"error": _truncate_failure_reason(str(e))}]
                     await session.commit()
     finally:
         # Clean up the engine to avoid connection leaks

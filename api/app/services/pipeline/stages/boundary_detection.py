@@ -27,6 +27,7 @@ def should_force_close_moment(
     previous_event: dict[str, Any] | None,
     all_events: list[dict[str, Any]],
     moment_start_idx: int,
+    first_meaningful_lead_play_idx: int | None = None,
 ) -> tuple[bool, BoundaryReason | None]:
     """Check if a HARD boundary condition requires closing the moment.
 
@@ -38,6 +39,10 @@ def should_force_close_moment(
         previous_event: The previous event (None for first play)
         all_events: All events for explicit play counting
         moment_start_idx: Start index of current moment
+        first_meaningful_lead_play_idx: Play index of the play that first crossed
+            the league's lead-created threshold (NBA 6 pts, MLB 2 runs, …). When
+            the current event matches this index, the moment is force-closed so
+            the lead-creation moment becomes its own narrative beat.
 
     Returns:
         (should_close, reason) tuple
@@ -49,6 +54,15 @@ def should_force_close_moment(
     # HARD: Lead change occurred
     if previous_event and is_lead_change_play(current_event, previous_event):
         return True, BoundaryReason.LEAD_CHANGE
+
+    # HARD: First meaningful lead creation (game-state trigger from score timeline).
+    # Closes after this play so the lead-creation moment is anchored — downstream
+    # block-level boundary selection consumes the same trigger via score_timeline.
+    if (
+        first_meaningful_lead_play_idx is not None
+        and current_event.get("play_index") == first_meaningful_lead_play_idx
+    ):
+        return True, BoundaryReason.FIRST_MEANINGFUL_LEAD
 
     # HARD: Would create >2 explicitly narrated plays
     # Check what the explicit play count would be

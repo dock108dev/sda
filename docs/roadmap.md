@@ -137,8 +137,8 @@ Security checklist, subdomain routing, DB indexes, observability.
 
 ## Open Decisions
 
-1. **Subdomain vs path-based routing** — Path-based (`/clubs/{slug}/`) is the default; `SUBDOMAIN_ROUTING` flag exists for future activation. See `docs/research/subdomain-vs-path-based-club-routing.md`.
+1. **Subdomain vs path-based routing** — Path-based (`/clubs/{slug}/`) is the default; `SUBDOMAIN_ROUTING` flag exists for future activation. See [`docs/archived/research/subdomain-vs-path-based-club-routing.md`](archived/research/subdomain-vs-path-based-club-routing.md).
 2. **Magic-link expiry** — Currently 24h for onboarding tokens; revisit for security hardening.
 3. **Annual plan pricing** — Monthly plans exist; annual billing requires `cancel_at_period_end` lifecycle handling.
 4. **Pool config schema evolution** — Current Zod union covers RVCC/Crestmont variants; extensibility for new pool types undecided.
-5. **Webhook retry strategy** — Dead-letter table exists; retry queue not yet implemented. See `docs/research/webhook-job-queue-options.md`.
+5. **Webhook retry strategy** — Dead-letter table exists; retry queue not yet implemented. See [`docs/archived/research/webhook-job-queue-options.md`](archived/research/webhook-job-queue-options.md).

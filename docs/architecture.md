@@ -115,14 +115,14 @@ See [Analytics](analytics.md) for details.
 
 ## Game Flow Generation
 
-The game flow system converts play-by-play data into block-based narratives through an 8-stage pipeline.
+The game flow system converts play-by-play data into block-based narratives through a 9-stage pipeline.
 
 ### Architecture
 
 A game flow consists of **3-7 narrative blocks**, each containing 1-5 sentences (~65 words). Blocks are designed for 60-90 second total read time.
 
 ```
-NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → ANALYZE_DRAMA → GROUP_BLOCKS → RENDER_BLOCKS → VALIDATE_BLOCKS → FINALIZE_MOMENTS
+NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → CLASSIFY_GAME_SHAPE → ANALYZE_DRAMA → GROUP_BLOCKS → RENDER_BLOCKS → VALIDATE_BLOCKS → FINALIZE_MOMENTS
 ```
 
 ### Pipeline Stages
@@ -132,7 +132,8 @@ NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → ANALYZE_DRAMA → GR
 | NORMALIZE_PBP | Fetch and normalize PBP with phase assignments |
 | GENERATE_MOMENTS | Segment plays into moment boundaries |
 | VALIDATE_MOMENTS | Validate moment structure |
-| ANALYZE_DRAMA | Use AI to identify dramatic peak and weight quarters |
+| CLASSIFY_GAME_SHAPE | Deterministically classify game archetype (rules over score timeline) |
+| ANALYZE_DRAMA | Compute per-quarter drama weights from archetype + score signals |
 | GROUP_BLOCKS | Group moments into 3-7 narrative blocks (drama-weighted) |
 | RENDER_BLOCKS | Generate block narratives via OpenAI |
 | VALIDATE_BLOCKS | Enforce guardrail invariants |
