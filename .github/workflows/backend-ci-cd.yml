@@ -16,10 +16,17 @@ on:
 permissions:
   contents: read
 
+# Cancel stale in-progress runs on PRs only. On main pushes we let runs
+# queue so a deploy already in flight is never killed by the next commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test-scraper:
     name: Test Scraper
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
@@ -56,6 +63,7 @@ jobs:
   test-api:
     name: Test API
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
@@ -91,38 +99,10 @@ jobs:
             --cov-report=html:coverage_html \
             --cov-fail-under=80
 
-  security-dependency-audit:
-    name: Security · pip-audit + pnpm audit (advisory)
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-      - name: pip-audit (API requirements)
-        run: |
-          uv venv --python 3.12
-          source .venv/bin/activate
-          uv pip install pip-audit
-          pip-audit -r api/requirements.txt --desc on
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.28.0
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-      - name: pnpm audit (workspace)
-        run: |
-          pnpm install
-          pnpm audit --audit-level=high
-
   lint-ruff:
     name: Lint · Ruff (api + scraper)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -144,6 +124,7 @@ jobs:
   lint-web:
     name: Lint, type-check, test & coverage (Web)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -152,8 +133,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
+          cache: pnpm
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
       - name: Type check
         working-directory: web
         run: pnpm exec tsc --noEmit
@@ -175,6 +157,7 @@ jobs:
   lint-no-swap-score:
     name: Lint · No _swap_score
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - name: Ensure _swap_score is not re-introduced
@@ -188,6 +171,7 @@ jobs:
   lint-camel-case-schemas:
     name: Lint · camelCase response schemas
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -199,6 +183,7 @@ jobs:
   lint-router-namespaces:
     name: Lint · Router namespaces (/api/v1 vs /api/admin)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
@@ -224,6 +209,7 @@ jobs:
   lint-fk-ondelete:
     name: Lint · FK ondelete declarations
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -235,6 +221,7 @@ jobs:
   lint-guardrails-sync:
     name: Lint · guardrails.ts ↔ validate_blocks.py sync
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -246,6 +233,7 @@ jobs:
   lint-api-schema:
     name: Lint · camelCase fields in /api/v1/ OpenAPI schema
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
@@ -271,6 +259,7 @@ jobs:
   lint-js-core-sync:
     name: Lint · js-core types sync with /api/v1/ schema
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
@@ -296,6 +285,7 @@ jobs:
   security-bandit:
     name: Security · bandit (api + scraper)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -314,6 +304,7 @@ jobs:
   security-pip-audit:
     name: Security · pip-audit (api + scraper)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -336,6 +327,7 @@ jobs:
   security-pnpm-audit:
     name: Security · pnpm audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -344,6 +336,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
+          cache: pnpm
       - name: Install and audit
         run: |
           pnpm install --frozen-lockfile
@@ -352,6 +345,7 @@ jobs:
   security-detect-secrets:
     name: Security · detect-secrets scan
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -367,6 +361,7 @@ jobs:
   security-sql-interpolation:
     name: Security · SQL interpolation audit
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -378,6 +373,7 @@ jobs:
   compile:
     name: Compile
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs:
       - test-scraper
       - test-api
@@ -419,8 +415,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
+          cache: pnpm
       - name: Install web dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
       - name: Compile web
         working-directory: web
         run: pnpm build
@@ -428,6 +425,7 @@ jobs:
   build:
     name: Build and Push Images
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: compile
     if: >-
       (github.event_name == 'push' && github.ref_name == 'main') ||
@@ -436,6 +434,7 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false
       matrix:
         service: [api, web, scraper]
         include:
@@ -460,6 +459,8 @@ jobs:
             echo "${REPO}:latest"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
@@ -473,9 +474,15 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.image-tags.outputs.tags }}
+          # Per-service GHA cache scope avoids cross-image layer collisions
+          # while still letting each image reuse its own previous layers.
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
   deploy:
+    name: Deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build
     if: >-
       (github.event_name == 'push' && github.ref_name == 'main') ||
