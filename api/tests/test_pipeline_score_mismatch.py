@@ -133,6 +133,9 @@ def _session_returning(*games):
     Uses MagicMock for the result objects so that scalar_one_or_none() is a normal
     synchronous call (children of AsyncMock are themselves AsyncMock, which would
     make scalar_one_or_none() return a coroutine instead of the game).
+
+    Any execute() calls beyond the supplied games (e.g. the post-flush pg_notify)
+    return a fresh MagicMock so the iterator doesn't raise StopAsyncIteration.
     """
     session = AsyncMock()
     results = []
@@ -140,7 +143,13 @@ def _session_returning(*games):
         r = MagicMock()
         r.scalar_one_or_none.return_value = g
         results.append(r)
-    session.execute.side_effect = results
+
+    iterator = iter(results)
+
+    def _next_result(*args, **kwargs):
+        return next(iterator, MagicMock())
+
+    session.execute.side_effect = _next_result
     return session
 
 
