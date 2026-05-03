@@ -252,6 +252,19 @@ def _upsert_team(session: Session, league_id: int, identity: TeamIdentity) -> in
         abbreviation if feed_abbreviation is not None else db_models.SportsTeam.abbreviation
     )
 
+    # Only update when at least one tracked column actually changed. This
+    # avoids no-op writes that would still take a row X-lock and produce
+    # cross-worker deadlocks when odds and boxscore writers concurrently
+    # touch the same teams.
+    change_predicates = [
+        db_models.SportsTeam.short_name.is_distinct_from(short_name),
+        db_models.SportsTeam.external_ref.is_distinct_from(identity.external_ref),
+    ]
+    if feed_abbreviation is not None:
+        change_predicates.append(
+            db_models.SportsTeam.abbreviation.is_distinct_from(abbreviation)
+        )
+
     stmt = (
         insert(db_models.SportsTeam)
         .values(
@@ -271,11 +284,22 @@ def _upsert_team(session: Session, league_id: int, identity: TeamIdentity) -> in
                 "external_ref": identity.external_ref,
                 "updated_at": now_utc(),
             },
+            where=or_(*change_predicates),
         )
         .returning(db_models.SportsTeam.id)
     )
-    result = session.execute(stmt).scalar_one()
-    return int(result)
+    result = session.execute(stmt).scalar()
+    if result is not None:
+        return int(result)
+
+    # WHERE filtered the conflict path (row exists, nothing to update).
+    # Fetch the existing id directly.
+    existing_id = session.execute(
+        select(db_models.SportsTeam.id)
+        .where(db_models.SportsTeam.league_id == league_id)
+        .where(db_models.SportsTeam.name == team_name)
+    ).scalar_one()
+    return int(existing_id)
 
 
 def _find_team_by_name(

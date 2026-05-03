@@ -74,8 +74,8 @@ class TestUpsertTeam:
     def test_upserts_team_and_returns_id(self):
         """Upserts team and returns the ID from the database."""
         mock_session = MagicMock()
-        # _upsert_team uses session.execute(stmt).scalar_one() to get the ID
-        mock_session.execute.return_value.scalar_one.return_value = 42
+        # Primary path: INSERT ... ON CONFLICT DO UPDATE ... RETURNING id → .scalar()
+        mock_session.execute.return_value.scalar.return_value = 42
         # Also mock session.get for league lookup
         mock_league = MagicMock(code="NBA")
         mock_session.get.return_value = mock_league
@@ -335,7 +335,7 @@ class TestUpsertTeamAdvanced:
     def test_uses_short_name_from_identity(self):
         """Uses short_name from identity when provided."""
         mock_session = MagicMock()
-        mock_session.execute.return_value.scalar_one.return_value = 42
+        mock_session.execute.return_value.scalar.return_value = 42
         mock_league = MagicMock(code="NBA")
         mock_session.get.return_value = mock_league
 
@@ -352,7 +352,7 @@ class TestUpsertTeamAdvanced:
     def test_uses_external_ref(self):
         """Uses external_ref from identity."""
         mock_session = MagicMock()
-        mock_session.execute.return_value.scalar_one.return_value = 42
+        mock_session.execute.return_value.scalar.return_value = 42
         mock_league = MagicMock(code="NBA")
         mock_session.get.return_value = mock_league
 
