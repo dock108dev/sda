@@ -86,10 +86,15 @@ class MLBBoxscoreFetcher:
 
         # Only cache final game data — the boxscore endpoint doesn't include
         # gameState, so the caller must pass the real status from the DB.
+        # Require non-empty batters/pitchers arrays, not just the rosters dict:
+        # postponed games return rosters with empty batters/pitchers, and
+        # caching that shell prevents the real boxscore from ever being read.
         teams = payload.get("teams", {})
+        home = teams.get("home", {})
+        away = teams.get("away", {})
         has_data = bool(
-            teams.get("home", {}).get("players")
-            or teams.get("away", {}).get("players")
+            home.get("batters") or home.get("pitchers")
+            or away.get("batters") or away.get("pitchers")
         )
 
         if should_cache_final(has_data, game_status):
