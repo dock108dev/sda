@@ -273,6 +273,84 @@ class TestResolveStatusTransitionAdvanced:
         assert result == "scheduled"
 
 
+class TestResolveStatusTransitionSelfHeal:
+    """live → pregame/scheduled is allowed only when tipoff is far in the future.
+
+    Recovers games that were wrongly promoted to live (e.g. by a synthetic
+    pre-game advisory play) without undoing a correct promotion that
+    briefly flickers near tipoff.
+    """
+
+    def test_live_to_pregame_when_future_heals(self):
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        future = now + timedelta(hours=1, minutes=35)  # well beyond 15-min margin
+        result = resolve_status_transition(
+            "live", "pregame", game_date=future, now=now
+        )
+        assert result == "pregame"
+
+    def test_live_to_scheduled_when_future_heals(self):
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        future = now + timedelta(hours=1)
+        result = resolve_status_transition(
+            "live", "scheduled", game_date=future, now=now
+        )
+        assert result == "scheduled"
+
+    def test_live_to_pregame_within_margin_does_not_heal(self):
+        # game_date is only 5 minutes ahead — within heal margin → keep live
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        near = now + timedelta(minutes=5)
+        result = resolve_status_transition(
+            "live", "pregame", game_date=near, now=now
+        )
+        assert result == "live"
+
+    def test_live_to_pregame_in_past_does_not_heal(self):
+        # game_date already started → live state plausible → don't regress
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        past = now - timedelta(minutes=30)
+        result = resolve_status_transition(
+            "live", "pregame", game_date=past, now=now
+        )
+        assert result == "live"
+
+    def test_live_to_pregame_without_game_date_does_not_heal(self):
+        # Backward compat: callers that don't pass game_date keep
+        # the old "no regression" behavior.
+        result = resolve_status_transition("live", "pregame")
+        assert result == "live"
+
+    def test_final_to_pregame_never_heals_even_if_future(self):
+        # Self-heal only applies to live → pre-final, not from terminal states
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        future = now + timedelta(hours=2)
+        result = resolve_status_transition(
+            "final", "pregame", game_date=future, now=now
+        )
+        assert result == "final"
+
+    def test_recap_ready_to_pregame_never_heals_even_if_future(self):
+        from datetime import UTC, datetime, timedelta
+
+        now = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        future = now + timedelta(hours=2)
+        result = resolve_status_transition(
+            "recap_ready", "pregame", game_date=future, now=now
+        )
+        assert result == "recap_ready"
+
+
 class TestNormalizeStatusRecapStates:
     """recap_* statuses must round-trip through _normalize_status.
 

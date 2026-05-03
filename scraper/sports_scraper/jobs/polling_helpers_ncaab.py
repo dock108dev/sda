@@ -135,7 +135,9 @@ def _update_ncaab_statuses(session, games: list, client) -> list[dict]:
                 if not api_status:
                     continue
 
-                new_status = resolve_status_transition(game.status, api_status)
+                new_status = resolve_status_transition(
+                    game.status, api_status, game_date=game.game_date
+                )
                 if new_status != game.status:
                     old_status = game.status
                     game.status = new_status
@@ -230,7 +232,9 @@ def _update_ncaab_statuses(session, games: list, client) -> list[dict]:
         if not api_status:
             continue
 
-        new_status = resolve_status_transition(game.status, api_status)
+        new_status = resolve_status_transition(
+            game.status, api_status, game_date=game.game_date
+        )
         if new_status != game.status:
             old_status = game.status
             game.status = new_status

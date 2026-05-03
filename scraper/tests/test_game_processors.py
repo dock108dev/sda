@@ -766,6 +766,39 @@ class TestProcessGamePbpMlb:
         assert result.transition is None
         assert game.status == "pregame"
 
+    @patch("sports_scraper.persistence.plays.upsert_plays")
+    @patch("sports_scraper.utils.datetime_utils.now_utc")
+    def test_does_not_promote_when_game_date_in_future(self, mock_now, mock_upsert):
+        """Even with quarter=1 plays, refuse promotion if tipoff is still in the future.
+
+        Reproduces the May 2026 bug where MLB API emitted a synthetic
+        Game Advisory play with inning=1 for Pre-Game state, flipping
+        not-yet-started games to LIVE. Defense-in-depth in
+        try_promote_to_live: future-dated games can never go live.
+        """
+        mock_now.return_value = datetime(2026, 5, 3, 16, 0, 0, tzinfo=UTC)
+        mock_upsert.return_value = 1
+
+        play = MagicMock()
+        play.quarter = 1
+        client = MagicMock()
+        client.fetch_play_by_play.return_value = _mock_pbp_payload(plays=[play])
+
+        # Tipoff at 17:35 UTC, now is 16:00 UTC — 95 minutes in the future
+        game = _make_game(
+            external_ids={"mlb_game_pk": "717001"},
+            status="pregame",
+            game_date=datetime(2026, 5, 3, 17, 35, tzinfo=UTC),
+        )
+
+        with patch("sports_scraper.db.db_models") as mock_db:
+            mock_db.GameStatus.pregame.value = "pregame"
+            mock_db.GameStatus.live.value = "live"
+            result = process_game_pbp_mlb(MagicMock(), game, client=client)
+
+        assert result.transition is None
+        assert game.status == "pregame"
+
     def test_missing_mlb_game_pk_returns_empty(self):
         game = _make_game(external_ids={})
         result = process_game_pbp_mlb(MagicMock(), game)

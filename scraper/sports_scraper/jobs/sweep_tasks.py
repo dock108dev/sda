@@ -296,7 +296,9 @@ def _repair_stale_statuses() -> dict:
                     nba_game_id = (game.external_ids or {}).get("nba_game_id")
                     if nba_game_id and nba_game_id in nba_status_map:
                         api_status = nba_status_map[nba_game_id]
-                        new_status = resolve_status_transition(game.status, api_status)
+                        new_status = resolve_status_transition(
+                            game.status, api_status, game_date=game.game_date
+                        )
                         if new_status != game.status:
                             logger.info(
                                 "sweep_status_repaired",
@@ -335,7 +337,9 @@ def _repair_stale_statuses() -> dict:
                                 continue
                             if pk in nhl_status_map:
                                 api_status = nhl_status_map[pk]
-                                new_status = resolve_status_transition(game.status, api_status)
+                                new_status = resolve_status_transition(
+                                    game.status, api_status, game_date=game.game_date
+                                )
                                 if new_status != game.status:
                                     logger.info(
                                         "sweep_status_repaired",

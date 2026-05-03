@@ -428,7 +428,19 @@ _STATUS_ORDER: dict[str, int] = {
 }
 
 
-def resolve_status_transition(current_status: str | None, incoming_status: str | None) -> str:
+# Margin before scheduled tipoff during which a stuck `live` game is allowed
+# to self-heal back to pregame/scheduled. Set conservatively so a true live
+# game whose scoreboard briefly reports "preview" near tipoff is never demoted.
+_LIVE_SELF_HEAL_MARGIN = timedelta(minutes=15)
+
+
+def resolve_status_transition(
+    current_status: str | None,
+    incoming_status: str | None,
+    *,
+    game_date: datetime | None = None,
+    now: datetime | None = None,
+) -> str:
     """Resolve a safe status transition without regressing games.
 
     Rules:
@@ -437,6 +449,12 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
       only move forward within the post-final lane
     - Generally, status only moves forward in the lifecycle
     - Non-lifecycle statuses (postponed, cancelled) are accepted as-is
+
+    Self-heal: a `live` game that the upstream feed now reports as
+    pregame/scheduled is allowed to regress, but only when ``game_date``
+    is comfortably in the future (>15min from ``now``). This recovers
+    games that were wrongly promoted to live by spurious upstream signals
+    without undoing a correct promotion that briefly flickered near tipoff.
     """
     current = _normalize_status(current_status)
     incoming = _normalize_status(incoming_status)
@@ -458,12 +476,27 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
                 return incoming
         return current
 
-    # For lifecycle states, only allow forward progression
+    # For lifecycle states, only allow forward progression — except for the
+    # narrow self-heal escape hatch: live → pregame/scheduled is allowed when
+    # tipoff is still meaningfully in the future, since "live before tipoff"
+    # is necessarily a past write error.
     current_order = _STATUS_ORDER.get(current)
     incoming_order = _STATUS_ORDER.get(incoming)
 
     if current_order is not None and incoming_order is not None:
         if incoming_order < current_order:
+            if (
+                current == db_models.GameStatus.live.value
+                and incoming
+                in (
+                    db_models.GameStatus.pregame.value,
+                    db_models.GameStatus.scheduled.value,
+                )
+                and game_date is not None
+            ):
+                _now = now if now is not None else now_utc()
+                if game_date > _now + _LIVE_SELF_HEAL_MARGIN:
+                    return incoming
             return current  # Don't regress
         return incoming
 

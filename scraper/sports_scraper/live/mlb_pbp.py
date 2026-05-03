@@ -143,6 +143,15 @@ class MLBPbpFetcher:
         about = play.get("about", {})
         result = play.get("result", {})
 
+        # MLB Stats API emits a synthetic "Game Advisory" event for status
+        # changes (e.g. "Status Change - Pre-Game") with inning=1 and
+        # atBatIndex=0. These are API metadata, not real game events. If we
+        # accept them we hand the pregame→live promoter a fake "1st-inning
+        # play" and the game flips to LIVE before first pitch.
+        event_type = result.get("eventType", "")
+        if event_type == "game_advisory":
+            return None
+
         inning = parse_int(about.get("inning"))
         is_top = about.get("isTopInning", True)
         at_bat_index = parse_int(about.get("atBatIndex"))
@@ -154,8 +163,6 @@ class MLBPbpFetcher:
         half_offset = 0 if is_top else MLB_HALF_INNING_BOTTOM_OFFSET
         play_index = (inning or 0) * MLB_INNING_MULTIPLIER + half_offset + at_bat_index
 
-        # Get event type
-        event_type = result.get("eventType", "")
         play_type = self._map_event_type(event_type, game_pk)
 
         # Get batter info (primary player)

@@ -39,7 +39,9 @@ def check_game_status_nba(session, game, *, client=None) -> GameProcessResult:
 
     for sg in scoreboard_games:
         if sg.game_id == nba_game_id:
-            new_status = resolve_status_transition(game.status, sg.status)
+            new_status = resolve_status_transition(
+                game.status, sg.status, game_date=game.game_date
+            )
             if new_status != game.status:
                 old_status = game.status
                 game.status = new_status

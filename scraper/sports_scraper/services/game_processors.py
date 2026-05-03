@@ -164,8 +164,24 @@ def try_promote_to_live(
     if not has_game_action(plays):
         return
 
+    # Defense-in-depth against synthetic/early plays from upstream feeds:
+    # if scheduled tipoff is still in the future, no PBP signal can mean
+    # the game is actually in progress. Refuse the promotion so a stray
+    # API "advisory" event can't flip the game to live before kickoff.
+    now = now_utc_fn()
+    if game.game_date is not None and game.game_date > now:
+        logger.info(
+            "poll_pbp_inferred_live_blocked_future",
+            game_id=game.id,
+            league=league,
+            game_date=str(game.game_date),
+            now=str(now),
+            play_count=len(plays),
+        )
+        return
+
     game.status = db_models.GameStatus.live.value
-    game.updated_at = now_utc_fn()
+    game.updated_at = now
     result.transition = {
         "game_id": game.id,
         "from": "pregame",

@@ -318,3 +318,68 @@ class TestMLBNormalizePlayIsHomeTeam:
         assert result is not None
         assert result.raw_data["is_home_team"] is True
         assert result.raw_data["is_top_inning"] is False
+
+
+class TestMLBNormalizePlaySkipsGameAdvisory:
+    """game_advisory events are MLB API metadata, not real plays.
+
+    The MLB Stats API emits a single synthetic play with eventType=
+    "game_advisory", inning=1, atBatIndex=0 for Pre-Game state. If we
+    accept it, has_game_action() treats it as a 1st-inning event and
+    flips a not-yet-started game to LIVE. Always drop these.
+    """
+
+    def _make_fetcher(self):
+        client = MagicMock()
+        cache = MagicMock()
+        cache.get.return_value = None
+        return MLBPbpFetcher(client, cache)
+
+    def test_pre_game_advisory_is_dropped(self):
+        fetcher = self._make_fetcher()
+        play = {
+            "about": {
+                "inning": 1,
+                "isTopInning": True,
+                "atBatIndex": 0,
+                "halfInning": "top",
+            },
+            "result": {
+                "eventType": "game_advisory",
+                "event": "Game Advisory",
+                "description": "Status Change - Pre-Game",
+                "homeScore": 0,
+                "awayScore": 0,
+            },
+            "matchup": {},
+            "runners": [],
+            "count": {},
+        }
+        assert fetcher._normalize_play(play, game_pk=123) is None
+
+    def test_real_at_bat_still_passes(self):
+        fetcher = self._make_fetcher()
+        play = {
+            "about": {
+                "inning": 1,
+                "isTopInning": True,
+                "atBatIndex": 1,
+                "halfInning": "top",
+            },
+            "result": {
+                "eventType": "single",
+                "event": "Single",
+                "description": "Player singles.",
+                "homeScore": 0,
+                "awayScore": 0,
+            },
+            "matchup": {
+                "batter": {"id": 123, "fullName": "Test Player"},
+                "pitcher": {"id": 456, "fullName": "Test Pitcher"},
+            },
+            "runners": [],
+            "count": {},
+        }
+        result = fetcher._normalize_play(play, game_pk=123)
+        assert result is not None
+        assert result.quarter == 1
