@@ -273,6 +273,65 @@ class TestResolveStatusTransitionAdvanced:
         assert result == "scheduled"
 
 
+class TestNormalizeStatusRecapStates:
+    """recap_* statuses must round-trip through _normalize_status.
+
+    Pre-fix, they fell through to "scheduled", which let a later live-feed
+    scrape regress a finished game back to "live" and surface it as a
+    phantom LIVE row in the games endpoint.
+    """
+
+    def test_normalizes_recap_pending(self):
+        assert _normalize_status("recap_pending") == "recap_pending"
+
+    def test_normalizes_recap_ready(self):
+        assert _normalize_status("recap_ready") == "recap_ready"
+
+    def test_normalizes_recap_failed(self):
+        assert _normalize_status("recap_failed") == "recap_failed"
+
+    def test_normalizes_uppercase_recap_ready(self):
+        assert _normalize_status("RECAP_READY") == "recap_ready"
+
+
+class TestResolveStatusTransitionRecapStates:
+    """Post-final lane: recap_* must not regress to live/pregame/scheduled."""
+
+    def test_recap_ready_does_not_regress_to_live(self):
+        # The NHL phantom-LIVE bug: a completed game in recap_ready was
+        # being flipped back to "live" by a stale upstream live-feed event.
+        assert resolve_status_transition("recap_ready", "live") == "recap_ready"
+
+    def test_recap_pending_does_not_regress_to_live(self):
+        assert resolve_status_transition("recap_pending", "live") == "recap_pending"
+
+    def test_recap_failed_does_not_regress_to_live(self):
+        assert resolve_status_transition("recap_failed", "live") == "recap_failed"
+
+    def test_recap_ready_does_not_regress_to_pregame(self):
+        assert resolve_status_transition("recap_ready", "pregame") == "recap_ready"
+
+    def test_recap_ready_does_not_regress_to_scheduled(self):
+        assert resolve_status_transition("recap_ready", "scheduled") == "recap_ready"
+
+    def test_final_advances_to_recap_pending(self):
+        assert resolve_status_transition("final", "recap_pending") == "recap_pending"
+
+    def test_recap_pending_advances_to_recap_ready(self):
+        assert (
+            resolve_status_transition("recap_pending", "recap_ready") == "recap_ready"
+        )
+
+    def test_recap_ready_advances_to_archived(self):
+        assert resolve_status_transition("recap_ready", "archived") == "archived"
+
+    def test_recap_ready_does_not_regress_to_final(self):
+        assert resolve_status_transition("recap_ready", "final") == "recap_ready"
+
+    def test_archived_remains_terminal_from_recap(self):
+        assert resolve_status_transition("archived", "recap_ready") == "archived"
+
+
 class TestModuleImports:
     """Tests for games module imports."""
 

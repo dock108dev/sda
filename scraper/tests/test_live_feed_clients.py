@@ -27,34 +27,100 @@ os.environ.setdefault("ENVIRONMENT", "development")
 from sports_scraper.live.nba import (
     NBALiveFeedClient,
     _parse_nba_clock,
-    _parse_nba_game_datetime,
+    _parse_nba_et_datetime,
+    _parse_nba_utc_datetime,
+    _resolve_nba_game_datetime,
 )
 
 
-class TestParseNBAGameDatetime:
-    """Tests for _parse_nba_game_datetime helper."""
+class TestResolveNBAGameDatetime:
+    """Tests for NBA tipoff resolution.
 
-    def test_parse_iso_format(self):
-        result = _parse_nba_game_datetime("2024-01-15T19:30:00Z")
+    The NBA CDN emits `gameEt` / `gameDateTimeEst` with a misleading "Z"
+    suffix despite the wall-clock value being Eastern Time. The resolver
+    must prefer the genuine UTC field (`gameTimeUTC` / `gameDateTimeUTC`)
+    when available, and parse the ET fallback in ET, not UTC.
+    """
+
+    def test_prefers_utc_field_when_present(self):
+        # 7:30 PM ET on 2024-01-15 EST (UTC-5) == 2024-01-16T00:30:00Z
+        result = _resolve_nba_game_datetime(
+            utc_value="2024-01-16T00:30:00Z",
+            et_value="2024-01-15T19:30:00Z",
+        )
         assert result.year == 2024
         assert result.month == 1
-        assert result.day == 15
+        assert result.day == 16
+        assert result.hour == 0
+        assert result.minute == 30
 
-    def test_parse_with_offset(self):
-        result = _parse_nba_game_datetime("2024-01-15T19:30:00-05:00")
+    def test_falls_back_to_et_value_in_eastern_time(self):
+        # gameEt of "19:30:00Z" really means 7:30 PM ET. During EST that's
+        # 2024-01-16T00:30:00Z, NOT 2024-01-15T19:30:00Z (the bug).
+        result = _resolve_nba_game_datetime(
+            utc_value=None,
+            et_value="2024-01-15T19:30:00Z",
+        )
         assert result.year == 2024
+        assert result.month == 1
+        assert result.day == 16
+        assert result.hour == 0
+        assert result.minute == 30
 
-    def test_empty_returns_now(self):
-        result = _parse_nba_game_datetime("")
+    def test_falls_back_to_et_value_during_dst(self):
+        # 7:30 PM EDT (UTC-4) on 2026-05-02 == 2026-05-02T23:30:00Z.
+        # Reproduces the report's 76ers @ Celtics scenario.
+        result = _resolve_nba_game_datetime(
+            utc_value=None,
+            et_value="2026-05-02T19:30:00Z",
+        )
+        assert result.year == 2026
+        assert result.month == 5
+        assert result.day == 2
+        assert result.hour == 23
+        assert result.minute == 30
+
+    def test_empty_inputs_return_now(self):
+        result = _resolve_nba_game_datetime(utc_value=None, et_value=None)
         assert isinstance(result, datetime)
 
-    def test_none_returns_now(self):
-        result = _parse_nba_game_datetime(None)
+    def test_invalid_inputs_return_now(self):
+        result = _resolve_nba_game_datetime(
+            utc_value="not-a-date", et_value="also-not-a-date"
+        )
         assert isinstance(result, datetime)
 
-    def test_invalid_returns_now(self):
-        result = _parse_nba_game_datetime("not-a-date")
-        assert isinstance(result, datetime)
+
+class TestParseNBAUtcDatetime:
+    def test_parse_z_suffix(self):
+        result = _parse_nba_utc_datetime("2024-01-16T00:30:00Z")
+        assert result is not None
+        assert result.hour == 0
+        assert result.minute == 30
+
+    def test_empty_returns_none(self):
+        assert _parse_nba_utc_datetime("") is None
+        assert _parse_nba_utc_datetime(None) is None
+
+    def test_invalid_returns_none(self):
+        assert _parse_nba_utc_datetime("not-a-date") is None
+
+
+class TestParseNBAEtDatetime:
+    def test_z_suffix_is_treated_as_eastern(self):
+        # 7:30 PM ET on 2024-01-15 (EST) -> 2024-01-16T00:30:00Z
+        result = _parse_nba_et_datetime("2024-01-15T19:30:00Z")
+        assert result is not None
+        assert result.hour == 0
+        assert result.minute == 30
+        assert result.day == 16
+
+    def test_empty_returns_none(self):
+        assert _parse_nba_et_datetime("") is None
+        assert _parse_nba_et_datetime(None) is None
+
+    def test_invalid_returns_none(self):
+        assert _parse_nba_et_datetime("not-a-date") is None
 
 
 class TestParseNBAClock:
@@ -175,6 +241,69 @@ class TestNBALiveFeedClient:
 
         assert games[0].status == "scheduled"
         assert games[0].home_score is None
+
+    @patch("sports_scraper.utils.datetime_utils.today_et", return_value=date(2024, 1, 15))
+    def test_fetch_scoreboard_uses_utc_field_for_game_date(self, _mock_today):
+        """gameTimeUTC should win over gameEt when both are present."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "scoreboard": {
+                "games": [
+                    {
+                        "gameId": "0022400999",
+                        "gameStatus": 1,
+                        "gameStatusText": "7:30 PM ET",
+                        "gameEt": "2024-01-15T19:30:00Z",
+                        "gameTimeUTC": "2024-01-16T00:30:00Z",
+                        "homeTeam": {"teamTricode": "BOS", "score": None},
+                        "awayTeam": {"teamTricode": "PHI", "score": None},
+                    }
+                ]
+            }
+        }
+
+        client = NBALiveFeedClient()
+        client.client = MagicMock()
+        client.client.get.return_value = mock_response
+
+        games = client.fetch_scoreboard(date(2024, 1, 15))
+
+        # 2024-01-16T00:30:00Z, NOT 2024-01-15T19:30:00Z (the bug)
+        assert games[0].game_date.day == 16
+        assert games[0].game_date.hour == 0
+        assert games[0].game_date.minute == 30
+
+    @patch("sports_scraper.utils.datetime_utils.today_et", return_value=date(2024, 1, 15))
+    def test_fetch_scoreboard_falls_back_to_et_correctly(self, _mock_today):
+        """When gameTimeUTC is missing, gameEt is parsed as ET despite the Z."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "scoreboard": {
+                "games": [
+                    {
+                        "gameId": "0022400998",
+                        "gameStatus": 1,
+                        "gameStatusText": "7:30 PM ET",
+                        "gameEt": "2024-01-15T19:30:00Z",
+                        "homeTeam": {"teamTricode": "BOS", "score": None},
+                        "awayTeam": {"teamTricode": "PHI", "score": None},
+                    }
+                ]
+            }
+        }
+
+        client = NBALiveFeedClient()
+        client.client = MagicMock()
+        client.client.get.return_value = mock_response
+
+        games = client.fetch_scoreboard(date(2024, 1, 15))
+
+        # 7:30 PM ET (EST) -> 2024-01-16T00:30:00Z, not 19:30Z (the bug)
+        assert games[0].game_date.day == 16
+        assert games[0].game_date.hour == 0
+        assert games[0].game_date.minute == 30
 
     def test_fetch_scoreboard_failure(self):
         mock_response = MagicMock()

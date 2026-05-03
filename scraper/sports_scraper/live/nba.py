@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -140,7 +141,10 @@ class NBALiveFeedClient:
             else:
                 status = "scheduled"
 
-            game_date = _parse_nba_game_datetime(game.get("gameEt"))
+            game_date = _resolve_nba_game_datetime(
+                utc_value=game.get("gameTimeUTC"),
+                et_value=game.get("gameEt"),
+            )
             home_team = game.get("homeTeam", {})
             away_team = game.get("awayTeam", {})
             live_games.append(
@@ -203,7 +207,10 @@ class NBALiveFeedClient:
 
                     home_team = game.get("homeTeam", {})
                     away_team = game.get("awayTeam", {})
-                    game_datetime = _parse_nba_game_datetime(game.get("gameDateTimeEst"))
+                    game_datetime = _resolve_nba_game_datetime(
+                        utc_value=game.get("gameDateTimeUTC"),
+                        et_value=game.get("gameDateTimeEst"),
+                    )
 
                     # Schedule doesn't have live status, default to scheduled
                     live_games.append(
@@ -293,14 +300,50 @@ class NBALiveFeedClient:
         return self._boxscore_fetcher.fetch_boxscore(game_id)
 
 
-def _parse_nba_game_datetime(value: str | None) -> datetime:
+# NBA CDN quirk: `gameEt` and `gameDateTimeEst` are emitted with a "Z" suffix
+# but the wall-clock value is Eastern Time, not UTC. The scoreboard payload
+# also includes a true UTC field (`gameTimeUTC` / `gameDateTimeUTC`) that we
+# prefer when present.
+_NBA_ET = ZoneInfo("America/New_York")
+
+
+def _parse_nba_utc_datetime(value: str | None) -> datetime | None:
+    """Parse a real UTC timestamp from the NBA CDN. Returns None on failure."""
     if not value:
-        return now_utc()
+        return None
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return parsed.astimezone(UTC)
     except ValueError:
-        return now_utc()
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _parse_nba_et_datetime(value: str | None) -> datetime | None:
+    """Parse an NBA ET timestamp despite its misleading "Z" suffix."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "").rstrip())
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=_NBA_ET)
+    return parsed.astimezone(UTC)
+
+
+def _resolve_nba_game_datetime(
+    *,
+    utc_value: str | None,
+    et_value: str | None,
+) -> datetime:
+    """Resolve a tipoff datetime, preferring the true-UTC field over ET."""
+    return (
+        _parse_nba_utc_datetime(utc_value)
+        or _parse_nba_et_datetime(et_value)
+        or now_utc()
+    )
 
 
 def _parse_nba_clock(value: str | None) -> str | None:

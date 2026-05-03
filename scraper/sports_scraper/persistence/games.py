@@ -403,17 +403,28 @@ def _normalize_status(status: str | None) -> str:
         return db_models.GameStatus.postponed.value
     if status_normalized in {db_models.GameStatus.CANCELLED.value, "canceled"}:
         return db_models.GameStatus.CANCELLED.value
+    if status_normalized == db_models.GameStatus.recap_pending.value:
+        return db_models.GameStatus.recap_pending.value
+    if status_normalized == db_models.GameStatus.recap_ready.value:
+        return db_models.GameStatus.recap_ready.value
+    if status_normalized == db_models.GameStatus.recap_failed.value:
+        return db_models.GameStatus.recap_failed.value
     return db_models.GameStatus.scheduled.value
 
 
 # One-way progression order for the happy path.
 # Higher index = further along in lifecycle. Transitions may only move forward.
+# recap_* statuses sit between final and archived: they imply final has been
+# reached, so they must not regress to live/pregame/scheduled.
 _STATUS_ORDER: dict[str, int] = {
     db_models.GameStatus.scheduled.value: 0,
     db_models.GameStatus.pregame.value: 1,
     db_models.GameStatus.live.value: 2,
     db_models.GameStatus.final.value: 3,
-    db_models.GameStatus.archived.value: 4,
+    db_models.GameStatus.recap_pending.value: 4,
+    db_models.GameStatus.recap_failed.value: 4,
+    db_models.GameStatus.recap_ready.value: 5,
+    db_models.GameStatus.archived.value: 6,
 }
 
 
@@ -422,7 +433,8 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
 
     Rules:
     - archived is terminal (never regresses from archived)
-    - final never regresses (except to archived)
+    - final and post-final (recap_*) never regress to pre-final states; they
+      only move forward within the post-final lane
     - Generally, status only moves forward in the lifecycle
     - Non-lifecycle statuses (postponed, cancelled) are accepted as-is
     """
@@ -433,10 +445,17 @@ def resolve_status_transition(current_status: str | None, incoming_status: str |
     if current == db_models.GameStatus.archived.value:
         return current
 
-    # Final never regresses except to archived
-    if current == db_models.GameStatus.final.value:
-        if incoming == db_models.GameStatus.archived.value:
-            return incoming
+    # Once a game has reached final (or any post-final state), it can only
+    # advance within the post-final lane. Pre-final incoming statuses
+    # (scheduled/pregame/live) are stale signals and must be ignored.
+    if db_models.GameStatus.is_final_or_post_final_status(current):
+        if db_models.GameStatus.is_final_or_post_final_status(incoming):
+            current_order = _STATUS_ORDER.get(current)
+            incoming_order = _STATUS_ORDER.get(incoming)
+            if current_order is not None and incoming_order is not None:
+                if incoming_order < current_order:
+                    return current
+                return incoming
         return current
 
     # For lifecycle states, only allow forward progression
