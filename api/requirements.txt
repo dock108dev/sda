@@ -31,4 +31,4 @@ opentelemetry-instrumentation-celery==0.62b1
 stripe==15.1.0
 prometheus_client>=0.25.0
 # HTML sanitization for free-text user fields (ISSUE-025)
-bleach>=6.1.0
+bleach>=6.3.0
