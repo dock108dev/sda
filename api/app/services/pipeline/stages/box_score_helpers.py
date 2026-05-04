@@ -485,8 +485,22 @@ def compute_block_mini_box(
                 block_stars.append(last_name)
 
     # Trim to top 3 per team for mini box
+    if league_code == "MLB":
+        contribution_keys = ("runs", "hits", "rbi", "hr")
+    elif league_code == "NHL":
+        contribution_keys = ("goals", "assists", "points")
+    else:
+        contribution_keys = ("pts", "reb", "ast")
+
+    def _has_contribution(p: dict[str, Any]) -> bool:
+        return any(p.get(k, 0) for k in contribution_keys)
+
     for side in ["home", "away"]:
         players = cumulative[side].get("players", [])
+        # Drop players with no cumulative production. Without this filter, when
+        # only one player has contributed in the segment the second slot falls
+        # back to lineup-order zero-stat players (e.g. Jacob Wilson "0h 0rbi 0hr").
+        players = [p for p in players if _has_contribution(p)]
         # Sort by cumulative contribution, then by delta
         players.sort(
             key=lambda p: (p.get(key_stat, 0), p.get(delta_key, 0)),

@@ -200,11 +200,11 @@ function BlockCard({
         <span className={`${styles.roleBadge} ${getRoleBadgeClass(block.role)}`}>
           {formatRole(block.role)}
         </span>
-        {hasScoreChange && (
-          <span className={styles.scoreChange}>
-            {formatScore(block.scoreBefore)} → {formatScore(block.scoreAfter)}
-          </span>
-        )}
+        <span className={styles.scoreChange}>
+          {hasScoreChange
+            ? `${formatScore(block.scoreBefore)} → ${formatScore(block.scoreAfter)}`
+            : formatScore(block.scoreAfter)}
+        </span>
         {block.periodStart !== block.periodEnd ? (
           <span className={styles.periodRange}>
             {formatPeriodRange(block.periodStart, block.periodEnd, leagueCode)}

@@ -123,8 +123,12 @@ def _archetype_guidance(archetype: str | None) -> list[str]:
         ]
     elif archetype == "wire_to_wire":
         lines += [
-            "- The eventual winner led from the first score; the lead never "
-            "flipped. Do not invent suspense or describe the trailing team as a "
+            "- The eventual winner led from the first score and the lead never "
+            "flipped (overall game shape — for your context only). Do NOT "
+            "translate this directly into early-block prose. Each block "
+            "describes only its own scope; reserve full-game framing for the "
+            "FINAL block.",
+            "- Do not invent suspense or describe the trailing team as a "
             "real threat unless evidence supports it.",
         ]
     elif archetype == "low_event":
@@ -388,6 +392,13 @@ def build_block_prompt(
         "- No 'X had Y points' stat-feed prose. Describe actions and effects.",
         "- No subjective adjectives (incredible, amazing, dominant, clutch, etc.).",
         "- No foreshadowing in early blocks; do not 'would-be' or 'would prove'.",
+        "- BLOCK SCOPE: each block describes ONLY events within its period "
+        "range. Do not summarize the rest of the game from an early-block "
+        "viewpoint. Phrases like 'throughout the game', 'never allowed "
+        "[opponent] to overtake', 'maintained the lead the whole way', "
+        "'wire-to-wire' are reserved for the FINAL block, and only when the "
+        "block-end margin actually decides the game (a 1-run / one-possession "
+        "lead is NOT decided — preserve the suspense the score itself implies).",
     ])
 
     if has_any_overtime:
