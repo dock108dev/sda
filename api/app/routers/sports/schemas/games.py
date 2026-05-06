@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -56,6 +56,7 @@ class GameSummary(BaseModel):
     id: int
     league_code: str = Field(..., alias="leagueCode")
     game_date: datetime = Field(..., alias="gameDate")
+    local_game_date: date | None = Field(None, alias="localGameDate")
     home_team: str = Field(..., alias="homeTeam")
     away_team: str = Field(..., alias="awayTeam")
     status: str | None = None
@@ -134,6 +135,7 @@ class GameMeta(BaseModel):
     season: int
     season_type: str | None = Field(None, alias="seasonType")
     game_date: datetime = Field(..., alias="gameDate")
+    local_game_date: date | None = Field(None, alias="localGameDate")
     home_team: str = Field(..., alias="homeTeam")
     away_team: str = Field(..., alias="awayTeam")
     home_team_id: int | None = Field(None, alias="homeTeamId")

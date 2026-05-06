@@ -9,7 +9,7 @@ from app.services.pipeline.stages.league_config import (
 
 
 class TestFlowThresholdsLookup:
-    """Verify per-league thresholds resolve to BRAINDUMP-documented values."""
+    """Verify per-league thresholds resolve to the spec'd values."""
 
     def test_nba_thresholds(self) -> None:
         cfg = get_flow_thresholds("NBA")

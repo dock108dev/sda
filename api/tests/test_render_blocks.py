@@ -1223,10 +1223,10 @@ class TestEvidenceInPrompt:
 
 
 class TestSystemPromptTemplate:
-    """Tests that the new system prompt matches BRAINDUMP §Prompt rules."""
+    """Lock the system-prompt phrasing so prompt drift is caught in CI."""
 
-    def test_system_prompt_contains_braindump_phrasing(self) -> None:
-        """Block prompt opens with the BRAINDUMP §Prompt rules system text."""
+    def test_system_prompt_contains_expected_phrasing(self) -> None:
+        """Block prompt opens with the canonical system-prompt text."""
         blocks = [
             {
                 "block_index": 0,
@@ -1271,3 +1271,148 @@ class TestSystemPromptTemplate:
         game_context = {"home_team_name": "Home", "away_team_name": "Away", "sport": "NBA"}
         prompt = build_block_prompt(blocks, game_context, [])
         assert "25-55 words" in prompt
+
+
+class TestPromptStoryRoleGuidance:
+    """v3: per-block prompt sections must surface story_role beat guidance
+    and the causal player anchors that featured_players_v3 produced."""
+
+    def _basic_blocks(self) -> list[dict]:
+        return [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [10, 8],
+                "key_play_ids": [],
+                "story_role": "opening",
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.MOMENTUM_SHIFT.value,
+                "score_before": [10, 8],
+                "score_after": [22, 18],
+                "key_play_ids": [],
+                "story_role": "first_separation",
+                "featured_players": [
+                    {
+                        "name": "Anthony Edwards",
+                        "team": "MIN",
+                        "role": "first_separation_scorer",
+                        "reason": "Opened the scoring with 4 points in the segment.",
+                        "stat_summary": "+4 pts (segment)",
+                    }
+                ],
+            },
+            {
+                "block_index": 2,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [22, 18],
+                "score_after": [104, 102],
+                "key_play_ids": [],
+                "story_role": "closeout",
+                "featured_players": [
+                    {
+                        "name": "Julius Randle",
+                        "team": "MIN",
+                        "role": "late_closer",
+                        "reason": "Iced the result with 6 points in the closing segment.",
+                        "stat_summary": "+6 pts (segment)",
+                    }
+                ],
+            },
+        ]
+
+    def _ctx(self, sport: str = "NBA") -> dict:
+        return {
+            "home_team_name": "Spurs",
+            "away_team_name": "Timberwolves",
+            "sport": sport,
+        }
+
+    def test_story_role_beat_appears_in_prompt(self) -> None:
+        prompt = build_block_prompt(self._basic_blocks(), self._ctx(), [])
+        assert "BEAT: opening" in prompt
+        assert "BEAT: first_separation" in prompt
+        assert "BEAT: closeout" in prompt
+
+    def test_featured_player_reason_appears_in_prompt(self) -> None:
+        prompt = build_block_prompt(self._basic_blocks(), self._ctx(), [])
+        assert "Anchors (must explain the beat" in prompt
+        assert "Anthony Edwards" in prompt
+        assert "Opened the scoring with 4 points" in prompt
+        assert "Julius Randle" in prompt
+        assert "Iced the result with 6 points" in prompt
+
+    def test_blowout_compression_guidance_appears_for_mlb(self) -> None:
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [3, 0],
+                "key_play_ids": [],
+                "story_role": "opening",
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.RESPONSE.value,
+                "score_before": [3, 0],
+                "score_after": [5, 0],
+                "key_play_ids": [],
+                "story_role": "blowout_compression",
+            },
+            {
+                "block_index": 2,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [5, 0],
+                "score_after": [12, 1],
+                "key_play_ids": [],
+                "story_role": "closeout",
+            },
+        ]
+        prompt = build_block_prompt(blocks, self._ctx("MLB"), [])
+        assert "BEAT: blowout_compression" in prompt
+        assert "Do NOT narrate" in prompt or "Compress" in prompt
+
+    def test_lead_change_guidance_directs_writer_to_lead_event(self) -> None:
+        blocks = [
+            {
+                "block_index": 0,
+                "role": SemanticRole.SETUP.value,
+                "score_before": [0, 0],
+                "score_after": [50, 55],
+                "key_play_ids": [],
+                "story_role": "opening",
+            },
+            {
+                "block_index": 1,
+                "role": SemanticRole.MOMENTUM_SHIFT.value,
+                "score_before": [50, 55],
+                "score_after": [60, 58],
+                "key_play_ids": [],
+                "story_role": "lead_change",
+                "featured_players": [
+                    {
+                        "name": "Player",
+                        "team": "X",
+                        "role": "lead_change_scorer",
+                        "reason": "Lead-change point — segment delta 7 points.",
+                        "stat_summary": "+7 pts (segment)",
+                    }
+                ],
+            },
+            {
+                "block_index": 2,
+                "role": SemanticRole.RESOLUTION.value,
+                "score_before": [60, 58],
+                "score_after": [70, 68],
+                "key_play_ids": [],
+                "story_role": "closeout",
+            },
+        ]
+        prompt = build_block_prompt(blocks, self._ctx(), [])
+        assert "BEAT: lead_change" in prompt
+        # The lead_change template anchors to the play, the player, and the
+        # exact score the moment the lead changed.
+        assert "lead flipped" in prompt or "lead changed" in prompt

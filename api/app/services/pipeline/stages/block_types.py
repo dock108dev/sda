@@ -81,6 +81,7 @@ class NarrativeBlock:
         mini_box: Cumulative box score at end of block with segment deltas
     """
 
+    # --- Identity / structural fields ---
     block_index: int
     role: SemanticRole
     moment_indices: list[int]
@@ -92,11 +93,24 @@ class NarrativeBlock:
     key_play_ids: list[int]
     narrative: str | None = None
     mini_box: dict[str, Any] | None = None
-    peak_margin: int = 0  # Largest absolute margin within this block
-    peak_leader: int = 0  # 1=home led at peak, -1=away led at peak
     start_clock: str | None = None  # Game clock at block start (from first moment)
     end_clock: str | None = None  # Game clock at block end (from last moment)
-    label: str | None = None  # Narrative job (Opening break, Swing, Closeout, …)
+    # `peak_margin` / `peak_leader` are internal-only signals consumed by
+    # assign_roles (via calculate_swing_metrics) to detect lead swings.
+    # They never reach the consumer schema.
+    peak_margin: int = 0  # Largest absolute margin within this block
+    peak_leader: int = 0  # 1=home led at peak, -1=away led at peak
+    # --- Segmentation / voice fields ---
+    # `story_role` is the narrative beat chosen by the segmenter, distinct
+    # from `role` (the structural SemanticRole). Values:
+    # {opening, first_separation, response, lead_change, turning_point,
+    # closeout, blowout_compression}. `leverage` and `featured_players`
+    # carry segment evidence so player callouts act as proof, not decoration.
+    story_role: str | None = None
+    leverage: str | None = None  # "low" | "medium" | "high"
+    period_range: str | None = None  # e.g. "Q4 6:39–0:00", "Inning 8–9"
+    featured_players: list[dict[str, Any]] | None = None
+    score_context: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict."""
@@ -121,8 +135,16 @@ class NarrativeBlock:
             result["start_clock"] = self.start_clock
         if self.end_clock is not None:
             result["end_clock"] = self.end_clock
-        if self.label is not None:
-            result["label"] = self.label
+        if self.story_role is not None:
+            result["story_role"] = self.story_role
+        if self.leverage is not None:
+            result["leverage"] = self.leverage
+        if self.period_range is not None:
+            result["period_range"] = self.period_range
+        if self.featured_players is not None:
+            result["featured_players"] = self.featured_players
+        if self.score_context is not None:
+            result["score_context"] = self.score_context
         return result
 
     @classmethod
@@ -144,7 +166,11 @@ class NarrativeBlock:
             peak_leader=data.get("peak_leader", 0),
             start_clock=data.get("start_clock"),
             end_clock=data.get("end_clock"),
-            label=data.get("label"),
+            story_role=data.get("story_role"),
+            leverage=data.get("leverage"),
+            period_range=data.get("period_range"),
+            featured_players=data.get("featured_players"),
+            score_context=data.get("score_context"),
         )
 
     @property
@@ -202,8 +228,7 @@ class BlocksOutput:
 MIN_BLOCKS = 3  # Allow 3-block flows for blowouts
 MAX_BLOCKS = 7
 
-# Narrative constraints — per BRAINDUMP §Narrative generation rules:
-# 1-2 sentences per block, 25-55 words normally.
+# Narrative constraints: 1-2 sentences per block, 25-55 words normally.
 MIN_WORDS_PER_BLOCK = 25
 MAX_WORDS_PER_BLOCK = 55
 TARGET_WORDS_PER_BLOCK = 40

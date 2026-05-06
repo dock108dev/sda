@@ -155,11 +155,18 @@ Blocks are the consumer-facing output. Each block is a narrative segment:
 {
   "blockIndex": 0,
   "role": "SETUP",
+  "storyRole": "opening",
+  "leverage": "low",
+  "periodRange": "Q1 12:00–6:39",
   "momentIndices": [0, 1, 2],
   "periodStart": 1,
   "periodEnd": 1,
-  "scoreBefore": [0, 0],
-  "scoreAfter": [15, 12],
+  "scoreBefore": {"home": 0, "away": 0},
+  "scoreAfter": {"home": 15, "away": 12},
+  "scoreContext": {"leadChange": false, "largestLeadDelta": 3},
+  "featuredPlayers": [
+    {"name": "James", "teamAbbr": "LAL", "reason": "8 pts on 4 of 5 to open"}
+  ],
   "playIds": [1, 2, 3, 4, 5],
   "keyPlayIds": [2, 4],
   "narrative": "The Lakers jumped out early, with James orchestrating a 15-12 lead through balanced scoring in the opening minutes.",
@@ -188,14 +195,22 @@ Blocks are the consumer-facing output. Each block is a narrative segment:
 | Field | Type | Description |
 |-------|------|-------------|
 | `blockIndex` | `int` | Position (0 to N-1) |
-| `role` | `string` | Semantic role (see below) |
-| `scoreBefore` | `[away, home]` | Score at block start |
-| `scoreAfter` | `[away, home]` | Score at block end |
+| `role` | `string` | Structural role (see "Structural roles" below) |
+| `storyRole` | `string` | Narrative beat (see "Story roles" below) |
+| `leverage` | `string` | `"low"` / `"medium"` / `"high"` — drama tier of this block |
+| `periodRange` | `string` | Sport-aware period label (`"Q4 6:39–0:00"`, `"Inning 8–9"`, `"P1"`) |
+| `scoreBefore` | `{home, away}` | Score at block start |
+| `scoreAfter` | `{home, away}` | Score at block end |
+| `scoreContext` | `object` | `{leadChange: bool, largestLeadDelta: int}` — derived per-segment signals |
+| `featuredPlayers` | `array` | Up to 2 player anchors (`{name, teamAbbr, reason}`); empty for `opening` and `blowout_compression` blocks |
 | `narrative` | `string` | 1-5 sentences (~65 words) |
 | `miniBox` | `object` | Player stats for this segment |
 | `embeddedSocialPostId` | `number?` | Optional social post ID (max 1 per block) |
 
-### Semantic Roles
+Historical rows persisted before these fields shipped may serialize them as
+`null`; new flows always populate them.
+
+### Structural roles (`role`)
 
 | Role | Position | Description |
 |------|----------|-------------|
@@ -204,6 +219,18 @@ Blocks are the consumer-facing output. Each block is a narrative segment:
 | `RESPONSE` | Middle | Counter-run or stabilization |
 | `DECISION_POINT` | Late | The sequence that decided the outcome |
 | `RESOLUTION` | Always last | How the game ended |
+
+### Story roles (`storyRole`)
+
+| Story role | Description |
+|------------|-------------|
+| `opening` | First block; sets the stage |
+| `first_separation` | First time one team builds a meaningful lead |
+| `response` | Counter-run that materially shrinks or flips the gap |
+| `lead_change` | Block contains a tie-flip and the lead changed hands |
+| `turning_point` | Block in which the eventual winner separates for good |
+| `closeout` | Final block; how the game ended |
+| `blowout_compression` | Adjacent low-leverage middle blocks of a blowout, merged |
 
 ---
 
@@ -362,14 +389,46 @@ interface GameFlowResponse {
   validationErrors: string[];
 }
 
+type StoryRole =
+  | "opening"
+  | "first_separation"
+  | "response"
+  | "lead_change"
+  | "turning_point"
+  | "closeout"
+  | "blowout_compression";
+
+type Leverage = "low" | "medium" | "high";
+
+interface FeaturedPlayer {
+  name: string;
+  teamAbbr: string;
+  reason: string;
+}
+
+interface ScoreContext {
+  leadChange: boolean;
+  largestLeadDelta: number | null;
+}
+
+interface ScoreObject {
+  home: number;
+  away: number;
+}
+
 interface GameFlowBlock {
   blockIndex: number;
   role: "SETUP" | "MOMENTUM_SHIFT" | "RESPONSE" | "DECISION_POINT" | "RESOLUTION";
+  storyRole: StoryRole | null;
+  leverage: Leverage | null;
+  periodRange: string | null;
   momentIndices: number[];
   periodStart: number;
   periodEnd: number;
-  scoreBefore: [number, number];  // [away, home]
-  scoreAfter: [number, number];   // [away, home]
+  scoreBefore: ScoreObject;
+  scoreAfter: ScoreObject;
+  scoreContext: ScoreContext | null;
+  featuredPlayers: FeaturedPlayer[] | null;
   playIds: number[];
   keyPlayIds: number[];
   narrative: string;
@@ -447,11 +506,32 @@ struct GameFlowResponse: Codable {
     let validationErrors: [String]
 }
 
+struct ScoreObject: Codable {
+    let home: Int
+    let away: Int
+}
+
+struct ScoreContext: Codable {
+    let leadChange: Bool
+    let largestLeadDelta: Int?
+}
+
+struct FeaturedPlayer: Codable {
+    let name: String
+    let teamAbbr: String
+    let reason: String
+}
+
 struct GameFlowBlock: Codable {
     let blockIndex: Int
     let role: String
-    let scoreBefore: [Int]
-    let scoreAfter: [Int]
+    let storyRole: String?
+    let leverage: String?
+    let periodRange: String?
+    let scoreBefore: ScoreObject
+    let scoreAfter: ScoreObject
+    let scoreContext: ScoreContext?
+    let featuredPlayers: [FeaturedPlayer]?
     let narrative: String
     let miniBox: BlockMiniBox?
     let embeddedSocialPostId: Int?
@@ -555,6 +635,6 @@ func fetchGameFlow(gameId: Int) async throws -> GameFlowResponse {
 
 ## See Also
 
-- [Game Flow Contract](contract.md) — Authoritative specification (block fields, semantic roles, guardrails, narrative rules)
-- [Game Flow Pipeline](pipeline.md) — Pipeline implementation details (8 stages, execution modes)
+- [Game Flow Contract](contract.md) — Authoritative specification (block fields, story roles, voice rules, guardrails)
+- [Game Flow Pipeline](pipeline.md) — Pipeline implementation details (9 stages, execution modes)
 - [API Reference](../api.md) — Complete API reference

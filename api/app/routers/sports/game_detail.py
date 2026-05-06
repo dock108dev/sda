@@ -337,6 +337,7 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         season=game.season,
         season_type=getattr(game, "season_type", None),
         game_date=game.game_date,
+        local_game_date=getattr(game, "local_game_date", None),
         home_team=game.home_team.name if game.home_team else "Unknown",
         away_team=game.away_team.name if game.away_team else "Unknown",
         home_team_id=game.home_team.id if game.home_team else None,

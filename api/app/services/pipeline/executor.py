@@ -462,7 +462,6 @@ class PipelineExecutor:
         # uncaught error needs to leave the run/stage in a consistent
         # ``failed`` state and emit metrics. The full traceback is preserved
         # via ``exc_info=True`` below; nothing is silently swallowed.
-        # See docs/audits/error-handling-report.md §F-11.
         except Exception as e:
             pipeline_stage_failures_total.labels(stage.value).inc()
             # Update stage record with failure

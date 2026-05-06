@@ -547,6 +547,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [2],
                 "narrative": "The Lakers started strong with a quick 10-8 lead in the opening minutes.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "opening",
             },
             {
                 "block_index": 1,
@@ -558,6 +559,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [5],
                 "narrative": "The Celtics responded with a scoring run to take the lead midway through.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "lead_change",
             },
             {
                 "block_index": 2,
@@ -569,6 +571,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [8],
                 "narrative": "The Lakers came back with a strong third quarter performance and retook control.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "response",
             },
             {
                 "block_index": 3,
@@ -580,6 +583,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [11],
                 "narrative": "The game concluded with the Lakers holding on for a close 30-28 victory.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "closeout",
             },
         ]
 
@@ -662,6 +666,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [],  # Missing key plays - warning
                 "narrative": "Short.",  # Too short - warning
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "opening",
             },
             {
                 "block_index": 1,
@@ -673,6 +678,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [2],
                 "narrative": "The Celtics made a strong comeback push to take the lead.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "lead_change",
             },
             {
                 "block_index": 2,
@@ -684,6 +690,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [3],
                 "narrative": "Lakers fought back with determination and skill throughout.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "response",
             },
             {
                 "block_index": 3,
@@ -695,6 +702,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [4],
                 "narrative": "The final quarter saw Lakers close out the game successfully.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "closeout",
             },
         ]
 
@@ -1164,6 +1172,7 @@ class TestCoverageDecision:
                 "key_play_ids": [1],
                 "narrative": "The Lakers opened strong, setting the tone early.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "opening",
             },
             {
                 "block_index": 1,
@@ -1175,6 +1184,7 @@ class TestCoverageDecision:
                 "key_play_ids": [2],
                 "narrative": "The Celtics answered with a run to draw close.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "lead_change",
             },
             {
                 "block_index": 2,
@@ -1186,6 +1196,7 @@ class TestCoverageDecision:
                 "key_play_ids": [3],
                 "narrative": "Lakers pushed back and extended their advantage.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "response",
             },
             {
                 "block_index": 3,
@@ -1197,6 +1208,7 @@ class TestCoverageDecision:
                 "key_play_ids": [4],
                 "narrative": "The Lakers sealed it 107-98 to claim the victory.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "closeout",
             },
         ]
 
@@ -1861,8 +1873,8 @@ class TestBannedPhrases:
         assert errors == []
         assert warnings == []
 
-    def test_braindump_phrases_present(self) -> None:
-        """Sanity: all 21 BRAINDUMP banned phrases are wired into the constant."""
+    def test_all_banned_phrases_present(self) -> None:
+        """Sanity: all 21 banned phrases are wired into the constant."""
         expected = {
             "came out strong",
             "set the tone",
@@ -1904,7 +1916,7 @@ class TestBannedPhrasesEndToEndDecision:
             "away": {"points": 28},
         }
 
-        # Structurally valid 4-block flow with one BRAINDUMP banned phrase.
+        # Structurally valid 4-block flow with one banned phrase.
         # Must contain SETUP and RESOLUTION roles to avoid unrelated rule failures.
         blocks = [
             {
@@ -2439,53 +2451,6 @@ class TestInformationDensity:
             assert "threshold" in warnings[0].lower() or "0.60" in warnings[0]
 
 
-class TestValidateLeadConsistency:
-    """Tests for Rule 12 — lead consistency across block boundaries."""
-
-    def test_consistent_leads_pass(self) -> None:
-        """Adjacent lead_after / lead_before values that match produce no errors."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_lead_consistency,
-        )
-
-        blocks = [
-            {"lead_after": 2, "lead_before": 0},
-            {"lead_after": -3, "lead_before": 2},
-            {"lead_after": 5, "lead_before": -3},
-        ]
-        errors, warnings = _validate_lead_consistency(blocks)
-        assert errors == []
-        assert warnings == []
-
-    def test_lead_mismatch_is_error(self) -> None:
-        """Adjacent lead_after / lead_before mismatch produces an error."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_lead_consistency,
-        )
-
-        blocks = [
-            {"lead_after": 2, "lead_before": 0},
-            {"lead_after": -3, "lead_before": 7},  # 2 != 7
-        ]
-        errors, warnings = _validate_lead_consistency(blocks)
-        assert len(errors) == 1
-        assert "discontinuity" in errors[0].lower()
-        assert "0" in errors[0] and "1" in errors[0]
-
-    def test_missing_lead_fields_skipped(self) -> None:
-        """Blocks without lead metadata are skipped, not flagged."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_lead_consistency,
-        )
-
-        blocks = [
-            {"score_after": [10, 8]},
-            {"score_before": [10, 8]},
-        ]
-        errors, warnings = _validate_lead_consistency(blocks)
-        assert errors == []
-
-
 class TestValidateBlowoutLateLeverage:
     """Tests for Rule 13 — outcome-uncertainty language in late blowout blocks."""
 
@@ -2613,96 +2578,339 @@ class TestValidateLowEventDrama:
         assert errors == []
 
 
-class TestValidateReasonPresent:
-    """Tests for Rule 15 — block reason field present and informative."""
+class TestValidateNoRepeatedFinalScore:
+    """Rule 17 — final score must not appear in more than one block."""
 
-    def test_long_reason_passes(self) -> None:
-        """Reason >= 10 chars produces no warnings."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_reason_present,
+    def test_final_score_in_one_block_passes(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_no_repeated_final_score,
         )
 
         blocks = [
-            {"block_index": 0, "reason": "First scoring run separated the teams."},
+            {"block_index": 0, "narrative": "Judge homered to put New York up 1-0 early."},
+            {"block_index": 1, "narrative": "The middle innings turned a lead into a rout."},
+            {"block_index": 2, "narrative": "Yankees closed it out 12-1."},
         ]
-        errors, warnings = _validate_reason_present(blocks)
+        errors, _ = validate_no_repeated_final_score(blocks, home_score=12, away_score=1)
         assert errors == []
-        assert warnings == []
 
-    def test_missing_reason_is_warning(self) -> None:
-        """Missing reason field produces a warning."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_reason_present,
+    def test_final_score_repeated_across_blocks_fails(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_no_repeated_final_score,
         )
 
-        blocks = [{"block_index": 0}]
-        errors, warnings = _validate_reason_present(blocks)
-        assert errors == []
-        assert len(warnings) == 1
-        assert "Block 0" in warnings[0]
-        assert "reason" in warnings[0].lower()
+        blocks = [
+            {"block_index": 0, "narrative": "Yankees built a 12-1 cushion through seven."},
+            {"block_index": 1, "narrative": "Late innings padded it to a 12-1 final."},
+            {"block_index": 2, "narrative": "Yankees won 12-1."},
+        ]
+        errors, _ = validate_no_repeated_final_score(blocks, home_score=12, away_score=1)
+        assert len(errors) == 1
+        assert "12-1" in errors[0]
+        assert "3 blocks" in errors[0]
 
-    def test_short_reason_is_warning(self) -> None:
-        """Reason < 10 characters produces a warning."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_reason_present,
+    def test_en_dash_score_form_caught(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_no_repeated_final_score,
         )
 
-        blocks = [{"block_index": 0, "reason": "short"}]
-        errors, warnings = _validate_reason_present(blocks)
-        assert len(warnings) == 1
+        blocks = [
+            {"block_index": 0, "narrative": "Spurs led 104–102 late."},
+            {"block_index": 1, "narrative": "Final read 104–102 after the buzzer."},
+        ]
+        errors, _ = validate_no_repeated_final_score(blocks, home_score=104, away_score=102)
+        assert len(errors) == 1
+
+    def test_score_pair_inside_game_does_not_match(self) -> None:
+        """A 12-1 final must not flag earlier mentions of unrelated 1-2 / 2-1 scores."""
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_no_repeated_final_score,
+        )
+
+        blocks = [
+            {"block_index": 0, "narrative": "Wells doubled to put them up 2-0 early."},
+            {"block_index": 1, "narrative": "Bellinger added insurance."},
+            {"block_index": 2, "narrative": "Yankees finished it 12-1."},
+        ]
+        errors, _ = validate_no_repeated_final_score(blocks, home_score=12, away_score=1)
+        assert errors == []
 
 
-class TestValidateEvidencePresent:
-    """Tests for Rule 16 — substantial blocks must cite evidence."""
+class TestValidateFeaturedPlayersHaveReason:
+    """Rule 18 — featured_players entries must each carry a reason."""
 
-    def test_evidence_with_long_narrative_passes(self) -> None:
-        """Block with evidence and a long narrative produces no warnings."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_evidence_present,
+    def test_no_featured_players_passes(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_featured_players_have_reason,
+        )
+
+        errors, _ = validate_featured_players_have_reason(
+            [{"block_index": 0, "narrative": "..."}]
+        )
+        assert errors == []
+
+    def test_featured_player_with_reason_passes(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_featured_players_have_reason,
         )
 
         blocks = [
             {
                 "block_index": 0,
-                "evidence": [{"play_id": 1}],
-                "narrative": " ".join(["word"] * 50),
+                "featured_players": [
+                    {
+                        "name": "Aaron Judge",
+                        "reason": "Solo homer in the 1st created the first separation.",
+                    },
+                ],
             },
         ]
-        errors, warnings = _validate_evidence_present(blocks)
+        errors, _ = validate_featured_players_have_reason(blocks)
         assert errors == []
-        assert warnings == []
 
-    def test_no_evidence_with_long_narrative_is_warning(self) -> None:
-        """Block without evidence but with > 30 words produces a warning."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_evidence_present,
+    def test_featured_player_missing_reason_fails(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_featured_players_have_reason,
+        )
+
+        blocks = [
+            {
+                "block_index": 1,
+                "featured_players": [
+                    {"name": "Cody Bellinger"},  # no reason
+                ],
+            },
+        ]
+        errors, _ = validate_featured_players_have_reason(blocks)
+        assert len(errors) == 1
+        assert "Block 1" in errors[0]
+        assert "Cody Bellinger" in errors[0]
+
+    def test_featured_player_empty_reason_fails(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_featured_players_have_reason,
         )
 
         blocks = [
             {
                 "block_index": 2,
-                "evidence": [],
-                "narrative": " ".join(["word"] * 40),
+                "featured_players": [
+                    {"name": "X", "reason": "   "},
+                ],
             },
         ]
-        errors, warnings = _validate_evidence_present(blocks)
-        assert len(warnings) == 1
-        assert "Block 2" in warnings[0]
-        assert "evidence" in warnings[0].lower()
+        errors, _ = validate_featured_players_have_reason(blocks)
+        assert len(errors) == 1
 
-    def test_no_evidence_with_short_narrative_passes(self) -> None:
-        """Block without evidence and short narrative does not warn."""
-        from app.services.pipeline.stages.validate_blocks import (
-            _validate_evidence_present,
+
+class TestValidateStoryRolePresent:
+    """Rule 19 — story_role required. Promoted to ERROR in Pass 3 now that
+    the GROUP_BLOCKS classifier populates the field on every block."""
+
+    def test_missing_story_role_fails(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_story_role_present,
+        )
+
+        errors, warnings = validate_story_role_present(
+            [{"block_index": 0}, {"block_index": 1}]
+        )
+        assert len(errors) == 2
+        assert warnings == []
+
+    def test_invalid_story_role_fails(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_story_role_present,
+        )
+
+        errors, warnings = validate_story_role_present(
+            [{"block_index": 0, "story_role": "tense_intro"}]
+        )
+        assert len(errors) == 1
+        assert warnings == []
+        assert "tense_intro" in errors[0]
+
+    def test_valid_story_role_passes(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_voice import (
+            validate_story_role_present,
         )
 
         blocks = [
-            {
-                "block_index": 0,
-                "evidence": [],
-                "narrative": "Brief setup line.",
-            },
+            {"block_index": 0, "story_role": "opening"},
+            {"block_index": 1, "story_role": "first_separation"},
+            {"block_index": 2, "story_role": "closeout"},
         ]
-        errors, warnings = _validate_evidence_present(blocks)
+        errors, warnings = validate_story_role_present(blocks)
+        assert errors == []
         assert warnings == []
+
+
+class TestExpandedBannedPhrases:
+    """Verify the brain-dump generic phrases are wired into BANNED_PHRASES."""
+
+    def test_brief_phrases_trigger_errors(self) -> None:
+        from app.services.pipeline.stages.validate_blocks_phrases import (
+            check_banned_phrases,
+        )
+
+        for phrase in (
+            "set the stage",
+            "solidified position",
+            "high leverage",
+            "decisive final quarter",
+            "contributions from",
+            "cementing the blowout",
+            "kept pace",
+            "remained tight",
+        ):
+            blocks = [{"block_index": 0, "narrative": f"They {phrase} late."}]
+            errors, _ = check_banned_phrases(blocks)
+            assert len(errors) == 1, f"banned phrase {phrase!r} did not error"
+            assert phrase in errors[0]
+
+
+class TestNarrativeBlockV3SchemaRoundTrip:
+    """NarrativeBlock to_dict/from_dict must round-trip the v3 fields."""
+
+    def test_v3_fields_round_trip(self) -> None:
+        from app.services.pipeline.stages.block_types import (
+            NarrativeBlock,
+            SemanticRole,
+        )
+
+        block = NarrativeBlock(
+            block_index=0,
+            role=SemanticRole.MOMENTUM_SHIFT,
+            moment_indices=[0, 1, 2],
+            period_start=4,
+            period_end=4,
+            score_before=(72, 69),
+            score_after=(88, 85),
+            play_ids=[10, 11, 12],
+            key_play_ids=[11],
+            narrative="Edwards flipped the game in the 4th.",
+            story_role="lead_change",
+            leverage="high",
+            period_range="Q4 12:00–6:39",
+            featured_players=[
+                {
+                    "name": "Anthony Edwards",
+                    "team": "MIN",
+                    "role": "run_owner",
+                    "reason": "Scored 11 of MIN's 16 in the 16-0 swing.",
+                }
+            ],
+            score_context={
+                "start_score": [72, 69],
+                "end_score": [88, 85],
+                "lead_change": True,
+                "largest_lead_delta": 16,
+            },
+        )
+        d = block.to_dict()
+        assert d["story_role"] == "lead_change"
+        assert d["leverage"] == "high"
+        assert d["period_range"] == "Q4 12:00–6:39"
+        assert d["featured_players"][0]["reason"].startswith("Scored 11")
+        assert d["score_context"]["lead_change"] is True
+
+        restored = NarrativeBlock.from_dict(d)
+        assert restored.story_role == "lead_change"
+        assert restored.leverage == "high"
+        assert restored.period_range == "Q4 12:00–6:39"
+        assert restored.featured_players[0]["name"] == "Anthony Edwards"
+        assert restored.score_context["largest_lead_delta"] == 16
+
+    def test_v2_dict_loads_with_v3_fields_defaulted_to_none(self) -> None:
+        """A v2-shape dict (no v3 fields) must still load cleanly."""
+        from app.services.pipeline.stages.block_types import (
+            NarrativeBlock,
+            SemanticRole,
+        )
+
+        v2_dict = {
+            "block_index": 0,
+            "role": SemanticRole.SETUP.value,
+            "moment_indices": [0],
+            "period_start": 1,
+            "period_end": 1,
+            "score_before": [0, 0],
+            "score_after": [3, 0],
+            "play_ids": [1],
+            "key_play_ids": [1],
+            "narrative": "Yankees scored first.",
+        }
+        block = NarrativeBlock.from_dict(v2_dict)
+        assert block.story_role is None
+        assert block.leverage is None
+        assert block.featured_players is None
+        assert block.score_context is None
+
+
+class TestGameFlowBlockApiSchemaV3Fields:
+    """The Pydantic GameFlowBlock must accept and serialize the v3 fields
+    using camelCase aliases for the consumer contract."""
+
+    def test_block_serializes_v3_fields_with_camelcase_aliases(self) -> None:
+        from app.routers.sports.schemas.common import ScoreObject
+        from app.routers.sports.schemas.game_flow import (
+            FeaturedPlayer,
+            GameFlowBlock,
+            ScoreContext,
+        )
+
+        block = GameFlowBlock(
+            blockIndex=0,
+            role="MOMENTUM_SHIFT",
+            momentIndices=[0, 1],
+            periodStart=4,
+            periodEnd=4,
+            scoreBefore=ScoreObject(home=72, away=69),
+            scoreAfter=ScoreObject(home=88, away=85),
+            playIds=[1, 2],
+            keyPlayIds=[2],
+            storyRole="lead_change",
+            leverage="high",
+            periodRange="Q4 12:00–6:39",
+            featuredPlayers=[
+                FeaturedPlayer(
+                    name="Anthony Edwards",
+                    team="MIN",
+                    role="run_owner",
+                    reason="Scored 11 of MIN's 16 in the 16-0 swing.",
+                )
+            ],
+            scoreContext=ScoreContext(
+                startScore=ScoreObject(home=72, away=69),
+                endScore=ScoreObject(home=88, away=85),
+                leadChange=True,
+                largestLeadDelta=16,
+            ),
+        )
+        dumped = block.model_dump(by_alias=True)
+        assert dumped["storyRole"] == "lead_change"
+        assert dumped["leverage"] == "high"
+        assert dumped["periodRange"] == "Q4 12:00–6:39"
+        assert dumped["featuredPlayers"][0]["reason"].startswith("Scored 11")
+        assert dumped["scoreContext"]["leadChange"] is True
+        assert dumped["scoreContext"]["largestLeadDelta"] == 16
+
+    def test_block_without_v3_fields_serializes_with_nulls(self) -> None:
+        from app.routers.sports.schemas.common import ScoreObject
+        from app.routers.sports.schemas.game_flow import GameFlowBlock
+
+        block = GameFlowBlock(
+            blockIndex=0,
+            role="SETUP",
+            momentIndices=[0],
+            periodStart=1,
+            periodEnd=1,
+            scoreBefore=ScoreObject(home=0, away=0),
+            scoreAfter=ScoreObject(home=3, away=0),
+            playIds=[1],
+            keyPlayIds=[1],
+        )
+        dumped = block.model_dump(by_alias=True)
+        assert dumped["storyRole"] is None
+        assert dumped["featuredPlayers"] is None
+        assert dumped["scoreContext"] is None

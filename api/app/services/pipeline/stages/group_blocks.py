@@ -54,7 +54,7 @@ from .block_analysis import (
     find_scoring_runs,
 )
 from .block_types import MAX_BLOCKS, MIN_BLOCKS
-from .group_helpers import calculate_block_count, compute_block_label, create_blocks
+from .group_helpers import calculate_block_count, create_blocks
 from .group_roles import assign_roles
 
 # Import from split modules
@@ -63,6 +63,10 @@ from .group_split_points import (
     compress_blowout_blocks,
     find_split_points,
     find_weighted_split_points,
+)
+from .segment_classification import (
+    classify_blocks,
+    merge_blowout_compression,
 )
 
 # Map split-point trigger priority numbers (defined in group_split_points) to
@@ -251,16 +255,36 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
         role_summary[block.role.value] = role_summary.get(block.role.value, 0) + 1
     output.add_log(f"Role assignments: {role_summary}")
 
-    # Compute per-block narrative-job label (ISSUE-009 v2 schema field).
-    # Done after roles so blowout/closeout decisions see the same archetype.
-    for block in blocks:
-        block.label = compute_block_label(
-            block_index=block.block_index,
-            block_count=len(blocks),
-            score_before=block.score_before,
-            score_after=block.score_after,
-            archetype=archetype,
+    # v3 contract: tag every block with story_role / leverage / period_range /
+    # score_context so the consumer + render prompts can see the segment beat.
+    classify_blocks(
+        blocks,
+        league_code,
+        is_blowout=is_blowout,
+        garbage_time_idx=garbage_time_idx,
+        decisive_moment_idx=decisive_idx,
+    )
+
+    # Collapse adjacent blowout_compression blocks. Avoids the "Inning 1 →
+    # Inning 1–7 → Inning 8–9" tell where the engine emitted two structurally
+    # similar middles. Re-run downstream invariants on the merged list:
+    # labels, classification, and role re-assignment if the merge dropped a
+    # block that was holding a unique role.
+    merged_blocks = merge_blowout_compression(blocks)
+    if len(merged_blocks) != len(blocks):
+        output.add_log(
+            f"Blowout-compression merge: {len(blocks)} → {len(merged_blocks)} blocks",
+            level="warning",
+        )
+        blocks = merged_blocks
+        # Re-assign roles in case the merge dropped a unique-role middle.
+        assign_roles(blocks, league_code)
+        classify_blocks(
+            blocks,
+            league_code,
             is_blowout=is_blowout,
+            garbage_time_idx=garbage_time_idx,
+            decisive_moment_idx=decisive_idx,
         )
 
     # Verify block count constraints

@@ -120,6 +120,37 @@ class BlockMiniBox(BaseModel):
     block_stars: list[str] = Field(default_factory=list, alias="blockStars")
 
 
+class FeaturedPlayer(BaseModel):
+    """A player called out within a block. The reason field anchors the
+    callout to a causal moment in the segment (lead-change scorer, run owner,
+    late-game closer, decisive event) so player mentions act as evidence,
+    not decoration."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    name: str
+    team: str | None = None
+    role: str | None = None  # e.g. "lead_change_scorer", "run_owner", "late_closer"
+    reason: str  # required: the segment-causal explanation
+    stat_summary: str | None = Field(None, alias="statSummary")
+
+
+class ScoreContext(BaseModel):
+    """Derived score-state signals for a narrative block.
+
+    Distinct from the block's raw ``scoreBefore`` / ``scoreAfter`` (which
+    are SSOT for segment endpoints) — this layer carries only the
+    SEGMENT-level derived signals the consumer + voice validators need:
+    whether a lead change occurred inside the block and the largest
+    single-direction margin swing observed.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    lead_change: bool = Field(False, alias="leadChange")
+    largest_lead_delta: int | None = Field(None, alias="largestLeadDelta")
+
+
 class GameFlowBlock(BaseModel):
     """A narrative block grouping multiple moments.
 
@@ -129,6 +160,7 @@ class GameFlowBlock(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # --- Identity / structural fields ---
     block_index: int = Field(..., alias="blockIndex")
     role: str  # SemanticRole value: SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION
     moment_indices: list[int] = Field(..., alias="momentIndices")
@@ -143,12 +175,14 @@ class GameFlowBlock(BaseModel):
     embedded_social_post_id: int | None = Field(None, alias="embeddedSocialPostId")
     start_clock: str | None = Field(None, alias="startClock")
     end_clock: str | None = Field(None, alias="endClock")
-    # v2 schema fields — nullable for backward compatibility with v1 readers.
-    reason: str | None = None
-    label: str | None = None
-    lead_before: int | None = Field(None, alias="leadBefore")
-    lead_after: int | None = Field(None, alias="leadAfter")
-    evidence: list[dict[str, Any]] | None = None
+    # --- Segmentation / voice contract fields ---
+    # Nullable so historical rows persisted before these columns shipped
+    # still serialize; new flows populate them on every write.
+    story_role: str | None = Field(None, alias="storyRole")
+    leverage: str | None = None  # "low" | "medium" | "high"
+    period_range: str | None = Field(None, alias="periodRange")
+    featured_players: list[FeaturedPlayer] | None = Field(None, alias="featuredPlayers")
+    score_context: ScoreContext | None = Field(None, alias="scoreContext")
 
 
 class GameFlowResponse(BaseModel):
@@ -180,8 +214,8 @@ class GameFlowResponse(BaseModel):
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
     league_code: str | None = Field(None, alias="leagueCode")
-    # v2 schema top-level fields (BRAINDUMP §Output schema). Nullable so v1
-    # readers and historical rows without these columns continue to work.
+    # Top-level flow metadata. Nullable so historical rows without these
+    # columns continue to serialize.
     version: str | None = None
     archetype: str | None = None
     winner_team_id: str | None = Field(None, alias="winnerTeamId")
@@ -211,7 +245,7 @@ class ConsumerGameFlowResponse(BaseModel):
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
     league_code: str | None = Field(None, alias="leagueCode")
-    # v2 schema top-level fields. Nullable so older rows still serialize.
+    # Top-level flow metadata. Nullable so older rows still serialize.
     version: str | None = None
     archetype: str | None = None
     winner_team_id: str | None = Field(None, alias="winnerTeamId")

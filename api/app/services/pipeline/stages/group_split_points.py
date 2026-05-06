@@ -377,6 +377,8 @@ def find_split_points(
             continue
         selected.append(c)
 
+    state_driven_count = len(selected)
+
     # Ensure setup/resolution coverage so the narrative still has a clear
     # beginning and end. If neither end of the game has a selected split, add
     # an even-spaced fallback near the n//5 / 4n//5 marks.
@@ -384,13 +386,21 @@ def find_split_points(
     resolution_start = n - max(1, n // 5)
     has_setup = any(0 < s <= setup_end for s in selected)
     has_resolution = any(resolution_start <= s < n for s in selected)
+    setup_resolution_filler = 0
     if not has_setup and len(selected) < needed_splits:
         selected.append(setup_end)
+        setup_resolution_filler += 1
     if not has_resolution and len(selected) < needed_splits:
         selected.append(resolution_start)
+        setup_resolution_filler += 1
 
     # Top up with evenly distributed splits if still short — only when we
-    # genuinely couldn't find enough game-state candidates.
+    # genuinely couldn't find enough game-state candidates. The brief flags
+    # arbitrary time buckets as the symptom that motivated the rebuild, so
+    # we emit a structured log every time this fires; observability lets
+    # ops surface games that fell back to even spacing without breaking
+    # them in production.
+    even_spaced_filler = 0
     if len(selected) < needed_splits:
         interval = n / (needed_splits + 1)
         for i in range(1, needed_splits + 1):
@@ -400,6 +410,22 @@ def find_split_points(
             if 0 < split < n and split not in selected:
                 if not any(abs(split - s) < max(1, min_spacing - 1) for s in selected):
                     selected.append(split)
+                    even_spaced_filler += 1
+
+    if setup_resolution_filler or even_spaced_filler:
+        logger.info(
+            "split_points_time_bucket_fallback",
+            extra={
+                "league_code": league_code,
+                "archetype": archetype,
+                "moment_count": n,
+                "target_blocks": target_blocks,
+                "needed_splits": needed_splits,
+                "state_driven_splits": state_driven_count,
+                "setup_resolution_filler": setup_resolution_filler,
+                "even_spaced_filler": even_spaced_filler,
+            },
+        )
 
     selected = sorted(set(selected))[:needed_splits]
     selected = _enforce_archetype_required_splits(

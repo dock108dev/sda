@@ -817,6 +817,102 @@ class TestUpsertGame:
         assert existing_game.source_game_key == "202401150LAL"
 
 
+class TestLocalGameDate:
+    """find_or_create_game must populate ``local_game_date`` from the ET
+    calendar date of game_date, and _enrich_existing must keep it in sync."""
+
+    @patch("sports_scraper.persistence.games._upsert_team")
+    @patch("sports_scraper.persistence.games.get_league_id")
+    def test_new_game_sets_local_game_date_in_et(
+        self, mock_get_league_id, mock_upsert_team
+    ):
+        """A 9pm ET puck drop on 2026-05-03 → game_date=2026-05-04T01:00Z but
+        local_game_date must be 2026-05-03 (the ET calendar date)."""
+        from datetime import date
+
+        from sports_scraper.persistence.games import upsert_game_stub
+
+        mock_session = MagicMock()
+        mock_get_league_id.return_value = 1
+        mock_upsert_team.side_effect = [10, 20]
+
+        query_mock = MagicMock()
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = None
+        mock_session.query.return_value = query_mock
+        mock_session.get.return_value = None
+
+        # Capture the SportsGame instance handed to session.add()
+        captured: dict = {}
+
+        def _capture(game):
+            captured["game"] = game
+
+        mock_session.add.side_effect = _capture
+
+        home_team = TeamIdentity(league_code="NHL", name="Avalanche", abbreviation="COL")
+        away_team = TeamIdentity(league_code="NHL", name="Wild", abbreviation="MIN")
+
+        upsert_game_stub(
+            mock_session,
+            league_code="NHL",
+            game_date=datetime(2026, 5, 4, 1, 0, tzinfo=UTC),  # 9pm ET on May 3
+            home_team=home_team,
+            away_team=away_team,
+            status="final",
+            home_score=9,
+            away_score=6,
+        )
+
+        assert captured["game"].local_game_date == date(2026, 5, 3)
+
+    @patch("sports_scraper.persistence.games._upsert_team")
+    @patch("sports_scraper.persistence.games.get_league_id")
+    def test_enrich_backfills_missing_local_game_date(
+        self, mock_get_league_id, mock_upsert_team
+    ):
+        """An existing row whose local_game_date column is NULL (legacy data
+        before the migration backfill ran) gets populated on next enrich."""
+        from datetime import date
+
+        from sports_scraper.persistence.games import upsert_game_stub
+
+        mock_session = MagicMock()
+        mock_get_league_id.return_value = 1
+        mock_upsert_team.side_effect = [10, 20]
+
+        existing_game = MagicMock()
+        existing_game.id = 42
+        existing_game.status = "scheduled"
+        existing_game.home_score = None
+        existing_game.away_score = None
+        existing_game.venue = None
+        existing_game.external_ids = {}
+        existing_game.game_date = datetime(2026, 5, 4, 1, 0, tzinfo=UTC)
+        existing_game.season_type = "regular"
+        existing_game.local_game_date = None  # legacy / unbackfilled
+
+        query_mock = MagicMock()
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = existing_game
+        mock_session.query.return_value = query_mock
+        mock_session.get.return_value = existing_game
+
+        home_team = TeamIdentity(league_code="NHL", name="Avalanche", abbreviation="COL")
+        away_team = TeamIdentity(league_code="NHL", name="Wild", abbreviation="MIN")
+
+        upsert_game_stub(
+            mock_session,
+            league_code="NHL",
+            game_date=datetime(2026, 5, 4, 1, 0, tzinfo=UTC),
+            home_team=home_team,
+            away_team=away_team,
+            status="final",
+        )
+
+        assert existing_game.local_game_date == date(2026, 5, 3)
+
+
 class TestHasRealTime:
     """Tests for _has_real_time: detect placeholder vs real game times."""
 

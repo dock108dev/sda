@@ -334,6 +334,7 @@ def summarize_game(
         id=game.id,
         league_code=league_code,
         game_date=game.game_date,
+        local_game_date=game.local_game_date,
         status=game.status,
         home_team=game.home_team.name,
         away_team=game.away_team.name,

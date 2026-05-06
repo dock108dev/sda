@@ -31,6 +31,36 @@ export type BlockMiniBox = {
   blockStars: string[];
 };
 
+/** v3 schema: a player called out within a block; reason anchors the
+ * callout to a causal moment so the mention is evidence, not decoration. */
+export type FeaturedPlayer = {
+  name: string;
+  team?: string | null;
+  role?: string | null;
+  reason: string;
+  statSummary?: string | null;
+};
+
+/** v3 schema: derived score-state signals for a narrative block.
+ *  Block-level scoreBefore/scoreAfter remain SSOT for segment endpoints —
+ *  duplicating them here would create a sync hazard. */
+export type ScoreContext = {
+  leadChange: boolean;
+  largestLeadDelta?: number | null;
+};
+
+/** v3 schema: the narrative beat a block represents. */
+export type StoryRole =
+  | "opening"
+  | "first_separation"
+  | "response"
+  | "lead_change"
+  | "turning_point"
+  | "closeout"
+  | "blowout_compression";
+
+export type Leverage = "low" | "medium" | "high";
+
 export type NarrativeBlock = {
   blockIndex: number;
   role: string;
@@ -46,11 +76,18 @@ export type NarrativeBlock = {
   miniBox?: BlockMiniBox | null;
   startClock?: string | null;
   endClock?: string | null;
-  reason?: string | null;
-  label?: string | null;
-  leadBefore?: number | null;
-  leadAfter?: number | null;
-  evidence?: Record<string, unknown>[] | null;
+  // v3 contract fields. Optional so v2-shape rows persisted before the
+  // contract shipped continue to type. Removed v2 fields (reason, label,
+  // leadBefore, leadAfter, evidence) are superseded by these:
+  //   reason → storyRole + featuredPlayers[*].reason
+  //   label → storyRole
+  //   leadBefore / leadAfter → derivable from scoreBefore / scoreAfter
+  //   evidence → featuredPlayers (structured anchor list)
+  storyRole?: StoryRole | null;
+  leverage?: Leverage | null;
+  periodRange?: string | null;
+  featuredPlayers?: FeaturedPlayer[] | null;
+  scoreContext?: ScoreContext | null;
 };
 
 /** Consumer game flow response — blocks are the contract; moments are pipeline-internal. */

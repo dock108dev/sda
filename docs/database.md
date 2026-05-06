@@ -21,7 +21,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `sports_leagues` | League definitions (NBA, NHL, NCAAB, MLB, NFL) |
 | `sports_teams` | Teams with names, abbreviations, colors, X handles, `external_codes` |
 | `sports_players` | Player records linked to teams |
-| `sports_games` | Games with scores, dates, status lifecycle, social scrape timestamps |
+| `sports_games` | Games with scores, dates (`game_date` UTC + `local_game_date` ET calendar date), status lifecycle, social scrape timestamps |
 | `sports_team_boxscores` | Team-level stats per game (JSONB `raw_stats_json`) |
 | `sports_player_boxscores` | Player-level stats per game (JSONB `raw_stats_json`) |
 | `sports_game_plays` | Play-by-play events with period, clock, scores, play type |
@@ -55,7 +55,7 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 
 | Table | Description |
 |-------|-------------|
-| `sports_game_stories` | Generated game flow narratives (block-based, AI-generated) |
+| `sports_game_stories` | Generated game flow narratives (block-based, AI-generated). ORM: `SportsGameFlow`. |
 | `sports_game_timeline_artifacts` | Timeline artifacts combining PBP + social + odds events |
 | `sports_game_pipeline_runs` | Pipeline execution tracking (per-game, per-run) |
 | `sports_game_pipeline_stages` | Individual stage execution within a pipeline run |

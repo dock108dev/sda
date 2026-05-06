@@ -48,6 +48,25 @@ BANNED_PHRASES: list[str] = [
     "commanding lead",
     "eager to set the tone",
     "feeling each other out",
+    # Phrases enumerated in the gameflow brief — generic recap filler that
+    # makes blocks feel interchangeable. Hits force REGENERATE so the model
+    # is pushed toward specific game facts instead of safe summary language.
+    "set the stage",
+    "remained tight",
+    "kept pace",
+    "solidified position",
+    "high leverage",
+    "decisive final quarter",
+    "decisive victory",
+    "contributions from",
+    "kept them within striking distance",
+    "kept the contest evenly matched",
+    "cementing the blowout",
+    "highlighted the competitive nature",
+    "competitive nature",
+    "proved pivotal",
+    "kept the outcome uncertain",
+    "maintaining the game's high leverage",
 ]
 
 # Speculation language — claims about internal states, intent, or coaching

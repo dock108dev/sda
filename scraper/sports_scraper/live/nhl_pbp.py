@@ -212,6 +212,27 @@ class NHLPbpFetcher:
             )
         plays = deduped
 
+        # Forward-fill running scores. The NHL API only emits homeScore/awayScore
+        # on goal events; every other play (faceoff, shot, hit, ...) carries
+        # NULLs. Downstream consumers — especially the gameflow pipeline's
+        # score_detection — read scores per-play and treat None as 0, which
+        # makes every non-goal play right after a goal look like a phantom
+        # score reversal (1-0 → 0-0 → 1-0 → 0-0 ...). Carry the last-known
+        # score forward so non-goal plays reflect the running game state,
+        # matching the shape NBA/MLB feeds emit natively.
+        last_home, last_away = 0, 0
+        for play in plays:
+            if play.home_score is None and play.away_score is None:
+                play.home_score = last_home
+                play.away_score = last_away
+            else:
+                last_home = play.home_score if play.home_score is not None else last_home
+                last_away = play.away_score if play.away_score is not None else last_away
+                if play.home_score is None:
+                    play.home_score = last_home
+                if play.away_score is None:
+                    play.away_score = last_away
+
         return plays
 
     def _normalize_play(

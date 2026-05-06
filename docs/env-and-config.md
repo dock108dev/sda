@@ -23,7 +23,7 @@ Authoritative field list and defaults: read `Settings` in `api/app/config.py` (e
 
 | Concern | Env / mechanism | Notes |
 |---------|-----------------|-------|
-| Trust forwarded origin | `TRUST_FORWARDED_ORIGIN` | See [Security trust boundaries](security-trust-boundaries.md). |
+| Trust forwarded origin | `TRUST_FORWARDED_ORIGIN` | When `true`, `_is_admin_origin` honors `X-Forwarded-Origin`; only enable behind a trusted proxy that strips this header from untrusted clients (`api/app/dependencies/roles.py`). |
 | Rate limits across replicas | `RATE_LIMIT_USE_REDIS` | Falls back to in-process limits if Redis errors; see [Known limitations](known-limitations.md). |
 | OpenTelemetry | `OTEL_EXPORTER_OTLP_ENDPOINT` | No-op when unset (`api/app/otel.py`). Prometheus metrics at `GET /metrics` are separate (`prometheus_client`). |
 | Email | `EMAIL_BACKEND`, Resend/SMTP vars | Documented on `Settings`; emails log-only when not configured. |

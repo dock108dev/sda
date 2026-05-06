@@ -180,11 +180,11 @@ async def get_game_flow(
                 embeddedSocialPostId=block.get("embedded_social_post_id"),
                 startClock=block.get("start_clock"),
                 endClock=block.get("end_clock"),
-                reason=block.get("reason"),
-                label=block.get("label"),
-                leadBefore=block.get("lead_before"),
-                leadAfter=block.get("lead_after"),
-                evidence=block.get("evidence"),
+                storyRole=block.get("story_role"),
+                leverage=block.get("leverage"),
+                periodRange=block.get("period_range"),
+                featuredPlayers=block.get("featured_players"),
+                scoreContext=block.get("score_context"),
             )
         )
     total_words = sum(len((b.narrative or "").split()) for b in response_blocks)

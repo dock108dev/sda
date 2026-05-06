@@ -4,10 +4,10 @@ Generates narrative text for each block via two OpenAI calls — an
 archetype-aware, evidence-grounded per-block render, then a game-level flow
 pass that smooths transitions while preserving facts.
 
-Per BRAINDUMP §Narrative generation rules: 1-2 sentences and 25-55 words per
-block. Banned-phrase and speculation lists are injected into both prompts;
-structured per-segment evidence (from the evidence_selection helper) replaces
-the old undifferentiated play list.
+Narrative budget: 1-2 sentences and 25-55 words per block. Banned-phrase and
+speculation lists are injected into both prompts; structured per-segment
+evidence (from the evidence_selection helper) replaces the old undifferentiated
+play list.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from ..helpers.evidence_selection import SegmentEvidence, select_evidence
 from ..helpers.flow_debug_logger import get_logger as get_flow_debug_logger
 from ..helpers.score_timeline import build_score_timeline
 from ..models import StageInput, StageOutput
+from .featured_players_v3 import annotate_blocks_with_featured_players
 from .regen_context import RegenFailureContext
 from .render_helpers import (
     check_overtime_mention,
@@ -122,7 +123,6 @@ async def _apply_game_level_flow_pass(
     # original per-block narratives rather than failing the whole pipeline.
     # We emit ``exc_info=True`` here because ``output.add_log`` only captures
     # the exception's str(); the traceback would otherwise be lost.
-    # See docs/audits/error-handling-report.md §F-2.
     except Exception as e:
         output.add_log(f"Flow pass failed, using originals: {e}", level="warning")
         logger.warning(
@@ -227,6 +227,13 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     # scoring runs, featured players, and leverage from the timeline.
     evidence_by_block = _build_evidence_by_block(blocks, pbp_events, league_code)
 
+    # Pass 3: derive v3 featured_players from the segment evidence + the
+    # block's story_role (set in GROUP_BLOCKS by classify_blocks). Each
+    # entry carries a non-empty ``reason`` string so Rule 18 passes by
+    # construction. Skipped roles (opening, blowout_compression) leave
+    # the field None.
+    annotate_blocks_with_featured_players(blocks, evidence_by_block, league_code)
+
     # Build typed regen context from game_context when this is a regen run.
     # grade_gate_failures is threaded in by PipelineExecutor._get_game_context()
     # when failure_reasons were passed to run_full_pipeline().
@@ -287,7 +294,7 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     # Fail fast for the primary block-render call. The executor's outer
     # ``except Exception`` (executor.py:execute_stage) records the failure
     # with ``exc_info=True`` and marks the stage failed, so we deliberately
-    # propagate rather than fall back. See docs/audits/error-handling-report.md §F-3.
+    # propagate rather than fall back.
     except Exception as e:
         raise ValueError(f"OpenAI call failed: {e}") from e
 

@@ -42,7 +42,7 @@ def _load_generic_phrases() -> tuple[list[str], float]:
     # refactor that breaks the .get/.values/.lower chain) is a programming
     # bug we want to surface, not silence. Logged at ERROR because falling
     # back to the 7-phrase compatibility list materially weakens the
-    # generic-phrase density gate. See docs/audits/error-handling-report.md §F-4.
+    # generic-phrase density gate.
     try:
         with open(_GENERIC_PHRASES_TOML, "rb") as f:
             data = tomllib.load(f)

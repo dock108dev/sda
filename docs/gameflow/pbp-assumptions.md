@@ -407,7 +407,10 @@ PBP data is **sufficient** to support Game Flow under documented assumptions.
 **No blocking issues** prevent implementation.
 
 **Normalization required:**
-- Score forward-fill for sources with sparse score data (NHL, Sports Reference)
+- Score forward-fill for sources with sparse score data (NHL, Sports
+  Reference). NHL ingestion now performs the forward-fill at write time —
+  see `scraper/sports_scraper/live/nhl_pbp.py` and Alembic migration
+  `20260505_000072_forward_fill_nhl_play_scores.py`.
 - `score_before` derivation from sequential play analysis
 
 **Assumptions documented:**

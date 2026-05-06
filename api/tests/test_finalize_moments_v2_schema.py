@@ -15,8 +15,6 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -133,59 +131,6 @@ def _run(session, stage_input):
 # ---------------------------------------------------------------------------
 # Pure helper unit tests
 # ---------------------------------------------------------------------------
-
-
-class TestSignedLead:
-    def test_basic(self):
-        from app.services.pipeline.stages.finalize_moments import _signed_lead
-
-        assert _signed_lead([10, 7]) == 3
-        assert _signed_lead([7, 10]) == -3
-        assert _signed_lead([5, 5]) == 0
-
-    def test_missing_returns_none(self):
-        from app.services.pipeline.stages.finalize_moments import _signed_lead
-
-        assert _signed_lead(None) is None
-        assert _signed_lead([]) is None
-        assert _signed_lead([5]) is None
-        assert _signed_lead(["x", "y"]) is None
-
-
-class TestEnsureV2BlockFields:
-    def test_backfills_defaults(self):
-        from app.services.pipeline.stages.finalize_moments import _ensure_v2_block_fields
-
-        blocks = [{"score_before": [0, 0], "score_after": [10, 7]}]
-        result = _ensure_v2_block_fields(blocks)
-        b = result[0]
-        assert b["reason"] == ""
-        assert b["evidence"] == []
-        assert b["label"] is None
-        assert b["lead_before"] == 0
-        assert b["lead_after"] == 3
-
-    def test_preserves_existing_values(self):
-        from app.services.pipeline.stages.finalize_moments import _ensure_v2_block_fields
-
-        blocks = [
-            {
-                "score_before": [0, 0],
-                "score_after": [10, 7],
-                "reason": "First lead",
-                "label": "Opening break",
-                "lead_before": -1,
-                "lead_after": 5,
-                "evidence": [{"play_index": 1}],
-            }
-        ]
-        result = _ensure_v2_block_fields(blocks)
-        b = result[0]
-        assert b["reason"] == "First lead"
-        assert b["label"] == "Opening break"
-        assert b["lead_before"] == -1
-        assert b["lead_after"] == 5
-        assert b["evidence"] == [{"play_index": 1}]
 
 
 class TestResolveWinnerTeamId:
@@ -365,85 +310,9 @@ class TestFinalizeMomentsWritesV2Fields:
         # flow_source set by the existing fallback codepath should also flip
         assert captured["flow"].flow_source == "TEMPLATE"
 
-    def test_per_block_v2_fields_backfilled(self):
-        """Blocks without upstream v2 fields get safe defaults written through."""
-        blocks = _make_blocks(110, 98)
-        for b in blocks:
-            for f in ("reason", "label", "lead_before", "lead_after", "evidence"):
-                assert f not in b
-        game = _make_game(110, 98)
-        session = _session_returning(game, None)
 
-        captured: dict = {}
-        session.add = MagicMock(side_effect=lambda o: captured.setdefault("flow", o))
-
-        with patch(
-            "app.services.pipeline.stages.finalize_moments.validate_embedded_tweet_ids",
-            new=AsyncMock(return_value=blocks),
-        ):
-            _run(session, _stage_input(blocks))
-
-        persisted_blocks = captured["flow"].blocks_json
-        for b in persisted_blocks:
-            assert b["reason"] == ""
-            assert b["evidence"] == []
-            assert b["label"] is None
-            assert b["lead_before"] is not None  # derived from score_before
-            assert b["lead_after"] is not None
-
-    def test_per_block_v2_fields_preserved(self):
-        """Upstream-supplied per-block v2 values pass through untouched."""
-        blocks = _make_blocks(110, 98)
-        blocks[0]["reason"] = "Pittsburgh built the first meaningful lead"
-        blocks[0]["label"] = "Opening break"
-        blocks[0]["lead_before"] = 0
-        blocks[0]["lead_after"] = 7
-        blocks[0]["evidence"] = [{"play_index": 1, "team": "LAL"}]
-        game = _make_game(110, 98)
-        session = _session_returning(game, None)
-
-        captured: dict = {}
-        session.add = MagicMock(side_effect=lambda o: captured.setdefault("flow", o))
-
-        with patch(
-            "app.services.pipeline.stages.finalize_moments.validate_embedded_tweet_ids",
-            new=AsyncMock(return_value=blocks),
-        ):
-            _run(session, _stage_input(blocks))
-
-        persisted = captured["flow"].blocks_json[0]
-        assert persisted["reason"] == "Pittsburgh built the first meaningful lead"
-        assert persisted["label"] == "Opening break"
-        assert persisted["lead_before"] == 0
-        assert persisted["lead_after"] == 7
-        assert persisted["evidence"] == [{"play_index": 1, "team": "LAL"}]
-
-
-# ---------------------------------------------------------------------------
-# TemplateEngine fallback emits v2 placeholders
-# ---------------------------------------------------------------------------
-
-
-class TestTemplateEngineV2Fallback:
-    @pytest.mark.parametrize("sport", ["NBA", "MLB", "NHL", "NFL"])
-    def test_each_sport_emits_v2_placeholders(self, sport):
-        from app.services.pipeline.stages.templates import GameMiniBox, TemplateEngine
-
-        mb = GameMiniBox(
-            home_team="Home",
-            away_team="Away",
-            home_score=4,
-            away_score=2,
-            sport=sport,
-            has_overtime=False,
-            total_moments=12,
-        )
-        blocks = TemplateEngine.render(sport, mb)
-        assert len(blocks) == 4
-        labels = [b["label"] for b in blocks]
-        assert labels == ["Opening break", "Response", "Separation", "Final bookkeeping"]
-        for b in blocks:
-            assert b["reason"] == ""
-            assert b["lead_before"] is None
-            assert b["lead_after"] is None
-            assert b["evidence"] is None
+# Per-block v2 backfill (`reason`, `label`, `lead_before`, `lead_after`,
+# `evidence`) was deleted in the SSOT cleanup. Tests for it are gone with
+# it; the v3 contract's story_role / featured_players / score_context
+# are exercised by test_segment_classification.py and
+# test_featured_players_v3.py.

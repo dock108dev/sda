@@ -62,7 +62,7 @@ class OpenAIClient:
             Exception: If generation fails after all retries
         """
         last_error = None
-        # Cap retry fan-out on malformed responses / flakes (audit F-012).
+        # Cap retry fan-out on malformed responses / flakes.
         attempts = max(1, min(max_retries, 5))
 
         for attempt in range(attempts):

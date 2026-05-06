@@ -86,49 +86,10 @@ def _extract_flow_score(blocks: list) -> tuple[int | None, int | None]:
 FLOW_VERSION = "v2-blocks"
 BLOCKS_VERSION = "v1-blocks"
 
-# Top-level schema version literal recorded on the row for v2 readers
-# (BRAINDUMP §Output schema). Distinct from FLOW_VERSION which is part of
-# the upsert key and remains "v2-blocks" for table identity.
+# Top-level schema version literal recorded on the row. Distinct from
+# FLOW_VERSION which is part of the upsert key and remains "v2-blocks"
+# for table identity.
 SCHEMA_VERSION_V2 = "game-flow-v2"
-
-def _signed_lead(score: list | tuple | None) -> int | None:
-    """Return signed lead (home - away) from a [home, away] pair, or None.
-
-    The narrow ``(TypeError, ValueError)`` catch isolates the documented
-    contract: non-numeric or malformed score entries map to ``None`` so
-    callers can choose to omit the field rather than aborting persistence.
-    See docs/audits/error-handling-report.md §F-5.
-    """
-    if not score or len(score) < 2:
-        return None
-    try:
-        return int(score[0]) - int(score[1])
-    except (TypeError, ValueError):
-        return None
-
-
-def _ensure_v2_block_fields(blocks: list[dict]) -> list[dict]:
-    """Mutate-and-return: guarantee each block carries v2 fields with safe defaults.
-
-    Upstream stages may set ``reason``, ``evidence``, ``label`` directly when
-    they have signal; we never overwrite those. ``lead_before`` and
-    ``lead_after`` are derived from the block's existing ``score_before`` /
-    ``score_after`` whenever absent so consumers get a populated lead even on
-    older render paths.
-    """
-    for block in blocks:
-        if "reason" not in block:
-            block["reason"] = ""
-        if "evidence" not in block:
-            block["evidence"] = []
-        if "label" not in block:
-            block["label"] = None
-        if "lead_before" not in block:
-            block["lead_before"] = _signed_lead(block.get("score_before"))
-        if "lead_after" not in block:
-            block["lead_after"] = _signed_lead(block.get("score_after"))
-    return blocks
-
 
 def _resolve_winner_team_id(
     game: SportsGame, flow_home: int | None, flow_away: int | None
@@ -178,7 +139,7 @@ def _compute_source_counts(
 def _build_validation_block(
     previous_output: dict, fallback_used: bool
 ) -> dict[str, Any]:
-    """Summarize pipeline validation state for the v2 schema.
+    """Summarize pipeline validation state for persistence.
 
     status:
       - "fallback" when the template fallback path produced the blocks
@@ -342,10 +303,6 @@ async def execute_finalize_moments(
     # Validate all embedded tweet references exist before writing.
     blocks = await validate_embedded_tweet_ids(session, blocks, game_id)
 
-    # v2 schema enrichment: backfill any per-block fields the upstream stages
-    # didn't supply, then compute top-level summary fields for the row.
-    blocks = _ensure_v2_block_fields(blocks)
-
     archetype = previous_output.get("archetype")
     winner_team_id = _resolve_winner_team_id(game, flow_home, flow_away)
     source_counts = _compute_source_counts(
@@ -355,7 +312,7 @@ async def execute_finalize_moments(
     validation_block = _build_validation_block(previous_output, fallback_used_pre)
 
     if existing_flow:
-        # Update existing flow; upgrade legacy story_version on overwrite.
+        # Update existing flow; story_version is rewritten on every overwrite.
         output.add_log(f"Updating existing flow (id={existing_flow.id})")
         existing_flow.story_version = FLOW_VERSION
         existing_flow.moments_json = moments
@@ -370,7 +327,6 @@ async def execute_finalize_moments(
         existing_flow.blocks_version = BLOCKS_VERSION
         existing_flow.blocks_validated_at = validation_time
 
-        # v2 schema fields
         existing_flow.version = SCHEMA_VERSION_V2
         existing_flow.archetype = archetype
         existing_flow.winner_team_id = winner_team_id
@@ -433,7 +389,7 @@ async def execute_finalize_moments(
     # Best-effort by design: the flow is already persisted; a NOTIFY failure
     # must NOT roll back the row. Narrowed to SQLAlchemy/IO errors so genuine
     # programming bugs (e.g. a TypeError from a future schema change) keep
-    # surfacing. See docs/audits/error-handling-report.md §F-6.
+    # surfacing.
     try:
         notify_payload = json.dumps(
             {"game_id": game_id, "event_type": "flow_published", "flow_id": flow_id}
@@ -466,7 +422,6 @@ async def execute_finalize_moments(
     # leaves the DB inconsistent with the persisted record. Instead we log at
     # ERROR with all the fields needed for an ops sweep to discover and
     # re-grade flows whose grader_run never started.
-    # See docs/audits/error-handling-report.md §F-7.
     try:
         from ....celery_app import celery_app as _celery_app
 

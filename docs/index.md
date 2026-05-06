@@ -9,7 +9,6 @@
 | [Environment & configuration](env-and-config.md) | Where env vars live, API/scraper settings, validation rules |
 | [Architecture](architecture.md) | Components, data flow, stack overview |
 | [API reference](api.md) | HTTP endpoints, auth, rate limits, response conventions |
-| [Roadmap](roadmap.md) | Delivery phases and status |
 
 ## Operations
 
@@ -19,11 +18,10 @@
 | [Deployment](ops/deployment.md) | Server setup, routing, rollbacks |
 | [Scheduler & background jobs](scheduler-and-jobs.md) | Celery beat, queues, hold switch, manual vs automatic work |
 
-## Security & limits
+## Limits & known tradeoffs
 
 | Guide | Description |
 |-------|-------------|
-| [Security trust boundaries](security-trust-boundaries.md) | Admin origins, API key vs JWT, realtime, rate limiting |
 | [Known limitations](known-limitations.md) | Intentional tradeoffs (Redis fallback, Stripe 202 path, etc.) |
 
 ## Data & ingestion
@@ -57,18 +55,10 @@
 | [Analytics downstream](analytics-downstream.md) | Integration notes for consuming apps (`/api/analytics`) |
 | [Adding sports](adding-sports.md) | Enabling a new league |
 
-## Audits & history
+## History
 
 | Guide | Description |
 |-------|-------------|
-| [Abend-handling audit](audits/abend-handling.md) | Exception-handling and resilience review |
-| [SSOT cleanup](audits/ssot-cleanup.md) | Enum / single-source-of-truth consolidation |
-| [Security audit](audits/security-audit.md) | Auth, webhooks, headers, dependency surface |
-| [Code cleanup report](audits/cleanup-report.md) | Observability / hardening batch notes |
-| [Error-handling report](audits/error-handling-report.md) | Branch-scoped exception narrowing pass (`flow`) |
-| [Security report (flow)](audits/security-report.md) | Branch-scoped security hardening pass (`flow`) |
-| [SSOT report (flow)](audits/ssot-report.md) | Branch-scoped SSOT propagation pass (`flow`) |
-| [Docs consolidation](audits/docs-consolidation.md) | Documentation review pass record |
 | [Changelog](changelog.md) | Release-level changes |
 
 ---

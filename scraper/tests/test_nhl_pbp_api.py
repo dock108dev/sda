@@ -209,6 +209,60 @@ class TestNHLPlayNormalization:
         assert result is None
 
 
+class TestNHLPBPScoreForwardFill:
+    """The NHL API only emits homeScore/awayScore on goal events. We forward-fill
+    so non-goal plays carry the running game score, matching the shape NBA/MLB
+    feeds emit. Without this, downstream gameflow score detection sees phantom
+    score reversals on every play immediately following a goal."""
+
+    def _build_payload(self, plays_in_order):
+        return {
+            "gameState": "OFF",
+            "homeTeam": {"id": 25, "abbrev": "DAL"},
+            "awayTeam": {"id": 14, "abbrev": "TBL"},
+            "plays": plays_in_order,
+        }
+
+    def test_pre_goal_plays_default_to_zero(self):
+        client = NHLLiveFeedClient()
+        # Faceoff (sort=11) before any goal — should fill to (0, 0).
+        plays = client._pbp_fetcher._parse_pbp_response(
+            self._build_payload([SAMPLE_FACEOFF_PLAY]), game_id=1,
+        )
+        assert plays[0].home_score == 0
+        assert plays[0].away_score == 0
+
+    def test_non_goal_play_after_goal_carries_score_forward(self):
+        # Goal at sort=67 (home 1, away 0); penalty at sort=84 (no scores).
+        # Sorted by play_index, the penalty comes after the goal and must
+        # inherit (1, 0) — NOT collapse to (0, 0).
+        client = NHLLiveFeedClient()
+        plays = client._pbp_fetcher._parse_pbp_response(
+            self._build_payload([SAMPLE_GOAL_PLAY, SAMPLE_PENALTY_PLAY]), game_id=1,
+        )
+        # Confirm ordering: goal first, then penalty.
+        assert plays[0].play_type == "GOAL"
+        assert plays[0].home_score == 1
+        assert plays[0].away_score == 0
+        assert plays[1].play_type == "PENALTY"
+        assert plays[1].home_score == 1
+        assert plays[1].away_score == 0
+
+    def test_pre_first_goal_then_goal_then_post_goal_sequence(self):
+        # Faceoff (sort=11) → Goal (sort=67) → Penalty (sort=84).
+        client = NHLLiveFeedClient()
+        plays = client._pbp_fetcher._parse_pbp_response(
+            self._build_payload(
+                [SAMPLE_FACEOFF_PLAY, SAMPLE_GOAL_PLAY, SAMPLE_PENALTY_PLAY]
+            ),
+            game_id=1,
+        )
+        assert [p.play_type for p in plays] == ["FACEOFF", "GOAL", "PENALTY"]
+        assert (plays[0].home_score, plays[0].away_score) == (0, 0)
+        assert (plays[1].home_score, plays[1].away_score) == (1, 0)
+        assert (plays[2].home_score, plays[2].away_score) == (1, 0)
+
+
 class TestNHLPBPValidation:
     """Test validation and guardrails."""
 
