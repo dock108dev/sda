@@ -10,10 +10,14 @@ export {
   fetchGameFlow,
   type BlockMiniBox,
   type ConsumerGameFlowResponse,
+  type FeaturedPlayer,
   type FlowStatusResponse,
   type GameFlowPlay,
+  type Leverage,
   type NarrativeBlock,
+  type ScoreContext,
   type ScoreObject,
+  type StoryRole,
 } from "./games";
 export type {
   ActivePool,

@@ -31,6 +31,36 @@ export type BlockMiniBox = {
   blockStars: string[];
 };
 
+/** v3 schema: a player called out within a block; reason anchors the
+ * callout to a causal moment so the mention is evidence, not decoration. */
+export type FeaturedPlayer = {
+  name: string;
+  team?: string | null;
+  role?: string | null;
+  reason: string;
+  statSummary?: string | null;
+};
+
+/** v3 schema: derived score-state context for a narrative block. */
+export type ScoreContext = {
+  startScore?: ScoreObject | null;
+  endScore?: ScoreObject | null;
+  leadChange: boolean;
+  largestLeadDelta?: number | null;
+};
+
+/** v3 schema: the narrative beat a block represents. */
+export type StoryRole =
+  | "opening"
+  | "first_separation"
+  | "response"
+  | "lead_change"
+  | "turning_point"
+  | "closeout"
+  | "blowout_compression";
+
+export type Leverage = "low" | "medium" | "high";
+
 export type NarrativeBlock = {
   blockIndex: number;
   role: string;
@@ -51,6 +81,12 @@ export type NarrativeBlock = {
   leadBefore?: number | null;
   leadAfter?: number | null;
   evidence?: Record<string, unknown>[] | null;
+  // v3 schema fields. Optional so v2-shape responses keep typing.
+  storyRole?: StoryRole | null;
+  leverage?: Leverage | null;
+  periodRange?: string | null;
+  featuredPlayers?: FeaturedPlayer[] | null;
+  scoreContext?: ScoreContext | null;
 };
 
 /** Consumer game flow response — blocks are the contract; moments are pipeline-internal. */
