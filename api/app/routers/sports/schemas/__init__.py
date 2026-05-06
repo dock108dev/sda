@@ -25,6 +25,7 @@ from .diagnostics import GameConflictEntry, JobRunResponse, MissingPbpEntry
 from .game_flow import (
     BlockMiniBox,
     ConsumerGameFlowResponse,
+    FeaturedPlayer,
     FlowStatusResponse,
     GameFlowBlock,
     GameFlowContent,
@@ -35,6 +36,7 @@ from .game_flow import (
     MomentGoalieStat,
     MomentPlayerStat,
     MomentTeamBoxScore,
+    ScoreContext,
     ScoreObject,
     TimelineArtifactResponse,
 )
@@ -91,6 +93,7 @@ __all__ = [
     # game_flow
     "BlockMiniBox",
     "ConsumerGameFlowResponse",
+    "FeaturedPlayer",
     "FlowStatusResponse",
     "GameFlowBlock",
     "GameFlowContent",
@@ -101,6 +104,7 @@ __all__ = [
     "MomentGoalieStat",
     "MomentPlayerStat",
     "MomentTeamBoxScore",
+    "ScoreContext",
     "ScoreObject",
     "TimelineArtifactResponse",
     # games

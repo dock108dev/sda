@@ -97,6 +97,18 @@ class NarrativeBlock:
     start_clock: str | None = None  # Game clock at block start (from first moment)
     end_clock: str | None = None  # Game clock at block end (from last moment)
     label: str | None = None  # Narrative job (Opening break, Swing, Closeout, …)
+    # v3 schema fields per the gameflow brief. Distinct from `role` (the
+    # SemanticRole enum used by the existing structural validators):
+    # `story_role` is the narrative beat the segmenter chose, drawn from
+    # {opening, first_separation, response, lead_change, turning_point,
+    # closeout, blowout_compression}. `leverage` and `featured_players`
+    # carry the segment's evidence so player callouts can act as proof
+    # rather than decoration.
+    story_role: str | None = None
+    leverage: str | None = None  # "low" | "medium" | "high"
+    period_range: str | None = None  # e.g. "Q4 6:39–0:00", "Inning 8–9"
+    featured_players: list[dict[str, Any]] | None = None
+    score_context: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict."""
@@ -123,6 +135,16 @@ class NarrativeBlock:
             result["end_clock"] = self.end_clock
         if self.label is not None:
             result["label"] = self.label
+        if self.story_role is not None:
+            result["story_role"] = self.story_role
+        if self.leverage is not None:
+            result["leverage"] = self.leverage
+        if self.period_range is not None:
+            result["period_range"] = self.period_range
+        if self.featured_players is not None:
+            result["featured_players"] = self.featured_players
+        if self.score_context is not None:
+            result["score_context"] = self.score_context
         return result
 
     @classmethod
@@ -145,6 +167,11 @@ class NarrativeBlock:
             start_clock=data.get("start_clock"),
             end_clock=data.get("end_clock"),
             label=data.get("label"),
+            story_role=data.get("story_role"),
+            leverage=data.get("leverage"),
+            period_range=data.get("period_range"),
+            featured_players=data.get("featured_players"),
+            score_context=data.get("score_context"),
         )
 
     @property

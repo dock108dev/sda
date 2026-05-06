@@ -179,6 +179,13 @@ class GameFlowBlock(BaseModel):
     lead_before: int | None = Field(None, alias="leadBefore")
     lead_after: int | None = Field(None, alias="leadAfter")
     evidence: list[dict[str, Any]] | None = None
+    # v3 schema fields — segmentation/voice contract per the gameflow brief.
+    # Optional so v2 rows continue to serialize; populated by the v3 generator.
+    story_role: str | None = Field(None, alias="storyRole")
+    leverage: str | None = None  # "low" | "medium" | "high"
+    period_range: str | None = Field(None, alias="periodRange")
+    featured_players: list[FeaturedPlayer] | None = Field(None, alias="featuredPlayers")
+    score_context: ScoreContext | None = Field(None, alias="scoreContext")
 
 
 class GameFlowResponse(BaseModel):

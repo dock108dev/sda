@@ -311,6 +311,11 @@ async def get_game_flow(
                     leadBefore=block.get("lead_before"),
                     leadAfter=block.get("lead_after"),
                     evidence=block.get("evidence"),
+                    storyRole=block.get("story_role"),
+                    leverage=block.get("leverage"),
+                    periodRange=block.get("period_range"),
+                    featuredPlayers=block.get("featured_players"),
+                    scoreContext=block.get("score_context"),
                 )
             )
         # Calculate total words from accepted block narratives

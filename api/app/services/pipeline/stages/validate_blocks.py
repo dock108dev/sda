@@ -51,6 +51,11 @@ from .validate_blocks_text import (
     check_team_present,
     count_sentences,
 )
+from .validate_blocks_voice import (
+    validate_featured_players_have_reason,
+    validate_no_repeated_final_score,
+    validate_story_role_present,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +82,9 @@ _validate_blowout_late_leverage = validate_blowout_late_leverage
 _validate_low_event_drama = validate_low_event_drama
 _validate_reason_present = validate_reason_present
 _validate_evidence_present = validate_evidence_present
+_validate_no_repeated_final_score = validate_no_repeated_final_score
+_validate_featured_players_have_reason = validate_featured_players_have_reason
+_validate_story_role_present = validate_story_role_present
 
 
 async def _attach_embedded_tweets(
@@ -342,6 +350,37 @@ async def execute_validate_blocks(
         )
     else:
         output.add_log("Rule 16 PASSED")
+
+    output.add_log("Checking Rule 17: Final-score repetition across blocks")
+    errors, warnings = validate_no_repeated_final_score(
+        blocks, home_score, away_score
+    )
+    all_errors.extend(errors)
+    all_warnings.extend(warnings)
+    if errors:
+        output.add_log(f"Rule 17 FAILED: {errors}", level="error")
+    else:
+        output.add_log("Rule 17 PASSED")
+
+    output.add_log("Checking Rule 18: Featured-player reason required")
+    errors, warnings = validate_featured_players_have_reason(blocks)
+    all_errors.extend(errors)
+    all_warnings.extend(warnings)
+    if errors:
+        output.add_log(f"Rule 18 FAILED: {errors}", level="error")
+    else:
+        output.add_log("Rule 18 PASSED")
+
+    _, story_role_warnings = validate_story_role_present(blocks)
+    all_warnings.extend(story_role_warnings)
+    if story_role_warnings:
+        output.add_log(
+            f"Rule 19 WARNING: {len(story_role_warnings)} block(s) missing or "
+            f"invalid story_role (v3 contract)",
+            level="warning",
+        )
+    else:
+        output.add_log("Rule 19 PASSED")
 
     total_words = sum(len(b.get("narrative", "").split()) for b in blocks)
 
