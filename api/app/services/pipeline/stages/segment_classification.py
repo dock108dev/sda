@@ -10,8 +10,10 @@ Outputs per block:
     - ``leverage`` ∈ {low, medium, high}
     - ``period_range`` formatted for the sport (Q4 6:39–0:00 / Inning 8–9 /
       P1 14:36)
-    - ``score_context`` carrying start_score, end_score, lead_change flag
-      and largest_lead_delta inside the block
+    - ``score_context`` carrying lead_change flag and largest_lead_delta
+      inside the block. Block-level ``score_before`` / ``score_after``
+      remain the SSOT for segment endpoints; this layer carries only the
+      derived per-segment signals.
 
 A second pass merges adjacent low-leverage blocks in blowout games into a
 single ``blowout_compression`` block — addressing the brief's complaint

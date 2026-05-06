@@ -12,11 +12,9 @@ decoration" contract. They run after structural and language checks
   block lists ``featured_players``, every entry must carry a non-empty
   ``reason`` field. Player callouts must explain why the player matters
   to the segment, not decorate it.
-- Rule 19 — Story role present (WARNING; promoted to FAIL once the v3
-  segmenter ships): every block should declare which beat it represents
-  (opening, first_separation, response, lead_change, turning_point,
-  closeout, blowout_compression). Stays a warning during Pass 1 because
-  the upstream segmenter does not populate ``story_role`` yet.
+- Rule 19 — Story role present (FAIL): every block must declare which
+  beat it represents (opening, first_separation, response, lead_change,
+  turning_point, closeout, blowout_compression).
 """
 
 from __future__ import annotations

@@ -362,6 +362,12 @@ def _build_blocks(
         dh = sh - prev[0]
         da = sa - prev[1]
         p_start, p_end = periods[idx]
+        # Match segment_classification's fallback definition: largest lead
+        # delta is the change in margin from block start to block end, not
+        # the absolute end margin.
+        start_margin = abs(prev[0] - prev[1])
+        end_margin = abs(sh - sa)
+        largest_lead_delta = abs(end_margin - start_margin)
         blocks.append({
             "block_index": idx,
             "role": roles[idx],
@@ -381,7 +387,7 @@ def _build_blocks(
             "leverage": "low",
             "score_context": {
                 "lead_change": False,
-                "largest_lead_delta": abs(sh - sa),
+                "largest_lead_delta": largest_lead_delta,
             },
         })
         prev = [sh, sa]

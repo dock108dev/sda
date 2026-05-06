@@ -76,7 +76,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Cannot reverse — original NULLs were lossy. Best-effort: restore NULL
-    # on plays whose home_score and away_score match the running prior-play
-    # carry. Risky and rarely useful; leaving as a no-op.
-    pass
+    # Cannot reverse safely — original NULL score values were lossy and
+    # cannot be reconstructed from the forward-filled data alone. Fail fast
+    # so rollbacks do not give a false impression of reversibility.
+    raise NotImplementedError(
+        "Downgrade is not supported for migration 20260505_000072: "
+        "forward-filled NHL play scores overwrite original NULL values and "
+        "the prior state cannot be reconstructed safely."
+    )
