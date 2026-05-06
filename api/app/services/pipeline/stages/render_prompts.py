@@ -73,6 +73,126 @@ WORD_COUNT_RULE = "Each block: 25-55 words, 1-2 sentences."
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Story-role-specific guidance (v3 contract)
+# ---------------------------------------------------------------------------
+
+
+def _story_role_guidance(story_role: str | None, league_code: str) -> list[str]:
+    """Return prompt lines tailored to the block's narrative beat.
+
+    The brief calls for each block to have one clear reason to exist; the
+    story_role tag (set by Pass 2's classifier) tells the writer which beat
+    this block represents. Sport-specific examples sharpen the guidance —
+    a "first_separation" reads differently for MLB (HR / multi-run inning)
+    vs NBA (8-0 run / first double-digit lead).
+    """
+    if not story_role:
+        return []
+    code = (league_code or "NBA").upper()
+
+    lines: list[str] = [f"BEAT: {story_role}"]
+    if story_role == "opening":
+        lines.append(
+            "- Set the score state and tempo plainly. Do NOT call out the "
+            "first major run, lead change, or eventual outcome — those belong "
+            "to later blocks. 1 sentence is fine if there is little to say."
+        )
+    elif story_role == "first_separation":
+        if code == "MLB":
+            lines.append(
+                "- Name the player and event that opened the gap (HR, multi-run "
+                "inning). State the resulting score. Do not yet describe the "
+                "rout — only the moment the lead first became real."
+            )
+        elif code == "NHL":
+            lines.append(
+                "- Name the goal-scorer and assistants if available, the period "
+                "and clock window, and the resulting lead. Do not pre-narrate "
+                "the closing stretch."
+            )
+        else:
+            lines.append(
+                "- Name the player or run that created the first meaningful "
+                "lead and the resulting score. Avoid foreshadowing later beats."
+            )
+    elif story_role == "response":
+        lines.append(
+            "- The previous block established a beat; this block is the "
+            "trailing team's answer or a stabilizing stretch. Quantify the "
+            "response (run size, runs/goals scored, margin restored). Do not "
+            "frame it as 'kept pace' or 'kept it close' without a number."
+        )
+    elif story_role == "lead_change":
+        lines.append(
+            "- The lead flipped inside this block. Name the play, the player, "
+            "and the score the moment the lead changed. The lead change is "
+            "the entire reason this block exists — lead with it."
+        )
+    elif story_role == "turning_point":
+        lines.append(
+            "- This is the segment that decided the outcome. Name the run, "
+            "the player who powered it, and the resulting margin. Do not "
+            "soften with 'pivotal' or 'high-leverage' — show the swing."
+        )
+    elif story_role == "closeout":
+        if code == "MLB":
+            lines.append(
+                "- Final innings — describe what closed the game. If the lead "
+                "was already secure, say so plainly and report the final. "
+                "If the trailing team's last threat fizzled, name how. Do not "
+                "manufacture suspense; do not report stats that did not happen "
+                "in this block."
+            )
+        elif code == "NHL":
+            lines.append(
+                "- Final period or OT — describe the deciding goal and any "
+                "empty-net cosmetics. If an OT/SO decided it, name the "
+                "scorer and that the game went past regulation."
+            )
+        else:
+            lines.append(
+                "- Closing stretch — describe the possessions that decided "
+                "the game (final lead change, game-sealing shot, late stops). "
+                "If the result was already decided, say so plainly."
+            )
+    elif story_role == "blowout_compression":
+        lines.append(
+            "- The middle of a blowout. Compress: name the score arc only "
+            "(e.g. 'middle innings turned the lead into a rout' / 'San Antonio "
+            "extended the gap through the third'). Do NOT narrate "
+            "possession-by-possession. Do NOT pretend any of this stretch "
+            "was in doubt. 1 sentence is enough."
+        )
+    return lines
+
+
+def _format_featured_players_section(
+    featured: list[dict[str, Any]] | None,
+) -> list[str]:
+    """Render v3 ``featured_players`` as causal anchors for the prompt.
+
+    Lines look like:
+        Anchor: Aaron Judge (NYY) — opened the scoring with 1 run …
+    The model is told to honor these mentions when they fit the beat —
+    they are not optional decoration.
+    """
+    if not featured:
+        return []
+    out: list[str] = ["Anchors (must explain the beat, not decorate):"]
+    for fp in featured:
+        name = _sanitize_prompt_string(fp.get("name"), default="player")
+        team = fp.get("team")
+        team_label = f" ({team})" if team else ""
+        reason = _sanitize_prompt_string(fp.get("reason"), default="").strip()
+        if not reason:
+            continue
+        out.append(f"- {name}{team_label} — {reason}")
+    if len(out) == 1:
+        return []
+    return out
+
+
 def _archetype_guidance(archetype: str | None) -> list[str]:
     """Return prompt lines describing what the archetype demands of the narrative.
 
@@ -497,6 +617,14 @@ def _format_block_section(
         )
     elif ot_info["has_overtime"] and not ot_info["enters_overtime"]:
         section.append(f"(In {ot_info['ot_label']})")
+
+    # v3: per-block beat guidance + causal player anchors. Both come from
+    # GROUP_BLOCKS' classifier (story_role) and RENDER_BLOCKS' featured-
+    # player derivation step, respectively. Either may be absent on
+    # legacy blocks; in that case the model falls back to archetype +
+    # evidence guidance only.
+    section.extend(_story_role_guidance(block.get("story_role"), league_code))
+    section.extend(_format_featured_players_section(block.get("featured_players")))
 
     section.extend(_format_evidence_block(evidence, league_code, home_team, away_team))
 

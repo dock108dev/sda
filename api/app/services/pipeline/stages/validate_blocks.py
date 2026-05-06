@@ -371,14 +371,12 @@ async def execute_validate_blocks(
     else:
         output.add_log("Rule 18 PASSED")
 
-    _, story_role_warnings = validate_story_role_present(blocks)
-    all_warnings.extend(story_role_warnings)
-    if story_role_warnings:
-        output.add_log(
-            f"Rule 19 WARNING: {len(story_role_warnings)} block(s) missing or "
-            f"invalid story_role (v3 contract)",
-            level="warning",
-        )
+    output.add_log("Checking Rule 19: story_role present on every block")
+    errors, warnings = validate_story_role_present(blocks)
+    all_errors.extend(errors)
+    all_warnings.extend(warnings)
+    if errors:
+        output.add_log(f"Rule 19 FAILED: {errors}", level="error")
     else:
         output.add_log("Rule 19 PASSED")
 

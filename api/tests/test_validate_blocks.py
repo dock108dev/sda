@@ -547,6 +547,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [2],
                 "narrative": "The Lakers started strong with a quick 10-8 lead in the opening minutes.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "opening",
             },
             {
                 "block_index": 1,
@@ -558,6 +559,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [5],
                 "narrative": "The Celtics responded with a scoring run to take the lead midway through.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "lead_change",
             },
             {
                 "block_index": 2,
@@ -569,6 +571,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [8],
                 "narrative": "The Lakers came back with a strong third quarter performance and retook control.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "response",
             },
             {
                 "block_index": 3,
@@ -580,6 +583,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [11],
                 "narrative": "The game concluded with the Lakers holding on for a close 30-28 victory.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "closeout",
             },
         ]
 
@@ -662,6 +666,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [],  # Missing key plays - warning
                 "narrative": "Short.",  # Too short - warning
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "opening",
             },
             {
                 "block_index": 1,
@@ -673,6 +678,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [2],
                 "narrative": "The Celtics made a strong comeback push to take the lead.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "lead_change",
             },
             {
                 "block_index": 2,
@@ -684,6 +690,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [3],
                 "narrative": "Lakers fought back with determination and skill throughout.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "response",
             },
             {
                 "block_index": 3,
@@ -695,6 +702,7 @@ class TestExecuteValidateBlocks:
                 "key_play_ids": [4],
                 "narrative": "The final quarter saw Lakers close out the game successfully.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "closeout",
             },
         ]
 
@@ -1164,6 +1172,7 @@ class TestCoverageDecision:
                 "key_play_ids": [1],
                 "narrative": "The Lakers opened strong, setting the tone early.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "opening",
             },
             {
                 "block_index": 1,
@@ -1175,6 +1184,7 @@ class TestCoverageDecision:
                 "key_play_ids": [2],
                 "narrative": "The Celtics answered with a run to draw close.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "lead_change",
             },
             {
                 "block_index": 2,
@@ -1186,6 +1196,7 @@ class TestCoverageDecision:
                 "key_play_ids": [3],
                 "narrative": "Lakers pushed back and extended their advantage.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "response",
             },
             {
                 "block_index": 3,
@@ -1197,6 +1208,7 @@ class TestCoverageDecision:
                 "key_play_ids": [4],
                 "narrative": "The Lakers sealed it 107-98 to claim the victory.",
                 "mini_box": _VALID_MINI_BOX,
+                "story_role": "closeout",
             },
         ]
 
@@ -2834,9 +2846,10 @@ class TestValidateFeaturedPlayersHaveReason:
 
 
 class TestValidateStoryRolePresent:
-    """Rule 19 — story_role required (warning during Pass 1)."""
+    """Rule 19 — story_role required. Promoted to ERROR in Pass 3 now that
+    the GROUP_BLOCKS classifier populates the field on every block."""
 
-    def test_missing_story_role_warns(self) -> None:
+    def test_missing_story_role_fails(self) -> None:
         from app.services.pipeline.stages.validate_blocks_voice import (
             validate_story_role_present,
         )
@@ -2844,11 +2857,10 @@ class TestValidateStoryRolePresent:
         errors, warnings = validate_story_role_present(
             [{"block_index": 0}, {"block_index": 1}]
         )
-        # Warnings only during Pass 1 — promoted to errors in Pass 3.
-        assert errors == []
-        assert len(warnings) == 2
+        assert len(errors) == 2
+        assert warnings == []
 
-    def test_invalid_story_role_warns(self) -> None:
+    def test_invalid_story_role_fails(self) -> None:
         from app.services.pipeline.stages.validate_blocks_voice import (
             validate_story_role_present,
         )
@@ -2856,9 +2868,9 @@ class TestValidateStoryRolePresent:
         errors, warnings = validate_story_role_present(
             [{"block_index": 0, "story_role": "tense_intro"}]
         )
-        assert errors == []
-        assert len(warnings) == 1
-        assert "tense_intro" in warnings[0]
+        assert len(errors) == 1
+        assert warnings == []
+        assert "tense_intro" in errors[0]
 
     def test_valid_story_role_passes(self) -> None:
         from app.services.pipeline.stages.validate_blocks_voice import (

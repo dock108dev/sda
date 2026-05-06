@@ -22,6 +22,7 @@ from ..helpers.evidence_selection import SegmentEvidence, select_evidence
 from ..helpers.flow_debug_logger import get_logger as get_flow_debug_logger
 from ..helpers.score_timeline import build_score_timeline
 from ..models import StageInput, StageOutput
+from .featured_players_v3 import annotate_blocks_with_featured_players
 from .regen_context import RegenFailureContext
 from .render_helpers import (
     check_overtime_mention,
@@ -226,6 +227,13 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     # list. The evidence helper aggregates scoring plays, lead changes,
     # scoring runs, featured players, and leverage from the timeline.
     evidence_by_block = _build_evidence_by_block(blocks, pbp_events, league_code)
+
+    # Pass 3: derive v3 featured_players from the segment evidence + the
+    # block's story_role (set in GROUP_BLOCKS by classify_blocks). Each
+    # entry carries a non-empty ``reason`` string so Rule 18 passes by
+    # construction. Skipped roles (opening, blowout_compression) leave
+    # the field None.
+    annotate_blocks_with_featured_players(blocks, evidence_by_block, league_code)
 
     # Build typed regen context from game_context when this is a regen run.
     # grade_gate_failures is threaded in by PipelineExecutor._get_game_context()

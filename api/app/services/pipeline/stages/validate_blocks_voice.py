@@ -147,11 +147,13 @@ def validate_featured_players_have_reason(
 def validate_story_role_present(
     blocks: list[dict[str, Any]],
 ) -> tuple[list[str], list[str]]:
-    """Every block should declare a ``story_role`` from VALID_STORY_ROLES.
+    """Every block must declare a ``story_role`` from VALID_STORY_ROLES.
 
-    Returns warnings only during Pass 1 — the v3 segmenter does not exist
-    yet, so failing here would block every regen attempt. Pass 3 promotes
-    these to errors.
+    Promoted to ERROR in Pass 3: the GROUP_BLOCKS classifier now populates
+    ``story_role`` on every block, so absence is a real bug rather than a
+    historical-data gap. Failing here triggers REGENERATE which re-runs
+    the classifier — if the second attempt still has missing roles, the
+    pipeline falls back to the template engine.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -160,12 +162,12 @@ def validate_story_role_present(
         block_idx = block.get("block_index", "?")
         story_role = block.get("story_role")
         if story_role is None:
-            warnings.append(
+            errors.append(
                 f"Block {block_idx}: missing story_role (v3 contract)."
             )
             continue
         if story_role not in VALID_STORY_ROLES:
-            warnings.append(
+            errors.append(
                 f"Block {block_idx}: story_role={story_role!r} is not in "
                 f"{sorted(VALID_STORY_ROLES)}."
             )
