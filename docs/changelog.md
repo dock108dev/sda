@@ -2,7 +2,75 @@
 
 All notable changes to Sports Data Admin.
 
-## [2026-04-25] - Current
+## [2026-05-05] - Current
+
+### Game flow v3 contract (`moreflow` branch)
+
+A focused rebuild of the game-flow generator so blocks read as a real
+game story instead of a generic recap. The block schema, prompts, and
+voice validators were all updated together as a single contract change.
+
+**Contract additions** (`api/app/routers/sports/schemas/game_flow.py`):
+- Per-block `storyRole` (one of `opening`, `first_separation`, `response`,
+  `lead_change`, `turning_point`, `closeout`, `blowout_compression`).
+- Per-block `leverage` (`low` / `medium` / `high`), `periodRange`
+  (sport-aware label such as `"Q4 6:39–0:00"`, `"Inning 8–9"`),
+  `scoreContext` (`leadChange`, `largestLeadDelta`), and
+  `featuredPlayers` (up to 2 player anchors with structured `reason`).
+- Top-level `version`, `archetype`, `winnerTeamId`, `sourceCounts`, and
+  `validation` on `GameFlowResponse` / `ConsumerGameFlowResponse`.
+
+**Pipeline additions:**
+- `stages/segment_classification.py` — assigns `storyRole`, `leverage`,
+  `periodRange`, `scoreContext`; merges adjacent low-leverage middle
+  blocks of a blowout into a single `blowout_compression` block.
+- `stages/featured_players_v3.py` — derives the structured
+  `featuredPlayers` evidence list from segment evidence.
+- `stages/validate_blocks_voice.py` — Rule 17 (no repeated final score),
+  Rule 18 (every featured player has a non-empty reason), Rule 19
+  (`storyRole` required, FAIL).
+- Render prompts now inject per-block beat guidance (story-role) and the
+  featured-player anchor list. The renderer leans on these as proof
+  rather than decoration.
+
+**Removals (destructive SSOT pass):**
+- v2 block fields: `reason`, `label`, `leadBefore`, `leadAfter`,
+  `evidence` (replaced by `storyRole` + `featuredPlayers[*].reason`).
+- `ScoreContext.startScore` / `endScore` (duplicated block-level
+  `scoreBefore` / `scoreAfter`; SSOT violation).
+- Validators: Rule 12 (lead consistency), Rule 15 (reason present),
+  Rule 16 (evidence present). Their invariants are now enforced by
+  Rules 4 / 18 / featured-player evidence respectively.
+- Helpers: `compute_block_label`, `_signed_lead`,
+  `_ensure_v2_block_fields`.
+
+### NHL gameflow wiring (`moreflow` branch)
+
+- `scraper/sports_scraper/live/nhl_pbp.py` now forward-fills scores
+  through non-goal plays at write time (NHL API only emits scores on
+  goals). Backfill migration:
+  `20260505_000072_forward_fill_nhl_play_scores.py`.
+- NHL game flow generation runs through the same pipeline as NBA/MLB/NCAAB.
+
+### `localGameDate` on games (`moreflow` branch)
+
+- `sports_games.local_game_date` (Date, ET): the calendar date the game
+  was officially scheduled for. A 9pm ET puck drop has `game_date` on
+  the next UTC day but `local_game_date` stays on the original ET date.
+  Surfaced as `localGameDate` on game responses.
+- Migration: `20260505_000071_add_local_game_date.py`.
+
+### Documentation consolidation
+
+- Audit reports (`docs/audits/*`), `docs/roadmap.md`,
+  `docs/security-trust-boundaries.md`, and the root `BRAINDUMP.md`
+  design doc were retired as obsolete. Their content has either
+  shipped or is captured in the relevant module-level docs.
+- `docs/gameflow/contract.md`, `docs/gameflow/pipeline.md`,
+  `docs/gameflow/guide.md`, `docs/gameflow/version-semantics.md`, and
+  `docs/api.md` updated to reflect the v3 contract.
+
+## [2026-04-25]
 
 ### Downstream-driven hardening (`scrolldown_changes` branch)
 

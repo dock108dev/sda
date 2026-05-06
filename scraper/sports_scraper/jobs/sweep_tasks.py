@@ -38,7 +38,7 @@ def run_daily_sweep() -> dict:
     not abort the others, since a missed sweep cycle is much more expensive
     than a partial one. ``logger.exception`` captures the full traceback
     and the failure is recorded in the per-phase ``results`` entry, so
-    nothing is silently swallowed. See error-handling-report.md §F-20.
+    nothing is silently swallowed.
     """
     from ..services.job_runs import track_job_run
 

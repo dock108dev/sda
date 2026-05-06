@@ -123,7 +123,6 @@ async def _apply_game_level_flow_pass(
     # original per-block narratives rather than failing the whole pipeline.
     # We emit ``exc_info=True`` here because ``output.add_log`` only captures
     # the exception's str(); the traceback would otherwise be lost.
-    # See docs/audits/error-handling-report.md §F-2.
     except Exception as e:
         output.add_log(f"Flow pass failed, using originals: {e}", level="warning")
         logger.warning(
@@ -295,7 +294,7 @@ async def execute_render_blocks(stage_input: StageInput) -> StageOutput:
     # Fail fast for the primary block-render call. The executor's outer
     # ``except Exception`` (executor.py:execute_stage) records the failure
     # with ``exc_info=True`` and marks the stage failed, so we deliberately
-    # propagate rather than fall back. See docs/audits/error-handling-report.md §F-3.
+    # propagate rather than fall back.
     except Exception as e:
         raise ValueError(f"OpenAI call failed: {e}") from e
 

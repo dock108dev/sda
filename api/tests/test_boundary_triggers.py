@@ -13,7 +13,7 @@ Boundary candidate priority (lower = stronger):
     5. OT/SO start (NHL only)
     9. Period boundary — kept only when within ±1 moment of one of the above.
 
-Sport-specific assertions per BRAINDUMP §Test cases:
+Sport-specific assertions:
 - NBA: halftime/end-third margins are surfaced when meaningful; blowout
   late stretches are compressed.
 - MLB: scoring innings drive boundaries; quiet innings merge; blowouts
@@ -187,7 +187,7 @@ class TestScoringRunTriggersBoundary:
         assert 3 in splits or 4 in splits
 
     def test_mlb_quiet_innings_merge_into_neighbor_blocks(self) -> None:
-        """Per BRAINDUMP MLB assertion: quiet innings are merged.
+        """MLB assertion: quiet innings are merged.
 
         A flow with a single multi-run inning surrounded by 0-0 innings should
         collapse the quiet innings into the neighbor blocks rather than splitting
@@ -270,7 +270,7 @@ class TestBlowoutCompressesLateBoundaries:
         assert 2 in splits
 
     def test_blowout_late_moments_compressed_into_one_block(self) -> None:
-        """Per BRAINDUMP NBA assertion: late blowout stretches do not get their
+        """NBA assertion: late blowout stretches do not get their
         own narrative beats — at most one boundary lands after the decisive
         moment.
         """

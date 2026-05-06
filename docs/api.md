@@ -401,12 +401,16 @@ This represents "game day" as fans understand it:
 
 ### Response Fields
 
-All datetime fields in responses are **UTC (ISO 8601)**.
+All datetime fields in responses are **UTC (ISO 8601)**. The one
+exception is `localGameDate`, a **calendar date in ET** that represents
+"the day this game was played" so consumers can group late-night games
+without reinventing timezone math.
 
 | Field | Format | Example |
 |-------|--------|---------|
 | `startDate` (request) | Eastern | `2026-01-22` |
 | `gameDate` (response) | UTC | `2026-01-23T03:00:00Z` |
+| `localGameDate` (response) | ET calendar date | `2026-01-22` |
 | `lastScrapedAt` (response) | UTC | `2026-01-23T05:30:00Z` |
 
 ---
@@ -740,6 +744,9 @@ Get the AI-generated game flow for a game.
 ```json
 {
   "gameId": 123,
+  "version": "game-flow-v2",
+  "archetype": "comeback",
+  "winnerTeamId": "LAL",
   "homeTeam": "Lakers",
   "awayTeam": "Suns",
   "homeTeamAbbr": "LAL",
@@ -754,17 +761,31 @@ Get the AI-generated game flow for a game.
       {
         "blockIndex": 0,
         "role": "SETUP",
+        "storyRole": "opening",
+        "leverage": "low",
+        "periodRange": "Q1 12:00–6:39",
         "momentIndices": [0, 1, 2],
-        "scoreBefore": [0, 0],
-        "scoreAfter": [15, 12],
+        "scoreBefore": {"home": 0, "away": 0},
+        "scoreAfter": {"home": 12, "away": 15},
+        "scoreContext": {"leadChange": false, "largestLeadDelta": 3},
+        "featuredPlayers": [
+          {"name": "Durant", "teamAbbr": "PHX", "reason": "two threes to open"}
+        ],
         "narrative": "The Suns jumped out early, with Durant draining two three-pointers in the opening minutes to set the tone."
       },
       {
         "blockIndex": 1,
         "role": "MOMENTUM_SHIFT",
+        "storyRole": "lead_change",
+        "leverage": "high",
+        "periodRange": "Q1 6:39–Q2 9:14",
         "momentIndices": [3, 4, 5],
-        "scoreBefore": [15, 12],
-        "scoreAfter": [28, 32],
+        "scoreBefore": {"home": 12, "away": 15},
+        "scoreAfter": {"home": 32, "away": 28},
+        "scoreContext": {"leadChange": true, "largestLeadDelta": 7},
+        "featuredPlayers": [
+          {"name": "Davis", "teamAbbr": "LAL", "reason": "alley-oop dunk to flip the lead"}
+        ],
         "narrative": "The Lakers responded with a 20-13 run spanning the late first and early second quarter, taking their first lead on a Davis alley-oop."
       }
     ],
@@ -775,8 +796,8 @@ Get the AI-generated game flow for a game.
         "period": 1,
         "startClock": "11:42",
         "endClock": "11:00",
-        "scoreBefore": [0, 0],
-        "scoreAfter": [3, 0]
+        "scoreBefore": {"home": 0, "away": 0},
+        "scoreAfter": {"home": 0, "away": 3}
       }
     ]
   },
@@ -798,28 +819,41 @@ Get the AI-generated game flow for a game.
 ```
 
 **Key Notes:**
-- **Blocks are the primary output** — Use `blocks` for consumer-facing game summaries (3-7 blocks, 60-90 second read time)
-- **Moments are for traceability** — Use `moments` to link narratives back to specific plays
-- Each block has a semantic `role`: SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, or RESOLUTION
-- `scoreBefore`/`scoreAfter` arrays are `[awayScore, homeScore]`
-- `playId` equals `playIndex` (sequential play number)
+- **Blocks are the primary output** — Use `blocks` for consumer-facing game summaries (3-7 blocks, 60-90 second read time).
+- **Moments are for traceability** — Use `moments` to link narratives back to specific plays.
+- Each block carries two role fields: structural `role` (SETUP / MOMENTUM_SHIFT / RESPONSE / DECISION_POINT / RESOLUTION) and narrative `storyRole` (opening, first_separation, response, lead_change, turning_point, closeout, blowout_compression).
+- `leverage` is `"low"` / `"medium"` / `"high"` — drama tier of the segment.
+- `scoreBefore` / `scoreAfter` are `{home, away}` objects; `scoreContext` carries the per-segment derived signals (`leadChange`, `largestLeadDelta`).
+- `featuredPlayers` is a list of up to 2 anchors with structured `reason` strings; `opening` and `blowout_compression` blocks omit it.
+- `playId` equals `playIndex` (sequential play number).
+- Top-level `version` (`"game-flow-v2"`), `archetype`, `winnerTeamId`, `sourceCounts`, and `validation` are forward-compat metadata. See [Game Flow Version Semantics](gameflow/version-semantics.md).
 - **Team colors are clash-resolved** — When home and away colors are too similar (Euclidean RGB distance < 0.12), the away team falls back to its secondary colors, then to neutral black/white. Home always keeps its primary colors. Light and dark modes are resolved independently. Consumers get ready-to-use colors with no client-side clash logic needed.
 
 **Response (404):** No game flow exists for this game.
 
 ### Game Flow Structure
 
-Game flows are AI-generated narrative summaries built from play-by-play data. Each game flow contains 3-7 **blocks** — short narratives (1-5 sentences each, ~65 words) designed for 60-90 second total read time.
+Game flows are AI-generated narrative summaries built from play-by-play
+data. Each game flow contains 3–7 **blocks** — short narratives (1–5
+sentences each, ~65 words) designed for 60–90 second total read time.
 
 **Blocks** are the consumer-facing output:
-- Each block has a semantic role (SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION)
-- First block is always SETUP, last block is always RESOLUTION
-- Total word count ≤ 600 words
+
+- Each block has a structural `role` (SETUP / MOMENTUM_SHIFT / RESPONSE
+  / DECISION_POINT / RESOLUTION) and a narrative `storyRole` (opening,
+  first_separation, response, lead_change, turning_point, closeout,
+  blowout_compression).
+- First block is always SETUP, last block is always RESOLUTION.
+- Total word count ≤ 600 words.
 
 **Moments** remain for internal traceability:
+
 - Link blocks back to specific plays
-- 15-25 moments per game (more granular than blocks)
+- 15–25 moments per game (more granular than blocks)
 - No consumer-facing narrative text
+
+For the full block schema, see the [Game Flow Contract](gameflow/contract.md)
+and [Game Flow Guide](gameflow/guide.md).
 
 ---
 

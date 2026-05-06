@@ -122,19 +122,33 @@ The pipeline produces **blocks** (consumer-facing narratives, 3-7 per game) and 
 
 **Implementation:** `stages/group_blocks.py`
 
-**Block Count Formula:**
-```python
-# Blowouts with minimal lead changes get 3 blocks
-if is_blowout and lead_changes <= 1: return 3
+**Block count rule:** archetype-driven, with a fallback formula for
+generic shapes. See `group_helpers.compute_block_count`.
 
+```python
+# Archetype shapes drive the floor first.
+if archetype in {"blowout", "early_avalanche_blowout", "low_event"}:
+    return MIN_BLOCKS  # 3
+
+# Otherwise, lead-change + play-count formula.
 base = 4
 if lead_changes >= 3: base += 1
 if lead_changes >= 6: base += 1
 if total_plays > 400: base += 1
-return min(base, 7)
+return min(base, MAX_BLOCKS)  # capped at 7
 ```
 
-**Semantic Roles:** SETUP → MOMENTUM_SHIFT → RESPONSE → DECISION_POINT → RESOLUTION (see [Game Flow Contract](contract.md) for definitions and constraints).
+**Structural roles** (`role`): SETUP → MOMENTUM_SHIFT → RESPONSE →
+DECISION_POINT → RESOLUTION. Assigned by `group_roles.assign_roles`.
+
+**Narrative beats** (`story_role`): assigned by
+`segment_classification.classify_blocks` after structural roles. Adjacent
+low-leverage middle blocks of a blowout are then merged via
+`merge_blowout_compression` so the consumer sees one
+`blowout_compression` block instead of three quiet ones.
+
+See [Game Flow Contract](contract.md) for the full role / story_role /
+leverage vocabulary.
 
 **Output Schema:**
 ```python
@@ -144,9 +158,13 @@ return min(base, 7)
         {
             "block_index": 0,
             "role": "SETUP",
+            "story_role": "opening",
+            "leverage": "low",
+            "period_range": "Q1 12:00–6:39",
             "moment_indices": [0, 1, 2],
             "score_before": [0, 0],
             "score_after": [15, 12],
+            "score_context": {"lead_change": false, "largest_lead_delta": 3},
             "key_play_ids": [5, 23, 41]
         },
         ...
@@ -163,27 +181,40 @@ return min(base, 7)
 **Input:** Grouped blocks + play data
 **Output:** Blocks with narrative text
 
-**Implementation:** `stages/render_blocks.py`
+**Implementation:** `stages/render_blocks.py`, with prompt construction in
+`stages/render_prompts.py` and featured-player derivation in
+`stages/featured_players_v3.py`.
 
 **OpenAI Usage:**
-- All blocks rendered in a single call
-- Input per block: semantic role, score progression, key play descriptions, lead/margin context, top contributors from mini box
-- Output: 1-5 sentences (~65 words) per block
+- One block-render call (all blocks in a single completion), then a
+  game-level flow pass that smooths transitions while preserving facts.
+- Input per block: structural role, `story_role`, `leverage`,
+  per-segment evidence, featured-player anchors, mini-box deltas, and
+  the score-progression line.
+- Output: 1-5 sentences (~65 words) per block.
 
 **Prompt Context:**
-- **Scores:** Score-before → score-after for each block
-- **Lead context:** Human-readable margin change (e.g., "Hawks extend the lead to 8", "tie the game") — derived from `compute_lead_context()`
-- **Contributors:** Block star players with delta stats (e.g., "Young +8 pts" for NBA, "Pastrnak +1g/+1a" for NHL) — derived from mini box data
-- **Key plays:** Up to 3 play descriptions per block
-- Lines are omitted when no scoring change occurs or no block stars exist
+- **Scores:** Score-before → score-after for each block.
+- **Story-role guidance:** Beat-specific instructions injected per block
+  (e.g., a `turning_point` block is told to describe the separation, a
+  `closeout` block is told to describe how the game ended).
+- **Featured players:** Up to 2 per block with structured `reason`
+  strings derived from the segment evidence; the prompt allows the
+  renderer to lean on these as proof rather than decoration.
+- **Per-segment evidence:** Structured key-play descriptions per block,
+  replacing the older undifferentiated play list.
+- **Mini-box contributors:** Top players with delta stats (`+8 pts`,
+  `+1g/+1a`) — narrative fuel, not direct quotes.
+- Lines are omitted when no scoring change occurs or no anchors exist.
 
 **Constraints:**
-- OpenAI only writes prose - it does not decide block structure
-- Each block narrative is role-aware
-- Lead and contributor lines are narrative fuel, not to be quoted verbatim
-- Forbidden phrases: "momentum", "turning point", "crucial", "clutch", etc.
-- Play injection recovery has been removed — key plays are context, not mandatory references
-- Narrative uses consequence-based importance: describe effects, not individual transactions
+- OpenAI only writes prose — it does not decide block structure or
+  story_role.
+- Each block narrative is role-aware *and* story_role-aware.
+- Forbidden phrases: see `render_validation.BANNED_PHRASES` (locked by
+  `tests/test_banned_phrases.py`).
+- Narrative uses consequence-based importance: describe effects, not
+  individual transactions.
 
 **Output Schema:**
 ```python
@@ -193,13 +224,18 @@ return min(base, 7)
         {
             "block_index": 0,
             "role": "SETUP",
+            "story_role": "opening",
+            "leverage": "low",
             "narrative": "The Warriors jumped out to an early lead...",
+            "featured_players": [
+                {"name": "Curry", "team_abbr": "GSW", "reason": "..."}
+            ],
             ...
         },
         ...
     ],
     "total_words": 210,
-    "openai_calls": 1
+    "openai_calls": 2
 }
 ```
 
@@ -210,9 +246,20 @@ return min(base, 7)
 **Input:** Rendered blocks
 **Output:** Validation status
 
-**Implementation:** `stages/validate_blocks.py`
+**Implementation:** `stages/validate_blocks.py` orchestrates rule
+modules:
 
-**Guardrail invariants and validation rules** are defined in [Game Flow Contract §6](contract.md). The pipeline enforces all invariants listed there.
+- `validate_blocks_rules.py` — structural / stylistic checks (block
+  count, role positions, score continuity, word counts, etc.)
+- `validate_blocks_segments.py` — archetype-aware language gates
+  (Rule 13 late-blowout leverage, Rule 14 low-event drama)
+- `validate_blocks_voice.py` — v3 voice contract (Rule 17 no repeated
+  final score, Rule 18 featured players have reason, Rule 19
+  story_role present)
+
+**Guardrail invariants and validation rules** are defined in
+[Game Flow Contract §6](contract.md). The pipeline enforces all
+invariants listed there.
 
 ### 9. FINALIZE_MOMENTS
 
@@ -224,10 +271,13 @@ return min(base, 7)
 **Implementation:** `stages/finalize_moments.py`
 
 **Storage:**
-- Table: `sports_game_stories`
-- Columns: `moments_json`, `blocks_json`
-- Version: `story_version = "v2-blocks"`, `blocks_version = "v1-blocks"`
-- Metadata: `moment_count`, `block_count`, `validated_at`
+- Table: `sports_game_stories` (ORM: `SportsGameFlow` in `api/app/db/flow.py`)
+- JSONB columns: `moments_json`, `blocks_json`
+- Versions: `story_version = "v2-blocks"`, `blocks_version = "v1-blocks"`,
+  `version = "game-flow-v2"` (top-level row stamp). See
+  [Version Semantics](version-semantics.md).
+- Metadata: `moment_count`, `block_count`, `archetype`, `winner_team_id`,
+  `source_counts`, `validation`, `validated_at`
 
 ## Pipeline Execution
 
@@ -252,7 +302,7 @@ return min(base, 7)
 |-------|---------|
 | `sports_game_pipeline_runs` | Pipeline execution records |
 | `sports_game_pipeline_stages` | Per-stage output and logs |
-| `sports_game_stories` | Persisted game flow artifacts |
+| `sports_game_stories` | Persisted game flow artifacts (ORM: `SportsGameFlow`) |
 
 ### Execution Modes
 
@@ -274,15 +324,25 @@ Returns:
 ```json
 {
     "gameId": 123,
+    "version": "game-flow-v2",
+    "archetype": "comeback",
+    "winnerTeamId": "LAL",
     "flow": {
         "moments": [...],
         "blocks": [
             {
                 "blockIndex": 0,
                 "role": "SETUP",
+                "storyRole": "opening",
+                "leverage": "low",
+                "periodRange": "Q1 12:00–6:39",
                 "momentIndices": [0, 1, 2],
-                "scoreBefore": [0, 0],
-                "scoreAfter": [15, 12],
+                "scoreBefore": {"home": 0, "away": 0},
+                "scoreAfter": {"home": 15, "away": 12},
+                "scoreContext": {"leadChange": false, "largestLeadDelta": 3},
+                "featuredPlayers": [
+                    {"name": "Curry", "teamAbbr": "GSW", "reason": "8 points on 4 of 5 to open"}
+                ],
                 "narrative": "The Warriors jumped out to an early lead..."
             }
         ]

@@ -1873,8 +1873,8 @@ class TestBannedPhrases:
         assert errors == []
         assert warnings == []
 
-    def test_braindump_phrases_present(self) -> None:
-        """Sanity: all 21 BRAINDUMP banned phrases are wired into the constant."""
+    def test_all_banned_phrases_present(self) -> None:
+        """Sanity: all 21 banned phrases are wired into the constant."""
         expected = {
             "came out strong",
             "set the tone",
@@ -1916,7 +1916,7 @@ class TestBannedPhrasesEndToEndDecision:
             "away": {"points": 28},
         }
 
-        # Structurally valid 4-block flow with one BRAINDUMP banned phrase.
+        # Structurally valid 4-block flow with one banned phrase.
         # Must contain SETUP and RESOLUTION roles to avoid unrelated rule failures.
         blocks = [
             {

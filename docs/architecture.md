@@ -142,18 +142,23 @@ NORMALIZE_PBP → GENERATE_MOMENTS → VALIDATE_MOMENTS → CLASSIFY_GAME_SHAPE 
 ### Core Concept: Narrative Block
 
 A narrative block contains:
-- `block_index`: Position (0-6)
-- `role`: Semantic role (SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION)
+- `block_index`: Position (0–6)
+- `role`: Structural role (SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION)
+- `story_role`: Narrative beat (opening, first_separation, response, lead_change, turning_point, closeout, blowout_compression)
+- `leverage`: `low` / `medium` / `high`
+- `period_range`: Sport-aware period label (`"Q4 6:39–0:00"`, `"Inning 8–9"`, `"P1"`)
 - `moment_indices`: Which moments are grouped
-- `narrative`: 1-5 sentences (~65 words)
-- Score and time context
+- `score_context`: `{lead_change, largest_lead_delta}` — derived per-segment signals
+- `featured_players`: Up to 2 player anchors with structured `reason`
+- `narrative`: 1–5 sentences (~65 words)
 
 ### Key Properties
 
-- **Consumer-focused:** 3-7 blocks, 60-90 second read time
+- **Consumer-focused:** 3–7 blocks, 60–90 second read time
 - **Traceability:** Blocks → Moments → Plays
-- **Semantic roles:** Each block has a narrative purpose
+- **Two role dimensions:** Structural `role` for layout and validators; `story_role` for narrative beat / voice rules
 - **Guardrails enforced:** Hard limits on block count, social post count, word count
+- **Voice rules enforced:** No repeated final score (Rule 17), featured players have reason (Rule 18), `story_role` required (Rule 19)
 - **Social-independent:** Game flow structure identical with/without social data
 
 See [Gameflow Contract](gameflow/contract.md) for the authoritative specification.

@@ -61,7 +61,6 @@ class PipelineStage(str, Enum):
         invariant violation in this module. The previous version swallowed it
         and returned ``None``, which would cause the executor to silently skip
         the new stage. We let it propagate so the bug is loud at first call.
-        See docs/audits/error-handling-report.md §F-1.
         """
         stages = self.ordered_stages()
         idx = stages.index(self)
@@ -73,7 +72,7 @@ class PipelineStage(str, Enum):
         """Return the previous stage in the pipeline, or None if this is the first.
 
         See ``next_stage`` for why ``ValueError`` from ``stages.index`` is not
-        suppressed. (See docs/audits/error-handling-report.md §F-1.)
+        suppressed.
         """
         stages = self.ordered_stages()
         idx = stages.index(self)

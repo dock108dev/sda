@@ -170,7 +170,7 @@ class FlowDebugLogger:
             # opt-in (FLOW_DEBUG_SAVE=true) and best-effort by design — a
             # filesystem failure must not break the pipeline. We catch only
             # OSError so a JSON-serialization bug (TypeError) or programming
-            # error still propagates. See docs/audits/error-handling-report.md §F-10.
+            # error still propagates.
             try:
                 save_dir = Path(os.environ.get(_FLOW_DEBUG_SAVE_DIR_ENV) or _DEFAULT_DEBUG_DIR)
                 save_dir.mkdir(parents=True, exist_ok=True)

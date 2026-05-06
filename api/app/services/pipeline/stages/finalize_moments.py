@@ -389,7 +389,7 @@ async def execute_finalize_moments(
     # Best-effort by design: the flow is already persisted; a NOTIFY failure
     # must NOT roll back the row. Narrowed to SQLAlchemy/IO errors so genuine
     # programming bugs (e.g. a TypeError from a future schema change) keep
-    # surfacing. See docs/audits/error-handling-report.md §F-6.
+    # surfacing.
     try:
         notify_payload = json.dumps(
             {"game_id": game_id, "event_type": "flow_published", "flow_id": flow_id}
@@ -422,7 +422,6 @@ async def execute_finalize_moments(
     # leaves the DB inconsistent with the persisted record. Instead we log at
     # ERROR with all the fields needed for an ops sweep to discover and
     # re-grade flows whose grader_run never started.
-    # See docs/audits/error-handling-report.md §F-7.
     try:
         from ....celery_app import celery_app as _celery_app
 

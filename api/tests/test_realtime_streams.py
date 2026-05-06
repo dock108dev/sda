@@ -180,7 +180,7 @@ class TestPublish:
         _run(run())
 
         call = mock_redis.xadd.call_args
-        # Time-based retention via MINID (not MAXLEN — see docs/archived/research/redis-pubsub-vs-streams)
+        # Time-based retention via MINID (not MAXLEN — keeps last N seconds, not N entries).
         assert call.kwargs.get("maxlen") is None
         assert call.kwargs.get("minid") is not None
         assert call.kwargs.get("approximate") is True

@@ -288,7 +288,6 @@ async def _run_bulk_generation_async(job_id: int) -> None:
                     # exc_info=True, and the loop continues. The traceback is
                     # preserved in the log; the per-game error string is
                     # persisted in errors_json for the admin UI.
-                    # See docs/audits/error-handling-report.md §F-8.
                     except Exception as e:
                         failure_reason = _truncate_failure_reason(str(e))
                         await session.rollback()
@@ -341,7 +340,6 @@ async def _run_bulk_generation_async(job_id: int) -> None:
             # already handled per-game (e.g. DB connection drop, query-side
             # failure) marks the job ``failed`` with the error captured in
             # ``errors_json``. ``logger.exception`` includes the traceback.
-            # See docs/audits/error-handling-report.md §F-9.
             except Exception as e:
                 # Mark job as failed on unexpected error
                 logger.exception(f"Job {job_id} failed with unexpected error: {e}")

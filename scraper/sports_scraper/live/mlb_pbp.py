@@ -56,7 +56,7 @@ class MLBPbpFetcher:
         # Narrow to httpx errors + RuntimeError (rate-limit guard from
         # provider_request). A real bug (TypeError, AttributeError) must
         # propagate so we don't silently start returning empty PBP for
-        # every game. See error-handling-report.md §F-16.
+        # every game.
         try:
             response = provider_request(
                 self.client,

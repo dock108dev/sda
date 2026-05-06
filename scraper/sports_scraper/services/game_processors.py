@@ -97,7 +97,7 @@ def live_pbp_payload_unchanged(league: str, game_id: int, plays: list) -> bool:
     # Narrow to RedisError + OSError (transport / connection refused). A
     # programming bug (TypeError, NameError) must surface — degrading the
     # dedupe to "always proceed" is fine, but doing so silently would hide
-    # the real fault. See docs/audits/error-handling-report.md §F-12.
+    # the real fault.
     try:
         import redis as redis_lib
 
@@ -133,7 +133,7 @@ def should_create_live_pbp_snapshot(
     # See live_pbp_payload_unchanged above for rationale on the narrowed
     # catch. Snapshot throttle fails open (returns True → write the snapshot)
     # so a Redis outage does not cost us live data; programming bugs still
-    # propagate. See docs/audits/error-handling-report.md §F-13.
+    # propagate.
     try:
         import redis as redis_lib
 

@@ -1223,10 +1223,10 @@ class TestEvidenceInPrompt:
 
 
 class TestSystemPromptTemplate:
-    """Tests that the new system prompt matches BRAINDUMP §Prompt rules."""
+    """Lock the system-prompt phrasing so prompt drift is caught in CI."""
 
-    def test_system_prompt_contains_braindump_phrasing(self) -> None:
-        """Block prompt opens with the BRAINDUMP §Prompt rules system text."""
+    def test_system_prompt_contains_expected_phrasing(self) -> None:
+        """Block prompt opens with the canonical system-prompt text."""
         blocks = [
             {
                 "block_index": 0,

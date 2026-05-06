@@ -5,7 +5,7 @@ Covers:
 - Banned-phrase hits become validation errors (REGENERATE class).
 - Speculation patterns become warnings without forcing FALLBACK.
 - Clean text passes both gates.
-- Sport-specific assertions per BRAINDUMP §Test cases:
+- Sport-specific assertions:
   * MLB shutouts must not use exaggerated dominance language ("dominant",
     "impenetrable") — Rule 14 surfaces these for low-event archetypes.
   * NBA blowout late blocks must not imply fake leverage ("rally",
@@ -57,12 +57,12 @@ class TestEveryBannedPhraseIsDetected:
         # The matched phrase appears in the rendered error message.
         assert any(phrase in err for err in errors)
 
-    def test_banned_list_size_matches_braindump_spec(self) -> None:
-        """BRAINDUMP enumerates ~20 cliché phrases; ensure we are at parity.
+    def test_banned_list_size_matches_spec(self) -> None:
+        """Lock the banned-phrase count.
 
         Tracked as a sanity check — if a phrase is added or removed in
         ``render_validation.BANNED_PHRASES``, this test fails loudly so the
-        BRAINDUMP and the regen ruleset stay in sync.
+        spec and the regen ruleset stay in sync.
         """
         # Spec calls out 20; current implementation has 21 (a near-duplicate
         # "eager to set the tone" overlaps with "set the tone"). Both must be
@@ -187,7 +187,7 @@ class TestCleanTextPasses:
 
 
 class TestMLBShutoutLanguage:
-    """Per BRAINDUMP MLB assertion: shutouts do not use exaggerated language."""
+    """MLB assertion: shutouts do not use exaggerated language."""
 
     def test_low_event_dominant_is_flagged(self) -> None:
         block = _block(
@@ -228,7 +228,7 @@ class TestMLBShutoutLanguage:
 
 
 class TestNBABlowoutLateLeverage:
-    """Per BRAINDUMP NBA assertion: blowout late blocks do not imply fake leverage."""
+    """NBA assertion: blowout late blocks do not imply fake leverage."""
 
     def _flow(self, last_narrative: str) -> list[dict[str, Any]]:
         # 5-block flow; the "final 20%" cutoff (ceil(5 * 0.8) = 4) marks

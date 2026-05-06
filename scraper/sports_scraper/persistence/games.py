@@ -39,8 +39,7 @@ def _notify_game_update(session: Session | None, game_id: int) -> None:
 
     Catch is narrowed to ``(SQLAlchemyError, OSError)`` — programming bugs
     (e.g. payload schema drift causing TypeError) propagate instead of
-    being silently swallowed. Mirrors the api-side hardening in F-6.
-    See docs/audits/error-handling-report.md §F-14.
+    being silently swallowed.
     """
     if session is None:
         return
@@ -72,7 +71,7 @@ def _cache_get(key: str) -> int | None:
     Catch is narrowed to ``RedisError`` (covers connection/protocol/timeout)
     plus ``OSError`` (DNS failure / connection refused). A bug — e.g. a
     refactor that changes the cache key shape and crashes ``int()`` — must
-    not be absorbed silently here. See error-handling-report.md §F-15.
+    not be absorbed silently here.
     """
     import redis as redis_lib
 
@@ -90,7 +89,7 @@ def _cache_get(key: str) -> int | None:
 def _cache_set(key: str, game_id: int) -> None:
     """Cache a positive match. NEVER cache negatives (None).
 
-    See ``_cache_get`` for catch-narrowing rationale (§F-15).
+    See ``_cache_get`` for catch-narrowing rationale.
     """
     import redis as redis_lib
 
@@ -105,7 +104,7 @@ def _cache_set(key: str, game_id: int) -> None:
 def _cache_delete(key: str) -> None:
     """Delete a cache entry (used when a game is deleted).
 
-    See ``_cache_get`` for catch-narrowing rationale (§F-15).
+    See ``_cache_get`` for catch-narrowing rationale.
     """
     import redis as redis_lib
 
