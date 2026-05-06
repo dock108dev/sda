@@ -81,6 +81,7 @@ class NarrativeBlock:
         mini_box: Cumulative box score at end of block with segment deltas
     """
 
+    # --- Identity / structural fields (kept for all schema versions) ---
     block_index: int
     role: SemanticRole
     moment_indices: list[int]
@@ -92,13 +93,18 @@ class NarrativeBlock:
     key_play_ids: list[int]
     narrative: str | None = None
     mini_box: dict[str, Any] | None = None
-    peak_margin: int = 0  # Largest absolute margin within this block
-    peak_leader: int = 0  # 1=home led at peak, -1=away led at peak
     start_clock: str | None = None  # Game clock at block start (from first moment)
     end_clock: str | None = None  # Game clock at block end (from last moment)
-    label: str | None = None  # Narrative job (Opening break, Swing, Closeout, …)
-    # v3 schema fields per the gameflow brief. Distinct from `role` (the
-    # SemanticRole enum used by the existing structural validators):
+    # --- v2 fields (legacy; kept for back-compat with consumers still on v2) ---
+    # `peak_margin` / `peak_leader` are subsumed by `score_context.largest_lead_delta`
+    # but consumers (and the existing role-assignment logic) still read them.
+    peak_margin: int = 0  # Largest absolute margin within this block
+    peak_leader: int = 0  # 1=home led at peak, -1=away led at peak
+    # `label` is the v2 narrative-job string (Opening break / Swing / Closeout / …)
+    # Conceptually overlaps with v3 `story_role`. Future cleanup may collapse them.
+    label: str | None = None
+    # --- v3 fields per the gameflow brief ---
+    # Distinct from `role` (the SemanticRole enum used by structural validators):
     # `story_role` is the narrative beat the segmenter chose, drawn from
     # {opening, first_separation, response, lead_change, turning_point,
     # closeout, blowout_compression}. `leverage` and `featured_players`

@@ -159,6 +159,7 @@ class GameFlowBlock(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # --- Identity / structural fields ---
     block_index: int = Field(..., alias="blockIndex")
     role: str  # SemanticRole value: SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION
     moment_indices: list[int] = Field(..., alias="momentIndices")
@@ -173,14 +174,22 @@ class GameFlowBlock(BaseModel):
     embedded_social_post_id: int | None = Field(None, alias="embeddedSocialPostId")
     start_clock: str | None = Field(None, alias="startClock")
     end_clock: str | None = Field(None, alias="endClock")
-    # v2 schema fields — nullable for backward compatibility with v1 readers.
+    # --- v2 fields (legacy; consumers should migrate to the v3 fields below) ---
+    # ``reason`` is superseded by ``story_role`` + ``featured_players[*].reason``.
+    # ``label`` overlaps with ``story_role`` (Opening break vs. opening, etc.).
+    # ``leadBefore`` / ``leadAfter`` are derivable from ``scoreContext`` /
+    # ``scoreBefore`` / ``scoreAfter``. ``evidence`` is a free-form dict; the
+    # v3 ``featured_players`` is the structured replacement for player
+    # callouts. v2 fields stay populated for now so v2 readers keep working;
+    # a future PR can drop them once consumers confirm migration.
     reason: str | None = None
     label: str | None = None
     lead_before: int | None = Field(None, alias="leadBefore")
     lead_after: int | None = Field(None, alias="leadAfter")
     evidence: list[dict[str, Any]] | None = None
-    # v3 schema fields — segmentation/voice contract per the gameflow brief.
-    # Optional so v2 rows continue to serialize; populated by the v3 generator.
+    # --- v3 fields (segmentation/voice contract per the gameflow brief) ---
+    # Nullable so v2 rows persisted before this contract shipped continue
+    # to serialize. The v3 generator populates them on every new flow.
     story_role: str | None = Field(None, alias="storyRole")
     leverage: str | None = None  # "low" | "medium" | "high"
     period_range: str | None = Field(None, alias="periodRange")

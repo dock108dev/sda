@@ -23,7 +23,10 @@ Sport-specific assertions per BRAINDUMP §Test cases:
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+import pytest
 
 from app.services.pipeline.stages.block_analysis import (
     find_garbage_time_start,
@@ -390,3 +393,90 @@ class TestNHLGoalsDriveBoundaries:
         # NOT an orphan and one of {5} (or its first_meaningful_lead twin)
         # must surface as a boundary.
         assert 5 in splits
+
+
+# ---------------------------------------------------------------------------
+# Time-bucket fallback observability (Pass 5).
+# ---------------------------------------------------------------------------
+# The brief flagged "arbitrary windows instead of game beats" as the symptom
+# that motivated the rebuild. Even-spaced fallback is the code path that
+# embodies that complaint. We can't break it (sometimes a flow has zero
+# game-state candidates and we still need to produce something), but we can
+# make it observable so a future PR can promote the fallback to a metric or
+# tighten the eligibility criteria.
+
+
+class TestTimeBucketFallbackObservability:
+    """``find_split_points`` must emit a structured log when it falls back
+    to even-spaced filler — production can then surface the rate at which
+    flows are forced onto arbitrary buckets."""
+
+    def test_fallback_log_emitted_when_no_candidates_exist(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # 12 quiet moments, no scoring, no lead changes — the candidate
+        # collector returns empty so both fillers fire.
+        moments = [
+            _moment(period=(i // 4) + 1, score_before=[0, 0], score_after=[0, 0], play_ids=[i])
+            for i in range(12)
+        ]
+
+        with caplog.at_level(
+            logging.INFO,
+            logger="app.services.pipeline.stages.group_split_points",
+        ):
+            find_split_points(moments, target_blocks=4, league_code="NBA")
+
+        records = [
+            r for r in caplog.records
+            if r.message == "split_points_time_bucket_fallback"
+        ]
+        assert records, (
+            "expected a split_points_time_bucket_fallback log line when "
+            "no game-state candidates exist"
+        )
+        record = records[0]
+        # Structured payload carries the diagnostic fields ops would need.
+        assert record.league_code == "NBA"
+        assert record.moment_count == 12
+        assert record.target_blocks == 4
+        assert record.state_driven_splits == 0
+        # At least one of the two filler counters must be non-zero (else the
+        # log would not have fired).
+        assert record.setup_resolution_filler + record.even_spaced_filler > 0
+
+    def test_no_fallback_log_when_state_candidates_cover_target(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # Game-state-rich fixture: one lead change at moment 5, one large
+        # scoring run from 8-13. With target_blocks=3 (needed_splits=2) the
+        # candidate set already covers the requirement.
+        moments = [
+            _moment(period=1, score_before=[0, 0], score_after=[2, 0], play_ids=[0]),
+            _moment(period=1, score_before=[2, 0], score_after=[5, 0], play_ids=[1]),
+            _moment(period=1, score_before=[5, 0], score_after=[7, 2], play_ids=[2]),
+            _moment(period=2, score_before=[7, 2], score_after=[7, 5], play_ids=[3]),
+            _moment(period=2, score_before=[7, 5], score_after=[7, 9], play_ids=[4]),
+            _moment(period=2, score_before=[7, 9], score_after=[7, 12], play_ids=[5]),
+            _moment(period=3, score_before=[7, 12], score_after=[10, 12], play_ids=[6]),
+            _moment(period=3, score_before=[10, 12], score_after=[14, 12], play_ids=[7]),
+            _moment(period=3, score_before=[14, 12], score_after=[16, 12], play_ids=[8]),
+            _moment(period=3, score_before=[16, 12], score_after=[18, 14], play_ids=[9]),
+            _moment(period=4, score_before=[18, 14], score_after=[20, 16], play_ids=[10]),
+            _moment(period=4, score_before=[20, 16], score_after=[22, 18], play_ids=[11]),
+        ]
+
+        with caplog.at_level(
+            logging.INFO,
+            logger="app.services.pipeline.stages.group_split_points",
+        ):
+            find_split_points(moments, target_blocks=3, league_code="NBA")
+
+        records = [
+            r for r in caplog.records
+            if r.message == "split_points_time_bucket_fallback"
+        ]
+        assert records == [], (
+            f"unexpected time-bucket fallback when game-state candidates "
+            f"are sufficient: {[r.__dict__ for r in records]}"
+        )
