@@ -66,12 +66,24 @@ def build_team_identity_from_api(team_data: dict) -> TeamIdentity:
     )
 
 
-def map_nhl_game_state(state: str) -> str:
-    """Map NHL gameState to normalized status."""
+def map_nhl_game_state(state: str, schedule_state: str | None = None) -> str:
+    """Map NHL gameState (+ optional gameScheduleState) to normalized status.
+
+    NHL surfaces postponements and cancellations through gameScheduleState
+    (PPD/SUSP/CNCL) while gameState stays at FUT/PRE. Without this signal,
+    a postponed game looks indistinguishable from a still-scheduled one and
+    gets stuck on 0-0 forever once its date passes.
+    """
     if state in ("OFF", "FINAL"):
         return "final"
     if state in ("LIVE", "CRIT"):
         return "live"
+    if schedule_state:
+        ss = schedule_state.upper()
+        if ss in ("PPD", "SUSP"):
+            return "postponed"
+        if ss == "CNCL":
+            return "cancelled"
     if state in ("FUT", "PRE"):
         return "scheduled"
     return "scheduled"

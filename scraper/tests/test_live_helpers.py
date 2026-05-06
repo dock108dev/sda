@@ -220,6 +220,25 @@ class TestMapNHLGameState:
         assert map_nhl_game_state("") == "scheduled"
         assert map_nhl_game_state("OTHER") == "scheduled"
 
+    def test_schedule_state_postponed(self):
+        assert map_nhl_game_state("FUT", "PPD") == "postponed"
+        assert map_nhl_game_state("PRE", "PPD") == "postponed"
+        assert map_nhl_game_state("FUT", "SUSP") == "postponed"
+        assert map_nhl_game_state("FUT", "ppd") == "postponed"
+
+    def test_schedule_state_cancelled(self):
+        assert map_nhl_game_state("FUT", "CNCL") == "cancelled"
+        assert map_nhl_game_state("PRE", "CNCL") == "cancelled"
+
+    def test_schedule_state_ok_does_not_override(self):
+        assert map_nhl_game_state("FUT", "OK") == "scheduled"
+        assert map_nhl_game_state("PRE", "TBD") == "scheduled"
+
+    def test_played_game_state_wins_over_schedule_state(self):
+        # A finished game should stay final even if schedule_state is stale.
+        assert map_nhl_game_state("OFF", "PPD") == "final"
+        assert map_nhl_game_state("LIVE", "PPD") == "live"
+
 
 class TestParseDateTime:
     """Tests for parse_datetime function."""

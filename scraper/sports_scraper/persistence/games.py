@@ -293,6 +293,7 @@ def find_or_create_game(
         season=season,
         season_type=season_type,
         game_date=game_date_dt,
+        local_game_date=game_date_only,
         home_team_id=home_team_id,
         away_team_id=away_team_id,
         home_score=home_score,
@@ -397,6 +398,14 @@ def _enrich_existing(
             if sess and not sess.execute(conflict).first():
                 game.game_date = new_dt
                 updated = True
+
+    # Keep local_game_date in sync with game_date. Backfills legacy rows
+    # whose column was added but never populated, and tracks any update
+    # to game_date above.
+    expected_local_date = to_et_date(game.game_date)
+    if game.local_game_date != expected_local_date:
+        game.local_game_date = expected_local_date
+        updated = True
 
     # Season type
     if season_type != "regular" and game.season_type == "regular":

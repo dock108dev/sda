@@ -120,6 +120,36 @@ class BlockMiniBox(BaseModel):
     block_stars: list[str] = Field(default_factory=list, alias="blockStars")
 
 
+class FeaturedPlayer(BaseModel):
+    """A player called out within a block. The reason field anchors the
+    callout to a causal moment in the segment (lead-change scorer, run owner,
+    late-game closer, decisive event) so player mentions act as evidence,
+    not decoration."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    name: str
+    team: str | None = None
+    role: str | None = None  # e.g. "lead_change_scorer", "run_owner", "late_closer"
+    reason: str  # required: the segment-causal explanation
+    stat_summary: str | None = Field(None, alias="statSummary")
+
+
+class ScoreContext(BaseModel):
+    """Score-state context for a narrative block. Distinct from score_before /
+    score_after (which are raw [home, away] tuples) — this layer carries
+    derived signals the consumer + validator both need: whether the block
+    contained a lead change, and the largest single-direction margin swing
+    inside the block."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    start_score: ScoreObject | None = Field(None, alias="startScore")
+    end_score: ScoreObject | None = Field(None, alias="endScore")
+    lead_change: bool = Field(False, alias="leadChange")
+    largest_lead_delta: int | None = Field(None, alias="largestLeadDelta")
+
+
 class GameFlowBlock(BaseModel):
     """A narrative block grouping multiple moments.
 

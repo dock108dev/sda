@@ -127,49 +127,59 @@ class NHLLiveFeedClient:
     def _parse_schedule_response(self, payload: dict, target_date: date) -> list[NHLLiveGame]:
         """Parse the schedule response from the NHL API.
 
-        The new API structure has gameWeek array with dates containing games.
+        The NHL API's gameWeek buckets each game under a single local
+        ``date`` field, but a late-evening start crosses midnight UTC into
+        the next calendar day (e.g. a 9pm ET puck drop on 2026-05-03 has
+        startTimeUTC=2026-05-04T01:00:00Z and is filed under date=2026-05-03).
+        Polling /schedule/2026-05-04 then returns nothing for that game,
+        so it never gets a final-score update and stays stuck on 0-0.
+
+        Include a game when either its NHL-bucketed date matches
+        ``target_date`` or its ``startTimeUTC`` UTC-date does. Dedupe by
+        game_id since both conditions can match for the same game.
         """
         games: list[NHLLiveGame] = []
+        seen_ids: set[int] = set()
 
-        # Navigate the nested structure
         game_week = payload.get("gameWeek", [])
         target_date_str = target_date.strftime("%Y-%m-%d")
 
         for day_data in game_week:
             day_date = day_data.get("date", "")
-            if day_date != target_date_str:
-                continue
-
             for game in day_data.get("games", []):
                 game_id = game.get("id")
-                if not game_id:
+                if not game_id or game_id in seen_ids:
                     continue
 
-                # Get game state and map to normalized status
-                game_state = game.get("gameState", "")
-                status = map_nhl_game_state(game_state)
-                status_text = game.get("gameScheduleState")
-
-                # Use actual start time from API when available
                 start_time_str = game.get("startTimeUTC")
+                start_dt: datetime | None = None
                 if start_time_str:
                     try:
-                        game_date = datetime.fromisoformat(
+                        start_dt = datetime.fromisoformat(
                             start_time_str.replace("Z", "+00:00")
                         ).astimezone(UTC)
                     except (ValueError, TypeError):
-                        game_date = _et_noon_utc(target_date)
-                else:
-                    game_date = _et_noon_utc(target_date)
+                        start_dt = None
 
-                # Extract team info
+                matches_local_date = day_date == target_date_str
+                matches_utc_start = (
+                    start_dt is not None and start_dt.date() == target_date
+                )
+                if not (matches_local_date or matches_utc_start):
+                    continue
+
+                game_state = game.get("gameState", "")
+                status_text = game.get("gameScheduleState")
+                status = map_nhl_game_state(game_state, status_text)
+
+                game_date = start_dt if start_dt is not None else _et_noon_utc(target_date)
+
                 home_team_data = game.get("homeTeam", {})
                 away_team_data = game.get("awayTeam", {})
 
                 home_team = build_team_identity_from_api(home_team_data)
                 away_team = build_team_identity_from_api(away_team_data)
 
-                # Extract scores
                 home_score = parse_int(home_team_data.get("score"))
                 away_score = parse_int(away_team_data.get("score"))
 
@@ -185,6 +195,7 @@ class NHLLiveFeedClient:
                         away_score=away_score,
                     )
                 )
+                seen_ids.add(game_id)
 
         return games
 

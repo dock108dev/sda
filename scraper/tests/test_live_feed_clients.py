@@ -478,6 +478,137 @@ class TestNHLLiveFeedClient:
 
         assert games == []
 
+    def test_fetch_schedule_includes_late_game_crossing_midnight_utc(self):
+        # NHL files a 9pm-ET game on May 3 under date=2026-05-03 even though
+        # its startTimeUTC is 2026-05-04T01:00:00Z. Polling for May 4 must
+        # still pick it up via the UTC-start match.
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "gameWeek": [
+                {
+                    "date": "2026-05-03",
+                    "games": [
+                        {
+                            "id": 2025030231,
+                            "startTimeUTC": "2026-05-04T01:00:00Z",
+                            "gameState": "OFF",
+                            "gameScheduleState": "OK",
+                            "homeTeam": {
+                                "abbrev": "COL",
+                                "commonName": {"default": "Avalanche"},
+                                "placeName": {"default": "Colorado"},
+                                "score": 9,
+                            },
+                            "awayTeam": {
+                                "abbrev": "MIN",
+                                "commonName": {"default": "Wild"},
+                                "placeName": {"default": "Minnesota"},
+                                "score": 6,
+                            },
+                        }
+                    ],
+                },
+                {
+                    "date": "2026-05-04",
+                    "games": [],
+                },
+            ]
+        }
+
+        client = NHLLiveFeedClient()
+        client.client = MagicMock()
+        client.client.get.return_value = mock_response
+
+        games = client.fetch_schedule(date(2026, 5, 4), date(2026, 5, 4))
+
+        assert len(games) == 1
+        assert games[0].game_id == 2025030231
+        assert games[0].status == "final"
+        assert games[0].home_score == 9
+        assert games[0].away_score == 6
+
+    def test_fetch_schedule_dedupes_when_local_and_utc_dates_match(self):
+        # A game whose local date == UTC start date should appear once.
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "gameWeek": [
+                {
+                    "date": "2024-10-15",
+                    "games": [
+                        {
+                            "id": 2025020001,
+                            "startTimeUTC": "2024-10-15T18:00:00Z",
+                            "gameState": "OFF",
+                            "homeTeam": {
+                                "abbrev": "TBL",
+                                "commonName": {"default": "Lightning"},
+                                "placeName": {"default": "Tampa Bay"},
+                                "score": 4,
+                            },
+                            "awayTeam": {
+                                "abbrev": "BOS",
+                                "commonName": {"default": "Bruins"},
+                                "placeName": {"default": "Boston"},
+                                "score": 3,
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+
+        client = NHLLiveFeedClient()
+        client.client = MagicMock()
+        client.client.get.return_value = mock_response
+
+        games = client.fetch_schedule(date(2024, 10, 15), date(2024, 10, 15))
+
+        assert len(games) == 1
+
+    def test_fetch_schedule_excludes_other_dates(self):
+        # A game whose neither local-bucket date nor UTC-start date matches
+        # the target must not be included even though it appears in gameWeek.
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "gameWeek": [
+                {
+                    "date": "2026-05-04",
+                    "games": [
+                        {
+                            "id": 2025030241,
+                            "startTimeUTC": "2026-05-05T01:30:00Z",
+                            "gameState": "OFF",
+                            "homeTeam": {
+                                "abbrev": "VGK",
+                                "commonName": {"default": "Golden Knights"},
+                                "placeName": {"default": "Vegas"},
+                                "score": 3,
+                            },
+                            "awayTeam": {
+                                "abbrev": "ANA",
+                                "commonName": {"default": "Ducks"},
+                                "placeName": {"default": "Anaheim"},
+                                "score": 1,
+                            },
+                        }
+                    ],
+                },
+            ]
+        }
+
+        client = NHLLiveFeedClient()
+        client.client = MagicMock()
+        client.client.get.return_value = mock_response
+
+        # Target May 6: the only game has local=May 4, UTC-start=May 5 —
+        # neither matches May 6, so the result must be empty.
+        games = client.fetch_schedule(date(2026, 5, 6), date(2026, 5, 6))
+
+        assert games == []
+
 
 # ============================================================================
 # Tests for live/ncaab.py - NCAABLiveFeedClient

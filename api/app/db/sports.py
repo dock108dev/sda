@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -230,6 +231,12 @@ class SportsGame(Base):
     season: Mapped[int] = mapped_column(Integer, nullable=False)
     season_type: Mapped[str] = mapped_column(String(50), nullable=False)
     game_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    # League-local calendar date the game is officially scheduled for (ET).
+    # Derived from game_date at ingestion via to_et_date(); stored so consumers
+    # can group games by "the day they were played" without reinventing TZ math.
+    # A 9pm ET puck drop has game_date=01:00Z on the next UTC day but
+    # local_game_date stays on the original ET date.
+    local_game_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     home_team_id: Mapped[int] = mapped_column(
         Integer,

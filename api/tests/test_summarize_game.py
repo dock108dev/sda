@@ -46,6 +46,7 @@ class _ExplodingGame:
         self.away_score = 2
         self.status = "final"
         self.game_date = datetime(2026, 4, 25, 19, 0, tzinfo=timezone.utc)
+        self.local_game_date = self.game_date.date()
         self.season = 2026
         self.season_type = "regular"
         self.scrape_version = 1
