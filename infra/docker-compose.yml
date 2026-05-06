@@ -314,15 +314,24 @@ services:
     container_name: sports-migrate
     profiles: ["dev", "prod"]
     logging: *default-logging
-    command: ["alembic", "-c", "/app/alembic.ini", "upgrade", "head"]
+    # migrate_safely.py sets the sports:tasks_held hold flag, drains
+    # in-flight worker txns to avoid lock-queue stalls (see
+    # docs/ops/runbook.md), runs alembic upgrade head, then clears the
+    # flag on exit. Direct-alembic invocation is still possible via
+    # `docker compose run --rm migrate alembic upgrade head` for emergencies.
+    command: ["python", "/app/scripts/migrate_safely.py"]
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
+      REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/0
+      MIGRATE_DRAIN_TIMEOUT: ${MIGRATE_DRAIN_TIMEOUT:-120}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
       API_KEY: ${API_KEY:-}
       CBB_STATS_API_KEY: ${CBB_STATS_API_KEY:-}
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - internal

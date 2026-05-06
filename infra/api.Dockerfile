@@ -24,6 +24,7 @@ COPY api/app ./app
 COPY api/alembic ./alembic
 COPY api/alembic.ini ./alembic.ini
 COPY api/main.py ./main.py
+COPY api/scripts ./scripts
 COPY infra/api-entrypoint.sh /usr/local/bin/api-entrypoint
 
 RUN chmod +x /usr/local/bin/api-entrypoint \

@@ -145,6 +145,8 @@ app.conf.task_routes = {
     "poll_live_odds_props": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     # Narrative quality grader (dispatched by API finalize_moments stage)
     "grade_flow_task": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+    # DB health observability — refreshes the pg.idle_in_txn gauge
+    "export_pg_idle_txn_metrics": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
 }
 # Daily pipeline schedule (all times US Eastern / UTC during EST):
 #
@@ -306,6 +308,15 @@ _scheduled_tasks = {
         "task": "generate_pipeline_coverage_report",
         "schedule": crontab(minute=0, hour=6),  # 06:00 UTC
         "options": {"queue": "celery", "routing_key": "celery", "expires": 3300},
+    },
+    # === Postgres idle-in-txn metric refresh (every minute) ===
+    # Refreshes the pg.idle_in_txn.max_age_seconds gauge by role. Cheap
+    # read-only query against pg_stat_activity. ``expires`` is tight so a
+    # backed-up queue never replays stale samples.
+    "pg-idle-txn-metric-every-60s": {
+        "task": "export_pg_idle_txn_metrics",
+        "schedule": crontab(minute="*/1"),
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 55},
     },
 }
 

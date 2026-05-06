@@ -36,6 +36,9 @@ from .golf_tasks import (  # noqa: F401
     golf_sync_schedule,
     golf_sync_stats,
 )
+from .health_tasks import (  # noqa: F401
+    export_pg_idle_txn_metrics,
+)
 from .live_odds_tasks import (
     poll_live_odds_mainline,
     poll_live_odds_props,

@@ -430,11 +430,24 @@ def collect_game_social() -> dict:
             game_new_tweets = 0
             scraped_team_ids: set[int] = set()
 
-            # Track teams that already have fresh posts in the DB from
-            # a previous (committed) batch so we can skip the Playwright
-            # call entirely on restart instead of paying the 30-60s polite
-            # delay just to hit the early-exit path.
+            # Pre-load the set of team IDs that already have fresh posts
+            # from a previous (committed) batch so we can skip the
+            # Playwright call entirely on restart without holding a
+            # transaction across each iteration. One short query up front
+            # replaces a per-team check inside the IO-heavy loop.
             fresh_cutoff = utc_now - timedelta(hours=1)
+            game_team_ids = {tid for g in games for tid in (g.home_team_id, g.away_team_id)}
+            fresh_team_rows = (
+                session.query(db_models.TeamSocialPost.team_id)
+                .filter(
+                    db_models.TeamSocialPost.team_id.in_(game_team_ids),
+                    db_models.TeamSocialPost.created_at >= fresh_cutoff,
+                )
+                .distinct()
+                .all()
+            )
+            fresh_team_ids: set[int] = {row[0] for row in fresh_team_rows}
+            session.commit()  # release locks acquired by the pre-load query
 
             for i, game in enumerate(games):
                 # Inter-game cooldown — skip before the first game.
@@ -447,6 +460,9 @@ def collect_game_social() -> dict:
                             social_cfg.inter_game_delay_seconds,
                             social_cfg.inter_game_delay_max_seconds,
                         )
+                    # Commit any pending state from the previous iteration
+                    # so we hold no lock across the wall-clock sleep.
+                    session.commit()
                     time.sleep(delay)
 
                 game_new_tweets = 0
@@ -456,20 +472,7 @@ def collect_game_social() -> dict:
                         continue
                     scraped_team_ids.add(team_id)
 
-                    # Skip Playwright if we already collected posts for this
-                    # team recently (e.g. committed in a previous batch before
-                    # the worker restarted).  This avoids the 30-60s polite
-                    # delay per team just to hit the consecutive-known early
-                    # exit inside the collector.
-                    has_fresh = (
-                        session.query(db_models.TeamSocialPost.id)
-                        .filter(
-                            db_models.TeamSocialPost.team_id == team_id,
-                            db_models.TeamSocialPost.created_at >= fresh_cutoff,
-                        )
-                        .first()
-                    ) is not None
-                    if has_fresh:
+                    if team_id in fresh_team_ids:
                         logger.debug(
                             "collect_game_social_team_skip_fresh",
                             team_id=team_id,

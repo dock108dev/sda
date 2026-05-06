@@ -208,6 +208,13 @@ class TeamTweetCollector:
                 start_date = new_start
                 end_date = new_end
 
+        # Release any AccessShareLocks acquired by the read queries above
+        # before the multi-second Playwright fetch. A held lock here will
+        # block any concurrent ALTER TABLE on team_social_posts /
+        # sports_teams (e.g. during a migration) and stack subsequent
+        # workers behind it.
+        session.commit()
+
         # Collect tweets using the configured strategy
         try:
             posts = self.strategy.collect_posts(
@@ -423,6 +430,9 @@ class TeamTweetCollector:
                     games_remaining=len(games) - i,
                     fast=game_new_tweets == 0,
                 )
+                # Commit before sleeping so we don't hold any lock from the
+                # previous iteration's writes across a 30–60s wall-clock wait.
+                session.commit()
                 time.sleep(delay)
 
             game_new_tweets = 0
@@ -464,8 +474,10 @@ class TeamTweetCollector:
                             consecutive_hits=consecutive_breaker_hits,
                         )
                         break
-                    # Back off before trying the next team
+                    # Back off before trying the next team. Commit (after the
+                    # rollback above) so we hold no lock across the backoff.
                     logger.info("team_collector_rate_limit_backoff", backoff_seconds=social_cfg.breaker_backoff_seconds)
+                    session.commit()
                     time.sleep(social_cfg.breaker_backoff_seconds)
                 except Exception as exc:
                     error_msg = f"Team {team_id}: {str(exc)}"

@@ -170,8 +170,12 @@ class TestCollectTeamTweets:
 
         assert result == 1
         session.execute.assert_called_once()
-        # commit is no longer called per-team; caller owns commit timing
-        session.commit.assert_not_called()
+        # One commit happens inside collect_team_tweets — between the read
+        # queries and the Playwright fetch — to release AccessShareLocks
+        # so a long IO doesn't block migrations or other writers. Writes
+        # produced after the fetch are still uncommitted; the caller owns
+        # that commit timing.
+        assert session.commit.call_count == 1
 
     @patch("sports_scraper.social.team_collector.settings", _mock_settings())
     @patch("sports_scraper.social.team_collector.playwright_available", return_value=True)
@@ -205,7 +209,9 @@ class TestCollectTeamTweets:
 
         assert result == 0  # Updated existing, not new
         assert existing.tweet_text == "Great game!"
-        session.commit.assert_not_called()  # new_count == 0
+        # collect_team_tweets commits once mid-method to release read locks
+        # before the Playwright fetch (see test_collects_and_saves_new_tweets).
+        assert session.commit.call_count == 1
 
     @patch("sports_scraper.social.team_collector.settings", _mock_settings())
     @patch("sports_scraper.social.team_collector.playwright_available", return_value=True)
