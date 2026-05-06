@@ -247,13 +247,16 @@ class TestValidateBlocksEmitsMetrics:
         _reset_module()
         hist, regen, fallback, published, score_mismatch = _make_mock_instruments()
 
-        # Need 3+ blocks (MIN_BLOCKS=3) with narratives that mention score/winner
-        winning_narrative = "The Lakers dominated and won 30-10 over the Celtics tonight."
+        # Need 3+ blocks (MIN_BLOCKS=3) with narratives that mention score/winner.
+        # Resolution narrative carries the final score 30-10 so coverage Rule 8
+        # (winner+score) passes; earlier blocks reference in-game scores only so
+        # Rule 17 (final-score repetition) does not fire. story_role is set on
+        # every block to satisfy Rule 19 (v3 contract; strict from Pass 3).
         blocks = [
             {
                 "block_index": 0,
                 "role": SemanticRole.SETUP.value,
-                "narrative": winning_narrative,
+                "narrative": "The Lakers opened with a 10-5 push over the Celtics.",
                 "score_before": [0, 0],
                 "score_after": [10, 5],
                 "moment_indices": [0],
@@ -263,11 +266,12 @@ class TestValidateBlocksEmitsMetrics:
                     "cumulative": {"home": {"pts": 10}, "away": {"pts": 5}},
                     "delta": {"pts": 10},
                 },
+                "story_role": "opening",
             },
             {
                 "block_index": 1,
                 "role": "DECISION_POINT",
-                "narrative": winning_narrative,
+                "narrative": "Lakers extended their advantage to 20-8 by mid-game.",
                 "score_before": [10, 5],
                 "score_after": [20, 8],
                 "moment_indices": [1],
@@ -277,11 +281,12 @@ class TestValidateBlocksEmitsMetrics:
                     "cumulative": {"home": {"pts": 20}, "away": {"pts": 8}},
                     "delta": {"pts": 10},
                 },
+                "story_role": "turning_point",
             },
             {
                 "block_index": 2,
                 "role": SemanticRole.RESOLUTION.value,
-                "narrative": winning_narrative,
+                "narrative": "The Lakers dominated and won 30-10 over the Celtics tonight.",
                 "score_before": [20, 8],
                 "score_after": [30, 10],
                 "moment_indices": [2],
@@ -291,6 +296,7 @@ class TestValidateBlocksEmitsMetrics:
                     "cumulative": {"home": {"pts": 30}, "away": {"pts": 10}},
                     "delta": {"pts": 10},
                 },
+                "story_role": "closeout",
             },
         ]
 

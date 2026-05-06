@@ -44,10 +44,6 @@ VALID_LEVERAGE: frozenset[str] = frozenset(["low", "medium", "high"])
 # threshold counts as a real beat. Below it, the block is structural padding.
 _BEAT_SWING_FRACTION = 0.5
 
-# Late-game leverage gate: blocks whose ``period_end`` is in the league's
-# late-game period get a leverage bump if any score signal is present.
-_LATE_GAME_LEVERAGE_BONUS = True
-
 
 def _format_clock(clock: str | None) -> str | None:
     """Strip whitespace and return None for empty strings."""
