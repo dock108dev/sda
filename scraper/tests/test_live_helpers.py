@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from dataclasses import FrozenInstanceError
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -322,7 +323,7 @@ class TestNCAABLiveGame:
             away_score=70,
             neutral_site=False,
         )
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             game.home_score = 80
 
 
@@ -419,7 +420,7 @@ class TestNHLLiveGame:
             home_score=4,
             away_score=3,
         )
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             game.home_score = 5
 
 

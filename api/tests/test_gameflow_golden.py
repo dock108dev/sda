@@ -30,7 +30,6 @@ from app.services.pipeline.stages.segment_classification import (
     VALID_STORY_ROLES,
 )
 
-
 # ---------------------------------------------------------------------------
 # Moment-builder helpers — keep golden fixtures readable.
 # ---------------------------------------------------------------------------

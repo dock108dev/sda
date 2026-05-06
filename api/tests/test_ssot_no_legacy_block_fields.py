@@ -112,8 +112,9 @@ class TestSchemaLegacyFieldsAbsent:
             )
 
     def test_narrative_block_dataclass_does_not_carry_v2_label(self) -> None:
-        from app.services.pipeline.stages.block_types import NarrativeBlock
         import dataclasses
+
+        from app.services.pipeline.stages.block_types import NarrativeBlock
 
         field_names = {f.name for f in dataclasses.fields(NarrativeBlock)}
         assert "label" not in field_names, (

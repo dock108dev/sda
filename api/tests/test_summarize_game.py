@@ -9,10 +9,7 @@ every list request into a 500.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import PropertyMock
-
-import pytest
+from datetime import UTC, datetime
 
 from app.routers.sports.game_helpers import _GameSummaryFlags, summarize_game
 
@@ -45,7 +42,7 @@ class _ExplodingGame:
         self.home_score = 3
         self.away_score = 2
         self.status = "final"
-        self.game_date = datetime(2026, 4, 25, 19, 0, tzinfo=timezone.utc)
+        self.game_date = datetime(2026, 4, 25, 19, 0, tzinfo=UTC)
         self.local_game_date = self.game_date.date()
         self.season = 2026
         self.season_type = "regular"

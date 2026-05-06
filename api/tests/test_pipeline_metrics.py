@@ -240,9 +240,8 @@ class TestValidateBlocksEmitsMetrics:
         regen.add.assert_not_called()
 
     def test_no_metric_on_publish(self):
-        from app.services.pipeline.stages.block_types import SemanticRole
-
         import app.services.pipeline.metrics as m
+        from app.services.pipeline.stages.block_types import SemanticRole
 
         _reset_module()
         hist, regen, fallback, published, score_mismatch = _make_mock_instruments()

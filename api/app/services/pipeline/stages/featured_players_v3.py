@@ -172,11 +172,11 @@ def annotate_blocks_with_featured_players(
     evidence_by_block: dict[int, SegmentEvidence],
     league_code: str,
 ) -> None:
-    """Mutate each block dict to attach v3 ``featured_players``.
+    """Mutate each block dict to attach ``featured_players``.
 
     Skipped story roles (opening, blowout_compression) leave the field
-    untouched so the existing v2 ``mini_box.block_stars`` continues to
-    decorate the consumer mini-box without crowding the narrative anchor.
+    untouched so the existing ``mini_box.block_stars`` decorates the
+    consumer mini-box without crowding the narrative anchor.
     """
     for block in blocks:
         evidence = evidence_by_block.get(block.get("block_index"))

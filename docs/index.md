@@ -69,6 +69,7 @@
 | [Security report (flow)](audits/security-report.md) | Branch-scoped security hardening pass (`flow`) |
 | [SSOT report (flow)](audits/ssot-report.md) | Branch-scoped SSOT propagation pass (`flow`) |
 | [Docs consolidation](audits/docs-consolidation.md) | Documentation review pass record |
+| [Game flow v3 braindump](archived/gameflow-v3-design-braindump.md) | Original design notes for the v3 game-flow rebuild (shipped) |
 | [Changelog](changelog.md) | Release-level changes |
 
 ---

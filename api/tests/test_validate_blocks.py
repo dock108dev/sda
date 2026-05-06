@@ -2852,12 +2852,12 @@ class TestGameFlowBlockApiSchemaV3Fields:
     using camelCase aliases for the consumer contract."""
 
     def test_block_serializes_v3_fields_with_camelcase_aliases(self) -> None:
+        from app.routers.sports.schemas.common import ScoreObject
         from app.routers.sports.schemas.game_flow import (
             FeaturedPlayer,
             GameFlowBlock,
             ScoreContext,
         )
-        from app.routers.sports.schemas.common import ScoreObject
 
         block = GameFlowBlock(
             blockIndex=0,
@@ -2896,8 +2896,8 @@ class TestGameFlowBlockApiSchemaV3Fields:
         assert dumped["scoreContext"]["largestLeadDelta"] == 16
 
     def test_block_without_v3_fields_serializes_with_nulls(self) -> None:
-        from app.routers.sports.schemas.game_flow import GameFlowBlock
         from app.routers.sports.schemas.common import ScoreObject
+        from app.routers.sports.schemas.game_flow import GameFlowBlock
 
         block = GameFlowBlock(
             blockIndex=0,

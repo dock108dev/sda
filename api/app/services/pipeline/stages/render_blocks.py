@@ -4,10 +4,10 @@ Generates narrative text for each block via two OpenAI calls — an
 archetype-aware, evidence-grounded per-block render, then a game-level flow
 pass that smooths transitions while preserving facts.
 
-Per BRAINDUMP §Narrative generation rules: 1-2 sentences and 25-55 words per
-block. Banned-phrase and speculation lists are injected into both prompts;
-structured per-segment evidence (from the evidence_selection helper) replaces
-the old undifferentiated play list.
+Narrative budget: 1-2 sentences and 25-55 words per block. Banned-phrase and
+speculation lists are injected into both prompts; structured per-segment
+evidence (from the evidence_selection helper) replaces the old undifferentiated
+play list.
 """
 
 from __future__ import annotations

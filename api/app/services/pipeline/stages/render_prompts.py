@@ -1,7 +1,7 @@
 """Prompt building for RENDER_BLOCKS stage.
 
 Archetype-aware, evidence-grounded prompts for narrative block generation.
-Per BRAINDUMP §Narrative generation rules:
+Voice rules enforced by these prompts:
 
 - 1-2 sentences per block, 25-55 words
 - Every block must explain why that segment mattered
@@ -54,7 +54,7 @@ def _sanitize_prompt_string(value: str | None, *, default: str = "") -> str:
         cleaned = cleaned[:_PROMPT_STRING_MAX_LEN]
     return cleaned
 
-# System prompt — verbatim from BRAINDUMP §Prompt rules.
+# System prompt for the per-block render call.
 SYSTEM_PROMPT_TEMPLATE = (
     "Write Scroll Down Sports Game Flow blocks. You are not writing a generic "
     "recap. You are explaining the shape of the game. Use only the supplied "
@@ -618,11 +618,10 @@ def _format_block_section(
     elif ot_info["has_overtime"] and not ot_info["enters_overtime"]:
         section.append(f"(In {ot_info['ot_label']})")
 
-    # v3: per-block beat guidance + causal player anchors. Both come from
-    # GROUP_BLOCKS' classifier (story_role) and RENDER_BLOCKS' featured-
-    # player derivation step, respectively. Either may be absent on
-    # legacy blocks; in that case the model falls back to archetype +
-    # evidence guidance only.
+    # Per-block beat guidance + causal player anchors. story_role comes
+    # from GROUP_BLOCKS' classifier; featured_players from RENDER_BLOCKS'
+    # derivation step. Either may be absent on historical blocks, in which
+    # case the model falls back to archetype + evidence guidance only.
     section.extend(_story_role_guidance(block.get("story_role"), league_code))
     section.extend(_format_featured_players_section(block.get("featured_players")))
 

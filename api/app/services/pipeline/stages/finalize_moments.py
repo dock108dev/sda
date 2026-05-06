@@ -86,9 +86,9 @@ def _extract_flow_score(blocks: list) -> tuple[int | None, int | None]:
 FLOW_VERSION = "v2-blocks"
 BLOCKS_VERSION = "v1-blocks"
 
-# Top-level schema version literal recorded on the row for v2 readers
-# (BRAINDUMP §Output schema). Distinct from FLOW_VERSION which is part of
-# the upsert key and remains "v2-blocks" for table identity.
+# Top-level schema version literal recorded on the row. Distinct from
+# FLOW_VERSION which is part of the upsert key and remains "v2-blocks"
+# for table identity.
 SCHEMA_VERSION_V2 = "game-flow-v2"
 
 def _resolve_winner_team_id(
@@ -139,7 +139,7 @@ def _compute_source_counts(
 def _build_validation_block(
     previous_output: dict, fallback_used: bool
 ) -> dict[str, Any]:
-    """Summarize pipeline validation state for the v2 schema.
+    """Summarize pipeline validation state for persistence.
 
     status:
       - "fallback" when the template fallback path produced the blocks
@@ -312,7 +312,7 @@ async def execute_finalize_moments(
     validation_block = _build_validation_block(previous_output, fallback_used_pre)
 
     if existing_flow:
-        # Update existing flow; upgrade legacy story_version on overwrite.
+        # Update existing flow; story_version is rewritten on every overwrite.
         output.add_log(f"Updating existing flow (id={existing_flow.id})")
         existing_flow.story_version = FLOW_VERSION
         existing_flow.moments_json = moments
@@ -327,7 +327,6 @@ async def execute_finalize_moments(
         existing_flow.blocks_version = BLOCKS_VERSION
         existing_flow.blocks_validated_at = validation_time
 
-        # v2 schema fields
         existing_flow.version = SCHEMA_VERSION_V2
         existing_flow.archetype = archetype
         existing_flow.winner_team_id = winner_team_id

@@ -143,9 +143,6 @@ class ScoreContext(BaseModel):
     SEGMENT-level derived signals the consumer + voice validators need:
     whether a lead change occurred inside the block and the largest
     single-direction margin swing observed.
-
-    Earlier versions of this model duplicated startScore/endScore from
-    the block; that was a SSOT violation and was removed.
     """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -178,15 +175,9 @@ class GameFlowBlock(BaseModel):
     embedded_social_post_id: int | None = Field(None, alias="embeddedSocialPostId")
     start_clock: str | None = Field(None, alias="startClock")
     end_clock: str | None = Field(None, alias="endClock")
-    # --- v3 contract fields (segmentation/voice per the gameflow brief) ---
-    # Nullable so v2-shape rows persisted before this contract shipped
-    # continue to serialize; the v3 generator populates them on every
-    # new flow. Removed v2 fields (``reason``, ``label``, ``leadBefore``,
-    # ``leadAfter``, ``evidence``) are superseded by these:
-    #   reason → story_role + featured_players[*].reason
-    #   label → story_role
-    #   leadBefore / leadAfter → derivable from scoreBefore / scoreAfter
-    #   evidence → featured_players (structured anchor list)
+    # --- Segmentation / voice contract fields ---
+    # Nullable so historical rows persisted before these columns shipped
+    # still serialize; new flows populate them on every write.
     story_role: str | None = Field(None, alias="storyRole")
     leverage: str | None = None  # "low" | "medium" | "high"
     period_range: str | None = Field(None, alias="periodRange")
@@ -223,8 +214,8 @@ class GameFlowResponse(BaseModel):
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
     league_code: str | None = Field(None, alias="leagueCode")
-    # v2 schema top-level fields (BRAINDUMP §Output schema). Nullable so v1
-    # readers and historical rows without these columns continue to work.
+    # Top-level flow metadata. Nullable so historical rows without these
+    # columns continue to serialize.
     version: str | None = None
     archetype: str | None = None
     winner_team_id: str | None = Field(None, alias="winnerTeamId")
@@ -254,7 +245,7 @@ class ConsumerGameFlowResponse(BaseModel):
     away_team_color_light: str | None = Field(None, alias="awayTeamColorLight")
     away_team_color_dark: str | None = Field(None, alias="awayTeamColorDark")
     league_code: str | None = Field(None, alias="leagueCode")
-    # v2 schema top-level fields. Nullable so older rows still serialize.
+    # Top-level flow metadata. Nullable so older rows still serialize.
     version: str | None = None
     archetype: str | None = None
     winner_team_id: str | None = Field(None, alias="winnerTeamId")

@@ -81,7 +81,7 @@ class NarrativeBlock:
         mini_box: Cumulative box score at end of block with segment deltas
     """
 
-    # --- Identity / structural fields (kept for all schema versions) ---
+    # --- Identity / structural fields ---
     block_index: int
     role: SemanticRole
     moment_indices: list[int]
@@ -95,19 +95,17 @@ class NarrativeBlock:
     mini_box: dict[str, Any] | None = None
     start_clock: str | None = None  # Game clock at block start (from first moment)
     end_clock: str | None = None  # Game clock at block end (from last moment)
-    # `peak_margin` / `peak_leader` survive v2→v3 because they are read by
-    # the structural role assigner (assign_roles → calculate_swing_metrics)
-    # to detect lead swings. They are NOT consumer-facing — they live only
-    # on the internal NarrativeBlock dataclass and never reach the schema.
+    # `peak_margin` / `peak_leader` are internal-only signals consumed by
+    # assign_roles (via calculate_swing_metrics) to detect lead swings.
+    # They never reach the consumer schema.
     peak_margin: int = 0  # Largest absolute margin within this block
     peak_leader: int = 0  # 1=home led at peak, -1=away led at peak
-    # --- v3 fields per the gameflow brief ---
-    # Distinct from `role` (the SemanticRole enum used by structural validators):
-    # `story_role` is the narrative beat the segmenter chose, drawn from
+    # --- Segmentation / voice fields ---
+    # `story_role` is the narrative beat chosen by the segmenter, distinct
+    # from `role` (the structural SemanticRole). Values:
     # {opening, first_separation, response, lead_change, turning_point,
     # closeout, blowout_compression}. `leverage` and `featured_players`
-    # carry the segment's evidence so player callouts can act as proof
-    # rather than decoration.
+    # carry segment evidence so player callouts act as proof, not decoration.
     story_role: str | None = None
     leverage: str | None = None  # "low" | "medium" | "high"
     period_range: str | None = None  # e.g. "Q4 6:39–0:00", "Inning 8–9"
@@ -230,8 +228,7 @@ class BlocksOutput:
 MIN_BLOCKS = 3  # Allow 3-block flows for blowouts
 MAX_BLOCKS = 7
 
-# Narrative constraints — per BRAINDUMP §Narrative generation rules:
-# 1-2 sentences per block, 25-55 words normally.
+# Narrative constraints: 1-2 sentences per block, 25-55 words normally.
 MIN_WORDS_PER_BLOCK = 25
 MAX_WORDS_PER_BLOCK = 55
 TARGET_WORDS_PER_BLOCK = 40
