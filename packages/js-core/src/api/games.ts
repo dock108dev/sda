@@ -41,10 +41,10 @@ export type FeaturedPlayer = {
   statSummary?: string | null;
 };
 
-/** v3 schema: derived score-state context for a narrative block. */
+/** v3 schema: derived score-state signals for a narrative block.
+ *  Block-level scoreBefore/scoreAfter remain SSOT for segment endpoints —
+ *  duplicating them here would create a sync hazard. */
 export type ScoreContext = {
-  startScore?: ScoreObject | null;
-  endScore?: ScoreObject | null;
   leadChange: boolean;
   largestLeadDelta?: number | null;
 };
@@ -76,12 +76,13 @@ export type NarrativeBlock = {
   miniBox?: BlockMiniBox | null;
   startClock?: string | null;
   endClock?: string | null;
-  reason?: string | null;
-  label?: string | null;
-  leadBefore?: number | null;
-  leadAfter?: number | null;
-  evidence?: Record<string, unknown>[] | null;
-  // v3 schema fields. Optional so v2-shape responses keep typing.
+  // v3 contract fields. Optional so v2-shape rows persisted before the
+  // contract shipped continue to type. Removed v2 fields (reason, label,
+  // leadBefore, leadAfter, evidence) are superseded by these:
+  //   reason → storyRole + featuredPlayers[*].reason
+  //   label → storyRole
+  //   leadBefore / leadAfter → derivable from scoreBefore / scoreAfter
+  //   evidence → featuredPlayers (structured anchor list)
   storyRole?: StoryRole | null;
   leverage?: Leverage | null;
   periodRange?: string | null;

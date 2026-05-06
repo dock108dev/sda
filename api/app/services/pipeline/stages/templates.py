@@ -332,11 +332,14 @@ def _nhl_blocks(
 # ---------------------------------------------------------------------------
 
 
-_FALLBACK_LABELS: tuple[str, ...] = (
-    "Opening break",
-    "Response",
-    "Separation",
-    "Final bookkeeping",
+# Story-role tags emitted by the v3 fallback template — positional, so the
+# 4 deterministic blocks still surface as opening / first_separation /
+# turning_point / closeout regardless of sport.
+_FALLBACK_STORY_ROLES: tuple[str, ...] = (
+    "opening",
+    "first_separation",
+    "turning_point",
+    "closeout",
 )
 
 
@@ -371,15 +374,15 @@ def _build_blocks(
             "key_play_ids": [],
             "narrative": narratives[idx],
             "mini_box": mini_box_fn(sh, sa, dh, da),
-            # v2 schema placeholders (ISSUE-009): downstream readers expect
-            # these keys; fallback has no signal for the numeric/list fields,
-            # so they're explicitly null. Label is positional so the 4
-            # deterministic blocks still surface a recognizable narrative job.
-            "reason": "",
-            "label": _FALLBACK_LABELS[idx],
-            "lead_before": None,
-            "lead_after": None,
-            "evidence": None,
+            # v3 contract — fallback has no segment evidence, so featured_players
+            # stays unset and the score_context carries only the derived
+            # signals downstream consumers need.
+            "story_role": _FALLBACK_STORY_ROLES[idx],
+            "leverage": "low",
+            "score_context": {
+                "lead_change": False,
+                "largest_lead_delta": abs(sh - sa),
+            },
         })
         prev = [sh, sa]
 

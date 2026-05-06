@@ -21,7 +21,6 @@ from app.services.pipeline.stages.block_types import (
 from app.services.pipeline.stages.group_blocks import execute_group_blocks
 from app.services.pipeline.stages.group_helpers import (
     calculate_block_count,
-    compute_block_label,
     create_blocks,
     select_key_plays,
 )
@@ -141,103 +140,6 @@ class TestCalculateBlockCount:
             [], lead_changes=3, total_plays=200, archetype="back_and_forth",
         )
         assert count == 6  # 5 + 1 for >=3 lead changes
-
-
-class TestComputeBlockLabel:
-    """Tests for per-block narrative-job label assignment (ISSUE-011)."""
-
-    def test_first_block_is_opening_break(self) -> None:
-        label = compute_block_label(
-            block_index=0, block_count=5,
-            score_before=[0, 0], score_after=[10, 8],
-        )
-        assert label == "Opening break"
-
-    def test_final_block_blowout_is_closeout(self) -> None:
-        label = compute_block_label(
-            block_index=2, block_count=3,
-            score_before=[80, 50], score_after=[100, 60],
-            archetype="blowout",
-        )
-        assert label == "Closeout"
-
-    def test_final_block_close_game_is_final_bookkeeping(self) -> None:
-        label = compute_block_label(
-            block_index=4, block_count=5,
-            score_before=[95, 92], score_after=[100, 98],
-            archetype="back_and_forth",
-        )
-        assert label == "Final bookkeeping"
-
-    def test_early_avalanche_final_block_is_closeout(self) -> None:
-        label = compute_block_label(
-            block_index=2, block_count=3,
-            score_before=[10, 1], score_after=[12, 2],
-            archetype="early_avalanche_blowout",
-        )
-        assert label == "Closeout"
-
-    def test_legacy_is_blowout_drives_closeout(self) -> None:
-        """is_blowout=True falls through to Closeout even without archetype."""
-        label = compute_block_label(
-            block_index=2, block_count=3,
-            score_before=[80, 50], score_after=[100, 60],
-            is_blowout=True,
-        )
-        assert label == "Closeout"
-
-    def test_middle_block_separation_when_lead_grows(self) -> None:
-        label = compute_block_label(
-            block_index=1, block_count=5,
-            score_before=[20, 15], score_after=[40, 25],
-        )
-        assert label == "Separation"
-
-    def test_middle_block_response_when_deficit_reduced(self) -> None:
-        label = compute_block_label(
-            block_index=2, block_count=5,
-            score_before=[40, 25], score_after=[50, 45],
-        )
-        assert label == "Response"
-
-    def test_middle_block_swing_on_lead_flip(self) -> None:
-        label = compute_block_label(
-            block_index=2, block_count=5,
-            score_before=[40, 35], score_after=[45, 50],
-        )
-        assert label == "Swing"
-
-    def test_middle_block_swing_off_tie(self) -> None:
-        """Moving from tied to leading registers as a swing."""
-        label = compute_block_label(
-            block_index=1, block_count=5,
-            score_before=[20, 20], score_after=[30, 25],
-        )
-        assert label == "Swing"
-
-    def test_middle_block_stall_when_no_scoring(self) -> None:
-        label = compute_block_label(
-            block_index=1, block_count=5,
-            score_before=[20, 15], score_after=[20, 15],
-        )
-        assert label == "Stall"
-
-    def test_middle_block_stall_when_margin_unchanged(self) -> None:
-        """Equal scoring on both sides preserves the margin → stall."""
-        label = compute_block_label(
-            block_index=2, block_count=5,
-            score_before=[20, 15], score_after=[30, 25],
-        )
-        assert label == "Stall"
-
-    def test_comeback_archetype_tie_in_block_is_swing(self) -> None:
-        """Comeback shape: erasing the deficit to a tie is the swing moment."""
-        label = compute_block_label(
-            block_index=2, block_count=5,
-            score_before=[40, 50], score_after=[55, 55],
-            archetype="comeback",
-        )
-        assert label == "Swing"
 
 
 class TestCountLeadChanges:
@@ -1269,11 +1171,11 @@ class TestExecuteGroupBlocksExtended:
         assert result.data["blocks_grouped"] is True
         assert result.data["quarter_weights"] == {"Q1": 0.8, "Q2": 1.0, "Q3": 1.5, "Q4": 2.0}
         assert result.data["is_blowout"] is False
-        # Every block emits a v2 narrative-job label.
+        # Every block emits a v3 story_role tag.
         for block in result.data["blocks"]:
-            assert "label" in block
-            assert isinstance(block["label"], str) and block["label"]
-        assert result.data["blocks"][0]["label"] == "Opening break"
+            assert "story_role" in block
+            assert isinstance(block["story_role"], str) and block["story_role"]
+        assert result.data["blocks"][0]["story_role"] == "opening"
         assert "story_type" not in result.data
 
     @pytest.mark.asyncio
@@ -1303,8 +1205,8 @@ class TestExecuteGroupBlocksExtended:
 
         result = await execute_group_blocks(stage_input)
         assert result.data["archetype"] == "back_and_forth"
-        # Final block label reflects close-game shape, not blowout.
-        assert result.data["blocks"][-1]["label"] == "Final bookkeeping"
+        # Final block uses the v3 closeout tag (close-game shape, not blowout).
+        assert result.data["blocks"][-1]["story_role"] == "closeout"
 
     @pytest.mark.asyncio
     async def test_missing_moments_raises(self) -> None:

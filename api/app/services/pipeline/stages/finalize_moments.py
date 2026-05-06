@@ -91,45 +91,6 @@ BLOCKS_VERSION = "v1-blocks"
 # the upsert key and remains "v2-blocks" for table identity.
 SCHEMA_VERSION_V2 = "game-flow-v2"
 
-def _signed_lead(score: list | tuple | None) -> int | None:
-    """Return signed lead (home - away) from a [home, away] pair, or None.
-
-    The narrow ``(TypeError, ValueError)`` catch isolates the documented
-    contract: non-numeric or malformed score entries map to ``None`` so
-    callers can choose to omit the field rather than aborting persistence.
-    See docs/audits/error-handling-report.md §F-5.
-    """
-    if not score or len(score) < 2:
-        return None
-    try:
-        return int(score[0]) - int(score[1])
-    except (TypeError, ValueError):
-        return None
-
-
-def _ensure_v2_block_fields(blocks: list[dict]) -> list[dict]:
-    """Mutate-and-return: guarantee each block carries v2 fields with safe defaults.
-
-    Upstream stages may set ``reason``, ``evidence``, ``label`` directly when
-    they have signal; we never overwrite those. ``lead_before`` and
-    ``lead_after`` are derived from the block's existing ``score_before`` /
-    ``score_after`` whenever absent so consumers get a populated lead even on
-    older render paths.
-    """
-    for block in blocks:
-        if "reason" not in block:
-            block["reason"] = ""
-        if "evidence" not in block:
-            block["evidence"] = []
-        if "label" not in block:
-            block["label"] = None
-        if "lead_before" not in block:
-            block["lead_before"] = _signed_lead(block.get("score_before"))
-        if "lead_after" not in block:
-            block["lead_after"] = _signed_lead(block.get("score_after"))
-    return blocks
-
-
 def _resolve_winner_team_id(
     game: SportsGame, flow_home: int | None, flow_away: int | None
 ) -> str | None:
@@ -341,10 +302,6 @@ async def execute_finalize_moments(
 
     # Validate all embedded tweet references exist before writing.
     blocks = await validate_embedded_tweet_ids(session, blocks, game_id)
-
-    # v2 schema enrichment: backfill any per-block fields the upstream stages
-    # didn't supply, then compute top-level summary fields for the row.
-    blocks = _ensure_v2_block_fields(blocks)
 
     archetype = previous_output.get("archetype")
     winner_team_id = _resolve_winner_team_id(game, flow_home, flow_away)

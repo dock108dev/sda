@@ -339,6 +339,8 @@ class TestClassifyBlocksLeverage:
 
 class TestScoreContextPopulation:
     def test_score_context_carries_lead_change_and_largest_delta(self) -> None:
+        """score_context only carries derived signals; raw scores live on
+        the block itself (score_before / score_after)."""
         block = _block(
             block_index=1,
             score_before=(50, 55),
@@ -354,8 +356,10 @@ class TestScoreContextPopulation:
         classify_blocks(blocks, "NBA")
         ctx = blocks[1].score_context
         assert ctx is not None
-        assert ctx["start_score"] == [50, 55]
-        assert ctx["end_score"] == [60, 58]
+        # SSOT cleanup: start_score / end_score are NOT in score_context;
+        # they are duplicates of score_before / score_after on the block.
+        assert "start_score" not in ctx
+        assert "end_score" not in ctx
         assert ctx["lead_change"] is True
         # Pre-margin 5 → post-margin 2 → swing 3, peak_margin 2; takes the
         # larger of the two.

@@ -136,16 +136,20 @@ class FeaturedPlayer(BaseModel):
 
 
 class ScoreContext(BaseModel):
-    """Score-state context for a narrative block. Distinct from score_before /
-    score_after (which are raw [home, away] tuples) — this layer carries
-    derived signals the consumer + validator both need: whether the block
-    contained a lead change, and the largest single-direction margin swing
-    inside the block."""
+    """Derived score-state signals for a narrative block.
+
+    Distinct from the block's raw ``scoreBefore`` / ``scoreAfter`` (which
+    are SSOT for segment endpoints) — this layer carries only the
+    SEGMENT-level derived signals the consumer + voice validators need:
+    whether a lead change occurred inside the block and the largest
+    single-direction margin swing observed.
+
+    Earlier versions of this model duplicated startScore/endScore from
+    the block; that was a SSOT violation and was removed.
+    """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    start_score: ScoreObject | None = Field(None, alias="startScore")
-    end_score: ScoreObject | None = Field(None, alias="endScore")
     lead_change: bool = Field(False, alias="leadChange")
     largest_lead_delta: int | None = Field(None, alias="largestLeadDelta")
 
@@ -174,22 +178,15 @@ class GameFlowBlock(BaseModel):
     embedded_social_post_id: int | None = Field(None, alias="embeddedSocialPostId")
     start_clock: str | None = Field(None, alias="startClock")
     end_clock: str | None = Field(None, alias="endClock")
-    # --- v2 fields (legacy; consumers should migrate to the v3 fields below) ---
-    # ``reason`` is superseded by ``story_role`` + ``featured_players[*].reason``.
-    # ``label`` overlaps with ``story_role`` (Opening break vs. opening, etc.).
-    # ``leadBefore`` / ``leadAfter`` are derivable from ``scoreContext`` /
-    # ``scoreBefore`` / ``scoreAfter``. ``evidence`` is a free-form dict; the
-    # v3 ``featured_players`` is the structured replacement for player
-    # callouts. v2 fields stay populated for now so v2 readers keep working;
-    # a future PR can drop them once consumers confirm migration.
-    reason: str | None = None
-    label: str | None = None
-    lead_before: int | None = Field(None, alias="leadBefore")
-    lead_after: int | None = Field(None, alias="leadAfter")
-    evidence: list[dict[str, Any]] | None = None
-    # --- v3 fields (segmentation/voice contract per the gameflow brief) ---
-    # Nullable so v2 rows persisted before this contract shipped continue
-    # to serialize. The v3 generator populates them on every new flow.
+    # --- v3 contract fields (segmentation/voice per the gameflow brief) ---
+    # Nullable so v2-shape rows persisted before this contract shipped
+    # continue to serialize; the v3 generator populates them on every
+    # new flow. Removed v2 fields (``reason``, ``label``, ``leadBefore``,
+    # ``leadAfter``, ``evidence``) are superseded by these:
+    #   reason → story_role + featured_players[*].reason
+    #   label → story_role
+    #   leadBefore / leadAfter → derivable from scoreBefore / scoreAfter
+    #   evidence → featured_players (structured anchor list)
     story_role: str | None = Field(None, alias="storyRole")
     leverage: str | None = None  # "low" | "medium" | "high"
     period_range: str | None = Field(None, alias="periodRange")

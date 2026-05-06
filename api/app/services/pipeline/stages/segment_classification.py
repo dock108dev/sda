@@ -121,10 +121,11 @@ def _largest_lead_delta(block: NarrativeBlock) -> int:
 
 
 def _score_context(block: NarrativeBlock) -> dict[str, Any]:
+    """Derived signals only. Block-level ``score_before`` / ``score_after``
+    remain the SSOT for segment endpoints — duplicating them here would
+    create a sync hazard."""
     metrics = calculate_swing_metrics(block)
     return {
-        "start_score": list(block.score_before),
-        "end_score": list(block.score_after),
         "lead_change": bool(metrics["has_lead_change"]),
         "largest_lead_delta": _largest_lead_delta(block),
     }
@@ -394,14 +395,11 @@ def merge_blowout_compression(blocks: list[NarrativeBlock]) -> list[NarrativeBlo
             peak_leader=peak_leader,
             start_clock=first.start_clock,
             end_clock=last.end_clock,
-            label=first.label,
             story_role="blowout_compression",
             leverage="low",
             period_range=None,  # recomputed by caller
             featured_players=None,
             score_context={
-                "start_score": list(first.score_before),
-                "end_score": list(last.score_after),
                 "lead_change": False,
                 "largest_lead_delta": max(
                     int(_largest_lead_delta(b)) for b in run

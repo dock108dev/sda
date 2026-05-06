@@ -54,7 +54,7 @@ from .block_analysis import (
     find_scoring_runs,
 )
 from .block_types import MAX_BLOCKS, MIN_BLOCKS
-from .group_helpers import calculate_block_count, compute_block_label, create_blocks
+from .group_helpers import calculate_block_count, create_blocks
 from .group_roles import assign_roles
 
 # Import from split modules
@@ -255,18 +255,6 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
         role_summary[block.role.value] = role_summary.get(block.role.value, 0) + 1
     output.add_log(f"Role assignments: {role_summary}")
 
-    # Compute per-block narrative-job label (ISSUE-009 v2 schema field).
-    # Done after roles so blowout/closeout decisions see the same archetype.
-    for block in blocks:
-        block.label = compute_block_label(
-            block_index=block.block_index,
-            block_count=len(blocks),
-            score_before=block.score_before,
-            score_after=block.score_after,
-            archetype=archetype,
-            is_blowout=is_blowout,
-        )
-
     # v3 contract: tag every block with story_role / leverage / period_range /
     # score_context so the consumer + render prompts can see the segment beat.
     classify_blocks(
@@ -291,15 +279,6 @@ async def execute_group_blocks(stage_input: StageInput) -> StageOutput:
         blocks = merged_blocks
         # Re-assign roles in case the merge dropped a unique-role middle.
         assign_roles(blocks, league_code)
-        for block in blocks:
-            block.label = compute_block_label(
-                block_index=block.block_index,
-                block_count=len(blocks),
-                score_before=block.score_before,
-                score_after=block.score_after,
-                archetype=archetype,
-                is_blowout=is_blowout,
-            )
         classify_blocks(
             blocks,
             league_code,

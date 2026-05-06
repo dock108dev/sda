@@ -95,14 +95,12 @@ class NarrativeBlock:
     mini_box: dict[str, Any] | None = None
     start_clock: str | None = None  # Game clock at block start (from first moment)
     end_clock: str | None = None  # Game clock at block end (from last moment)
-    # --- v2 fields (legacy; kept for back-compat with consumers still on v2) ---
-    # `peak_margin` / `peak_leader` are subsumed by `score_context.largest_lead_delta`
-    # but consumers (and the existing role-assignment logic) still read them.
+    # `peak_margin` / `peak_leader` survive v2→v3 because they are read by
+    # the structural role assigner (assign_roles → calculate_swing_metrics)
+    # to detect lead swings. They are NOT consumer-facing — they live only
+    # on the internal NarrativeBlock dataclass and never reach the schema.
     peak_margin: int = 0  # Largest absolute margin within this block
     peak_leader: int = 0  # 1=home led at peak, -1=away led at peak
-    # `label` is the v2 narrative-job string (Opening break / Swing / Closeout / …)
-    # Conceptually overlaps with v3 `story_role`. Future cleanup may collapse them.
-    label: str | None = None
     # --- v3 fields per the gameflow brief ---
     # Distinct from `role` (the SemanticRole enum used by structural validators):
     # `story_role` is the narrative beat the segmenter chose, drawn from
@@ -139,8 +137,6 @@ class NarrativeBlock:
             result["start_clock"] = self.start_clock
         if self.end_clock is not None:
             result["end_clock"] = self.end_clock
-        if self.label is not None:
-            result["label"] = self.label
         if self.story_role is not None:
             result["story_role"] = self.story_role
         if self.leverage is not None:
@@ -172,7 +168,6 @@ class NarrativeBlock:
             peak_leader=data.get("peak_leader", 0),
             start_clock=data.get("start_clock"),
             end_clock=data.get("end_clock"),
-            label=data.get("label"),
             story_role=data.get("story_role"),
             leverage=data.get("leverage"),
             period_range=data.get("period_range"),

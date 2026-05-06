@@ -54,7 +54,6 @@ BANNED_PHRASES: list[str] = [
     "set the stage",
     "remained tight",
     "kept pace",
-    "solidified their position",
     "solidified position",
     "high leverage",
     "decisive final quarter",

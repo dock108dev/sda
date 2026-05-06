@@ -40,10 +40,7 @@ from .validate_blocks_rules import (
 )
 from .validate_blocks_segments import (
     validate_blowout_late_leverage,
-    validate_evidence_present,
-    validate_lead_consistency,
     validate_low_event_drama,
-    validate_reason_present,
 )
 from .validate_blocks_text import (
     check_ot_present,
@@ -77,11 +74,8 @@ _validate_score_continuity = validate_score_continuity
 _validate_word_counts = validate_word_counts
 _check_generic_phrase_density = check_generic_phrase_density
 _check_banned_phrases = check_banned_phrases
-_validate_lead_consistency = validate_lead_consistency
 _validate_blowout_late_leverage = validate_blowout_late_leverage
 _validate_low_event_drama = validate_low_event_drama
-_validate_reason_present = validate_reason_present
-_validate_evidence_present = validate_evidence_present
 _validate_no_repeated_final_score = validate_no_repeated_final_score
 _validate_featured_players_have_reason = validate_featured_players_have_reason
 _validate_story_role_present = validate_story_role_present
@@ -304,15 +298,6 @@ async def execute_validate_blocks(
 
     archetype = previous_output.get("archetype")
 
-    output.add_log("Checking Rule 12: Lead consistency across block boundaries")
-    errors, warnings = validate_lead_consistency(blocks)
-    all_errors.extend(errors)
-    all_warnings.extend(warnings)
-    if errors:
-        output.add_log(f"Rule 12 FAILED: {errors}", level="error")
-    else:
-        output.add_log("Rule 12 PASSED")
-
     output.add_log("Checking Rule 13: Blowout late-block leverage language")
     errors, warnings = validate_blowout_late_leverage(blocks, archetype)
     all_errors.extend(errors)
@@ -330,26 +315,6 @@ async def execute_validate_blocks(
         output.add_log(f"Rule 14 FAILED: {errors}", level="error")
     else:
         output.add_log("Rule 14 PASSED")
-
-    _, reason_warnings = validate_reason_present(blocks)
-    all_warnings.extend(reason_warnings)
-    if reason_warnings:
-        output.add_log(
-            f"Rule 15 WARNING: {len(reason_warnings)} block(s) missing or short reason",
-            level="warning",
-        )
-    else:
-        output.add_log("Rule 15 PASSED")
-
-    _, evidence_warnings = validate_evidence_present(blocks)
-    all_warnings.extend(evidence_warnings)
-    if evidence_warnings:
-        output.add_log(
-            f"Rule 16 WARNING: {len(evidence_warnings)} block(s) assert without evidence",
-            level="warning",
-        )
-    else:
-        output.add_log("Rule 16 PASSED")
 
     output.add_log("Checking Rule 17: Final-score repetition across blocks")
     errors, warnings = validate_no_repeated_final_score(
@@ -506,13 +471,10 @@ __all__ = [
     "_validate_block_count",
     "_validate_blowout_late_leverage",
     "_validate_coverage",
-    "_validate_evidence_present",
     "_validate_key_plays",
-    "_validate_lead_consistency",
     "_validate_low_event_drama",
     "_validate_mini_box",
     "_validate_moment_coverage",
-    "_validate_reason_present",
     "_validate_required_block_types",
     "_validate_role_constraints",
     "_validate_score_continuity",
