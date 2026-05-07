@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .league_config import LEAGUE_CONFIG, _NBA_DEFAULTS
+from .league_config import _NBA_DEFAULTS, LEAGUE_CONFIG
 
 SYSTEM_PROMPT = (
     "You are a sports columnist writing a short, narrative recap of a "

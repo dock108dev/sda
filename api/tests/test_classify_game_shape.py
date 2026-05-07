@@ -303,37 +303,31 @@ class TestClassifyArchetypeNBA:
 
     def test_wire_to_wire(self):
         events = _nba_wire_to_wire_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         assert classify_archetype(timeline, events, "NBA") == "wire_to_wire"
 
     def test_comeback(self):
         events = _nba_comeback_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         assert classify_archetype(timeline, events, "NBA") == "comeback"
 
     def test_back_and_forth(self):
         events = _nba_back_and_forth_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         assert classify_archetype(timeline, events, "NBA") == "back_and_forth"
 
     def test_blowout(self):
         events = _nba_blowout_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         assert classify_archetype(timeline, events, "NBA") == "blowout"
 
     def test_fake_close(self):
         events = _nba_fake_close_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         assert classify_archetype(timeline, events, "NBA") == "fake_close"
 
     def test_late_separation(self):
         events = _nba_late_separation_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         assert classify_archetype(timeline, events, "NBA") == "late_separation"
 
@@ -343,13 +337,11 @@ class TestClassifyArchetypeMLB:
 
     def test_low_event_pitchers_duel(self):
         events = _mlb_pitchers_duel_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "MLB")
         assert classify_archetype(timeline, events, "MLB") == "low_event"
 
     def test_early_avalanche_blowout(self):
         events = _mlb_early_avalanche_blowout_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "MLB")
         assert (
             classify_archetype(timeline, events, "MLB")
@@ -358,7 +350,6 @@ class TestClassifyArchetypeMLB:
 
     def test_late_blowout_is_plain_blowout(self):
         events = _mlb_late_blowout_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "MLB")
         assert classify_archetype(timeline, events, "MLB") == "blowout"
 
@@ -374,7 +365,6 @@ class TestClassifyArchetypeNHL:
 
     def test_regulation_win(self) -> None:
         events = _nhl_regulation_win_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NHL")
         archetype = classify_archetype(timeline, events, "NHL")
         # 4-2 winner led wire-to-wire after the early 1-1 tie; no NHL-specific
@@ -384,7 +374,6 @@ class TestClassifyArchetypeNHL:
 
     def test_overtime_win_classifies_to_a_non_blowout_shape(self) -> None:
         events = _nhl_overtime_win_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NHL")
         archetype = classify_archetype(timeline, events, "NHL")
         # OT 4-3 with three regulation lead changes is decisively not a
@@ -394,7 +383,6 @@ class TestClassifyArchetypeNHL:
 
     def test_one_goal_game_is_not_blowout(self) -> None:
         events = _nhl_one_goal_game_events()
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NHL")
         archetype = classify_archetype(timeline, events, "NHL")
         # 2-1 with the winner ahead the whole way is a wire_to_wire shape;
@@ -431,7 +419,6 @@ class TestTiedThroughoutEdgeCase:
             _play(7, 22, 16, quarter=4, team="HOME"),  # lead change → HOME
             _play(8, 24, 22, quarter=4, team="HOME"),  # final, 2-pt margin
         ]
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         archetype = classify_archetype(timeline, events, "NBA")
         assert archetype == "back_and_forth"
@@ -447,7 +434,6 @@ class TestTiedThroughoutEdgeCase:
             _play(5, 30, 30, quarter=3, team="AWAY"),
             _play(6, 44, 44, quarter=4, team="HOME"),
         ]
-        moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
         archetype = classify_archetype(timeline, events, "NBA")
         # Tied games never satisfy the comeback or blowout predicates and never
