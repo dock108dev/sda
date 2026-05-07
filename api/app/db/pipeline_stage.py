@@ -16,23 +16,29 @@ class PipelineStage(str, Enum):
     Stages are executed in order. Each stage consumes the output of the
     previous stage and produces output for the next stage.
 
-    Stage order:
-    1. NORMALIZE_PBP - Build normalized PBP events with phases
-    2. GENERATE_MOMENTS - Partition game into narrative moments
-    3. VALIDATE_MOMENTS - Run validation checks on moments
-    4. CLASSIFY_GAME_SHAPE - Deterministic archetype classification (no LLM)
-    5. ANALYZE_DRAMA - Deterministic per-quarter drama weights (no LLM)
-    6. GROUP_BLOCKS - Group moments into 4-7 narrative blocks (drama-weighted)
-    7. RENDER_BLOCKS - Generate short narratives for each block
-    8. VALIDATE_BLOCKS - Validate block constraints
-    9. FINALIZE_MOMENTS - Persist final game flow artifact
+    Active stage order (v3-summary pipeline):
+    1. NORMALIZE_PBP      - Build normalized PBP events with phases
+    2. CLASSIFY_GAME_SHAPE- Deterministic archetype classification (no LLM)
+    3. GENERATE_SUMMARY   - Single LLM call producing 3-5 paragraph recap
+    4. FINALIZE_SUMMARY   - Persist summary to sports_game_stories
+
+    Legacy enum members (GENERATE_MOMENTS, VALIDATE_MOMENTS, ANALYZE_DRAMA,
+    GROUP_BLOCKS, RENDER_BLOCKS, VALIDATE_BLOCKS, FINALIZE_MOMENTS) are kept
+    so historical pipeline_runs rows still parse via ``PipelineStage(s.stage)``.
+    They are not in ``ordered_stages()`` and the executor does not dispatch
+    them.
     """
 
+    # --- Active stages ---
     NORMALIZE_PBP = "NORMALIZE_PBP"
+    CLASSIFY_GAME_SHAPE = "CLASSIFY_GAME_SHAPE"
+    GENERATE_SUMMARY = "GENERATE_SUMMARY"
+    FINALIZE_SUMMARY = "FINALIZE_SUMMARY"
+
+    # --- Legacy stages (historical row compatibility only) ---
     GENERATE_MOMENTS = "GENERATE_MOMENTS"
     VALIDATE_MOMENTS = "VALIDATE_MOMENTS"
     ANALYZE_DRAMA = "ANALYZE_DRAMA"
-    CLASSIFY_GAME_SHAPE = "CLASSIFY_GAME_SHAPE"
     GROUP_BLOCKS = "GROUP_BLOCKS"
     RENDER_BLOCKS = "RENDER_BLOCKS"
     VALIDATE_BLOCKS = "VALIDATE_BLOCKS"
@@ -40,27 +46,20 @@ class PipelineStage(str, Enum):
 
     @classmethod
     def ordered_stages(cls) -> list[PipelineStage]:
-        """Return stages in execution order."""
+        """Return active stages in execution order."""
         return [
             cls.NORMALIZE_PBP,
-            cls.GENERATE_MOMENTS,
-            cls.VALIDATE_MOMENTS,
             cls.CLASSIFY_GAME_SHAPE,
-            cls.ANALYZE_DRAMA,
-            cls.GROUP_BLOCKS,
-            cls.RENDER_BLOCKS,
-            cls.VALIDATE_BLOCKS,
-            cls.FINALIZE_MOMENTS,
+            cls.GENERATE_SUMMARY,
+            cls.FINALIZE_SUMMARY,
         ]
 
     def next_stage(self) -> PipelineStage | None:
         """Return the next stage in the pipeline, or None if this is the last.
 
-        ``stages.index(self)`` raises ``ValueError`` only if a new enum member
-        was added without being added to ``ordered_stages()`` — i.e. an
-        invariant violation in this module. The previous version swallowed it
-        and returned ``None``, which would cause the executor to silently skip
-        the new stage. We let it propagate so the bug is loud at first call.
+        ``stages.index(self)`` raises ``ValueError`` if called on a legacy
+        stage that is no longer in ``ordered_stages()``. Callers iterating
+        over historical runs should guard with ``stage in ordered_stages()``.
         """
         stages = self.ordered_stages()
         idx = stages.index(self)
@@ -69,11 +68,7 @@ class PipelineStage(str, Enum):
         return None
 
     def previous_stage(self) -> PipelineStage | None:
-        """Return the previous stage in the pipeline, or None if this is the first.
-
-        See ``next_stage`` for why ``ValueError`` from ``stages.index`` is not
-        suppressed.
-        """
+        """Return the previous stage in the pipeline, or None if this is the first."""
         stages = self.ordered_stages()
         idx = stages.index(self)
         if idx > 0:

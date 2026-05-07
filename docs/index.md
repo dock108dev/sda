@@ -34,17 +34,14 @@
 | [Database integration](database.md) | Querying and schema orientation |
 | [DB conventions](conventions/db.md) | Naming patterns used in migrations |
 
-## Game flow & timelines
+## Game summary & timelines
 
 | Guide | Description |
 |-------|-------------|
-| [Game flow guide](gameflow/guide.md) | Timeline blocks and mini box scores |
-| [Game flow contract](gameflow/contract.md) | Block-based narrative model |
-| [Game flow pipeline](gameflow/pipeline.md) | Stages from PBP to narratives |
+| [Game summary contract](gameflow/contract.md) | v3-summary schema, voice rules, pipeline shape |
 | [PBP assumptions](gameflow/pbp-assumptions.md) | Technical assumptions for PBP |
 | [Timeline assembly](gameflow/timeline-assembly.md) | Merging PBP, social, odds |
 | [Timeline validation](gameflow/timeline-validation.md) | Validation rules |
-| [Version semantics](gameflow/version-semantics.md) | Story versioning |
 
 ## Domains
 

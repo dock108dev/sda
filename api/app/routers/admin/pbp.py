@@ -47,8 +47,7 @@ Source (NBA/NHL API)
     → sports_game_plays (persisted)
     → NORMALIZE_PBP stage (pipeline)
     → Normalized PBP (pipeline stage output + snapshot)
-    → GENERATE_MOMENTS stage
-    → Game flow generation
+    → CLASSIFY_GAME_SHAPE → GENERATE_SUMMARY → FINALIZE_SUMMARY
 ```
 """
 

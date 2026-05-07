@@ -51,15 +51,15 @@ def _instruments():
         )
         _regen_count = meter.create_counter(
             name="pipeline.regen.count",
-            description="Number of REGENERATE decisions made by VALIDATE_BLOCKS",
+            description="Number of regen decisions (legacy v2-blocks pipeline)",
         )
         _fallback_count = meter.create_counter(
             name="pipeline.fallback.count",
-            description="Number of FALLBACK decisions (template substitutions) made by VALIDATE_BLOCKS",
+            description="Number of fallback decisions (legacy v2-blocks pipeline)",
         )
         _published_count = meter.create_counter(
             name="pipeline.flow.published.count",
-            description="Number of flows successfully persisted by FINALIZE_MOMENTS",
+            description="Number of summaries successfully persisted by FINALIZE_SUMMARY",
         )
         _score_mismatch_count = meter.create_counter(
             name="pipeline.score_mismatch",
@@ -96,7 +96,7 @@ def increment_fallback(sport: str, reason: str = "max_regen_exceeded") -> None:
 
 
 def increment_published(sport: str) -> None:
-    """Increment the published-flow counter on successful FINALIZE_MOMENTS."""
+    """Increment the published-flow counter on successful FINALIZE_SUMMARY."""
     _, _, _, counter, _ = _instruments()
     counter.add(1, attributes={"sport": sport})
 

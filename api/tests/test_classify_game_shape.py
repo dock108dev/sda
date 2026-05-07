@@ -305,37 +305,37 @@ class TestClassifyArchetypeNBA:
         events = _nba_wire_to_wire_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        assert classify_archetype(timeline, events, moments, "NBA") == "wire_to_wire"
+        assert classify_archetype(timeline, events, "NBA") == "wire_to_wire"
 
     def test_comeback(self):
         events = _nba_comeback_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        assert classify_archetype(timeline, events, moments, "NBA") == "comeback"
+        assert classify_archetype(timeline, events, "NBA") == "comeback"
 
     def test_back_and_forth(self):
         events = _nba_back_and_forth_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        assert classify_archetype(timeline, events, moments, "NBA") == "back_and_forth"
+        assert classify_archetype(timeline, events, "NBA") == "back_and_forth"
 
     def test_blowout(self):
         events = _nba_blowout_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        assert classify_archetype(timeline, events, moments, "NBA") == "blowout"
+        assert classify_archetype(timeline, events, "NBA") == "blowout"
 
     def test_fake_close(self):
         events = _nba_fake_close_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        assert classify_archetype(timeline, events, moments, "NBA") == "fake_close"
+        assert classify_archetype(timeline, events, "NBA") == "fake_close"
 
     def test_late_separation(self):
         events = _nba_late_separation_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        assert classify_archetype(timeline, events, moments, "NBA") == "late_separation"
+        assert classify_archetype(timeline, events, "NBA") == "late_separation"
 
 
 class TestClassifyArchetypeMLB:
@@ -345,14 +345,14 @@ class TestClassifyArchetypeMLB:
         events = _mlb_pitchers_duel_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "MLB")
-        assert classify_archetype(timeline, events, moments, "MLB") == "low_event"
+        assert classify_archetype(timeline, events, "MLB") == "low_event"
 
     def test_early_avalanche_blowout(self):
         events = _mlb_early_avalanche_blowout_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "MLB")
         assert (
-            classify_archetype(timeline, events, moments, "MLB")
+            classify_archetype(timeline, events, "MLB")
             == "early_avalanche_blowout"
         )
 
@@ -360,7 +360,7 @@ class TestClassifyArchetypeMLB:
         events = _mlb_late_blowout_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "MLB")
-        assert classify_archetype(timeline, events, moments, "MLB") == "blowout"
+        assert classify_archetype(timeline, events, "MLB") == "blowout"
 
 
 class TestClassifyArchetypeNHL:
@@ -376,7 +376,7 @@ class TestClassifyArchetypeNHL:
         events = _nhl_regulation_win_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NHL")
-        archetype = classify_archetype(timeline, events, moments, "NHL")
+        archetype = classify_archetype(timeline, events, "NHL")
         # 4-2 winner led wire-to-wire after the early 1-1 tie; no NHL-specific
         # archetype currently captures "regulation win" so the closest stable
         # bucket is wire_to_wire (winner held the lead from go-ahead onward).
@@ -386,7 +386,7 @@ class TestClassifyArchetypeNHL:
         events = _nhl_overtime_win_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NHL")
-        archetype = classify_archetype(timeline, events, moments, "NHL")
+        archetype = classify_archetype(timeline, events, "NHL")
         # OT 4-3 with three regulation lead changes is decisively not a
         # blowout/comeback/fake_close. back_and_forth is the strongest match
         # given the lead-change count.
@@ -396,64 +396,11 @@ class TestClassifyArchetypeNHL:
         events = _nhl_one_goal_game_events()
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NHL")
-        archetype = classify_archetype(timeline, events, moments, "NHL")
+        archetype = classify_archetype(timeline, events, "NHL")
         # 2-1 with the winner ahead the whole way is a wire_to_wire shape;
         # in no case is a one-goal game a blowout.
         assert archetype != "blowout"
         assert archetype == "wire_to_wire"
-
-
-class TestNHLGoalDrivenBoundaries:
-    """NHL boundary triggers from ISSUE-014: first goal, tied flips, multi-goal periods."""
-
-    def test_first_goal_appears_as_candidate(self) -> None:
-        from app.services.pipeline.stages.block_analysis import (
-            find_first_scoring_moment,
-        )
-
-        moments = _moments_from_events(_nhl_regulation_win_events())
-        first_goal_idx = find_first_scoring_moment(moments)
-        # First scoring moment is moment index 0 (P1 has both goals after the
-        # opening 0-0 pseudo-play). Helper returns a non-None index.
-        assert first_goal_idx is not None
-
-    def test_tied_state_flips_detected(self) -> None:
-        from app.services.pipeline.stages.block_analysis import (
-            find_tied_state_flip_indices,
-        )
-
-        moments = _moments_from_events(_nhl_overtime_win_events())
-        flips = find_tied_state_flip_indices(moments)
-        # Several tie/break transitions across the OT fixture.
-        assert flips
-        for idx in flips:
-            assert 0 <= idx < len(moments)
-
-    def test_multi_goal_period_end_returned(self) -> None:
-        from app.services.pipeline.stages.block_analysis import (
-            find_multi_goal_period_end_indices,
-        )
-
-        moments = _moments_from_events(_nhl_regulation_win_events())
-        ends = find_multi_goal_period_end_indices(moments)
-        # P1 has 2 goals, P2 has 2 goals, P3 has 2 goals — every period
-        # boundary qualifies.
-        assert ends, "Expected multi-goal periods to surface end indices"
-
-    def test_ot_start_anchors_a_split(self) -> None:
-        from app.services.pipeline.stages.group_split_points import (
-            find_split_points,
-        )
-
-        events = _nhl_overtime_win_events()
-        moments = _moments_from_events(events)
-        splits = find_split_points(moments, target_blocks=4, league_code="NHL")
-        # Period 4 (OT) starts at the last moment in this fixture.
-        ot_idx = next(
-            (i for i, m in enumerate(moments) if m.get("period", 1) > 3), None
-        )
-        assert ot_idx is not None
-        assert ot_idx in splits
 
 
 class TestEmptyTimeline:
@@ -461,7 +408,7 @@ class TestEmptyTimeline:
         from app.services.pipeline.helpers.score_timeline import ScoreTimeline
 
         empty = ScoreTimeline()
-        assert classify_archetype(empty, [], [], "NBA") == "wire_to_wire"
+        assert classify_archetype(empty, [], "NBA") == "wire_to_wire"
 
 
 class TestTiedThroughoutEdgeCase:
@@ -486,7 +433,7 @@ class TestTiedThroughoutEdgeCase:
         ]
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        archetype = classify_archetype(timeline, events, moments, "NBA")
+        archetype = classify_archetype(timeline, events, "NBA")
         assert archetype == "back_and_forth"
 
     def test_nba_perpetually_tied_does_not_classify_as_blowout_or_comeback(self):
@@ -502,7 +449,7 @@ class TestTiedThroughoutEdgeCase:
         ]
         moments = _moments_from_events(events)
         timeline = _build_timeline(events, "NBA")
-        archetype = classify_archetype(timeline, events, moments, "NBA")
+        archetype = classify_archetype(timeline, events, "NBA")
         # Tied games never satisfy the comeback or blowout predicates and never
         # end in fake_close or late_separation either; they fall through.
         assert archetype not in {"comeback", "blowout", "fake_close", "late_separation"}
@@ -522,21 +469,17 @@ class TestExecuteClassifyGameShape:
             previous_output=None,
             game_context={"sport": "NBA"},
         )
-        with pytest.raises(ValueError, match="requires VALIDATE_MOMENTS output"):
+        with pytest.raises(ValueError, match="requires NORMALIZE_PBP output"):
             await execute_classify_game_shape(stage_input)
 
     @pytest.mark.asyncio
     async def test_archetype_in_output(self):
         events = _nba_blowout_events()
-        moments = _moments_from_events(events)
         stage_input = StageInput(
             game_id=42,
             run_id=7,
             previous_output={
-                "validated": True,
-                "moments": moments,
                 "pbp_events": events,
-                "errors": [],
             },
             game_context={"sport": "NBA"},
         )
@@ -545,14 +488,10 @@ class TestExecuteClassifyGameShape:
         assert result.data["shape_classified"] is True
 
     @pytest.mark.asyncio
-    async def test_passthrough_preserves_previous_keys(self):
+    async def test_passthrough_includes_pbp_events(self):
         events = _nba_wire_to_wire_events()
-        moments = _moments_from_events(events)
         previous = {
-            "validated": True,
-            "moments": moments,
             "pbp_events": events,
-            "errors": ["prior warning"],
         }
         stage_input = StageInput(
             game_id=1,
@@ -561,28 +500,17 @@ class TestExecuteClassifyGameShape:
             game_context={"sport": "NBA"},
         )
         result = await execute_classify_game_shape(stage_input)
-        assert result.data["moments"] == moments
         assert result.data["pbp_events"] == events
-        assert result.data["errors"] == ["prior warning"]
-        assert "story_type" not in result.data
-        # CLASSIFY_GAME_SHAPE no longer reads or emits drama-stage outputs;
-        # ANALYZE_DRAMA now runs after this stage and consumes its archetype.
+        assert "moments" not in result.data
         assert "quarter_weights" not in result.data
-        assert "headline" not in result.data
 
     @pytest.mark.asyncio
     async def test_unknown_league_falls_back_to_nba(self):
         events = _nba_blowout_events()
-        moments = _moments_from_events(events)
         stage_input = StageInput(
             game_id=1,
             run_id=1,
-            previous_output={
-                "validated": True,
-                "moments": moments,
-                "pbp_events": events,
-                "errors": [],
-            },
+            previous_output={"pbp_events": events},
             game_context={"sport": "WNBA"},
         )
         result = await execute_classify_game_shape(stage_input)
@@ -592,16 +520,10 @@ class TestExecuteClassifyGameShape:
     @pytest.mark.asyncio
     async def test_mlb_early_avalanche_label(self):
         events = _mlb_early_avalanche_blowout_events()
-        moments = _moments_from_events(events)
         stage_input = StageInput(
             game_id=1,
             run_id=1,
-            previous_output={
-                "validated": True,
-                "moments": moments,
-                "pbp_events": events,
-                "errors": [],
-            },
+            previous_output={"pbp_events": events},
             game_context={"sport": "MLB"},
         )
         result = await execute_classify_game_shape(stage_input)
@@ -611,16 +533,10 @@ class TestExecuteClassifyGameShape:
     async def test_deterministic(self):
         """Same input yields the same archetype across invocations."""
         events = _nba_back_and_forth_events()
-        moments = _moments_from_events(events)
         stage_input = StageInput(
             game_id=1,
             run_id=1,
-            previous_output={
-                "validated": True,
-                "moments": moments,
-                "pbp_events": events,
-                "errors": [],
-            },
+            previous_output={"pbp_events": events},
             game_context={"sport": "NBA"},
         )
         first = await execute_classify_game_shape(stage_input)

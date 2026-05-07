@@ -83,8 +83,8 @@ class RerunPipelineRequest(BaseModel):
         "json_schema_extra": {
             "example": {
                 "triggered_by": "admin",
-                "execute_through_stage": "GENERATE_MOMENTS",
-                "reason": "Testing new threshold values",
+                "execute_through_stage": "GENERATE_SUMMARY",
+                "reason": "Testing new prompt",
             }
         }
     }
@@ -109,17 +109,15 @@ class RunFullPipelineRequest(BaseModel):
     regen_attempt: int = Field(
         default=0,
         description=(
-            "Quality-gate regen counter. 0 = first pipeline pass; "
-            "1 = first regen (triggers template_fallback on second gate failure). "
-            "Set automatically by grade_gate_regen triggers."
+            "Legacy quality-gate regen counter. Retained for compatibility "
+            "with existing callers; not consumed by the v3-summary pipeline."
         ),
     )
     failure_reasons: list[str] = Field(
         default_factory=list,
         description=(
-            "Structured failure reasons from the previous grade_flow_task. "
-            "Injected into game_context so the next RENDER_BLOCKS pass can "
-            "address specific quality weaknesses."
+            "Legacy failure reasons list. Retained for compatibility with "
+            "existing callers; not consumed by the v3-summary pipeline."
         ),
     )
 
@@ -135,7 +133,7 @@ class StageStatusResponse(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     stage: str = Field(description="Stage name (e.g., NORMALIZE_PBP)")
-    stage_order: int = Field(description="Execution order (1-5)")
+    stage_order: int = Field(description="Execution order (1-4)")
     status: str = Field(description="pending, running, success, failed, skipped")
     started_at: str | None = Field(description="ISO timestamp when stage started")
     finished_at: str | None = Field(description="ISO timestamp when stage finished")
@@ -423,17 +421,3 @@ class BulkGenerateStatusResponse(BaseModel):
     )
 
 
-# =============================================================================
-# BACKFILL EMBEDDED TWEETS MODELS
-# =============================================================================
-
-
-class BackfillEmbeddedTweetsResponse(BaseModel):
-    """Response from backfilling embedded tweets into game flows."""
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-    total_checked: int = Field(description="Number of flows checked")
-    total_backfilled: int = Field(description="Number of flows that were backfilled")
-    results: list[dict[str, Any]] = Field(description="Per-game result details")
-    message: str = Field(description="Summary message")

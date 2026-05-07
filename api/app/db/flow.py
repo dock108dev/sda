@@ -114,6 +114,10 @@ class SportsGameFlow(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # v3-summary payload: paragraphs, referenced play ids, final score.
+    # Populated for story_version="v3-summary" rows; NULL for v2-blocks rows.
+    summary_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

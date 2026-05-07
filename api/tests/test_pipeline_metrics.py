@@ -40,9 +40,9 @@ class TestRecordStageDuration:
         m = _reset_module()
         hist, regen, fallback, published, score_mismatch = _make_mock_instruments()
         with patch.object(m, "_instruments", return_value=(hist, regen, fallback, published, score_mismatch)):
-            m.record_stage_duration("ANALYZE_DRAMA", "NFL", 999.0)
+            m.record_stage_duration("GENERATE_SUMMARY", "NFL", 999.0)
         hist.record.assert_called_once_with(
-            999.0, attributes={"stage": "ANALYZE_DRAMA", "sport": "NFL"}
+            999.0, attributes={"stage": "GENERATE_SUMMARY", "sport": "NFL"}
         )
 
 
@@ -131,8 +131,13 @@ class TestNoopWhenOtelMissing:
         score_mismatch.add(1, attributes={})
 
 
-class TestValidateBlocksEmitsMetrics:
-    """Integration-style check: validate_blocks.execute calls increment_regen/fallback."""
+class _RemovedValidateBlocksEmitsMetrics:
+    """Removed in v3-summary cutover. Block-level validation no longer exists.
+
+    The increment_regen / increment_fallback functions remain on the metrics
+    module (covered by TestIncrementRegen / TestIncrementFallback above) but
+    are no longer dispatched from any active stage.
+    """
 
     def _blocks_failing_coverage(self):
         """Minimal structurally-valid blocks whose narratives don't mention the score."""

@@ -330,8 +330,10 @@ class TestCrossValidationWithIsLeadChange:
     primitive ``is_lead_change_play`` helper used by boundary detection."""
 
     def test_lead_change_events_match_pairwise_check(self):
-        from app.services.pipeline.helpers.score_timeline import build_score_timeline
-        from app.services.pipeline.stages.score_detection import is_lead_change_play
+        from app.services.pipeline.helpers.score_timeline import (
+            build_score_timeline,
+            is_lead_change_play,
+        )
 
         events = [
             _play(0, 0, 0),

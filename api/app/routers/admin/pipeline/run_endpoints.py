@@ -310,11 +310,11 @@ async def run_full_pipeline(
 
         artifact_id = None
         finalize_stage = next(
-            (s for s in run.stages if s.stage == "FINALIZE_MOMENTS"),
+            (s for s in run.stages if s.stage == "FINALIZE_SUMMARY"),
             None,
         )
         if finalize_stage and finalize_stage.output_json:
-            artifact_id = finalize_stage.output_json.get("artifact_id")
+            artifact_id = finalize_stage.output_json.get("flow_id")
 
         return RunFullPipelineResponse(
             run_id=run.id,

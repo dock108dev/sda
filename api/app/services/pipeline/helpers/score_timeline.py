@@ -2,12 +2,8 @@
 
 Consumes normalized PBP events (NORMALIZE_PBP output) and aggregates them into a
 queryable timeline structure. Downstream consumers (game-shape classification,
-boundary selection, evidence selection) read this aggregated view rather than
-re-deriving lead/score state per stage.
-
-The primitive lead/score predicates live in
-``api/app/services/pipeline/stages/score_detection.py`` — this module imports
-them rather than duplicating the logic.
+summary generation) read this aggregated view rather than re-deriving lead /
+score state per stage.
 """
 
 from __future__ import annotations
@@ -16,7 +12,40 @@ from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
 from ..stages.league_config import LEAGUE_CONFIG, get_config, get_flow_thresholds
-from ..stages.score_detection import is_lead_change_play, is_scoring_play
+
+
+def _score_value(event: dict[str, Any] | None, key: str) -> int:
+    if not event:
+        return 0
+    return int(event.get(key) or 0)
+
+
+def is_scoring_play(event: dict[str, Any], prev_event: dict[str, Any] | None) -> bool:
+    """A play is 'scoring' when either team's cumulative score changed."""
+    return (
+        _score_value(event, "home_score") != _score_value(prev_event, "home_score")
+        or _score_value(event, "away_score") != _score_value(prev_event, "away_score")
+    )
+
+
+def _signed_lead(event: dict[str, Any] | None) -> int:
+    return _score_value(event, "home_score") - _score_value(event, "away_score")
+
+
+def is_lead_change_play(
+    event: dict[str, Any], prev_event: dict[str, Any] | None
+) -> bool:
+    """A play is a 'lead change' when both prev and current have a leader and they differ.
+
+    Tied -> lead and lead -> tied are NOT lead changes.
+    """
+    if prev_event is None:
+        return False
+    prev_lead = _signed_lead(prev_event)
+    new_lead = _signed_lead(event)
+    if prev_lead == 0 or new_lead == 0:
+        return False
+    return (prev_lead > 0) != (new_lead > 0)
 
 
 class ScorePoint(NamedTuple):

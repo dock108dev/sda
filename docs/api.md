@@ -29,7 +29,7 @@
 7. [Reference Tables](#reference-tables)
 8. [Health Check](#health-check)
 9. [Games](#games)
-10. [Game Flow](#game-flow)
+10. [Game Summary](#game-summary)
 11. [Timeline](#timeline)
 12. [Teams](#teams)
 13. [Scraper Runs](#scraper-runs)
@@ -734,126 +734,68 @@ Get a preview score for an upcoming game with excitement and quality ratings.
 
 ---
 
-## Game Flow
+## Game Summary
 
-### `GET /games/{gameId}/flow`
+### `GET /games/{gameId}/summary`
 
-Get the AI-generated game flow for a game.
+Get the AI-generated catch-up summary for a completed game. The summary is
+generated once per game (single LLM call) and cached indefinitely. Calls
+after the first generation are served from `sports_game_stories`.
 
-**Response:**
+**Response (200, summary available):**
 ```json
 {
   "gameId": 123,
-  "version": "game-flow-v2",
-  "archetype": "comeback",
-  "winnerTeamId": "LAL",
-  "homeTeam": "Lakers",
-  "awayTeam": "Suns",
-  "homeTeamAbbr": "LAL",
-  "awayTeamAbbr": "PHX",
-  "homeTeamColorLight": "#FDB927",
-  "homeTeamColorDark": "#552583",
-  "awayTeamColorLight": "#E56020",
-  "awayTeamColorDark": "#1D1160",
-  "leagueCode": "NBA",
-  "flow": {
-    "blocks": [
-      {
-        "blockIndex": 0,
-        "role": "SETUP",
-        "storyRole": "opening",
-        "leverage": "low",
-        "periodRange": "Q1 12:00–6:39",
-        "momentIndices": [0, 1, 2],
-        "scoreBefore": {"home": 0, "away": 0},
-        "scoreAfter": {"home": 12, "away": 15},
-        "scoreContext": {"leadChange": false, "largestLeadDelta": 3},
-        "featuredPlayers": [
-          {"name": "Durant", "teamAbbr": "PHX", "reason": "two threes to open"}
-        ],
-        "narrative": "The Suns jumped out early, with Durant draining two three-pointers in the opening minutes to set the tone."
-      },
-      {
-        "blockIndex": 1,
-        "role": "MOMENTUM_SHIFT",
-        "storyRole": "lead_change",
-        "leverage": "high",
-        "periodRange": "Q1 6:39–Q2 9:14",
-        "momentIndices": [3, 4, 5],
-        "scoreBefore": {"home": 12, "away": 15},
-        "scoreAfter": {"home": 32, "away": 28},
-        "scoreContext": {"leadChange": true, "largestLeadDelta": 7},
-        "featuredPlayers": [
-          {"name": "Davis", "teamAbbr": "LAL", "reason": "alley-oop dunk to flip the lead"}
-        ],
-        "narrative": "The Lakers responded with a 20-13 run spanning the late first and early second quarter, taking their first lead on a Davis alley-oop."
-      }
-    ],
-    "moments": [
-      {
-        "playIds": [1, 2, 3],
-        "explicitlyNarratedPlayIds": [2],
-        "period": 1,
-        "startClock": "11:42",
-        "endClock": "11:00",
-        "scoreBefore": {"home": 0, "away": 0},
-        "scoreAfter": {"home": 0, "away": 3}
-      }
-    ]
+  "sport": "NBA",
+  "finalScore": {
+    "home": 110,
+    "away": 109,
+    "homeAbbr": "LAL",
+    "awayAbbr": "PHX"
   },
-  "plays": [
-    {
-      "playId": 1,
-      "playIndex": 1,
-      "period": 1,
-      "clock": "11:42",
-      "playType": "3pt",
-      "description": "K. Durant makes 3-pt shot from 24 ft",
-      "homeScore": 0,
-      "awayScore": 3
-    }
+  "summary": [
+    "The Suns came out blistering, opening a nine-point cushion before the Lakers could find a rhythm. Durant carried the early scoring, draining two three-pointers in the opening minutes.",
+    "The Lakers turned it around in the second quarter behind Davis, who closed the half with an alley-oop and a putback to flip the lead. By halftime the visitors were up two.",
+    "Phoenix responded in the third with a 14-4 run spanning the period change. Booker hit consecutive pull-ups, and the lead changed hands four times in the final five minutes.",
+    "It came down to a Davis tip-in with 1.4 seconds left. Final: Lakers 110, Suns 109."
   ],
-  "validationPassed": true,
-  "validationErrors": []
+  "referencedPlayIds": [12, 47, 102, 138, 201],
+  "archetype": "back_and_forth",
+  "generatedAt": "2026-05-07T22:14:03Z",
+  "modelUsed": "gpt-4o-mini",
+  "storyVersion": "v3-summary",
+  "homeTeam": "Los Angeles Lakers",
+  "awayTeam": "Phoenix Suns",
+  "leagueCode": "NBA"
 }
 ```
 
-**Key Notes:**
-- **Blocks are the primary output** — Use `blocks` for consumer-facing game summaries (3-7 blocks, 60-90 second read time).
-- **Moments are for traceability** — Use `moments` to link narratives back to specific plays.
-- Each block carries two role fields: structural `role` (SETUP / MOMENTUM_SHIFT / RESPONSE / DECISION_POINT / RESOLUTION) and narrative `storyRole` (opening, first_separation, response, lead_change, turning_point, closeout, blowout_compression).
-- `leverage` is `"low"` / `"medium"` / `"high"` — drama tier of the segment.
-- `scoreBefore` / `scoreAfter` are `{home, away}` objects; `scoreContext` carries the per-segment derived signals (`leadChange`, `largestLeadDelta`).
-- `featuredPlayers` is a list of up to 2 anchors with structured `reason` strings; `opening` and `blowout_compression` blocks omit it.
-- `playId` equals `playIndex` (sequential play number).
-- Top-level `version` (`"game-flow-v2"`), `archetype`, `winnerTeamId`, `sourceCounts`, and `validation` are forward-compat metadata. See [Game Flow Version Semantics](gameflow/version-semantics.md).
-- **Team colors are clash-resolved** — When home and away colors are too similar (Euclidean RGB distance < 0.12), the away team falls back to its secondary colors, then to neutral black/white. Home always keeps its primary colors. Light and dark modes are resolved independently. Consumers get ready-to-use colors with no client-side clash logic needed.
+**Response (200, summary not yet ready):**
+```json
+{
+  "gameId": 123,
+  "status": "RECAP_PENDING",
+  "etaMinutes": 8
+}
+```
 
-**Response (404):** No game flow exists for this game.
+`status` is one of `RECAP_PENDING` / `IN_PROGRESS` / `PREGAME` /
+`SCHEDULED` / `POSTPONED` / `CANCELED`.
 
-### Game Flow Structure
+**Response (404):** Game does not exist.
 
-Game flows are AI-generated narrative summaries built from play-by-play
-data. Each game flow contains 3–7 **blocks** — short narratives (1–5
-sentences each, ~65 words) designed for 60–90 second total read time.
-
-**Blocks** are the consumer-facing output:
-
-- Each block has a structural `role` (SETUP / MOMENTUM_SHIFT / RESPONSE
-  / DECISION_POINT / RESOLUTION) and a narrative `storyRole` (opening,
-  first_separation, response, lead_change, turning_point, closeout,
-  blowout_compression).
-- First block is always SETUP, last block is always RESOLUTION.
-- Total word count ≤ 600 words.
-
-**Moments** remain for internal traceability:
-
-- Link blocks back to specific plays
-- 15–25 moments per game (more granular than blocks)
-- No consumer-facing narrative text
-
-For the full block schema, see the [Game Flow Contract](gameflow/contract.md)
-and [Game Flow Guide](gameflow/guide.md).
+**Key notes:**
+- `summary` is a 3–5 paragraph narrative recap in plain text. Designed for
+  the catch-up reveal experience as the closing card after key plays.
+- `referencedPlayIds` are the `play_index` values of the plays the recap
+  actually leans on, so catch-up cards can link back to the same plays.
+- `archetype` is the deterministic game-shape label (`wire_to_wire`,
+  `comeback`, `back_and_forth`, `blowout`, `early_avalanche_blowout`,
+  `low_event`, `fake_close`, `late_separation`).
+- `storyVersion` is `"v3-summary"`. Older `v2-blocks` rows still exist in
+  storage for history but are no longer served from any endpoint.
+- The endpoint is cached indefinitely after first generation. Triggering
+  fresh generation requires the admin pipeline endpoints.
 
 ---
 
@@ -2675,73 +2617,36 @@ interface GameListResponse {
 }
 ```
 
-### GameFlowResponse
+### GameSummaryResponse
 
 ```typescript
-interface GameFlowResponse {
+interface GameSummaryResponse {
   gameId: number;
-  flow: GameFlowContent;
-  plays: GameFlowPlay[];
-  validationPassed: boolean;
-  validationErrors: string[];
-  homeTeam: string | null;            // Team name
+  sport: "NBA" | "MLB" | "NHL" | "NCAAB";
+  finalScore: {
+    home: number;
+    away: number;
+    homeAbbr: string | null;
+    awayAbbr: string | null;
+  };
+  summary: string[];               // 3-5 narrative paragraphs
+  referencedPlayIds: number[];     // play_index values the summary leans on
+  archetype: string | null;        // wire_to_wire | comeback | back_and_forth | blowout |
+                                   // early_avalanche_blowout | low_event | fake_close |
+                                   // late_separation
+  generatedAt: string;             // ISO 8601 timestamp
+  modelUsed: string | null;
+  storyVersion: string;            // "v3-summary"
+  homeTeam: string | null;
   awayTeam: string | null;
-  homeTeamAbbr: string | null;        // Clash-resolved team abbreviation
-  awayTeamAbbr: string | null;
-  homeTeamColorLight: string | null;   // Clash-resolved hex color (light mode)
-  homeTeamColorDark: string | null;    // Clash-resolved hex color (dark mode)
-  awayTeamColorLight: string | null;
-  awayTeamColorDark: string | null;
   leagueCode: string | null;
 }
 
-interface GameFlowContent {
-  blocks: GameFlowBlock[];       // Consumer-facing narratives (3-7 per game)
-  moments: GameFlowMoment[];     // Internal traceability (15-25 per game)
-}
-
-// Consumer-facing narrative block (1-5 sentences, ~65 words)
-interface GameFlowBlock {
-  blockIndex: number;         // Position (0-6)
-  role: SemanticRole;         // SETUP, MOMENTUM_SHIFT, RESPONSE, DECISION_POINT, RESOLUTION
-  momentIndices: number[];    // Which moments are grouped in this block
-  periodStart: number;        // First period covered by this block
-  periodEnd: number;          // Last period covered by this block
-  scoreBefore: number[];      // [away, home]
-  scoreAfter: number[];       // [away, home]
-  playIds: number[];          // All play indices in this block
-  keyPlayIds: number[];       // Highlighted plays
-  narrative: string;          // 1-5 sentences (~65 words)
-  miniBox: BlockMiniBox | null;  // Player stats for this segment
-  embeddedSocialPostId?: number | null;  // Optional social post ID (max 1 per block, 5 per game)
-  peak_margin?: number;       // Largest absolute margin within this block (omitted when 0)
-  peak_leader?: number;       // 1=home led at peak, -1=away led at peak (omitted when 0)
-}
-
-type SemanticRole = "SETUP" | "MOMENTUM_SHIFT" | "RESPONSE" | "DECISION_POINT" | "RESOLUTION";
-
-type GamePhase = "pregame" | "in_game" | "postgame";
-
-// Internal traceability: links blocks to specific plays
-interface GameFlowMoment {
-  playIds: number[];
-  explicitlyNarratedPlayIds: number[];
-  period: number;
-  startClock: string | null;
-  endClock: string | null;
-  scoreBefore: number[];      // [away, home]
-  scoreAfter: number[];       // [away, home]
-}
-
-interface GameFlowPlay {
-  playId: number;
-  playIndex: number;
-  period: number;
-  clock: string | null;
-  playType: string | null;
-  description: string | null;
-  homeScore: number | null;
-  awayScore: number | null;
+// Returned when a game has no summary yet
+interface FlowStatusResponse {
+  gameId: number;
+  status: "RECAP_PENDING" | "IN_PROGRESS" | "PREGAME" | "SCHEDULED" | "POSTPONED" | "CANCELED";
+  etaMinutes?: number | null;
 }
 ```
 
