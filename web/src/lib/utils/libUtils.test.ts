@@ -35,6 +35,8 @@ describe("dateFormat", () => {
     expect(formatDate("2024-06-01")).toMatch(/2024|Jun|6|01/);
     expect(formatDate(new Date(Date.UTC(2024, 5, 1)))).toMatch(/2024|Jun/);
     expect(formatDateTime("2024-06-01T14:30:00Z")).toMatch(/2024|Jun/);
+    expect(formatDateTime(new Date(Date.UTC(2024, 5, 1, 14, 30, 0)))).toMatch(/2024|Jun/);
+    expect(formatDateTime(new Date(Date.UTC(2024, 5, 1, 14, 30, 0)))).toMatch(/2024|Jun/);
   });
 
   it("formats date ranges and input helpers", () => {
