@@ -21,8 +21,10 @@ from app.tasks._task_infra import _task_db
 
 logger = logging.getLogger(__name__)
 
-# Stage name as stored in GamePipelineStage.stage
-_VALIDATE_BLOCKS_STAGE = "VALIDATE_BLOCKS"
+# Stage name as stored in GamePipelineStage.stage. The v3-summary pipeline
+# treats successful FINALIZE_SUMMARY as a publish; there is no template
+# fallback path in v3, so fallback counts are always zero.
+_FINALIZE_SUMMARY_STAGE = "FINALIZE_SUMMARY"
 
 
 @celery_app.task(name="generate_pipeline_coverage_report", bind=True, max_retries=0)
@@ -89,9 +91,10 @@ async def _run_coverage_report(report_date_str: str | None) -> dict:
                 )
                 flow_game_ids = {r.game_id for r in (await db.execute(flows_stmt)).all()}
 
-            # ── 3. Determine VALIDATE_BLOCKS decision for each game with a flow
-            # Pick the latest completed run per game, then look at its VALIDATE_BLOCKS stage.
-            decision_by_game: dict[int, str] = {}
+            # ── 3. Confirm FINALIZE_SUMMARY succeeded for each game with a flow.
+            # Any FINALIZE_SUMMARY success counts as a publish; v3 has no
+            # template fallback path, so fallback_count is always zero.
+            published_game_ids: set[int] = set()
             if flow_game_ids:
                 runs_stmt = select(GamePipelineRun.id, GamePipelineRun.game_id).where(
                     GamePipelineRun.game_id.in_(flow_game_ids),
@@ -99,7 +102,6 @@ async def _run_coverage_report(report_date_str: str | None) -> dict:
                 )
                 runs_rows = (await db.execute(runs_stmt)).all()
 
-                # Latest run id per game (higher id = more recent)
                 latest_run_by_game: dict[int, int] = {}
                 for r in runs_rows:
                     if r.game_id not in latest_run_by_game or r.id > latest_run_by_game[r.game_id]:
@@ -109,18 +111,15 @@ async def _run_coverage_report(report_date_str: str | None) -> dict:
                     run_id_to_game = {v: k for k, v in latest_run_by_game.items()}
                     stages_stmt = select(
                         GamePipelineStage.run_id,
-                        GamePipelineStage.output_json,
                     ).where(
                         GamePipelineStage.run_id.in_(list(latest_run_by_game.values())),
-                        GamePipelineStage.stage == _VALIDATE_BLOCKS_STAGE,
+                        GamePipelineStage.stage == _FINALIZE_SUMMARY_STAGE,
                         GamePipelineStage.status == "success",
                     )
                     for row in (await db.execute(stages_stmt)).all():
-                        game_id = run_id_to_game.get(row.run_id)
-                        if game_id and row.output_json:
-                            decision = row.output_json.get("decision")
-                            if decision:
-                                decision_by_game[game_id] = decision
+                        gid = run_id_to_game.get(row.run_id)
+                        if gid:
+                            published_game_ids.add(gid)
 
             # ── 4. Aggregate per sport ─────────────────────────────────────────
             sports: dict[str, dict[str, int | list[float]]] = {}
@@ -137,13 +136,8 @@ async def _run_coverage_report(report_date_str: str | None) -> dict:
                 s["finals_count"] += 1  # type: ignore[operator]
                 if gid in flow_game_ids:
                     s["flows_count"] += 1  # type: ignore[operator]
-                    decision = decision_by_game.get(gid)
-                    if decision == "FALLBACK":
-                        s["fallback_count"] += 1  # type: ignore[operator]
-                        s["_quality_scores"].append(0.0)  # type: ignore[union-attr]
-                    elif decision == "PUBLISH":
+                    if gid in published_game_ids:
                         s["_quality_scores"].append(100.0)  # type: ignore[union-attr]
-                    # REGENERATE that eventually led to a flow counts as PUBLISH quality
                 else:
                     s["missing_count"] += 1  # type: ignore[operator]
 

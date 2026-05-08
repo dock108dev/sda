@@ -89,10 +89,22 @@ def _extract_forbidden_phrases(tier_breakdown: dict) -> list[str]:
     return []
 
 
-def _narrative_preview(blocks_json: list | None) -> str:
-    if not blocks_json:
-        return ""
-    return (blocks_json[0].get("narrative", "") or "")[:300]
+def _narrative_preview(
+    summary_json: dict | None,
+    blocks_json: list | None,
+) -> str:
+    """First-paragraph preview of an LLM-generated game story.
+
+    v3-summary rows expose ``summary_json["summary"][0]`` as the lead
+    paragraph; legacy v2-blocks rows expose ``blocks_json[0]["narrative"]``.
+    """
+    if summary_json:
+        paragraphs = summary_json.get("summary") or []
+        if paragraphs:
+            return str(paragraphs[0])[:300]
+    if blocks_json:
+        return (blocks_json[0].get("narrative", "") or "")[:300]
+    return ""
 
 
 def _actor(request: Request) -> str:
@@ -147,6 +159,7 @@ async def list_review_queue(
             QualityReviewQueue,
             SportsGame.game_date,
             SportsGameFlow.flow_source,
+            SportsGameFlow.summary_json,
             SportsGameFlow.blocks_json,
         )
         .join(SportsGame, QualityReviewQueue.game_id == SportsGame.id)
@@ -163,7 +176,8 @@ async def list_review_queue(
         q: QualityReviewQueue = row[0]
         game_date: datetime | None = row[1]
         flow_source: str | None = row[2]
-        blocks_json: list | None = row[3]
+        summary_json: dict | None = row[3]
+        blocks_json: list | None = row[4]
 
         items.append(
             QueueItem(
@@ -178,7 +192,7 @@ async def list_review_queue(
                 tier2_score=q.tier2_score,
                 tier_breakdown=q.tier_breakdown,
                 forbidden_phrases=_extract_forbidden_phrases(q.tier_breakdown),
-                narrative_preview=_narrative_preview(blocks_json),
+                narrative_preview=_narrative_preview(summary_json, blocks_json),
                 status=q.status,
                 created_at=q.created_at,
             )

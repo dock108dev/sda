@@ -218,18 +218,6 @@ jobs:
       - name: Check all ForeignKey() calls declare ondelete=
         run: python scripts/lint_fk_ondelete.py
 
-  lint-guardrails-sync:
-    name: Lint · guardrails.ts ↔ validate_blocks.py sync
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Check guardrails.ts mirrors validate_blocks.py constants
-        run: python scripts/check_guardrails_sync.py
-
   lint-api-schema:
     name: Lint · camelCase fields in /api/v1/ OpenAPI schema
     runs-on: ubuntu-latest
@@ -383,7 +371,6 @@ jobs:
       - lint-camel-case-schemas
       - lint-router-namespaces
       - lint-api-schema
-      - lint-guardrails-sync
       - lint-fk-ondelete
       - lint-js-core-sync
       - security-bandit

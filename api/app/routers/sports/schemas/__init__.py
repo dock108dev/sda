@@ -17,27 +17,16 @@ from .common import (
     OddsEntry,
     PlayEntry,
     PlayerStat,
+    ScoreObject,
     SocialPostEntry,
     TeamStat,
     TieredPlayGroup,
 )
 from .diagnostics import GameConflictEntry, JobRunResponse, MissingPbpEntry
-from .game_flow import (
-    BlockMiniBox,
-    ConsumerGameFlowResponse,
-    FeaturedPlayer,
+from .game_summary import (
     FlowStatusResponse,
-    GameFlowBlock,
-    GameFlowContent,
-    GameFlowMoment,
-    GameFlowPlay,
-    GameFlowResponse,
-    MomentBoxScore,
-    MomentGoalieStat,
-    MomentPlayerStat,
-    MomentTeamBoxScore,
-    ScoreContext,
-    ScoreObject,
+    GameSummaryResponse,
+    SummaryFinalScore,
     TimelineArtifactResponse,
 )
 from .games import (
@@ -90,22 +79,11 @@ __all__ = [
     "GameConflictEntry",
     "JobRunResponse",
     "MissingPbpEntry",
-    # game_flow
-    "BlockMiniBox",
-    "ConsumerGameFlowResponse",
-    "FeaturedPlayer",
+    # game_summary (v3)
     "FlowStatusResponse",
-    "GameFlowBlock",
-    "GameFlowContent",
-    "GameFlowMoment",
-    "GameFlowPlay",
-    "GameFlowResponse",
-    "MomentBoxScore",
-    "MomentGoalieStat",
-    "MomentPlayerStat",
-    "MomentTeamBoxScore",
-    "ScoreContext",
+    "GameSummaryResponse",
     "ScoreObject",
+    "SummaryFinalScore",
     "TimelineArtifactResponse",
     # games
     "GameDetailResponse",

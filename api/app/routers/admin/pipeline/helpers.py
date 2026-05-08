@@ -58,62 +58,25 @@ def summarize_output(stage: str, output: dict[str, Any]) -> dict[str, Any]:
             "has_overtime": output.get("has_overtime", False),
             "phases": list(output.get("phase_boundaries", {}).keys()),
         }
-    elif stage == "GENERATE_MOMENTS":
-        moments = output.get("moments", [])
-        if not moments:
-            return {"moment_count": 0}
-        sizes = [len(m.get("play_ids", [])) for m in moments]
-        narrated = [len(m.get("explicitly_narrated_play_ids", [])) for m in moments]
-        scoring = sum(1 for m in moments if m.get("score_before") != m.get("score_after"))
-        total_narrated = sum(narrated)
-        total_plays = sum(sizes)
-        return {
-            "moment_count": len(moments),
-            "play_count": total_plays,
-            "avg_moment_size": round(sum(sizes) / len(sizes), 1) if sizes else 0,
-            "scoring_moments": scoring,
-            "narrated_plays": total_narrated,
-            "narration_pct": round(total_narrated / total_plays * 100, 1) if total_plays else 0,
-        }
-    elif stage == "VALIDATE_MOMENTS":
-        return {
-            "validated": output.get("validated", False),
-            "error_count": len(output.get("errors", [])),
-        }
     elif stage == "CLASSIFY_GAME_SHAPE":
         return {
             "shape_classified": output.get("shape_classified", False),
             "archetype": output.get("archetype"),
         }
-    elif stage == "GROUP_BLOCKS":
-        # Format: {"blocks_grouped": true, "blocks": [...], "block_count": N}
+    elif stage == "GENERATE_SUMMARY":
         return {
-            "blocks_grouped": output.get("blocks_grouped", False),
-            "block_count": output.get("block_count", 0),
-            "lead_changes": output.get("lead_changes", 0),
-        }
-    elif stage == "RENDER_BLOCKS":
-        # Format: {"blocks_rendered": true, "blocks": [...], "total_words": N}
-        blocks = output.get("blocks", [])
-        return {
-            "blocks_rendered": output.get("blocks_rendered", False),
-            "block_count": len(blocks),
-            "total_words": output.get("total_words", 0),
+            "summary_generated": output.get("summary_generated", False),
+            "paragraph_count": len(output.get("summary", []) or []),
+            "key_play_count": len(output.get("key_play_ids", []) or []),
             "openai_calls": output.get("openai_calls", 0),
-        }
-    elif stage == "VALIDATE_BLOCKS":
-        # Format: {"blocks_validated": true/false, "errors": [...]}
-        return {
-            "blocks_validated": output.get("blocks_validated", False),
-            "error_count": len(output.get("errors", [])),
             "total_words": output.get("total_words", 0),
         }
-    elif stage == "FINALIZE_MOMENTS":
+    elif stage == "FINALIZE_SUMMARY":
         return {
             "finalized": output.get("finalized", False),
             "flow_id": output.get("flow_id"),
             "story_version": output.get("story_version"),
-            "moment_count": output.get("moment_count", 0),
+            "version": output.get("version"),
         }
     return {}
 
@@ -285,13 +248,8 @@ def get_stage_description(stage: PipelineStage) -> str:
     """Get human-readable description for a stage."""
     descriptions = {
         PipelineStage.NORMALIZE_PBP: "Read PBP data from database and normalize with phase assignments",
-        PipelineStage.GENERATE_MOMENTS: "Segment plays into condensed moments with explicit narration targets",
-        PipelineStage.VALIDATE_MOMENTS: "Validate moment structure, ordering, and coverage",
-        PipelineStage.ANALYZE_DRAMA: "Compute deterministic per-quarter drama weights for block distribution",
         PipelineStage.CLASSIFY_GAME_SHAPE: "Deterministically classify the game's archetype (wire-to-wire, comeback, blowout, etc.)",
-        PipelineStage.GROUP_BLOCKS: "Group moments into 4-7 narrative blocks with semantic roles",
-        PipelineStage.RENDER_BLOCKS: "Generate short narratives for each block using OpenAI",
-        PipelineStage.VALIDATE_BLOCKS: "Validate block count, word limits, and constraints",
-        PipelineStage.FINALIZE_MOMENTS: "Persist moments and blocks to game flow tables",
+        PipelineStage.GENERATE_SUMMARY: "Generate the 3-5 paragraph catch-up summary in a single LLM call",
+        PipelineStage.FINALIZE_SUMMARY: "Persist the summary to sports_game_stories with story_version v3-summary",
     }
     return descriptions.get(stage, "Unknown stage")

@@ -46,6 +46,7 @@ class OpenAIClient:
         temperature: float = 0.7,
         max_tokens: int = 2000,
         max_retries: int = 3,
+        system_prompt: str | None = None,
     ) -> str:
         """Generate text from prompt with retry logic.
 
@@ -54,6 +55,8 @@ class OpenAIClient:
             temperature: Sampling temperature (0-1)
             max_tokens: Maximum tokens to generate
             max_retries: Maximum retry attempts for malformed responses
+            system_prompt: Optional override for the system role. Defaults to
+                a generic sports-narrative system message.
 
         Returns:
             Generated text (JSON string for structured outputs)
@@ -64,16 +67,17 @@ class OpenAIClient:
         last_error = None
         # Cap retry fan-out on malformed responses / flakes.
         attempts = max(1, min(max_retries, 5))
+        sys_msg = system_prompt or (
+            "You are a sports narrative writer. Generate engaging, accurate "
+            "summaries of game moments. Always respond with valid JSON."
+        )
 
         for attempt in range(attempts):
             try:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a sports narrative writer. Generate engaging, accurate summaries of game moments. Always respond with valid JSON.",
-                        },
+                        {"role": "system", "content": sys_msg},
                         {"role": "user", "content": prompt},
                     ],
                     temperature=temperature,

@@ -26,10 +26,8 @@ SAFETY GUARANTEES
 
 from fastapi import APIRouter
 
-from .backfill_endpoints import router as backfill_router
 from .bulk_endpoints import router as bulk_router
 from .models import (
-    BackfillEmbeddedTweetsResponse,
     BulkGenerateAsyncResponse,
     BulkGenerateRequest,
     BulkGenerateStatusResponse,
@@ -63,7 +61,6 @@ router.include_router(run_router)
 router.include_router(status_router)
 router.include_router(stage_router)
 router.include_router(bulk_router)
-router.include_router(backfill_router)
 
 __all__ = [
     "router",
@@ -92,5 +89,4 @@ __all__ = [
     "StageComparisonResponse",
     "BulkGenerateAsyncResponse",
     "BulkGenerateStatusResponse",
-    "BackfillEmbeddedTweetsResponse",
 ]

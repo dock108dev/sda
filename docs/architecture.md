@@ -155,15 +155,16 @@ A narrative block contains:
 ### Key Properties
 
 - **Consumer-focused:** 3–7 blocks, 60–90 second read time
-- **Traceability:** Blocks → Moments → Plays
-- **Two role dimensions:** Structural `role` for layout and validators; `story_role` for narrative beat / voice rules
-- **Guardrails enforced:** Hard limits on block count, social post count, word count
-- **Voice rules enforced:** No repeated final score (Rule 17), featured players have reason (Rule 18), `story_role` required (Rule 19)
-- **Social-independent:** Game flow structure identical with/without social data
+- **3–5 paragraph narrative recap** generated in a single LLM call per
+  completed game, cached indefinitely.
+- **Pipeline:** `NORMALIZE_PBP → CLASSIFY_GAME_SHAPE → GENERATE_SUMMARY → FINALIZE_SUMMARY`.
+- **Cross-sport consistency:** sport differences flow through input data
+  (`league_config`) rather than per-sport prompt branches.
+- **Traceability:** referenced play ids returned alongside the prose so
+  catch-up cards can link back to the same plays.
 
-See [Gameflow Contract](gameflow/contract.md) for the authoritative specification.
-
-See [Gameflow Pipeline](gameflow/pipeline.md) for implementation details.
+See [Game Summary Contract](gameflow/contract.md) for the authoritative
+specification of the v3-summary pipeline and output schema.
 
 **Code:** `api/app/services/pipeline/`
 

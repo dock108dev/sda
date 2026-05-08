@@ -1,292 +1,49 @@
 /**
- * Game Flow Types
+ * Game Summary types (v3-summary).
  *
- * TypeScript definitions for Game Flow API responses.
- * These types are READ-ONLY views of Game Flow data.
- * The UI must not modify, augment, or interpret these structures.
+ * READ-ONLY views of the catch-up summary returned by
+ * GET /api/v1/games/{gameId}/summary.
  */
 
-// =============================================================================
-// Shared primitive types
-// =============================================================================
-
-/**
- * Score as a structured object.
- * Replaces the deprecated [int, int] tuple convention.
- */
 export type ScoreObject = {
   home: number;
   away: number;
 };
 
-// =============================================================================
-// Game Flow API Types (GET /games/{game_id}/flow)
-// =============================================================================
-
-/**
- * Player stat entry in cumulative box score.
- */
-export type MomentPlayerStat = {
-  name: string;
-  // Basketball stats
-  pts?: number | null;
-  reb?: number | null;
-  ast?: number | null;
-  "3pm"?: number | null;
-  // Hockey stats
-  goals?: number | null;
-  assists?: number | null;
-  sog?: number | null;
-  plusMinus?: number | null;
-  // Baseball stats
-  runs?: number | null;
-  hits?: number | null;
-  rbi?: number | null;
-  hr?: number | null;
-  sb?: number | null;
-  k?: number | null;
+export type SummaryFinalScore = {
+  home: number;
+  away: number;
+  homeAbbr?: string | null;
+  awayAbbr?: string | null;
 };
 
 /**
- * Goalie stat entry for NHL box score.
- */
-export type MomentGoalieStat = {
-  name: string;
-  saves: number;
-  ga: number;
-  savePct: number;
-};
-
-/**
- * Team box score for a moment.
- */
-export type MomentTeamBoxScore = {
-  team: string;
-  score: number;
-  players: MomentPlayerStat[];
-  goalie?: MomentGoalieStat | null;
-};
-
-/**
- * Cumulative box score at a moment in time.
- */
-export type MomentBoxScore = {
-  home: MomentTeamBoxScore;
-  away: MomentTeamBoxScore;
-};
-
-/**
- * A moment in the game flow.
- * Uses camelCase to match API JSON response.
- */
-export type GameFlowMoment = {
-  playIds: number[];
-  explicitlyNarratedPlayIds: number[];
-  period: number;
-  startClock: string | null;
-  endClock: string | null;
-  scoreBefore: ScoreObject;
-  scoreAfter: ScoreObject;
-  narrative: string | null;  // Narrative is in blocks, not moments
-  cumulativeBoxScore?: MomentBoxScore | null;
-};
-
-/**
- * A play referenced by a game flow moment.
- * Uses camelCase to match API JSON response.
+ * Response from GET /api/v1/games/{gameId}/summary.
  *
- * IMPORTANT: playId equals playIndex (not a database ID).
- * To join moments to plays: plays.filter(p => moment.playIds.includes(p.playId))
+ * `summary` is a 3-5 paragraph narrative recap. `referencedPlayIds` are the
+ * play_index values of the plays the recap actually leans on, so catch-up
+ * cards can link back.
  */
-export type GameFlowPlay = {
-  /** Play identifier - equals playIndex for joining with moment.playIds */
-  playId: number;
-  /** Sequential play number in the game */
-  playIndex: number;
-  period: number;
-  clock: string | null;
-  playType: string | null;
-  description: string | null;
-  score: ScoreObject | null;
-};
-
-/**
- * Game flow content containing ordered moments.
- */
-export type GameFlowContent = {
-  moments: GameFlowMoment[];
-};
-
-/**
- * Response from GET /games/{game_id}/flow endpoint.
- * Returns the persisted game flow data.
- */
-export type GameFlowResponse = {
+export type GameSummaryResponse = {
   gameId: number;
-  flow: GameFlowContent;
-  plays: GameFlowPlay[];
-  validationPassed: boolean;
-  validationErrors: string[];
-  /** Narrative blocks (4-7 blocks with narratives) */
-  blocks?: NarrativeBlock[];
-  /** Total word count across all block narratives */
-  totalWords?: number;
-};
-
-// =============================================================================
-// Block-based Narrative Types
-// =============================================================================
-
-/**
- * Semantic role for a narrative block.
- * Describes the block's function in the game's narrative arc.
- */
-export type SemanticRole =
-  | "SETUP"
-  | "MOMENTUM_SHIFT"
-  | "RESPONSE"
-  | "DECISION_POINT"
-  | "RESOLUTION";
-
-/**
- * Player stat with delta showing segment production.
- */
-export type BlockPlayerStat = {
-  name: string;
-  // Basketball stats (cumulative)
-  pts?: number;
-  reb?: number;
-  ast?: number;
-  "3pm"?: number;
-  fgm?: number;
-  ftm?: number;
-  // Basketball deltas (this block's production)
-  deltaPts?: number;
-  deltaReb?: number;
-  deltaAst?: number;
-  // Hockey stats (cumulative)
-  goals?: number;
-  assists?: number;
-  sog?: number;
-  plusMinus?: number;
-  // Hockey deltas
-  deltaGoals?: number;
-  deltaAssists?: number;
-  // Baseball stats (cumulative)
-  runs?: number;
-  hits?: number;
-  rbi?: number;
-  hr?: number;
-  sb?: number;
-  k?: number;
-  // Baseball deltas
-  deltaRuns?: number;
-  deltaHits?: number;
-  deltaRbi?: number;
+  sport: string;
+  finalScore: SummaryFinalScore;
+  summary: string[];
+  referencedPlayIds: number[];
+  archetype: string | null;
+  generatedAt: string;
+  modelUsed: string | null;
+  storyVersion: string;
+  homeTeam: string | null;
+  awayTeam: string | null;
+  leagueCode: string | null;
 };
 
 /**
- * Team mini box score for a block.
- */
-export type BlockTeamMiniBox = {
-  team: string;
-  players: BlockPlayerStat[];
-};
-
-/**
- * Mini box score for a block with cumulative stats and segment deltas.
- */
-export type BlockMiniBox = {
-  home: BlockTeamMiniBox;
-  away: BlockTeamMiniBox;
-  /** Top contributors in this segment (last names) */
-  blockStars: string[];
-};
-
-/**
- * A narrative block in the collapsed game flow.
- * Replaces moment-level narratives with 1-2 sentences.
- */
-export type NarrativeBlock = {
-  blockIndex: number;
-  role: SemanticRole;
-  momentIndices: number[];
-  periodStart: number;
-  periodEnd: number;
-  scoreBefore: ScoreObject;
-  scoreAfter: ScoreObject;
-  playIds: number[];
-  keyPlayIds: number[];
-  narrative: string | null;
-  embeddedSocialPostId?: number | null;
-  /** Cumulative box score with segment deltas */
-  miniBox?: BlockMiniBox | null;
-  /**
-   * Set by validate_blocks.py when the RESOLUTION block has no traceable
-   * reference to a final-window play. Soft signal — warnings only, not a
-   * structural failure. Mirrors _check_resolution_specificity in backend.
-   */
-  resolutionSpecificityWarning?: boolean | null;
-};
-
-/**
- * Social post for expandable sections.
- * Categorized by phase for organization.
- */
-export type CategorizedSocialPost = {
-  id: string | number;
-  text: string;
-  author: string;
-  postedAt: string;
-  phase: string;
-  segment?: string | null;
-  hasMedia: boolean;
-  mediaType?: string | null;
-  postUrl?: string;
-};
-
-/**
- * Grouped social posts for expandable sections.
- */
-export type SocialPostsByPhase = {
-  pregame: CategorizedSocialPost[];
-  inGame: Record<string, CategorizedSocialPost[]>; // Keyed by segment (q1, q2, etc.)
-  postgame: CategorizedSocialPost[];
-};
-
-/**
- * Returned when a flow is not yet available for a game.
- *
- * status values:
- * - RECAP_PENDING: game is FINAL, generation in progress
- * - IN_PROGRESS: game is live
- * - PREGAME: game has not started
- * - POSTPONED / CANCELED: terminal non-final states
+ * Returned when a summary is not yet available for a game.
  */
 export type FlowStatusResponse = {
   gameId: number;
   status: "RECAP_PENDING" | "IN_PROGRESS" | "PREGAME" | "SCHEDULED" | "POSTPONED" | "CANCELED";
   etaMinutes?: number | null;
-};
-
-/**
- * Source of the narrative blocks for this flow.
- * - "LLM"      — generated by the narrative pipeline (standard path)
- * - "TEMPLATE" — deterministic fallback; no LLM involvement
- */
-export type FlowSource = "LLM" | "TEMPLATE";
-
-/**
- * Response for block-based game flow.
- */
-export type BlockGameFlowResponse = {
-  gameId: number;
-  leagueCode: string;
-  blocks: NarrativeBlock[];
-  totalWords: number;
-  socialPosts?: SocialPostsByPhase;
-  validationPassed: boolean;
-  validationErrors: string[];
-  /** Indicates whether blocks were LLM-generated or produced by the deterministic fallback. */
-  flowSource?: FlowSource;
 };

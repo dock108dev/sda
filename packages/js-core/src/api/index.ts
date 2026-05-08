@@ -7,17 +7,11 @@ export { TheoryAPI } from "./theory";
 export { HighlightsAPI } from "./highlights";
 export { StrategyAPI } from "./strategy";
 export {
-  fetchGameFlow,
-  type BlockMiniBox,
-  type ConsumerGameFlowResponse,
-  type FeaturedPlayer,
+  fetchGameSummary,
   type FlowStatusResponse,
-  type GameFlowPlay,
-  type Leverage,
-  type NarrativeBlock,
-  type ScoreContext,
+  type GameSummaryResponse,
   type ScoreObject,
-  type StoryRole,
+  type SummaryFinalScore,
 } from "./games";
 export type {
   ActivePool,

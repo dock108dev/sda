@@ -126,15 +126,12 @@ async def compare_stage_outputs(
 
     differences: dict[str, Any] = {}
 
-    if stage == "GENERATE_MOMENTS":
-        moments_a = output_a.get("moment_count", len(output_a.get("moments", [])))
-        moments_b = output_b.get("moment_count", len(output_b.get("moments", [])))
-        differences["moment_count_delta"] = moments_b - moments_a
-    elif stage == "VALIDATE_MOMENTS":
-        differences["passed_a"] = output_a.get("passed", False)
-        differences["passed_b"] = output_b.get("passed", False)
-        differences["errors_a"] = len(output_a.get("errors", []))
-        differences["errors_b"] = len(output_b.get("errors", []))
+    if stage == "GENERATE_SUMMARY":
+        a_paragraphs = len(output_a.get("summary", []) or [])
+        b_paragraphs = len(output_b.get("summary", []) or [])
+        differences["paragraph_count_delta"] = b_paragraphs - a_paragraphs
+        differences["model_a"] = output_a.get("model_used")
+        differences["model_b"] = output_b.get("model_used")
 
     return StageComparisonResponse(
         game_id=game_id,

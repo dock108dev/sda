@@ -1,14 +1,13 @@
 """CLASSIFY_GAME_SHAPE Stage Implementation.
 
 Deterministically labels a game with one of seven archetype strings before
-any LLM call. Downstream stages (GROUP_BLOCKS, RENDER_BLOCKS, VALIDATE_BLOCKS)
-consume the archetype from the accumulated pipeline output to drive
-archetype-aware boundary, evidence, and prompt selection.
+the GENERATE_SUMMARY LLM call. The archetype is threaded into the summary
+prompt as a one-line tone hint.
 
 Archetypes
 ----------
 - ``wire_to_wire``       — winner led from the first score; lead never flipped
-- ``comeback``           — winner trailed by ≥ ``meaningful_lead`` at some point
+- ``comeback``           — winner trailed by >= ``meaningful_lead`` at some point
 - ``back_and_forth``     — three or more lead changes
 - ``blowout``            — peak margin sustained past the league's blowout
                            threshold (MLB sub-type: ``early_avalanche_blowout``
@@ -30,13 +29,15 @@ from typing import Any
 
 from ..helpers.score_timeline import ScoreTimeline, build_score_timeline
 from ..models import StageInput, StageOutput
-from .block_analysis import detect_blowout
 from .league_config import _NBA_DEFAULTS, LEAGUE_CONFIG, get_flow_thresholds
 
 logger = logging.getLogger(__name__)
 
 
 _DEFAULT_ARCHETYPE = "wire_to_wire"
+
+# Number of periods a wide margin must persist to count as a blowout.
+_BLOWOUT_SUSTAINED_PERIODS = 1
 
 
 def _resolve_league_cfg(league_code: str) -> dict[str, Any]:
@@ -45,12 +46,7 @@ def _resolve_league_cfg(league_code: str) -> dict[str, Any]:
 
 
 def _one_possession_margin(league_code: str) -> int:
-    """Sport-specific 'within 1 possession' margin.
-
-    Used by both fake_close and late_separation since neither is captured
-    cleanly by the existing ``close_game_margin`` (which is a wider clutch
-    window, not a possession-sized margin).
-    """
+    """Sport-specific 'within 1 possession' margin."""
     code = (league_code or "NBA").upper()
     if code in {"NBA", "NCAAB"}:
         return 3
@@ -64,7 +60,6 @@ def _one_possession_margin(league_code: str) -> int:
 
 
 def _large_lead_threshold(league_code: str) -> int:
-    """Margin that qualifies as a 'large lead' for fake_close detection."""
     flow = get_flow_thresholds(league_code)
     if "large_lead" in flow:
         return int(flow["large_lead"])
@@ -74,12 +69,6 @@ def _large_lead_threshold(league_code: str) -> int:
 
 
 def _is_low_event(timeline: ScoreTimeline, league_code: str) -> bool:
-    """Detect pitcher's-duel / defensive-battle style games.
-
-    For MLB: combined runs ≤ ``low_scoring_combined`` or the losing team is
-    held to ≤ ``shutout`` runs. Other leagues currently have no explicit
-    low-event threshold and fall through.
-    """
     if not timeline.per_play:
         return False
     code = (league_code or "NBA").upper()
@@ -100,7 +89,6 @@ def _is_early_avalanche_mlb(
     pbp_events: list[dict[str, Any]],
     flow: dict[str, Any],
 ) -> bool:
-    """MLB sub-archetype: ≥ ``early_avalanche_runs`` in the first N innings."""
     runs_threshold = int(flow.get("early_avalanche_runs", 4))
     inning_threshold = int(flow.get("early_avalanche_innings", 2))
     end_home = 0
@@ -114,7 +102,6 @@ def _is_early_avalanche_mlb(
 
 
 def _is_comeback(timeline: ScoreTimeline, league_code: str) -> bool:
-    """Eventual winner trailed by ≥ ``meaningful_lead`` at some point."""
     if not timeline.per_play:
         return False
     final = timeline.per_play[-1]
@@ -131,12 +118,6 @@ def _final_period_entry_lead(
     pbp_events: list[dict[str, Any]],
     final_period: int,
 ) -> int | None:
-    """Signed lead carried into the start of ``final_period``.
-
-    Returns the score-difference from the last play in any prior period, or
-    ``None`` if no plays exist before the final period (game has no pre-final
-    history — late_separation cannot apply).
-    """
     pre_home = 0
     pre_away = 0
     saw_pre_final = False
@@ -152,12 +133,6 @@ def _final_period_entry_lead(
 
 
 def _is_fake_close(timeline: ScoreTimeline, league_code: str) -> bool:
-    """Final margin within 1 possession; eventual winner led by ≥ large_lead for majority.
-
-    Distinguishes fake_close from comeback by requiring the *winner* to have
-    been the leader during the wide-margin stretch — a comeback has the
-    eventual loser leading then collapsing.
-    """
     if not timeline.per_play:
         return False
     one_poss = _one_possession_margin(league_code)
@@ -179,7 +154,6 @@ def _is_late_separation(
     pbp_events: list[dict[str, Any]],
     league_code: str,
 ) -> bool:
-    """Within 1 possession entering the final period; separated by more than 1 possession at the end."""
     if not timeline.per_play or not pbp_events:
         return False
     cfg = _resolve_league_cfg(league_code)
@@ -195,18 +169,42 @@ def _is_late_separation(
     return abs(entry_lead) <= one_poss and final_lead > one_poss
 
 
+def _is_blowout_from_pbp(
+    pbp_events: list[dict[str, Any]],
+    league_code: str,
+) -> bool:
+    """Margin sustained at or past the league's blowout threshold.
+
+    Walks pbp_events, tracking the period when the margin first crossed the
+    threshold. If the threshold stays met across at least one full period
+    after that point, the game is a blowout.
+    """
+    if not pbp_events:
+        return False
+    cfg = _resolve_league_cfg(league_code)
+    threshold = int(cfg.get("blowout_margin", 15))
+    margin_start_period: int | None = None
+    for ev in pbp_events:
+        h = ev.get("home_score") or 0
+        a = ev.get("away_score") or 0
+        period = ev.get("quarter") or ev.get("period") or 1
+        margin = abs(h - a)
+        if margin >= threshold:
+            if margin_start_period is None:
+                margin_start_period = period
+            elif (period - margin_start_period) >= _BLOWOUT_SUSTAINED_PERIODS:
+                return True
+        else:
+            margin_start_period = None
+    return False
+
+
 def classify_archetype(
     timeline: ScoreTimeline,
     pbp_events: list[dict[str, Any]],
-    moments: list[dict[str, Any]],
     league_code: str,
 ) -> str:
-    """Pure, deterministic archetype classifier.
-
-    Rules are evaluated in priority order; the first match wins. The order is
-    chosen so more specific shapes (low_event, blowout) take precedence over
-    looser ones (back_and_forth, wire_to_wire).
-    """
+    """Pure, deterministic archetype classifier."""
     if not timeline.per_play:
         return _DEFAULT_ARCHETYPE
 
@@ -216,25 +214,13 @@ def classify_archetype(
     if _is_low_event(timeline, code):
         return "low_event"
 
-    # Comeback is checked before blowout: a comeback game's losing team often
-    # led by ≥ blowout_margin earlier, so detect_blowout would mislabel it.
     if _is_comeback(timeline, code):
         return "comeback"
 
-    # Fake-close is checked before blowout: a game that built a large lead and
-    # then closed to within one possession looks like a blowout under
-    # detect_blowout (sustained margin), but the close finish is the more
-    # specific narrative shape.
     if _is_fake_close(timeline, code):
         return "fake_close"
 
-    is_blowout = False
-    if moments:
-        # detect_blowout raises KeyError for league codes outside LEAGUE_CONFIG.
-        # Mirror the score_timeline fallback by passing "NBA" for unknown codes.
-        detect_code = code if code in LEAGUE_CONFIG else "NBA"
-        is_blowout, _, _ = detect_blowout(moments, league_code=detect_code)
-    if is_blowout:
+    if _is_blowout_from_pbp(pbp_events, code):
         if code == "MLB" and _is_early_avalanche_mlb(pbp_events, flow):
             return "early_avalanche_blowout"
         return "blowout"
@@ -251,10 +237,9 @@ def classify_archetype(
 async def execute_classify_game_shape(stage_input: StageInput) -> StageOutput:
     """Deterministically classify the game's archetype.
 
-    Reads moments and pbp_events from the accumulated previous-stage output,
-    builds a :class:`ScoreTimeline`, and selects one of seven archetype
-    strings. The chosen archetype is added to the stage output dict so
-    downstream stages can read it from accumulated pipeline context.
+    Reads ``pbp_events`` from the accumulated previous-stage output, builds a
+    :class:`ScoreTimeline`, and selects one of seven archetype strings. The
+    archetype is added to the stage output dict for downstream stages.
     """
     output = StageOutput(data={})
     game_id = stage_input.game_id
@@ -262,9 +247,8 @@ async def execute_classify_game_shape(stage_input: StageInput) -> StageOutput:
 
     previous_output = stage_input.previous_output
     if not previous_output:
-        raise ValueError("CLASSIFY_GAME_SHAPE requires VALIDATE_MOMENTS output")
+        raise ValueError("CLASSIFY_GAME_SHAPE requires NORMALIZE_PBP output")
 
-    moments = previous_output.get("moments", [])
     pbp_events = previous_output.get("pbp_events", [])
     league_code = (
         stage_input.game_context.get("sport", "NBA")
@@ -273,7 +257,7 @@ async def execute_classify_game_shape(stage_input: StageInput) -> StageOutput:
     )
 
     timeline = build_score_timeline(pbp_events, league_code=league_code)
-    archetype = classify_archetype(timeline, pbp_events, moments, league_code)
+    archetype = classify_archetype(timeline, pbp_events, league_code)
 
     output.add_log(
         f"Game {game_id} classified as archetype={archetype} "
@@ -284,11 +268,6 @@ async def execute_classify_game_shape(stage_input: StageInput) -> StageOutput:
     output.data = {
         "archetype": archetype,
         "shape_classified": True,
-        # Passthrough keeps direct invocations consistent with the executor's
-        # accumulation layer.
-        "moments": moments,
         "pbp_events": pbp_events,
-        "validated": previous_output.get("validated", True),
-        "errors": previous_output.get("errors", []),
     }
     return output

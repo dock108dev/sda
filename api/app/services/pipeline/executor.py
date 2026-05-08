@@ -35,15 +35,10 @@ from .helpers.flow_debug_logger import pop_logger as pop_flow_debug_logger
 from .metrics import increment_published, record_stage_duration
 from .models import PipelineStage, StageInput, StageOutput, StageResult
 from .stages import (
-    execute_analyze_drama,
     execute_classify_game_shape,
-    execute_finalize_moments,
-    execute_generate_moments,
-    execute_group_blocks,
+    execute_finalize_summary,
+    execute_generate_summary,
     execute_normalize_pbp,
-    execute_render_blocks,
-    execute_validate_blocks,
-    execute_validate_moments,
 )
 
 logger = logging.getLogger(__name__)
@@ -224,10 +219,9 @@ class PipelineExecutor:
             "away_team_abbrev": game.away_team.abbreviation if game.away_team else "AWAY",
             "player_names": player_names,
         }
-        # Thread quality-gate regen context from run_full_pipeline into every
-        # stage via game_context so finalize_moments can pass regen_attempt to
-        # grade_flow_task, and render_blocks can optionally surface failure
-        # reasons in its system prompt.
+        # Legacy regen context (v2-blocks pipeline). Retained as pass-through
+        # so existing callers' kwargs don't error; the v3-summary pipeline
+        # does not consume these.
         if self._regen_attempt:
             ctx["regen_attempt"] = self._regen_attempt
         if self._failure_reasons:
@@ -395,26 +389,18 @@ class PipelineExecutor:
             # Execute the stage
             if stage == PipelineStage.NORMALIZE_PBP:
                 output = await execute_normalize_pbp(self.session, stage_input, run_id)
-            elif stage == PipelineStage.GENERATE_MOMENTS:
-                output = await execute_generate_moments(stage_input)
-            elif stage == PipelineStage.VALIDATE_MOMENTS:
-                output = await execute_validate_moments(stage_input)
-            elif stage == PipelineStage.ANALYZE_DRAMA:
-                output = await execute_analyze_drama(stage_input)
             elif stage == PipelineStage.CLASSIFY_GAME_SHAPE:
                 output = await execute_classify_game_shape(stage_input)
-            elif stage == PipelineStage.GROUP_BLOCKS:
-                output = await execute_group_blocks(stage_input)
-            elif stage == PipelineStage.RENDER_BLOCKS:
-                output = await execute_render_blocks(stage_input)
-            elif stage == PipelineStage.VALIDATE_BLOCKS:
-                output = await execute_validate_blocks(self.session, stage_input)
-            elif stage == PipelineStage.FINALIZE_MOMENTS:
-                output = await execute_finalize_moments(
+            elif stage == PipelineStage.GENERATE_SUMMARY:
+                output = await execute_generate_summary(stage_input)
+            elif stage == PipelineStage.FINALIZE_SUMMARY:
+                output = await execute_finalize_summary(
                     self.session, stage_input, str(run.run_uuid)
                 )
             else:
-                raise PipelineExecutionError(f"Unknown stage: {stage.value}")
+                raise PipelineExecutionError(
+                    f"Stage {stage.value} is not part of the active pipeline"
+                )
 
             # Update stage record with success
             stage_record.status = "success"
@@ -429,11 +415,11 @@ class PipelineExecutor:
             # Emit OTel metrics
             sport = game_context.get("sport", "UNKNOWN")
             record_stage_duration(stage.value, sport, duration * 1000)
-            if stage == PipelineStage.FINALIZE_MOMENTS:
+            if stage == PipelineStage.FINALIZE_SUMMARY:
                 increment_published(sport)
 
             # Check if pipeline is complete
-            if stage == PipelineStage.FINALIZE_MOMENTS:
+            if stage == PipelineStage.FINALIZE_SUMMARY:
                 run.status = "completed"
                 run.finished_at = now_utc()
             elif not run.auto_chain:
@@ -536,12 +522,10 @@ class PipelineExecutor:
         Args:
             game_id: Game to process
             triggered_by: Who triggered the run
-            regen_attempt: How many quality-gate regen attempts have already
-                run for this game.  Threaded into game_context so
-                execute_finalize_moments can pass it to grade_flow_task.
-            failure_reasons: Structured failure list from the previous
-                grade_flow_task invocation.  Threaded into game_context so
-                render_blocks can optionally surface them as prompt context.
+            regen_attempt: Legacy parameter retained for caller compatibility;
+                not consumed by the v3-summary pipeline.
+            failure_reasons: Legacy parameter retained for caller compatibility;
+                not consumed by the v3-summary pipeline.
 
         Returns:
             Completed GamePipelineRun record
@@ -603,11 +587,17 @@ class PipelineExecutor:
         """
         run = await self._get_run(run_id)
 
+        active_order = {s: i for i, s in enumerate(PipelineStage.ordered_stages())}
+
+        def _sort_key(stage_record: GamePipelineStage) -> tuple[int, int]:
+            try:
+                stage_enum = PipelineStage(stage_record.stage)
+            except ValueError:
+                return (1, 0)
+            return (0, active_order.get(stage_enum, len(active_order)))
+
         stages = []
-        for stage_record in sorted(
-            run.stages,
-            key=lambda s: PipelineStage(s.stage).ordered_stages().index(PipelineStage(s.stage)),
-        ):
+        for stage_record in sorted(run.stages, key=_sort_key):
             stages.append(
                 {
                     "stage": stage_record.stage,
