@@ -1,0 +1,4206 @@
+{
+  "gameId": 190147,
+  "lastPlayIndex": 95078,
+  "isFinal": true,
+  "cards": [
+    {
+      "kind": "scene-setter",
+      "gameId": 190147,
+      "cardId": "190147-scene",
+      "index": 0,
+      "homeTeam": "Detroit Tigers",
+      "awayTeam": "Boston Red Sox",
+      "homeTeamAbbr": "DET",
+      "awayTeamAbbr": "BOS",
+      "firstPitch": "2026-05-05T22:40:00Z",
+      "homeProbablePitcher": null,
+      "awayProbablePitcher": null,
+      "venue": null
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-10004",
+      "index": 1,
+      "playIndex": 10004,
+      "inning": 1,
+      "inningHalf": "top",
+      "inningLabel": "Top 1st",
+      "battingTeamAbbr": "BOS",
+      "description": "Ceddanne Rafaela homers on a fly ball to right center field. Wilyer Abreu scores. Trevor Story scores.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Ceddanne Rafaela",
+        "pitcherName": "Framber Valdez"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Wilyer Abreu",
+        "first": "Trevor Story"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Rafaela launches a 3-run homer."
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190147,
+      "cardId": "190147-tx-1-top-1-bottom",
+      "index": 2,
+      "label": "MID 1ST",
+      "phase": "mid",
+      "score": {
+        "home": 0,
+        "away": 3
+      },
+      "homeTeamAbbr": "DET",
+      "awayTeamAbbr": "BOS",
+      "subtitle": "BOS lead by 3.",
+      "fromInning": 1,
+      "fromHalf": "top",
+      "toInning": 1,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-15006",
+      "index": 3,
+      "playIndex": 15006,
+      "inning": 1,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 1st",
+      "battingTeamAbbr": "DET",
+      "description": "Matt Vierling homers on a fly ball to left field.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Matt Vierling",
+        "pitcherName": "Jovani Morán"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Vierling goes deep for a solo home run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-15011",
+      "index": 4,
+      "playIndex": 15011,
+      "inning": 1,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 1st",
+      "battingTeamAbbr": "DET",
+      "description": "Wenceel Pérez singles on a sharp ground ball to center fielder Ceddanne Rafaela. Jahmai Jones scores. Riley Greene to 3rd.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Wenceel Pérez",
+        "pitcherName": "Jovani Morán"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "second": "Jahmai Jones",
+        "first": "Riley Greene"
+      },
+      "runnerNamesAfter": {
+        "third": "Riley Greene",
+        "first": "Wenceel Pérez"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "third"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Pérez singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 3
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 0,
+        "inning": 1,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190147,
+      "cardId": "190147-qs-1-bottom-3-top",
+      "index": 5,
+      "label": "THROUGH 2ND",
+      "subtitle": "BOS lead by 1. The score holds.",
+      "score": {
+        "home": 2,
+        "away": 3
+      },
+      "homeTeamAbbr": "DET",
+      "awayTeamAbbr": "BOS",
+      "fromInning": 1,
+      "fromHalf": "bottom",
+      "toInning": 3,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-30024",
+      "index": 6,
+      "playIndex": 30024,
+      "inning": 3,
+      "inningHalf": "top",
+      "inningLabel": "Top 3rd",
+      "battingTeamAbbr": "BOS",
+      "description": "Ceddanne Rafaela singles on a line drive to center fielder Matt Vierling. Willson Contreras scores. Trevor Story to 2nd.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 4
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Ceddanne Rafaela",
+        "pitcherName": "Framber Valdez"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Willson Contreras",
+        "first": "Trevor Story"
+      },
+      "runnerNamesAfter": {
+        "second": "Trevor Story",
+        "first": "Ceddanne Rafaela"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Rafaela singles home a run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-30025",
+      "index": 7,
+      "playIndex": 30025,
+      "inning": 3,
+      "inningHalf": "top",
+      "inningLabel": "Top 3rd",
+      "battingTeamAbbr": "BOS",
+      "description": "Andruw Monasterio singles on a ground ball to center fielder Matt Vierling. Trevor Story scores. Ceddanne Rafaela to 2nd.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 4
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 5
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Andruw Monasterio",
+        "pitcherName": "Framber Valdez"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Trevor Story",
+        "first": "Ceddanne Rafaela"
+      },
+      "runnerNamesAfter": {
+        "second": "Ceddanne Rafaela",
+        "first": "Andruw Monasterio"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Monasterio singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 4
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Trevor Story",
+          "first": "Ceddanne Rafaela"
+        },
+        "outs": 1,
+        "inning": 3,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-30026",
+      "index": 8,
+      "playIndex": 30026,
+      "inning": 3,
+      "inningHalf": "top",
+      "inningLabel": "Top 3rd",
+      "battingTeamAbbr": "BOS",
+      "description": "Caleb Durbin singles on a ground ball to left fielder Riley Greene. Ceddanne Rafaela scores. Andruw Monasterio to 2nd.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Caleb Durbin",
+        "pitcherName": "Framber Valdez"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Ceddanne Rafaela",
+        "first": "Andruw Monasterio"
+      },
+      "runnerNamesAfter": {
+        "second": "Andruw Monasterio",
+        "first": "Caleb Durbin"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Durbin singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 5
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Ceddanne Rafaela",
+          "first": "Andruw Monasterio"
+        },
+        "outs": 1,
+        "inning": 3,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-30027",
+      "index": 9,
+      "playIndex": 30027,
+      "inning": 3,
+      "inningHalf": "top",
+      "inningLabel": "Top 3rd",
+      "battingTeamAbbr": "BOS",
+      "description": "Connor Wong singles on a line drive to center fielder Matt Vierling. Andruw Monasterio scores. Caleb Durbin to 3rd.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Connor Wong",
+        "pitcherName": "Framber Valdez"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "second": "Andruw Monasterio",
+        "first": "Caleb Durbin"
+      },
+      "runnerNamesAfter": {
+        "third": "Caleb Durbin",
+        "first": "Connor Wong"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "third"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Wong singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 6
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Andruw Monasterio",
+          "first": "Caleb Durbin"
+        },
+        "outs": 1,
+        "inning": 3,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-30028",
+      "index": 10,
+      "playIndex": 30028,
+      "inning": 3,
+      "inningHalf": "top",
+      "inningLabel": "Top 3rd",
+      "battingTeamAbbr": "BOS",
+      "description": "Isiah Kiner-Falefa grounds into a force out, shortstop Kevin McGonigle to second baseman Hao-Yu Lee. Caleb Durbin scores. Connor Wong out at 2nd. Isiah Kiner-Falefa to 1st.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 8
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Isiah Kiner-Falefa",
+        "pitcherName": "Framber Valdez"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Caleb Durbin",
+        "first": "Connor Wong"
+      },
+      "runnerNamesAfter": {
+        "first": "Isiah Kiner-Falefa"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        },
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "out",
+          "outAt": "second"
+        }
+      ],
+      "ballPath": "ground_ss",
+      "eventType": "field_out",
+      "animationProfile": "routine_grounder",
+      "visualIntensity": "low",
+      "narrative": "Kiner-Falefa gets retired but a run crosses on the play.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 7
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Caleb Durbin",
+          "first": "Connor Wong"
+        },
+        "outs": 1,
+        "inning": 3,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190147,
+      "cardId": "190147-tx-3-top-4-top",
+      "index": 11,
+      "label": "END 3RD",
+      "phase": "end",
+      "score": {
+        "home": 2,
+        "away": 8
+      },
+      "homeTeamAbbr": "DET",
+      "awayTeamAbbr": "BOS",
+      "subtitle": "BOS lead by 6.",
+      "fromInning": 3,
+      "fromHalf": "top",
+      "toInning": 4,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-40034",
+      "index": 12,
+      "playIndex": 40034,
+      "inning": 4,
+      "inningHalf": "top",
+      "inningLabel": "Top 4th",
+      "battingTeamAbbr": "BOS",
+      "description": "Willson Contreras homers on a fly ball to left center field.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 9
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Willson Contreras",
+        "pitcherName": "Brenan Hanifee"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Contreras goes deep for a solo home run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-40035",
+      "index": 13,
+      "playIndex": 40035,
+      "inning": 4,
+      "inningHalf": "top",
+      "inningLabel": "Top 4th",
+      "battingTeamAbbr": "BOS",
+      "description": "Wilyer Abreu homers on a fly ball to right field.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 9
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Wilyer Abreu",
+        "pitcherName": "Brenan Hanifee"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Abreu goes deep for a solo home run.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 9
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 0,
+        "inning": 4,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190147,
+      "cardId": "190147-qs-4-top-5-bottom",
+      "index": 14,
+      "label": "THROUGH 5TH",
+      "subtitle": "BOS lead by 8. Neither side scratches.",
+      "score": {
+        "home": 2,
+        "away": 10
+      },
+      "homeTeamAbbr": "DET",
+      "awayTeamAbbr": "BOS",
+      "fromInning": 4,
+      "fromHalf": "top",
+      "toInning": 5,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-55049",
+      "index": 15,
+      "playIndex": 55049,
+      "inning": 5,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 5th",
+      "battingTeamAbbr": "DET",
+      "description": "Dillon Dingler singles on a sharp line drive to left fielder Jarren Duran. Kevin McGonigle scores. Kerry Carpenter to 2nd.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Dillon Dingler",
+        "pitcherName": "Brayan Bello"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Kevin McGonigle",
+        "first": "Kerry Carpenter"
+      },
+      "runnerNamesAfter": {
+        "second": "Kerry Carpenter",
+        "first": "Dillon Dingler"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Dingler singles home a run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-75065",
+      "index": 16,
+      "playIndex": 75065,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "DET",
+      "description": "Kerry Carpenter lines into a double play, second baseman Isiah Kiner-Falefa to shortstop Trevor Story. Kevin McGonigle out at 2nd.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Kerry Carpenter",
+        "pitcherName": "Brayan Bello"
+      },
+      "outsAfter": 3,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Kevin McGonigle"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "out",
+          "outAt": "second"
+        },
+        {
+          "from": "home",
+          "to": "out",
+          "outAt": "first"
+        }
+      ],
+      "ballPath": "line_left",
+      "eventType": "double_play",
+      "animationProfile": "double_play_grounder",
+      "visualIntensity": "high",
+      "narrative": "Carpenter grounds into a double play to end the threat.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 10
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Kerry Carpenter",
+          "first": "Dillon Dingler"
+        },
+        "outs": 1,
+        "inning": 5,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-80067",
+      "index": 17,
+      "playIndex": 80067,
+      "inning": 8,
+      "inningHalf": "top",
+      "inningLabel": "Top 8th",
+      "battingTeamAbbr": "BOS",
+      "description": "Willson Contreras called out on strikes.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Willson Contreras",
+        "pitcherName": "Burch Smith"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Smith strikes out Contreras.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 10
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 3,
+        "inning": 7,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-85071",
+      "index": 18,
+      "playIndex": 85071,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "DET",
+      "description": "Riley Greene called out on strikes.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Riley Greene",
+        "pitcherName": "Brayan Bello"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Bello strikes out Greene.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 10
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 2,
+        "inning": 8,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190147,
+      "cardId": "190147-95078",
+      "index": 19,
+      "playIndex": 95078,
+      "inning": 9,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 9th",
+      "battingTeamAbbr": "DET",
+      "description": "Hao-Yu Lee called out on strikes.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Hao-Yu  Lee",
+        "pitcherName": "Alec Gamboa"
+      },
+      "outsAfter": 3,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Gamboa punches out Lee to end the half.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 10
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 2,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    }
+  ],
+  "audit": [
+    {
+      "playIndex": 10000,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jarren Duran grounds out, second baseman Hao-Yu Lee to first baseman Spencer Torkelson.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Jarren Duran",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10001,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Willson Contreras grounds out, shortstop Kevin McGonigle to first baseman Spencer Torkelson.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Willson Contreras",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10002,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Wilyer Abreu singles on a ground ball to left fielder Riley Greene.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Wilyer Abreu",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10003,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "error",
+      "description": "Trevor Story reaches on a fielding error by third baseman Zach McKinstry. Wilyer Abreu to 3rd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Trevor Story",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10004,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "runsScored": 3,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Ceddanne Rafaela homers (2) on a fly ball to right center field. Wilyer Abreu scores. Trevor Story scores.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Ceddanne Rafaela",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 10005,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Andruw Monasterio lines out to right fielder Wenceel Pérez.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Andruw Monasterio",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15006,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Matt Vierling homers (2) on a fly ball to left field.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Matt Vierling",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 15007,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Kevin McGonigle strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Kevin McGonigle",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15008,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Jahmai Jones singles on a line drive to left fielder Jarren Duran.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Jahmai Jones",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15009,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Dillon Dingler strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Dillon Dingler",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15010,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Riley Greene walks. Jahmai Jones to 2nd.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Riley Greene",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15011,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Wenceel Pérez singles on a sharp ground ball to center fielder Ceddanne Rafaela. Jahmai Jones scores. Riley Greene to 3rd.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Wenceel Pérez",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 15012,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Spencer Torkelson walks. Wenceel Pérez to 2nd.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Spencer Torkelson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15013,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Zach McKinstry strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Zach McKinstry",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20014,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Caleb Durbin grounds out, third baseman Zach McKinstry to first baseman Spencer Torkelson.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Caleb Durbin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20015,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "hit_by_pitch",
+      "description": "Connor Wong hit by pitch.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Connor Wong",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20016,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Isiah Kiner-Falefa grounds out, third baseman Zach McKinstry to first baseman Spencer Torkelson. Connor Wong to 2nd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Isiah Kiner-Falefa",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20017,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Dillon Dingler challenged (pitch result), call on the field was overturned: Jarren Duran called out on strikes.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Jarren Duran",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25018,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Hao-Yu Lee flies out to center fielder Ceddanne Rafaela.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Hao-Yu  Lee",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25019,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Matt Vierling flies out to right fielder Wilyer Abreu.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Matt Vierling",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25020,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Kevin McGonigle flies out to left fielder Jarren Duran.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Kevin McGonigle",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30021,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Willson Contreras walks.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Willson Contreras",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30022,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Wilyer Abreu strikes out swinging.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Wilyer Abreu",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30023,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Trevor Story singles on a ground ball to right fielder Wenceel Pérez. Willson Contreras to 3rd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Trevor Story",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30024,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 4
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ceddanne Rafaela singles on a line drive to center fielder Matt Vierling. Willson Contreras scores. Trevor Story to 2nd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Ceddanne Rafaela",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 30025,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 4
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 5
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Andruw Monasterio singles on a ground ball to center fielder Matt Vierling. Trevor Story scores. Ceddanne Rafaela to 2nd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Andruw Monasterio",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 30026,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 6
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Caleb Durbin singles on a ground ball to left fielder Riley Greene. Ceddanne Rafaela scores. Andruw Monasterio to 2nd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Caleb Durbin",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 30027,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 7
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Tigers challenged (tag play), call on the field was upheld: Connor Wong singles on a line drive to center fielder Matt Vierling. Andruw Monasterio scores. Caleb Durbin to 3rd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Connor Wong",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 30028,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 8
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Isiah Kiner-Falefa grounds into a force out, shortstop Kevin McGonigle to second baseman Hao-Yu Lee. Caleb Durbin scores. Connor Wong out at 2nd. Isiah Kiner-Falefa to 1st.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Isiah Kiner-Falefa",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 30029,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jarren Duran strikes out swinging.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Jarren Duran",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35030,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Kerry Carpenter strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Kerry Carpenter",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35031,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dillon Dingler flies out to center fielder Ceddanne Rafaela.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Dillon Dingler",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35032,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Riley Greene singles on a ground ball to shortstop Trevor Story, deflected by second baseman Isiah Kiner-Falefa.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Riley Greene",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35033,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Wenceel Pérez strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Wenceel Pérez",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40034,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 9
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Willson Contreras homers (8) on a fly ball to left center field.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Willson Contreras",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 40035,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 9
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Wilyer Abreu homers (5) on a fly ball to right field.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Wilyer Abreu",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 40036,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "hit_by_pitch",
+      "description": "Trevor Story hit by pitch.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Trevor Story",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40037,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Ceddanne Rafaela grounds into a double play, second baseman Hao-Yu Lee to shortstop Kevin McGonigle to first baseman Spencer Torkelson. Trevor Story out at 2nd. Ceddanne Rafaela out at 1st.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Ceddanne Rafaela",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40038,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Andruw Monasterio called out on strikes.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Andruw Monasterio",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 45039,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Spencer Torkelson strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Spencer Torkelson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 45040,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Zach McKinstry flies out to left fielder Jarren Duran.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Zach McKinstry",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45041,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Hao-Yu Lee strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Hao-Yu  Lee",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50042,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Caleb Durbin singles on a line drive to center fielder Matt Vierling.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Caleb Durbin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50043,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Connor Wong called out on strikes.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Connor Wong",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50044,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Isiah Kiner-Falefa grounds out, third baseman Zach McKinstry to first baseman Spencer Torkelson. Caleb Durbin to 2nd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Isiah Kiner-Falefa",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50045,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jarren Duran flies out to third baseman Zach McKinstry in foul territory.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Jarren Duran",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55046,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Matt Vierling singles on a ground ball to center fielder Ceddanne Rafaela.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Matt Vierling",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55047,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Kevin McGonigle grounds into a force out, second baseman Isiah Kiner-Falefa to shortstop Trevor Story. Matt Vierling out at 2nd. Kevin McGonigle to 1st.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Kevin McGonigle",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55048,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Kerry Carpenter singles on a sharp line drive to left fielder Jarren Duran. Kevin McGonigle to 2nd.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Kerry Carpenter",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55049,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Dillon Dingler singles on a sharp line drive to left fielder Jarren Duran. Kevin McGonigle scores. Kerry Carpenter to 2nd.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Dillon Dingler",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 55050,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Riley Greene flies out to center fielder Ceddanne Rafaela.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Riley Greene",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55051,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Wenceel Pérez grounds out to first baseman Willson Contreras.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Wenceel Pérez",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60052,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Willson Contreras grounds out, shortstop Kevin McGonigle to first baseman Spencer Torkelson.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Willson Contreras",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60053,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Wilyer Abreu walks.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Wilyer Abreu",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60054,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Trevor Story grounds into a force out, shortstop Kevin McGonigle to second baseman Hao-Yu Lee. Wilyer Abreu out at 2nd. Trevor Story to 1st.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Trevor Story",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60055,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ceddanne Rafaela singles on a line drive to center fielder Matt Vierling. Trevor Story to 2nd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Ceddanne Rafaela",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60056,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Andruw Monasterio grounds into a force out, fielded by second baseman Hao-Yu Lee. Ceddanne Rafaela out at 2nd.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Andruw Monasterio",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65057,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Spencer Torkelson strikes out swinging.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Spencer Torkelson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65058,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Zach McKinstry grounds out, first baseman Willson Contreras to pitcher Brayan Bello.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Zach McKinstry",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65059,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Hao-Yu Lee grounds out, shortstop Trevor Story to first baseman Willson Contreras.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Hao-Yu  Lee",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70060,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Caleb Durbin called out on strikes.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Caleb Durbin",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 70061,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Connor Wong grounds out, second baseman Hao-Yu Lee to first baseman Spencer Torkelson.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Connor Wong",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70062,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Isiah Kiner-Falefa grounds out softly, catcher Dillon Dingler to first baseman Spencer Torkelson.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Isiah Kiner-Falefa",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75063,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Matt Vierling grounds out, shortstop Trevor Story to first baseman Willson Contreras.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Matt Vierling",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75064,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Kevin McGonigle walks.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Kevin McGonigle",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75065,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Kerry Carpenter lines into a double play, second baseman Isiah Kiner-Falefa to shortstop Trevor Story. Kevin McGonigle out at 2nd.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Kerry Carpenter",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 80066,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jarren Duran strikes out swinging.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Jarren Duran",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 80067,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Willson Contreras called out on strikes.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Willson Contreras",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 80068,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Wilyer Abreu singles on a ground ball to right fielder Wenceel Pérez.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Wilyer Abreu",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80069,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Trevor Story strikes out swinging, catcher Dillon Dingler to first baseman Spencer Torkelson.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Trevor Story",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85070,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Dillon Dingler called out on strikes.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Dillon Dingler",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85071,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Riley Greene called out on strikes.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Riley Greene",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 85072,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Wenceel Pérez lines out sharply to center fielder Ceddanne Rafaela.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Wenceel Pérez",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90073,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ceddanne Rafaela strikes out swinging.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Ceddanne Rafaela",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90074,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Andruw Monasterio strikes out swinging.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Andruw Monasterio",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90075,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Caleb Durbin flies out to left fielder Riley Greene.",
+      "battingTeamAbbr": "BOS",
+      "batterName": "Caleb Durbin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95076,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Spencer Torkelson lines out to center fielder Ceddanne Rafaela.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Spencer Torkelson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95077,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Zach McKinstry strikes out on a foul tip.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Zach McKinstry",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 95078,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 10
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Hao-Yu Lee challenged (pitch result), call on the field was confirmed: Hao-Yu Lee called out on strikes.",
+      "battingTeamAbbr": "DET",
+      "batterName": "Hao-Yu  Lee",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    }
+  ]
+}

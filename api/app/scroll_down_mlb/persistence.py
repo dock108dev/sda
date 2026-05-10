@@ -10,7 +10,7 @@ re-running the builder.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -98,7 +98,7 @@ async def upsert_deck(
             validation_warnings_json=[w.model_dump(mode="json", by_alias=True) for w in (warnings or [])],
             validation_errors_json=[e.model_dump(mode="json", by_alias=True) for e in (errors or [])],
             source_hash=source_hash,
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             card_count=len(deck.cards),
             generator_label=generator_label,
         )
@@ -115,7 +115,7 @@ async def upsert_deck(
                     e.model_dump(mode="json", by_alias=True) for e in (errors or [])
                 ],
                 "source_hash": source_hash,
-                "generated_at": datetime.now(timezone.utc),
+                "generated_at": datetime.now(UTC),
                 "card_count": len(deck.cards),
                 "generator_label": generator_label,
             },

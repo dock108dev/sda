@@ -25,7 +25,7 @@ Design notes:
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +42,7 @@ from app.db.sports import (
 
 async def load_game_payload(
     session: AsyncSession, game_id: int
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Load the upstream-shaped payload for one game.
 
     Returns `None` when the game does not exist or is not MLB.
@@ -61,7 +61,7 @@ async def load_game_payload(
         )
         .where(SportsGame.id == game_id)
     )
-    game: Optional[SportsGame] = game_row.scalar_one_or_none()
+    game: SportsGame | None = game_row.scalar_one_or_none()
     if game is None:
         return None
     if (game.league.code or "").lower() != "mlb":
@@ -103,8 +103,8 @@ async def load_game_payload(
 
 def _serialize_game(
     game: SportsGame,
-    home: Optional[SportsTeam],
-    away: Optional[SportsTeam],
+    home: SportsTeam | None,
+    away: SportsTeam | None,
 ) -> dict[str, Any]:
     """Game shape consumed by `build_deck_from_upstream`."""
     is_final = GameStatus.is_final_or_post_final_status(game.status)

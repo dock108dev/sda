@@ -16,9 +16,8 @@ produces the same deck.
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
-from .game_state import LATE_LEVERAGE_INNING
 from .internal_types import BuiltPlayCard, TimelineEntry
 from .visual_mapper import (
     ball_path_from_event,
@@ -223,9 +222,9 @@ def to_play_card(
     sort_order: int,
     play: dict[str, Any],
     frame: TimelineEntry,
-    home_probable_pitcher: Optional[str] = None,
-    away_probable_pitcher: Optional[str] = None,
-    pitcher_of_record: Optional[str] = None,
+    home_probable_pitcher: str | None = None,
+    away_probable_pitcher: str | None = None,
+    pitcher_of_record: str | None = None,
 ) -> BuiltPlayCard:
     """Assemble a BuiltPlayCard from a raw play + reconstructed frame."""
     description = humanize_description(play.get("description") or "")
@@ -235,10 +234,7 @@ def to_play_card(
     batter_name = (
         play.get("batterName") or play.get("batter") or play.get("playerName")
     )
-    if isinstance(batter_name, str):
-        batter_name = batter_name.strip() or None
-    else:
-        batter_name = None
+    batter_name = batter_name.strip() or None if isinstance(batter_name, str) else None
 
     pitcher_name = pitcher_of_record
     if not pitcher_name:
@@ -310,12 +306,12 @@ def build_scene_setter(
     game_id: int,
     home_team: str,
     away_team: str,
-    home_team_abbr: Optional[str],
-    away_team_abbr: Optional[str],
+    home_team_abbr: str | None,
+    away_team_abbr: str | None,
     game_date: str,
-    home_probable_pitcher: Optional[str] = None,
-    away_probable_pitcher: Optional[str] = None,
-    venue: Optional[str] = None,
+    home_probable_pitcher: str | None = None,
+    away_probable_pitcher: str | None = None,
+    venue: str | None = None,
 ) -> dict[str, Any]:
     """Return a dict shaped like the TS SceneSetterCard (for parity)."""
     return {

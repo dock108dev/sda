@@ -14,12 +14,11 @@ Severity policy is enforced by `service.apply_validation_policy`:
 
 from __future__ import annotations
 
-import json
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from .internal_types import BuiltPlayCard
 from .schemas import ValidationSeverity, ValidationWarning
-
 
 # Validation codes. Severity defaults to `error` for any contradiction in
 # the data; the live policy downgrades them at the service layer.

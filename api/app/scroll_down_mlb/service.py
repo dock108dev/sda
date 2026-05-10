@@ -30,27 +30,24 @@ import hashlib
 import json
 import logging
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import and_, desc, func, or_, select
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.scroll_down_mlb import ScrollDownMlbDeck
-from app.db.sports import GameStatus, SportsGame, SportsLeague, SportsTeam
+from app.db.sports import GameStatus, SportsGame, SportsLeague
 
+from . import persistence
 from .data_source import load_game_payload
 from .deck_builder import (
-    build_inning_label,
     build_scene_setter,
     select_plays,
-    sample_tier_2,
     to_play_card,
 )
-from . import persistence
-
-logger = logging.getLogger(__name__)
 from .game_state import (
     compute_pitcher_timeline,
     compute_timeline,
@@ -58,7 +55,7 @@ from .game_state import (
 )
 from .internal_types import BuiltPlayCard, RunnerAdvance
 from .narrative import narrative_for_card
-from .result_labels import result_chip_label, result_chip_tier
+from .result_labels import result_chip_label
 from .rhythm_planner import DeckItem, plan_deck_with_report
 from .schemas import (
     BaseState,
@@ -66,7 +63,6 @@ from .schemas import (
     GenerationOutcome,
     GenerationPolicy,
     PlannerNote,
-    PlannerReport as DtoPlannerReport,
     PlayPayload,
     RunnerMovement,
     ScoreState,
@@ -74,11 +70,13 @@ from .schemas import (
     ScrollDownMlbDeckResponse,
     ScrollDownMlbRecentGame,
     ScrollDownMlbRevealResponse,
-    SpoilerPolicy,
     TeamSummary,
     ValidationSeverity,
     ValidationWarning,
     VisualPayload,
+)
+from .schemas import (
+    PlannerReport as DtoPlannerReport,
 )
 from .validation import (
     validate_no_duplicate_play_ids,
@@ -87,6 +85,7 @@ from .validation import (
 )
 from .visual_mapper import classify_runner_style, compute_leverage_tier
 
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Validation severity policy
@@ -128,9 +127,9 @@ def _base_state_dto(state: dict[str, bool]) -> BaseState:
 
 def _runner_movements_dto(
     advances: list[RunnerAdvance],
-    event_type: Optional[str],
+    event_type: str | None,
     runner_names_before: dict[str, str],
-    batter_name: Optional[str],
+    batter_name: str | None,
 ) -> list[RunnerMovement]:
     out: list[RunnerMovement] = []
     for adv in advances:
@@ -278,13 +277,13 @@ def built_deck_to_dto(
     validation_warnings: list[ValidationWarning],
     is_final: bool,
     deck_version: str,
-    home_team: Optional[TeamSummary] = None,
-    away_team: Optional[TeamSummary] = None,
-    last_play_index: Optional[int] = None,
-    first_pitch: Optional[str] = None,
-    venue: Optional[str] = None,
-    home_probable_pitcher: Optional[str] = None,
-    away_probable_pitcher: Optional[str] = None,
+    home_team: TeamSummary | None = None,
+    away_team: TeamSummary | None = None,
+    last_play_index: int | None = None,
+    first_pitch: str | None = None,
+    venue: str | None = None,
+    home_probable_pitcher: str | None = None,
+    away_probable_pitcher: str | None = None,
 ) -> ScrollDownMlbDeckResponse:
     """Final boundary: convert the built deck to the spoiler-safe DTO.
 
@@ -317,7 +316,7 @@ def built_deck_to_dto(
     response = ScrollDownMlbDeckResponse(
         game_id=str(game_id),
         deck_version=deck_version,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         is_final=is_final,
         home_team=home_team,
         away_team=away_team,
@@ -391,7 +390,7 @@ def build_deck_from_upstream(
     payload: dict[str, Any],
     *,
     policy: GenerationPolicy = GenerationPolicy.official,
-    since_play_index: Optional[int] = None,
+    since_play_index: int | None = None,
 ) -> GenerationOutcome:
     """Build a Scroll Down MLB deck from an upstream game-detail payload.
 
@@ -552,7 +551,7 @@ _RECENT_WINDOW_HOURS = 48
 
 
 async def get_recent_games(
-    session: AsyncSession, *, now: Optional[datetime] = None
+    session: AsyncSession, *, now: datetime | None = None
 ) -> list[ScrollDownMlbRecentGame]:
     """Spoiler-safe recent-games feed.
 
@@ -561,7 +560,7 @@ async def get_recent_games(
     the deck table for `hasDeck` / `deckVersion` so the home grid can
     show whether catch-up is ready without a second query.
     """
-    cutoff = (now or datetime.now(timezone.utc)) - timedelta(
+    cutoff = (now or datetime.now(UTC)) - timedelta(
         hours=_RECENT_WINDOW_HOURS
     )
 
@@ -770,7 +769,7 @@ async def get_game_reveal(
         )
         .where(SportsGame.id == gid)
     )
-    game: Optional[SportsGame] = game_row.scalar_one_or_none()
+    game: SportsGame | None = game_row.scalar_one_or_none()
     if game is None or (game.league.code or "").lower() != "mlb":
         return None
     if not GameStatus.is_final_or_post_final_status(game.status):
@@ -786,7 +785,7 @@ async def get_game_reveal(
     away = game.away_team
     home_won = game.home_score > game.away_score
     is_tie = game.home_score == game.away_score
-    winner_team_id: Optional[str] = None
+    winner_team_id: str | None = None
     if not is_tie:
         winner_team_id = str(home.id if home_won else away.id) if (
             home and away
@@ -816,7 +815,7 @@ async def get_game_reveal(
         summary=summary,
         key_stats=[],
         game_flow=[],
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
 
 
@@ -874,7 +873,7 @@ def _stub_deck(*, game_id: str, is_final: bool) -> ScrollDownMlbDeckResponse:
     return ScrollDownMlbDeckResponse(
         game_id=game_id,
         deck_version="stub-v0",
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         is_final=is_final,
         cards=cards,
         planner_report=DtoPlannerReport(),

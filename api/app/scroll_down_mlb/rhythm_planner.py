@@ -23,7 +23,7 @@ Quiet-stretch budget capped at 2 per deck so sparse decks don't dribble out.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Union
+from typing import Any
 
 from .deck_builder import ordinal
 from .internal_types import BuiltPlayCard, HalfInningMeta
@@ -31,7 +31,7 @@ from .internal_types import BuiltPlayCard, HalfInningMeta
 # Output type: a deck is an ordered list of either built play cards or
 # rhythm/scene dicts. Rhythm/scene cards stay as dicts because they have a
 # unique shape (label/subtitle/score) different from BuiltPlayCard.
-DeckItem = Union[BuiltPlayCard, dict[str, Any]]
+DeckItem = BuiltPlayCard | dict[str, Any]
 
 
 @dataclass
@@ -39,8 +39,8 @@ class PlannerReportEntry:
     card_id: str
     kind: str
     reason: str
-    after_play_index: Optional[int] = None
-    before_play_index: Optional[int] = None
+    after_play_index: int | None = None
+    before_play_index: int | None = None
 
 
 @dataclass
@@ -208,7 +208,7 @@ def _build_final_setup(
 
 
 def _half_meaningfulness(
-    prev_inning: int, meta: Optional[HalfInningMeta]
+    prev_inning: int, meta: HalfInningMeta | None
 ) -> tuple[bool, str]:
     if not meta:
         return False, "no activity"
@@ -226,7 +226,7 @@ def _half_meaningfulness(
 
 
 def _decide_between(
-    prev: Optional[BuiltPlayCard],
+    prev: BuiltPlayCard | None,
     curr: BuiltPlayCard,
     half_meta: dict[str, HalfInningMeta],
     home_abbr: str,
@@ -274,7 +274,7 @@ def _decide_between(
 
 def _maybe_final_setup(
     curr: BuiltPlayCard, home_abbr: str, away_abbr: str
-) -> Optional[tuple[dict[str, Any], str]]:
+) -> tuple[dict[str, Any], str] | None:
     if curr.inning < 9:
         return None
     margin = abs(curr.score_before_home - curr.score_before_away)
@@ -293,7 +293,7 @@ def _maybe_final_setup(
 
 def plan_deck_with_report(
     *,
-    scene: Optional[dict[str, Any]],
+    scene: dict[str, Any] | None,
     play_cards: list[BuiltPlayCard],
     half_inning_meta: dict[str, HalfInningMeta],
     home_team_abbr: str,
@@ -311,7 +311,7 @@ def plan_deck_with_report(
         out.append(scene_card)
         next_index += 1
 
-    prev: Optional[BuiltPlayCard] = None
+    prev: BuiltPlayCard | None = None
     late_game_emitted = False
     quiet_count = 0
 
@@ -370,7 +370,7 @@ def plan_deck_with_report(
 
 def plan_deck(
     *,
-    scene: Optional[dict[str, Any]],
+    scene: dict[str, Any] | None,
     play_cards: list[BuiltPlayCard],
     half_inning_meta: dict[str, HalfInningMeta],
     home_team_abbr: str,

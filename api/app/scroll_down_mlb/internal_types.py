@@ -11,9 +11,8 @@ Conversion to the DTO happens at the persistence/response boundary in
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Literal, Optional
-
+from dataclasses import dataclass
+from typing import Literal
 
 BaseName = Literal["home", "first", "second", "third"]
 AdvanceTo = Literal["first", "second", "third", "home", "out"]
@@ -26,7 +25,7 @@ class RunnerAdvance:
 
     from_base: BaseName
     to: AdvanceTo
-    out_at: Optional[BaseName] = None
+    out_at: BaseName | None = None
 
 
 @dataclass
@@ -68,7 +67,7 @@ class BuiltPlayCard:
     inning: int
     inning_half: InningHalf
     inning_label: str
-    batting_team_abbr: Optional[str]
+    batting_team_abbr: str | None
     description: str
     score_before_home: int
     score_before_away: int
@@ -81,18 +80,18 @@ class BuiltPlayCard:
     runner_names_before: dict[str, str]
     runner_names_after: dict[str, str]
     advances: list[RunnerAdvance]
-    event_type: Optional[str]
-    ball_path: Optional[str] = None
-    animation_profile: Optional[str] = None
-    visual_intensity: Optional[str] = None
-    batter_name: Optional[str] = None
-    pitcher_name: Optional[str] = None
-    balls_before: Optional[int] = None
-    strikes_before: Optional[int] = None
-    narrative: Optional[str] = None
-    chip_primary: Optional[str] = None
-    chip_secondary: Optional[str] = None
-    leverage_tier: Optional[int] = None
+    event_type: str | None
+    ball_path: str | None = None
+    animation_profile: str | None = None
+    visual_intensity: str | None = None
+    batter_name: str | None = None
+    pitcher_name: str | None = None
+    balls_before: int | None = None
+    strikes_before: int | None = None
+    narrative: str | None = None
+    chip_primary: str | None = None
+    chip_secondary: str | None = None
+    leverage_tier: int | None = None
 
 
 @dataclass

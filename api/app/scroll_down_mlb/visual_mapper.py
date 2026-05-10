@@ -16,10 +16,9 @@ state and return classification labels. SVG geometry stays on the frontend.
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 from .internal_types import RunnerAdvance
-
 
 # ---------------------------------------------------------------------------
 # Event classification (port of classifyEvent)
@@ -448,7 +447,7 @@ _BATTER_DEST_BY_EVENT: dict[str, str] = {
 }
 
 
-def batter_dest_for_event(event: str) -> Optional[str]:
+def batter_dest_for_event(event: str) -> str | None:
     return _BATTER_DEST_BY_EVENT.get(event)
 
 
@@ -457,7 +456,7 @@ def batter_dest_for_event(event: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def classify_runner_style(adv: RunnerAdvance, event_type: Optional[str]) -> str:
+def classify_runner_style(adv: RunnerAdvance, event_type: str | None) -> str:
     if adv.to == "out":
         if not adv.out_at:
             return "in_place_out"

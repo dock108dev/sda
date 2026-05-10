@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from .internal_types import BuiltPlayCard
 
@@ -45,10 +44,10 @@ _INTENTIONAL = re.compile(r"\bintentional\b", re.IGNORECASE)
 @dataclass(frozen=True)
 class ResultChipLabel:
     primary: str
-    secondary: Optional[str] = None
+    secondary: str | None = None
 
 
-def _primary_for(event: Optional[str], description: str) -> str:
+def _primary_for(event: str | None, description: str) -> str:
     if event == "strikeout":
         if _CALLED_STRIKE.search(description):
             return "CALLED STRIKE THREE"
@@ -124,7 +123,7 @@ def _primary_for(event: Optional[str], description: str) -> str:
     return "PLAY"
 
 
-def _secondary_for(card: BuiltPlayCard) -> Optional[str]:
+def _secondary_for(card: BuiltPlayCard) -> str | None:
     """Optional second line — usually run / inning marker.
 
     Validated against the actual visual scoring (advance.to == "home") so
@@ -185,7 +184,7 @@ _TIER_ZERO_PRIMARIES = frozenset(
 )
 
 
-def _base_tier(primary: str, secondary: Optional[str]) -> int:
+def _base_tier(primary: str, secondary: str | None) -> int:
     if primary in ("HOME RUN", "GRAND SLAM", "INSIDE-THE-PARK HOME RUN", "TRIPLE PLAY"):
         return 3
     if secondary in ("+2 RUNS", "+3 RUNS", "+4 RUNS"):

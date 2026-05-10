@@ -1,0 +1,4813 @@
+{
+  "gameId": 190125,
+  "lastPlayIndex": 95087,
+  "isFinal": true,
+  "cards": [
+    {
+      "kind": "scene-setter",
+      "gameId": 190125,
+      "cardId": "190125-scene",
+      "index": 0,
+      "homeTeam": "Colorado Rockies",
+      "awayTeam": "Atlanta Braves",
+      "homeTeamAbbr": "COL",
+      "awayTeamAbbr": "ATL",
+      "firstPitch": "2026-05-03T19:10:00Z",
+      "homeProbablePitcher": null,
+      "awayProbablePitcher": null,
+      "venue": null
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-15006",
+      "index": 1,
+      "playIndex": 15006,
+      "inning": 1,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 1st",
+      "battingTeamAbbr": "COL",
+      "description": "TJ Rumfield singles on a line drive to center fielder Mauricio Dubón. Edouard Julien scores.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "TJ Rumfield",
+        "pitcherName": "Spencer Strider"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Edouard Julien"
+      },
+      "runnerNamesAfter": {
+        "first": "TJ Rumfield"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Rumfield singles home a run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-20012",
+      "index": 2,
+      "playIndex": 20012,
+      "inning": 2,
+      "inningHalf": "top",
+      "inningLabel": "Top 2nd",
+      "battingTeamAbbr": "ATL",
+      "description": "Jonah Heim homers on a fly ball to center field. Matt Olson scores.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Jonah Heim",
+        "pitcherName": "Kyle Freeland"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Matt Olson"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_center",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Heim hits a 2-run shot.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 0
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "TJ Rumfield"
+        },
+        "outs": 2,
+        "inning": 1,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-20013",
+      "index": 3,
+      "playIndex": 20013,
+      "inning": 2,
+      "inningHalf": "top",
+      "inningLabel": "Top 2nd",
+      "battingTeamAbbr": "ATL",
+      "description": "Jorge Mateo homers on a fly ball to left field.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Jorge Mateo",
+        "pitcherName": "Kyle Freeland"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Mateo goes deep for a solo home run.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 2
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 2,
+        "inning": 2,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190125,
+      "cardId": "190125-tx-2-top-2-bottom",
+      "index": 4,
+      "label": "MID 2ND",
+      "phase": "mid",
+      "score": {
+        "home": 1,
+        "away": 3
+      },
+      "homeTeamAbbr": "COL",
+      "awayTeamAbbr": "ATL",
+      "subtitle": "ATL lead by 2.",
+      "fromInning": 2,
+      "fromHalf": "top",
+      "toInning": 2,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-25019",
+      "index": 5,
+      "playIndex": 25019,
+      "inning": 2,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 2nd",
+      "battingTeamAbbr": "COL",
+      "description": "Mickey Moniak walks. Ezequiel Tovar to 3rd. Jake McCarthy to 2nd.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Mickey Moniak",
+        "pitcherName": "Spencer Strider"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "second": "Ezequiel Tovar",
+        "first": "Jake McCarthy"
+      },
+      "runnerNamesAfter": {
+        "third": "Ezequiel Tovar",
+        "second": "Jake McCarthy",
+        "first": "Mickey Moniak"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "third"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Moniak draws a walk to load the bases."
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-35026",
+      "index": 6,
+      "playIndex": 35026,
+      "inning": 3,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 3rd",
+      "battingTeamAbbr": "COL",
+      "description": "TJ Rumfield homers on a fly ball to right center field.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "TJ Rumfield",
+        "pitcherName": "Spencer Strider"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Rumfield goes deep for a solo home run.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Ezequiel Tovar",
+          "second": "Jake McCarthy",
+          "first": "Mickey Moniak"
+        },
+        "outs": 2,
+        "inning": 2,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-35027",
+      "index": 7,
+      "playIndex": 35027,
+      "inning": 3,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 3rd",
+      "battingTeamAbbr": "COL",
+      "description": "Troy Johnston strikes out swinging.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Troy Johnston",
+        "pitcherName": "Spencer Strider"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Strider strikes out Johnston.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 3
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 0,
+        "inning": 3,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-45037",
+      "index": 8,
+      "playIndex": 45037,
+      "inning": 4,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 4th",
+      "battingTeamAbbr": "COL",
+      "description": "Mickey Moniak homers on a fly ball to right field. Jake McCarthy scores.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Mickey Moniak",
+        "pitcherName": "Aaron Bummer"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Jake McCarthy"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Moniak hits a 2-run shot.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 3
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 1,
+        "inning": 3,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190125,
+      "cardId": "190125-tx-4-bottom-5-top",
+      "index": 9,
+      "label": "END 4TH",
+      "phase": "end",
+      "score": {
+        "home": 4,
+        "away": 3
+      },
+      "homeTeamAbbr": "COL",
+      "awayTeamAbbr": "ATL",
+      "subtitle": "COL lead by 1.",
+      "fromInning": 4,
+      "fromHalf": "bottom",
+      "toInning": 5,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-50044",
+      "index": 10,
+      "playIndex": 50044,
+      "inning": 5,
+      "inningHalf": "top",
+      "inningLabel": "Top 5th",
+      "battingTeamAbbr": "ATL",
+      "description": "Austin Riley singles on a ground ball to third baseman Willi Castro. Drake Baldwin scores. Ozzie Albies to 3rd. Matt Olson to 2nd.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 4
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Austin Riley",
+        "pitcherName": "Antonio Senzatela"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Drake Baldwin",
+        "second": "Ozzie Albies",
+        "first": "Matt Olson"
+      },
+      "runnerNamesAfter": {
+        "third": "Ozzie Albies",
+        "second": "Matt Olson",
+        "first": "Austin Riley"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "second",
+          "to": "third"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "ground_3b",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Riley singles home a run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-50045",
+      "index": 11,
+      "playIndex": 50045,
+      "inning": 5,
+      "inningHalf": "top",
+      "inningLabel": "Top 5th",
+      "battingTeamAbbr": "ATL",
+      "description": "Eli White walks. Ozzie Albies scores. Matt Olson to 3rd. Austin Riley to 2nd.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 4
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Eli White",
+        "pitcherName": "Antonio Senzatela"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Ozzie Albies",
+        "second": "Matt Olson",
+        "first": "Austin Riley"
+      },
+      "runnerNamesAfter": {
+        "third": "Matt Olson",
+        "second": "Austin Riley",
+        "first": "Eli White"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "second",
+          "to": "third"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "White walks home a run with the bases loaded.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 4
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Ozzie Albies",
+          "second": "Matt Olson",
+          "first": "Austin Riley"
+        },
+        "outs": 1,
+        "inning": 5,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-50046",
+      "index": 12,
+      "playIndex": 50046,
+      "inning": 5,
+      "inningHalf": "top",
+      "inningLabel": "Top 5th",
+      "battingTeamAbbr": "ATL",
+      "description": "Jonah Heim out on a sacrifice fly to left fielder Mickey Moniak. Matt Olson scores.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Jonah Heim",
+        "pitcherName": "Antonio Senzatela"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Matt Olson",
+        "second": "Austin Riley",
+        "first": "Eli White"
+      },
+      "runnerNamesAfter": {
+        "second": "Austin Riley",
+        "first": "Eli White"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "sacrifice",
+      "animationProfile": "sacrifice_fly",
+      "visualIntensity": "low",
+      "narrative": "Heim lifts a sacrifice and a run scores.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 5
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Matt Olson",
+          "second": "Austin Riley",
+          "first": "Eli White"
+        },
+        "outs": 1,
+        "inning": 5,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190125,
+      "cardId": "190125-tx-5-top-5-bottom",
+      "index": 13,
+      "label": "MID 5TH",
+      "phase": "mid",
+      "score": {
+        "home": 4,
+        "away": 6
+      },
+      "homeTeamAbbr": "COL",
+      "awayTeamAbbr": "ATL",
+      "subtitle": "ATL lead by 2.",
+      "fromInning": 5,
+      "fromHalf": "top",
+      "toInning": 5,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-55051",
+      "index": 14,
+      "playIndex": 55051,
+      "inning": 5,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 5th",
+      "battingTeamAbbr": "COL",
+      "description": "Ezequiel Tovar out on a sacrifice fly to center fielder Mauricio Dubón. Troy Johnston scores.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Ezequiel Tovar",
+        "pitcherName": "Didier Fuentes"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Troy Johnston",
+        "second": "Willi Castro"
+      },
+      "runnerNamesAfter": {
+        "second": "Willi Castro"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "sacrifice",
+      "animationProfile": "sacrifice_fly",
+      "visualIntensity": "low",
+      "narrative": "Tovar lifts a sacrifice and a run scores."
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-60056",
+      "index": 15,
+      "playIndex": 60056,
+      "inning": 6,
+      "inningHalf": "top",
+      "inningLabel": "Top 6th",
+      "battingTeamAbbr": "ATL",
+      "description": "Ozzie Albies singles on a line drive to right fielder Troy Johnston. Mike Yastrzemski scores.",
+      "scoreBefore": {
+        "home": 5,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Ozzie Albies",
+        "pitcherName": "Antonio Senzatela"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Mike Yastrzemski"
+      },
+      "runnerNamesAfter": {
+        "first": "Ozzie Albies"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Albies singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 5,
+          "away": 6
+        },
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Willi Castro"
+        },
+        "outs": 2,
+        "inning": 5,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-60057",
+      "index": 16,
+      "playIndex": 60057,
+      "inning": 6,
+      "inningHalf": "top",
+      "inningLabel": "Top 6th",
+      "battingTeamAbbr": "ATL",
+      "description": "Matt Olson doubles on a sharp line drive to center fielder Jake McCarthy. Ozzie Albies scores.",
+      "scoreBefore": {
+        "home": 5,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Matt Olson",
+        "pitcherName": "Antonio Senzatela"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Ozzie Albies"
+      },
+      "runnerNamesAfter": {
+        "second": "Matt Olson"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "second"
+        }
+      ],
+      "ballPath": "line_center",
+      "eventType": "double",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Olson doubles in a run.",
+      "priorAfter": {
+        "score": {
+          "home": 5,
+          "away": 7
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Ozzie Albies"
+        },
+        "outs": 2,
+        "inning": 6,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190125,
+      "cardId": "190125-qs-6-top-8-bottom",
+      "index": 17,
+      "label": "THROUGH 8TH",
+      "subtitle": "ATL lead by 3. Neither side scratches.",
+      "score": {
+        "home": 5,
+        "away": 8
+      },
+      "homeTeamAbbr": "COL",
+      "awayTeamAbbr": "ATL",
+      "fromInning": 6,
+      "fromHalf": "top",
+      "toInning": 8,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "late-game",
+      "gameId": 190125,
+      "cardId": "190125-lg-8-bottom",
+      "index": 18,
+      "label": "LATE INNINGS",
+      "subtitle": "ATL lead by 3. Every runner matters now.",
+      "score": {
+        "home": 5,
+        "away": 8
+      },
+      "homeTeamAbbr": "COL",
+      "awayTeamAbbr": "ATL",
+      "toInning": 8,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-85075",
+      "index": 19,
+      "playIndex": 85075,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "COL",
+      "description": "Mickey Moniak homers on a fly ball to right center field.",
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Mickey Moniak",
+        "pitcherName": "Tyler Kinley"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Moniak goes deep for a solo home run."
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190125,
+      "cardId": "190125-tx-8-bottom-9-top",
+      "index": 20,
+      "label": "END 8TH",
+      "phase": "end",
+      "score": {
+        "home": 6,
+        "away": 8
+      },
+      "homeTeamAbbr": "COL",
+      "awayTeamAbbr": "ATL",
+      "subtitle": "ATL lead by 2.",
+      "fromInning": 8,
+      "fromHalf": "bottom",
+      "toInning": 9,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-90077",
+      "index": 21,
+      "playIndex": 90077,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "ATL",
+      "description": "Ozzie Albies walks.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Ozzie Albies",
+        "pitcherName": "Victor Vodnik"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Ozzie Albies"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Albies works the count and draws a walk."
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-90080",
+      "index": 22,
+      "playIndex": 90080,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "ATL",
+      "description": "Eli White singles on a sharp line drive to left fielder Mickey Moniak. Ozzie Albies to 2nd.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Eli White",
+        "pitcherName": "Jimmy Herget"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Ozzie Albies"
+      },
+      "runnerNamesAfter": {
+        "second": "Ozzie Albies",
+        "first": "Eli White"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "White singles and pushes the runner along.",
+      "priorAfter": {
+        "score": {
+          "home": 6,
+          "away": 8
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Ozzie Albies"
+        },
+        "outs": 0,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-90081",
+      "index": 23,
+      "playIndex": 90081,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "ATL",
+      "description": "Jonah Heim doubles on a fly ball to right fielder Troy Johnston. Ozzie Albies scores. Eli White scores.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 10
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Jonah Heim",
+        "pitcherName": "Jimmy Herget"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Ozzie Albies",
+        "first": "Eli White"
+      },
+      "runnerNamesAfter": {
+        "second": "Jonah Heim"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "second"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "double",
+      "animationProfile": "deep_fly",
+      "visualIntensity": "medium",
+      "narrative": "Heim doubles into the gap and 2 score.",
+      "priorAfter": {
+        "score": {
+          "home": 6,
+          "away": 8
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Ozzie Albies",
+          "first": "Eli White"
+        },
+        "outs": 2,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190125,
+      "cardId": "190125-90082",
+      "index": 24,
+      "playIndex": 90082,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "ATL",
+      "description": "Jorge Mateo singles on a fly ball to second baseman Edouard Julien. Jonah Heim scores.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 11
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Jorge Mateo",
+        "pitcherName": "Jimmy Herget"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Jonah Heim"
+      },
+      "runnerNamesAfter": {
+        "first": "Jorge Mateo"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "shallow_fly",
+      "visualIntensity": "medium",
+      "narrative": "Mateo singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 6,
+          "away": 10
+        },
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Jonah Heim"
+        },
+        "outs": 2,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    }
+  ],
+  "audit": [
+    {
+      "playIndex": 10000,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mauricio Dubón grounds out, third baseman Willi Castro to first baseman TJ Rumfield.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10001,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Drake Baldwin grounds out, shortstop Ezequiel Tovar to first baseman TJ Rumfield.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10002,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ozzie Albies pops out to second baseman Edouard Julien.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15003,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Edouard Julien walks.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Edouard Julien",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15004,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mickey Moniak flies out to left fielder Eli White.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Mickey Moniak",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15005,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Hunter Goodman strikes out swinging. Edouard Julien steals (3) 2nd base.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Hunter Goodman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15006,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "TJ Rumfield singles on a line drive to center fielder Mauricio Dubón. Edouard Julien scores.",
+      "battingTeamAbbr": "COL",
+      "batterName": "TJ Rumfield",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 15007,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Troy Johnston walks. TJ Rumfield to 2nd.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Troy Johnston",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15008,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Willi Castro called out on strikes.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Willi Castro",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20009,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Matt Olson doubles (14) on a sharp line drive to right fielder Troy Johnston.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20010,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Austin Riley strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20011,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Eli White strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Eli White",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20012,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Jonah Heim homers (1) on a fly ball to center field. Matt Olson scores.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jonah Heim",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": true,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "lead-change"
+      ]
+    },
+    {
+      "playIndex": 20013,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Jorge Mateo homers (2) on a fly ball to left field.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jorge Mateo",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 20014,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "José Azocar grounds out, shortstop Ezequiel Tovar to first baseman TJ Rumfield.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "José Azocar",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25015,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Brett Sullivan strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Brett Sullivan",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25016,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ezequiel Tovar singles on a line drive to right fielder José Azocar.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Ezequiel Tovar",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25017,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Jake McCarthy walks. Ezequiel Tovar to 2nd.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Jake McCarthy",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25018,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Edouard Julien strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Edouard Julien",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25019,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Mickey Moniak walks. Ezequiel Tovar to 3rd. Jake McCarthy to 2nd.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Mickey Moniak",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 25020,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Hunter Goodman flies out to right fielder José Azocar.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Hunter Goodman",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30021,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mauricio Dubón flies out to center fielder Jake McCarthy.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30022,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Drake Baldwin singles on a ground ball to center fielder Jake McCarthy.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30023,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ozzie Albies singles on a ground ball to pitcher Kyle Freeland. Drake Baldwin to 2nd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30024,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Brett Sullivan challenged (pitch result), call on the field was overturned: Matt Olson called out on strikes.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30025,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Austin Riley strikes out on a foul tip.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35026,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "TJ Rumfield homers (4) on a fly ball to right center field.",
+      "battingTeamAbbr": "COL",
+      "batterName": "TJ Rumfield",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 35027,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Troy Johnston strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Troy Johnston",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 35028,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Willi Castro flies out to right fielder José Azocar.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Willi Castro",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35029,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Brett Sullivan walks.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Brett Sullivan",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35030,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ezequiel Tovar grounds out, third baseman Austin Riley to first baseman Matt Olson.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Ezequiel Tovar",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40031,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "triple",
+      "description": "Eli White triples (1) on a fly ball to center fielder Jake McCarthy.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Eli White",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40032,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Jonah Heim grounds out, shortstop Ezequiel Tovar to first baseman TJ Rumfield.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jonah Heim",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40033,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Jorge Mateo strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jorge Mateo",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40034,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "José Azocar strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "José Azocar",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 45035,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "triple",
+      "description": "Jake McCarthy triples (2) on a line drive to center fielder Mauricio Dubón.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Jake McCarthy",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45036,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Edouard Julien strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Edouard Julien",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 45037,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Mickey Moniak homers (10) on a fly ball to right field. Jake McCarthy scores.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Mickey Moniak",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": true,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "lead-change"
+      ]
+    },
+    {
+      "playIndex": 45038,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Hunter Goodman called out on strikes.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Hunter Goodman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 45039,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "TJ Rumfield strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "TJ Rumfield",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50040,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Mauricio Dubón strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50041,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Drake Baldwin singles on a ground ball to center fielder Jake McCarthy.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50042,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Ozzie Albies walks. Drake Baldwin to 2nd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50043,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Matt Olson walks. Drake Baldwin to 3rd. Ozzie Albies to 2nd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50044,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 4
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Austin Riley singles on a ground ball to third baseman Willi Castro. Drake Baldwin scores. Ozzie Albies to 3rd. Matt Olson to 2nd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": true,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "tying"
+      ]
+    },
+    {
+      "playIndex": 50045,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 4
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Eli White challenged (pitch result), call on the field was overturned: Eli White walks. Ozzie Albies scores. Matt Olson to 3rd. Austin Riley to 2nd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Eli White",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 50046,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "sacrifice",
+      "description": "Jonah Heim out on a sacrifice fly to left fielder Mickey Moniak. Matt Olson scores.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jonah Heim",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 50047,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jorge Mateo grounds out, shortstop Ezequiel Tovar to first baseman TJ Rumfield.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jorge Mateo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55048,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Troy Johnston singles on a ground ball to left fielder Eli White.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Troy Johnston",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55049,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Willi Castro singles on a ground ball to left fielder Eli White. Troy Johnston to 2nd.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Willi Castro",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55050,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "sacrifice",
+      "description": "Brett Sullivan out on a sacrifice bunt, third baseman Austin Riley to second baseman Ozzie Albies. Troy Johnston to 3rd. Willi Castro to 2nd.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Brett Sullivan",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55051,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 6
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "sacrifice",
+      "description": "Ezequiel Tovar out on a sacrifice fly to center fielder Mauricio Dubón. Troy Johnston scores.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Ezequiel Tovar",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 55052,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 5,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jake McCarthy grounds out, second baseman Ozzie Albies to first baseman Matt Olson.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Jake McCarthy",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60053,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 5,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Mike Yastrzemski singles on a fly ball to center fielder Jake McCarthy.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mike Yastrzemski",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60054,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 5,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Brett Sullivan challenged (pitch result), call on the field was confirmed: Mauricio Dubón walks. Mike Yastrzemski to 2nd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60055,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "double_play",
+      "description": "Drake Baldwin grounds into a double play, second baseman Edouard Julien to shortstop Ezequiel Tovar to first baseman TJ Rumfield. Mike Yastrzemski to 3rd. Mauricio Dubón out at 2nd. Drake Baldwin out at 1st.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60056,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 7
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ozzie Albies singles on a line drive to right fielder Troy Johnston. Mike Yastrzemski scores.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 60057,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Matt Olson doubles (15) on a sharp line drive to center fielder Jake McCarthy. Ozzie Albies scores.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 60058,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Austin Riley strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65059,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Edouard Julien strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Edouard Julien",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65060,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Mickey Moniak strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Mickey Moniak",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65061,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Hunter Goodman grounds out, second baseman Ozzie Albies to first baseman Matt Olson.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Hunter Goodman",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70062,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Eli White grounds out, third baseman Willi Castro to first baseman TJ Rumfield.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Eli White",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70063,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jonah Heim flies out to center fielder Jake McCarthy.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jonah Heim",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70064,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jorge Mateo grounds out, shortstop Ezequiel Tovar to first baseman TJ Rumfield.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jorge Mateo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75065,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "TJ Rumfield singles on a soft ground ball to third baseman Austin Riley.",
+      "battingTeamAbbr": "COL",
+      "batterName": "TJ Rumfield",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75066,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Troy Johnston walks. TJ Rumfield to 2nd.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Troy Johnston",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75067,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Willi Castro strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Willi Castro",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75068,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Brett Sullivan grounds into a force out, second baseman Ozzie Albies to shortstop Jorge Mateo. TJ Rumfield to 3rd. Troy Johnston out at 2nd. Brett Sullivan to 1st.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Brett Sullivan",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75069,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Ezequiel Tovar lines out to right fielder Mike Yastrzemski.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Ezequiel Tovar",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80070,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mike Yastrzemski grounds out, first baseman TJ Rumfield to pitcher Victor Vodnik.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mike Yastrzemski",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80071,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Mauricio Dubón challenged (pitch result), call on the field was overturned: Mauricio Dubón walks.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 80072,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Drake Baldwin strikes out on a foul tip.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85073,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jake McCarthy bunt grounds out, catcher Jonah Heim to first baseman Matt Olson.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Jake McCarthy",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85074,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Edouard Julien strikes out swinging.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Edouard Julien",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85075,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 5,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Mickey Moniak homers (11) on a fly ball to right center field.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Mickey Moniak",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 85076,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Hunter Goodman called out on strikes.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Hunter Goodman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90077,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Ozzie Albies walks.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90078,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Matt Olson flies out to shortstop Ezequiel Tovar.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90079,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Austin Riley flies out to center fielder Jake McCarthy.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90080,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 8
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Eli White singles on a sharp line drive to left fielder Mickey Moniak. Ozzie Albies to 2nd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Eli White",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90081,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 10
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Jonah Heim doubles (4) on a fly ball to right fielder Troy Johnston. Ozzie Albies scores. Eli White scores.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jonah Heim",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90082,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 10
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 11
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Jorge Mateo singles on a fly ball to second baseman Edouard Julien. Jonah Heim scores.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jorge Mateo",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 90083,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 11
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 11
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mike Yastrzemski pops out to first baseman TJ Rumfield in foul territory.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mike Yastrzemski",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95084,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 11
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 11
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "TJ Rumfield grounds out softly, catcher Jonah Heim to first baseman Matt Olson.",
+      "battingTeamAbbr": "COL",
+      "batterName": "TJ Rumfield",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95085,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 11
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 11
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Troy Johnston singles on a line drive to right fielder Mike Yastrzemski. Troy Johnston out at 1st on the throw, right fielder Mike Yastrzemski to shortstop Jorge Mateo to first baseman Matt Olson.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Troy Johnston",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95086,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 11
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 11
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Willi Castro singles on a line drive to center fielder Mauricio Dubón.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Willi Castro",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95087,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 11
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 11
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Brett Sullivan lines out sharply to center fielder Mauricio Dubón.",
+      "battingTeamAbbr": "COL",
+      "batterName": "Brett Sullivan",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    }
+  ]
+}

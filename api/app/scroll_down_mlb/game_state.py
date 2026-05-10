@@ -15,7 +15,8 @@ could leak the final result.
 from __future__ import annotations
 
 import re
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from .internal_types import (
     HalfInningMeta,
@@ -39,14 +40,14 @@ EMPTY_BASES: dict[str, bool] = {"first": False, "second": False, "third": False}
 # ---------------------------------------------------------------------------
 
 
-def _read_num(*candidates: Any) -> Optional[int]:
+def _read_num(*candidates: Any) -> int | None:
     for c in candidates:
         if isinstance(c, (int, float)) and not isinstance(c, bool):
             return int(c)
     return None
 
 
-def _read_str(*candidates: Any) -> Optional[str]:
+def _read_str(*candidates: Any) -> str | None:
     for c in candidates:
         if isinstance(c, str) and c.strip():
             return c.strip()
@@ -66,7 +67,7 @@ _BASE_KEYS: dict[str, str] = {
 }
 
 
-def _read_base_state(raw: Any) -> Optional[dict[str, bool]]:
+def _read_base_state(raw: Any) -> dict[str, bool] | None:
     if raw is None:
         return None
     if isinstance(raw, dict):
@@ -79,7 +80,7 @@ def _read_base_state(raw: Any) -> Optional[dict[str, bool]]:
     if isinstance(raw, list):
         occupied: dict[str, bool] = {"first": False, "second": False, "third": False}
         for entry in raw:
-            key: Optional[str] = None
+            key: str | None = None
             if isinstance(entry, str):
                 key = entry
             elif isinstance(entry, dict):
@@ -97,7 +98,7 @@ def _read_base_state(raw: Any) -> Optional[dict[str, bool]]:
     return None
 
 
-def _read_base_state_before(play: dict[str, Any]) -> Optional[dict[str, bool]]:
+def _read_base_state_before(play: dict[str, Any]) -> dict[str, bool] | None:
     return (
         _read_base_state(play.get("baseStateBefore"))
         or _read_base_state(play.get("runnersBefore"))
@@ -110,7 +111,7 @@ def _read_base_state_before(play: dict[str, Any]) -> Optional[dict[str, bool]]:
     )
 
 
-def _read_base_state_after(play: dict[str, Any]) -> Optional[dict[str, bool]]:
+def _read_base_state_after(play: dict[str, Any]) -> dict[str, bool] | None:
     return (
         _read_base_state(play.get("baseStateAfter"))
         or _read_base_state(play.get("runnersAfter"))
@@ -119,7 +120,7 @@ def _read_base_state_after(play: dict[str, Any]) -> Optional[dict[str, bool]]:
     )
 
 
-def _read_upstream_runner_names(raw: Any) -> Optional[dict[str, str]]:
+def _read_upstream_runner_names(raw: Any) -> dict[str, str] | None:
     if not raw:
         return None
     if isinstance(raw, dict):
@@ -173,8 +174,8 @@ def _read_upstream_runner_names(raw: Any) -> Optional[dict[str, str]]:
 
 
 def inning_half_from_upstream(
-    play: dict[str, Any], home_team_abbr: Optional[str]
-) -> Optional[str]:
+    play: dict[str, Any], home_team_abbr: str | None
+) -> str | None:
     phase = (play.get("phase") or "").strip().lower()
     if phase:
         if re.match(r"^(t|top|t1|0)$", phase):
@@ -233,7 +234,7 @@ def _parse_target_base(raw: str) -> str:
     return "home"
 
 
-def _names_match(a: Optional[str], b: Optional[str]) -> bool:
+def _names_match(a: str | None, b: str | None) -> bool:
     if not a or not b:
         return False
     x = a.strip().lower()
@@ -246,20 +247,18 @@ def _names_match(a: Optional[str], b: Optional[str]) -> bool:
         return True
     if x_last and x_last in y:
         return True
-    if y_last and y_last in x:
-        return True
-    return False
+    return bool(y_last and y_last in x)
 
 
 def parse_description_advances(
     description: str,
     names_before: dict[str, str],
-    batter_name: Optional[str],
+    batter_name: str | None,
 ) -> list[RunnerAdvance]:
     if not description:
         return []
 
-    def from_base_for(name: str) -> Optional[str]:
+    def from_base_for(name: str) -> str | None:
         if _names_match(name, names_before.get("first")):
             return "first"
         if _names_match(name, names_before.get("second")):
@@ -309,7 +308,7 @@ def _merge_parsed_advances(
 
 
 def _predict_advances(
-    before: dict[str, bool], raw_event: str, profile: Optional[str]
+    before: dict[str, bool], raw_event: str, profile: str | None
 ) -> list[RunnerAdvance]:
     event = downgrade_implausible(before, raw_event)
     advances: list[RunnerAdvance] = []
@@ -331,9 +330,7 @@ def _predict_advances(
         elif event in ("double_play", "triple_play"):
             if dp_fly:
                 advances.append(RunnerAdvance(from_base="third", to="out", out_at="home"))
-        elif is_free_base:
-            advances.append(RunnerAdvance(from_base="third", to="home"))
-        elif is_force_walk and before.get("first") and before.get("second"):
+        elif is_free_base or is_force_walk and before.get("first") and before.get("second"):
             advances.append(RunnerAdvance(from_base="third", to="home"))
     if before.get("second"):
         if advance_bases >= 2:
@@ -349,18 +346,14 @@ def _predict_advances(
             advances.append(
                 RunnerAdvance(from_base="second", to="out", out_at="third")
             )
-        elif is_free_base:
-            advances.append(RunnerAdvance(from_base="second", to="third"))
-        elif is_force_walk and before.get("first"):
+        elif is_free_base or is_force_walk and before.get("first"):
             advances.append(RunnerAdvance(from_base="second", to="third"))
     if before.get("first"):
         if advance_bases >= 3:
             advances.append(RunnerAdvance(from_base="first", to="home"))
         elif advance_bases == 2:
             advances.append(RunnerAdvance(from_base="first", to="third"))
-        elif advance_bases == 1:
-            advances.append(RunnerAdvance(from_base="first", to="second"))
-        elif is_force_walk:
+        elif advance_bases == 1 or is_force_walk:
             advances.append(RunnerAdvance(from_base="first", to="second"))
         elif event in ("double_play", "triple_play"):
             advances.append(
@@ -401,7 +394,7 @@ def _predict_advances(
 
     batter_dest = batter_dest_for_event(event)
     if batter_dest:
-        out_at: Optional[str] = None
+        out_at: str | None = None
         if batter_dest == "out" and event in (
             "field_out",
             "double_play",
@@ -494,7 +487,7 @@ def _apply_advances(
 def _apply_runner_names(
     before: dict[str, str],
     advances: list[RunnerAdvance],
-    batter_name: Optional[str],
+    batter_name: str | None,
 ) -> dict[str, str]:
     after = dict(before)
     for adv in advances:
@@ -520,8 +513,8 @@ def _diff_advances(
     names_before: dict[str, str],
     after: dict[str, bool],
     names_after: dict[str, str],
-    batter_name: Optional[str],
-    batter_dest: Optional[str],
+    batter_name: str | None,
+    batter_dest: str | None,
     runs_scored: int,
 ) -> list[RunnerAdvance]:
     """Derive RunnerAdvance[] from a known before/after pair.
@@ -615,14 +608,14 @@ def _innings_pitched_to_outs(ip: Any) -> int:
 
 def compute_pitcher_timeline(
     plays: list[dict[str, Any]],
-    pitchers: Optional[list[dict[str, Any]]],
-    home_team_full: Optional[str],
-    away_team_full: Optional[str],
-    home_team_abbr: Optional[str],
-) -> dict[int, Optional[str]]:
+    pitchers: list[dict[str, Any]] | None,
+    home_team_full: str | None,
+    away_team_full: str | None,
+    home_team_abbr: str | None,
+) -> dict[int, str | None]:
     """Walk plays and produce, per playIndex, the pitcher of record at the
     moment that play starts. Returns an empty map if the input is empty."""
-    result: dict[int, Optional[str]] = {}
+    result: dict[int, str | None] = {}
     if not plays:
         return result
 
@@ -690,7 +683,7 @@ def _who_is_leading(home: int, away: int) -> str:
 
 
 def compute_timeline(
-    plays: list[dict[str, Any]], home_team_abbr: Optional[str]
+    plays: list[dict[str, Any]], home_team_abbr: str | None
 ) -> dict[int, TimelineEntry]:
     """Forward walk over every upstream play.
 

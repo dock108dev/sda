@@ -1,0 +1,199 @@
+/**
+ * Scroll Down MLB consumer API types — mirror of
+ * api/app/scroll_down_mlb/schemas.py (camelCase wire format).
+ *
+ * Spoiler-safety contract (enforced backend-side by tests):
+ *   * /recent — no scores, no winners.
+ *   * /deck   — pre-reveal: scoreBefore + runsScoredOnPlay only.
+ *   * /reveal — the only endpoint allowed to expose final score & winner.
+ */
+
+// ---------------------------------------------------------------------------
+// Shared primitives
+// ---------------------------------------------------------------------------
+
+export type ScrollDownMlbTeamSummary = {
+  id: string;
+  abbreviation: string;
+  displayName: string;
+  colorLight?: string | null;
+  colorDark?: string | null;
+};
+
+export type ScrollDownMlbBaseState = {
+  first: boolean;
+  second: boolean;
+  third: boolean;
+};
+
+export type ScrollDownMlbScoreState = {
+  home: number;
+  away: number;
+};
+
+export type ScrollDownMlbFinalScore = {
+  home: number;
+  away: number;
+};
+
+export type ScrollDownMlbKeyStat = {
+  label: string;
+  value: string;
+  detail?: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Validation + planner reporting
+// ---------------------------------------------------------------------------
+
+export type ScrollDownMlbValidationSeverity = "warning" | "error";
+
+export type ScrollDownMlbValidationWarning = {
+  code: string;
+  severity: ScrollDownMlbValidationSeverity;
+  message: string;
+  playId?: string | null;
+};
+
+export type ScrollDownMlbPlannerNote = {
+  cardId?: string | null;
+  kind: string;
+  reason: string;
+  afterPlayIndex?: number | null;
+  beforePlayIndex?: number | null;
+};
+
+export type ScrollDownMlbPlannerReport = {
+  rhythm: ScrollDownMlbPlannerNote[];
+};
+
+// ---------------------------------------------------------------------------
+// Visual payload
+// ---------------------------------------------------------------------------
+
+export type ScrollDownMlbRunnerBase = "home" | "first" | "second" | "third";
+export type ScrollDownMlbRunnerDestination = ScrollDownMlbRunnerBase | "out";
+export type ScrollDownMlbRunnerStyle = "advance" | "score" | "out" | "hold";
+
+export type ScrollDownMlbRunnerMovement = {
+  runner: string;
+  from: ScrollDownMlbRunnerBase;
+  to: ScrollDownMlbRunnerDestination;
+  style: ScrollDownMlbRunnerStyle;
+  outAt?: "first" | "second" | "third" | "home" | null;
+};
+
+export type ScrollDownMlbVisualIntensity = "low" | "medium" | "high";
+
+export type ScrollDownMlbVisualPayload = {
+  trajectory?: string | null;
+  runnerMovements: ScrollDownMlbRunnerMovement[];
+  intensity?: ScrollDownMlbVisualIntensity | null;
+  animationProfile?: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Play payload — pre-reveal safe
+// ---------------------------------------------------------------------------
+
+export type ScrollDownMlbRunnerNames = Partial<
+  Record<"first" | "second" | "third", string>
+>;
+
+export type ScrollDownMlbPlayPayload = {
+  playId: string;
+  eventType?: string | null;
+  label?: string | null;
+  subLabel?: string | null;
+  description?: string | null;
+  batterName?: string | null;
+  pitcherName?: string | null;
+  ballsBefore?: number | null;
+  strikesBefore?: number | null;
+  outsBefore?: number | null;
+  outsAfter?: number | null;
+  baseStateBefore?: ScrollDownMlbBaseState | null;
+  baseStateAfter?: ScrollDownMlbBaseState | null;
+  runnerNamesBefore: ScrollDownMlbRunnerNames;
+  runnerNamesAfter: ScrollDownMlbRunnerNames;
+  scoreBefore?: ScrollDownMlbScoreState | null;
+  runsScoredOnPlay: number;
+};
+
+// ---------------------------------------------------------------------------
+// Deck cards
+// ---------------------------------------------------------------------------
+
+export type ScrollDownMlbDeckCardType =
+  | "scene"
+  | "play"
+  | "rhythm"
+  | "final_setup";
+
+export type ScrollDownMlbInningHalf = "top" | "bottom";
+
+export type ScrollDownMlbDeckCard = {
+  id: string;
+  type: ScrollDownMlbDeckCardType;
+  sortOrder: number;
+  inning?: number | null;
+  half?: ScrollDownMlbInningHalf | null;
+  title?: string | null;
+  description: string;
+  play?: ScrollDownMlbPlayPayload | null;
+  visual?: ScrollDownMlbVisualPayload | null;
+  leverageTier?: number | null;
+};
+
+// ---------------------------------------------------------------------------
+// Top-level responses
+// ---------------------------------------------------------------------------
+
+export type ScrollDownMlbSpoilerPolicy = "pre_reveal" | "post_reveal";
+
+export type ScrollDownMlbDeckResponse = {
+  gameId: string;
+  deckVersion: string;
+  generatedAt: string;
+  isFinal: boolean;
+  spoilerPolicy: "pre_reveal";
+  homeTeam?: ScrollDownMlbTeamSummary | null;
+  awayTeam?: ScrollDownMlbTeamSummary | null;
+  lastPlayIndex?: number | null;
+  firstPitch?: string | null;
+  venue?: string | null;
+  homeProbablePitcher?: string | null;
+  awayProbablePitcher?: string | null;
+  cards: ScrollDownMlbDeckCard[];
+  plannerReport?: ScrollDownMlbPlannerReport | null;
+  validationWarnings: ScrollDownMlbValidationWarning[];
+};
+
+export type ScrollDownMlbRecentGame = {
+  gameId: string;
+  league: "MLB";
+  gameDate?: string | null;
+  status?: string | null;
+  statusType?: string | null;
+  awayTeam: ScrollDownMlbTeamSummary;
+  homeTeam: ScrollDownMlbTeamSummary;
+  venueName?: string | null;
+  startTime?: string | null;
+  hasDeck: boolean;
+  deckVersion?: string | null;
+  isFinal: boolean;
+};
+
+export type ScrollDownMlbRecentResponse = {
+  games: ScrollDownMlbRecentGame[];
+};
+
+export type ScrollDownMlbRevealResponse = {
+  gameId: string;
+  finalScore: ScrollDownMlbFinalScore;
+  winnerTeamId?: string | null;
+  summary?: string | null;
+  keyStats: ScrollDownMlbKeyStat[];
+  gameFlow: unknown[];
+  generatedAt?: string | null;
+};

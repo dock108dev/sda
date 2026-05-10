@@ -53,6 +53,8 @@ api/models/
 # Scraper cache (optional - can be large)
 scraper/game_data/
 *.json
+# Scroll Down MLB parity corpus — checked in (see fixtures/scroll_down_mlb/README.md)
+!api/tests/fixtures/scroll_down_mlb/**/*.json
 
 # Social scraper browser profile (contains X auth cookies)
 infra/social-scraper-profile/

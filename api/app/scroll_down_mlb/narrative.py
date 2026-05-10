@@ -10,15 +10,15 @@ Returns None to signal "fall back to humanized upstream description."
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 from .internal_types import BuiltPlayCard
 
 _SUFFIX_PATTERN = re.compile(r"^(Jr\.?|Sr\.?|II|III|IV)$", re.IGNORECASE)
 
 
-def _last_name_only(full: Optional[str]) -> Optional[str]:
+def _last_name_only(full: str | None) -> str | None:
     if not full:
         return None
     trimmed = full.strip()
@@ -49,8 +49,8 @@ class _NarrativeContext:
     bases_loaded_after: bool
     two_outs_before: bool
     inning_over: bool
-    batter_last: Optional[str]
-    pitcher_last: Optional[str]
+    batter_last: str | None
+    pitcher_last: str | None
 
 
 def _build_context(card: BuiltPlayCard) -> _NarrativeContext:
@@ -295,7 +295,7 @@ _NARRATORS: dict[str, Callable[[_NarrativeContext], str]] = {
 }
 
 
-def narrative_for_card(card: BuiltPlayCard) -> Optional[str]:
+def narrative_for_card(card: BuiltPlayCard) -> str | None:
     """Return a rewritten narrative sentence, or None to fall back to the
     humanized upstream description."""
     event = card.event_type
