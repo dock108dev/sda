@@ -42,7 +42,7 @@ EMPTY_BASES: dict[str, bool] = {"first": False, "second": False, "third": False}
 
 def _read_num(*candidates: Any) -> int | None:
     for c in candidates:
-        if isinstance(c, (int, float)) and not isinstance(c, bool):
+        if isinstance(c, int | float) and not isinstance(c, bool):
             return int(c)
     return None
 
@@ -736,12 +736,12 @@ def compute_timeline(
         if isinstance(sb, dict):
             h = sb.get("home")
             a = sb.get("away")
-            if isinstance(h, (int, float)) and isinstance(a, (int, float)):
+            if isinstance(h, int | float) and isinstance(a, int | float):
                 upstream_score_before = {"home": int(h), "away": int(a)}
         if upstream_score_before is None:
             hsb = play.get("homeScoreBefore")
             asb = play.get("awayScoreBefore")
-            if isinstance(hsb, (int, float)) and isinstance(asb, (int, float)):
+            if isinstance(hsb, int | float) and isinstance(asb, int | float):
                 upstream_score_before = {"home": int(hsb), "away": int(asb)}
         score_before = upstream_score_before or dict(state_score)
 
@@ -750,18 +750,18 @@ def compute_timeline(
         s = play.get("score")
         if (
             isinstance(s, dict)
-            and isinstance(s.get("home"), (int, float))
-            and isinstance(s.get("away"), (int, float))
+            and isinstance(s.get("home"), int | float)
+            and isinstance(s.get("away"), int | float)
         ):
             score_after = {"home": int(s["home"]), "away": int(s["away"])}
-        elif isinstance(play.get("homeScore"), (int, float)) and isinstance(
-            play.get("awayScore"), (int, float)
+        elif isinstance(play.get("homeScore"), int | float) and isinstance(
+            play.get("awayScore"), int | float
         ):
             score_after = {
                 "home": int(play["homeScore"]),
                 "away": int(play["awayScore"]),
             }
-        elif isinstance(play.get("pointsScored"), (int, float)) and play["pointsScored"] > 0:
+        elif isinstance(play.get("pointsScored"), int | float) and play["pointsScored"] > 0:
             pts = int(play["pointsScored"])
             scoring_abbr = play.get("scoringTeamAbbr")
             if scoring_abbr and home_team_abbr:

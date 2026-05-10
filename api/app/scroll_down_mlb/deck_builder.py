@@ -40,7 +40,7 @@ CATCHUP_HARD_MAX = 18
 
 def _tier_of(play: dict[str, Any]) -> int:
     t = play.get("tier")
-    return int(t) if isinstance(t, (int, float)) and not isinstance(t, bool) else TIER2
+    return int(t) if isinstance(t, int | float) and not isinstance(t, bool) else TIER2
 
 
 # ---------------------------------------------------------------------------
@@ -258,10 +258,10 @@ def to_play_card(
         or (play.get("countBefore") or {}).get("strikes")
         or (play.get("count") or {}).get("strikes")
     )
-    balls_before = int(balls_before) if isinstance(balls_before, (int, float)) and not isinstance(balls_before, bool) else None
+    balls_before = int(balls_before) if isinstance(balls_before, int | float) and not isinstance(balls_before, bool) else None
     strikes_before = (
         int(strikes_before)
-        if isinstance(strikes_before, (int, float)) and not isinstance(strikes_before, bool)
+        if isinstance(strikes_before, int | float) and not isinstance(strikes_before, bool)
         else None
     )
 
