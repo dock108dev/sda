@@ -92,6 +92,11 @@ class BuiltPlayCard:
     chip_primary: str | None = None
     chip_secondary: str | None = None
     leverage_tier: int | None = None
+    # Pitcher's running stat line at this play, in the form
+    # "4.1 IP · 6 K · 1 BB · 2 R". Populated by the pipeline only when a
+    # per-play matchup pitcher was resolved. None on plays where the
+    # pitcher is unknown — the renderer hides the line in that case.
+    pitcher_stat_line: str | None = None
 
 
 @dataclass

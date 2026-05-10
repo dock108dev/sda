@@ -381,3 +381,99 @@ class TestMLBNormalizePlaySkipsGameAdvisory:
         result = fetcher._normalize_play(play, game_pk=123)
         assert result is not None
         assert result.quarter == 1
+
+
+# ---------------------------------------------------------------------------
+# Player-name resolution — robust fallbacks
+# ---------------------------------------------------------------------------
+
+
+class TestMLBPlayerNameResolution:
+    """`batter.fullName` is usually present on the MLB Stats API matchup
+    object, but we've seen completed plays land in the DB with
+    `player_name` NULL — the downstream effect is the frontend rendering
+    "The batter goes deep…" instead of the actual name. The scraper must
+    extract whatever it can from any combination of matchup fields and
+    fall back to parsing the play description before giving up."""
+
+    def _make_fetcher(self):
+        client = MagicMock()
+        cache = MagicMock()
+        cache.get.return_value = None
+        return MLBPbpFetcher(client, cache)
+
+    def _make_play(self, batter: dict, description: str = "Player singles."):
+        return {
+            "about": {
+                "inning": 1,
+                "isTopInning": True,
+                "atBatIndex": 1,
+                "halfInning": "top",
+            },
+            "result": {
+                "eventType": "single",
+                "event": "Single",
+                "description": description,
+                "homeScore": 0,
+                "awayScore": 0,
+            },
+            "matchup": {
+                "batter": batter,
+                "pitcher": {"id": 456, "fullName": "Test Pitcher"},
+            },
+            "runners": [],
+            "count": {},
+        }
+
+    def test_full_name_preferred_when_present(self):
+        f = self._make_fetcher()
+        r = f._normalize_play(
+            self._make_play({"id": 1, "fullName": "Aaron Judge"}), game_pk=1
+        )
+        assert r is not None
+        assert r.player_name == "Aaron Judge"
+        assert r.raw_data["batter"]["name"] == "Aaron Judge"
+
+    def test_falls_back_to_first_plus_last_when_full_name_missing(self):
+        f = self._make_fetcher()
+        r = f._normalize_play(
+            self._make_play({"id": 1, "firstName": "Aaron", "lastName": "Judge"}),
+            game_pk=1,
+        )
+        assert r is not None
+        assert r.player_name == "Aaron Judge"
+
+    def test_falls_back_to_boxscore_name(self):
+        f = self._make_fetcher()
+        r = f._normalize_play(
+            self._make_play({"id": 1, "boxscoreName": "A. Judge"}), game_pk=1
+        )
+        assert r is not None
+        assert r.player_name == "A. Judge"
+
+    def test_falls_back_to_description_when_matchup_has_no_name(self):
+        f = self._make_fetcher()
+        r = f._normalize_play(
+            self._make_play(
+                {"id": 1},  # no name fields at all
+                description="Aaron Judge homers on a fly ball to center field.",
+            ),
+            game_pk=1,
+        )
+        assert r is not None
+        assert r.player_name == "Aaron Judge"
+        # And the raw_data dict captures the recovered name so the deck
+        # builder sees it via the splatted `batter` key.
+        assert r.raw_data["batter"]["name"] == "Aaron Judge"
+
+    def test_returns_none_when_everything_missing(self):
+        f = self._make_fetcher()
+        r = f._normalize_play(
+            self._make_play(
+                {"id": 1},
+                description="a wild pitch advances the runner.",  # lowercase open
+            ),
+            game_pk=1,
+        )
+        assert r is not None
+        assert r.player_name is None

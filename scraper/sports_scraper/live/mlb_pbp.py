@@ -174,10 +174,22 @@ class MLBPbpFetcher:
         batter = matchup.get("batter", {})
         pitcher = matchup.get("pitcher", {})
         batter_id = batter.get("id")
-        batter_name = batter.get("fullName")
+        pitcher_id = pitcher.get("id")
 
         # Get description
         description = result.get("description")
+
+        # Robust name extraction. The MLB Stats API normally populates
+        # `fullName`, but in practice we've seen completed plays land with
+        # `fullName` missing while `firstName` / `lastName` /
+        # `boxscoreName` are present. The frontend deck builder used to
+        # fall through to None when fullName was absent, which is what
+        # produced the generic "The batter goes deep…" narrations. Build
+        # the most-complete name we can from any combination of fields,
+        # then fall back to the play description (which is always
+        # batter-led for MLB: "Aaron Judge homers on a fly ball …").
+        batter_name = _resolve_player_name(batter, description)
+        pitcher_name = _resolve_player_name(pitcher, None)
 
         # Get scores
         home_score = parse_int(result.get("homeScore"))
@@ -202,8 +214,8 @@ class MLBPbpFetcher:
                 "name": batter_name,
             },
             "pitcher": {
-                "id": pitcher.get("id"),
-                "name": pitcher.get("fullName"),
+                "id": pitcher_id,
+                "name": pitcher_name,
             },
             "runners": play.get("runners", []),
             "count": play.get("count", {}),
@@ -256,3 +268,84 @@ class MLBPbpFetcher:
             event_type=event_type,
         )
         return event_type.upper().replace(" ", "_")
+
+
+def _resolve_player_name(
+    player: dict[str, Any] | None,
+    description: str | None,
+) -> str | None:
+    """Pull the most reliable name from an MLB matchup player object.
+
+    Order of preference:
+      1. `fullName` (the canonical field; populated for 99% of plays).
+      2. `firstName + lastName` (some boxscore endpoints ship these
+         alone, especially on the live feed before the play is final).
+      3. `boxscoreName` (compact form like "A. Judge"; better than None).
+      4. Leading proper-noun phrase parsed from the play description
+         (MLB descriptions are always batter-led — "Aaron Judge homers
+         on a fly ball to center field." — so the first 2-3 capitalized
+         words before a lowercase verb are the batter's name).
+
+    Returns None if none of the above produces a non-empty string. The
+    `description`-based fallback only applies when `description` is
+    supplied (i.e. for the batter, not the pitcher).
+    """
+    if isinstance(player, dict):
+        full = player.get("fullName")
+        if isinstance(full, str) and full.strip():
+            return full.strip()
+        first = player.get("firstName")
+        last = player.get("lastName")
+        if isinstance(first, str) and isinstance(last, str) and (first.strip() or last.strip()):
+            combined = f"{first.strip()} {last.strip()}".strip()
+            if combined:
+                return combined
+        box = player.get("boxscoreName")
+        if isinstance(box, str) and box.strip():
+            return box.strip()
+    if description:
+        parsed = _leading_proper_noun_phrase(description)
+        if parsed:
+            return parsed
+    return None
+
+
+# Lowercase verbs that mark the end of the leading proper-noun phrase in
+# an MLB description. Order doesn't matter — we use the first
+# whitespace-delimited match.
+_MLB_DESCRIPTION_VERBS = frozenset(
+    {
+        "singles", "doubles", "triples", "homers", "walks", "strikes", "grounds",
+        "flies", "lines", "pops", "reaches", "is", "scores", "hits", "out",
+        "advances", "steals", "caught", "called", "intentionally",
+    }
+)
+
+
+def _leading_proper_noun_phrase(text: str) -> str | None:
+    """Pull a Title Case proper-noun phrase from the start of a play
+    description. Returns None if the first token isn't capitalized."""
+    if not text:
+        return None
+    tokens = text.strip().split()
+    if not tokens:
+        return None
+    out: list[str] = []
+    for tok in tokens:
+        # Stop at the first lowercase verb. The description follows the
+        # MLB house style of `{Name(s)} {verb} ...`.
+        bare = tok.rstrip(".,;:")
+        if bare.lower() in _MLB_DESCRIPTION_VERBS:
+            break
+        # Stop at the first non-Title-Case token (catches "homers", "of"
+        # in middle names won't trip this since we'd have already left
+        # the loop).
+        if not bare or not bare[0].isupper():
+            break
+        out.append(bare)
+        # Cap at 4 tokens — long-suffix names ("De La Cruz Jr.") still fit.
+        if len(out) >= 4:
+            break
+    if not out:
+        return None
+    return " ".join(out)

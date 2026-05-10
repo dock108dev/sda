@@ -11,11 +11,16 @@ from __future__ import annotations
 import pytest
 
 from app.scroll_down_mlb.deck_builder import (
+    _name_from_description,
+    _name_from_player_dict,
+    _name_string,
     build_inning_label,
     humanize_description,
     ordinal,
     sample_tier_2,
+    to_play_card,
 )
+from app.scroll_down_mlb.internal_types import TimelineEntry
 from app.scroll_down_mlb.game_state import (
     compute_timeline,
     inning_half_from_upstream,
@@ -327,3 +332,244 @@ def test_narrative_strikeout_with_pitcher_attribution() -> None:
     assert text is not None
     assert "Fried" in text
     assert "Smith" in text
+
+
+# ---------------------------------------------------------------------------
+# deck_builder — batter / pitcher name resolution
+# ---------------------------------------------------------------------------
+
+
+def test_name_string_returns_trimmed_or_none() -> None:
+    assert _name_string("  Aaron Judge ") == "Aaron Judge"
+    assert _name_string("") is None
+    assert _name_string("   ") is None
+    assert _name_string(None) is None
+    assert _name_string(42) is None
+
+
+def test_name_from_player_dict_pulls_name_field() -> None:
+    assert _name_from_player_dict({"id": 1, "name": "Aaron Judge"}) == "Aaron Judge"
+    assert _name_from_player_dict({"id": 1, "name": None}) is None
+    assert _name_from_player_dict({"id": 1}) is None
+    # Tolerates bare-string legacy payloads.
+    assert _name_from_player_dict("Aaron Judge") == "Aaron Judge"
+    assert _name_from_player_dict(None) is None
+
+
+def test_name_from_description_parses_leading_proper_noun_phrase() -> None:
+    assert (
+        _name_from_description("Aaron Judge homers on a fly ball to center field.")
+        == "Aaron Judge"
+    )
+    assert (
+        _name_from_description("Vladimir Guerrero Jr. doubles down the line.")
+        == "Vladimir Guerrero Jr"
+    )
+    assert (
+        _name_from_description("Bo Bichette grounds into a 6-4-3 double play.")
+        == "Bo Bichette"
+    )
+    # Already-lowercase first token — no name to recover.
+    assert _name_from_description("a wild pitch advances the runner.") is None
+    # Empty / falsy.
+    assert _name_from_description("") is None
+    assert _name_from_description(None) is None
+
+
+def _make_frame() -> TimelineEntry:
+    return TimelineEntry(
+        play_index=1,
+        inning=1,
+        half="top",
+        outs_before=0,
+        outs_after=0,
+        score_before_home=0,
+        score_before_away=0,
+        score_after_home=0,
+        score_after_away=1,
+        base_state_before={"first": False, "second": False, "third": False},
+        base_state_after={"first": False, "second": False, "third": False},
+        runner_names_before={},
+        runner_names_after={},
+        advances=[],
+        event_type="home_run",
+        runs_scored=1,
+        is_scoring_play=True,
+        is_tying_play=False,
+        is_lead_change_play=False,
+        is_late_leverage=False,
+        half_from_upstream=True,
+    )
+
+
+def test_to_play_card_recovers_batter_from_raw_data_dict() -> None:
+    """The scraper writes raw_data['batter']={'id', 'name'}; the deck
+    builder used to short-circuit on the dict and lose the name."""
+    play = {
+        "playIndex": 1,
+        "description": "Aaron Judge homers on a fly ball to center field.",
+        "batter": {"id": 100, "name": "Aaron Judge"},
+        # playerName explicitly None — simulates the regression where the
+        # normalized DB column came in null but raw_data still had the
+        # batter dict.
+        "playerName": None,
+    }
+    card = to_play_card(game_id=1, sort_order=0, play=play, frame=_make_frame())
+    assert card.batter_name == "Aaron Judge"
+
+
+def test_to_play_card_falls_back_to_description_when_all_else_null() -> None:
+    play = {
+        "playIndex": 1,
+        "description": "Aaron Judge homers on a fly ball to center field.",
+        "batter": {"id": 100, "name": None},
+        "playerName": None,
+    }
+    card = to_play_card(game_id=1, sort_order=0, play=play, frame=_make_frame())
+    assert card.batter_name == "Aaron Judge"
+
+
+def test_to_play_card_pulls_pitcher_from_per_play_raw_data() -> None:
+    """pitcher_of_record only comes from MLBPitcherGameStats which is
+    populated post-game. For a live game, raw_data['pitcher']['name']
+    is the only source and the deck builder must read it."""
+    play = {
+        "playIndex": 1,
+        "description": "Aaron Judge homers on a fly ball to center field.",
+        "batter": {"id": 100, "name": "Aaron Judge"},
+        "pitcher": {"id": 200, "name": "Freddy Peralta"},
+    }
+    card = to_play_card(
+        game_id=1,
+        sort_order=0,
+        play=play,
+        frame=_make_frame(),
+        pitcher_of_record=None,
+        home_probable_pitcher=None,
+        away_probable_pitcher=None,
+    )
+    assert card.pitcher_name == "Freddy Peralta"
+
+
+def test_to_play_card_prefers_pitcher_of_record_over_raw_data() -> None:
+    play = {
+        "playIndex": 1,
+        "description": "Aaron Judge homers on a fly ball to center field.",
+        "batter": {"id": 100, "name": "Aaron Judge"},
+        "pitcher": {"id": 200, "name": "Some Scraped Name"},
+    }
+    card = to_play_card(
+        game_id=1,
+        sort_order=0,
+        play=play,
+        frame=_make_frame(),
+        pitcher_of_record="Freddy Peralta",
+    )
+    assert card.pitcher_name == "Freddy Peralta"
+
+
+# ---------------------------------------------------------------------------
+# Pitcher running stat snapshots
+# ---------------------------------------------------------------------------
+
+
+def test_pitcher_stat_snapshot_innings_pitched_format() -> None:
+    from app.scroll_down_mlb._pitcher_timeline import PitcherStatSnapshot
+
+    snap = PitcherStatSnapshot(
+        name="X", outs=13, hits=5, walks=2, strikeouts=6, runs=2, home_runs=1,
+    )
+    assert snap.innings_pitched == "4.1"
+    assert snap.format_compact() == "4.1 IP · 6 K · 2 BB · 2 R"
+
+
+def test_pitcher_stat_snapshot_zero_outs() -> None:
+    from app.scroll_down_mlb._pitcher_timeline import PitcherStatSnapshot
+
+    snap = PitcherStatSnapshot(
+        name="X", outs=0, hits=0, walks=0, strikeouts=0, runs=0, home_runs=0,
+    )
+    assert snap.innings_pitched == "0.0"
+
+
+def test_compute_pitcher_stat_snapshots_accumulates_per_pitcher() -> None:
+    from app.scroll_down_mlb._pitcher_timeline import (
+        compute_pitcher_stat_snapshots,
+        compute_pitcher_timeline,
+    )
+
+    plays = [
+        # Pitcher A faces 3 batters: K, BB, single. 1 out, 1 H, 1 BB, 1 K.
+        {"playIndex": 1, "playType": "STRIKEOUT", "description": "Strikes out.",
+         "pitcher": {"id": 1, "name": "A"}, "teamAbbreviation": "AWY",
+         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 0}},
+        {"playIndex": 2, "playType": "WALK", "description": "Walks.",
+         "pitcher": {"id": 1, "name": "A"}, "teamAbbreviation": "AWY",
+         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 0}},
+        {"playIndex": 3, "playType": "SINGLE", "description": "Singles.",
+         "pitcher": {"id": 1, "name": "A"}, "teamAbbreviation": "AWY",
+         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 0}},
+        # Pitcher B takes over: gives up an HR (1 R), then another out.
+        {"playIndex": 4, "playType": "HOME_RUN", "description": "Homers.",
+         "pitcher": {"id": 2, "name": "B"}, "teamAbbreviation": "AWY",
+         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 1}},
+        {"playIndex": 5, "playType": "FIELD_OUT", "description": "Grounds out.",
+         "pitcher": {"id": 2, "name": "B"}, "teamAbbreviation": "AWY",
+         "scoreBefore": {"home": 0, "away": 1}, "score": {"home": 0, "away": 1}},
+    ]
+    timeline = compute_pitcher_timeline(plays, None, "Home", "Away", "HME")
+    snaps = compute_pitcher_stat_snapshots(plays, timeline)
+
+    # Pitcher A through play 3.
+    assert snaps[3].name == "A"
+    assert snaps[3].outs == 1
+    assert snaps[3].hits == 1
+    assert snaps[3].walks == 1
+    assert snaps[3].strikeouts == 1
+    assert snaps[3].home_runs == 0
+    assert snaps[3].runs == 0
+
+    # Pitcher B resets the accumulators (different name = different bucket).
+    assert snaps[4].name == "B"
+    assert snaps[4].outs == 0
+    assert snaps[4].hits == 1
+    assert snaps[4].home_runs == 1
+    assert snaps[4].runs == 1
+
+    # Pitcher B's next play continues their accumulator.
+    assert snaps[5].name == "B"
+    assert snaps[5].outs == 1
+    assert snaps[5].runs == 1  # No new run on this play.
+
+
+def test_compute_pitcher_stat_snapshots_skips_plays_with_no_pitcher() -> None:
+    from app.scroll_down_mlb._pitcher_timeline import (
+        compute_pitcher_stat_snapshots,
+        compute_pitcher_timeline,
+    )
+
+    plays = [
+        {"playIndex": 1, "playType": "STRIKEOUT", "description": "Strikes out.",
+         # No pitcher field at all → timeline returns None → snapshot skipped.
+         "teamAbbreviation": "AWY"},
+    ]
+    timeline = compute_pitcher_timeline(plays, None, "Home", "Away", "HME")
+    snaps = compute_pitcher_stat_snapshots(plays, timeline)
+    assert 1 not in snaps
+
+
+def test_compute_pitcher_timeline_prefers_per_play_over_boxscore() -> None:
+    """The per-play matchup pitcher is the live source — boxscore-derived
+    fallbacks should never override it."""
+    from app.scroll_down_mlb._pitcher_timeline import compute_pitcher_timeline
+
+    plays = [
+        {"playIndex": 1, "playType": "STRIKEOUT", "description": "Strikes out.",
+         "pitcher": {"id": 1, "name": "Live Pitcher"}, "teamAbbreviation": "AWY"},
+    ]
+    pitchers = [
+        {"team": "Home", "playerName": "Boxscore Pitcher",
+         "inningsPitched": "1.0", "isStarter": True},
+    ]
+    timeline = compute_pitcher_timeline(plays, pitchers, "Home", "Away", "HME")
+    assert timeline[1] == "Live Pitcher"

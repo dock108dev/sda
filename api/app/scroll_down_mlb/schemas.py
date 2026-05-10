@@ -196,6 +196,11 @@ class PlayPayload(BaseModel):
     description: str | None = None
     batter_name: str | None = None
     pitcher_name: str | None = None
+    # Pitcher's running stat line at this play — already formatted for
+    # display, e.g. "4.1 IP · 6 K · 1 BB · 2 R". Backend-formatted so the
+    # frontend doesn't need to know the rendering convention. Null when
+    # the pitcher of record is unknown for this play.
+    pitcher_stat_line: str | None = None
     balls_before: int | None = None
     strikes_before: int | None = None
     outs_before: int | None = None

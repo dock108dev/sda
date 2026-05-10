@@ -38,6 +38,58 @@ CATCHUP_HARD_MAX = 18
 # ---------------------------------------------------------------------------
 
 
+def _name_string(value: Any) -> str | None:
+    """Return a non-empty trimmed string, or None for any other input."""
+    if isinstance(value, str):
+        s = value.strip()
+        return s or None
+    return None
+
+
+def _name_from_player_dict(value: Any) -> str | None:
+    """The MLB scraper writes batter/pitcher to raw_data as
+    `{"id": int|None, "name": str|None}`. Pull the name field out when
+    the value is that dict shape; tolerate any other shape (legacy
+    upstream payloads occasionally ship a bare string)."""
+    if isinstance(value, dict):
+        return _name_string(value.get("name"))
+    return _name_string(value)
+
+
+_DESCRIPTION_LEADING_VERBS = frozenset(
+    {
+        "singles", "doubles", "triples", "homers", "walks", "strikes",
+        "grounds", "flies", "lines", "pops", "reaches", "is", "scores",
+        "hits", "out", "advances", "steals", "caught", "called",
+        "intentionally",
+    }
+)
+
+
+def _name_from_description(description: Any) -> str | None:
+    """Last-resort batter recovery from the play description. MLB play
+    descriptions always start with the batter's name followed by a
+    lowercase verb ("Aaron Judge homers on …"). Return the leading
+    proper-noun phrase, or None if the description doesn't fit the
+    pattern. Mirrors the same heuristic the scraper uses."""
+    if not isinstance(description, str):
+        return None
+    text = description.strip()
+    if not text:
+        return None
+    out: list[str] = []
+    for tok in text.split():
+        bare = tok.rstrip(".,;:")
+        if bare.lower() in _DESCRIPTION_LEADING_VERBS:
+            break
+        if not bare or not bare[0].isupper():
+            break
+        out.append(bare)
+        if len(out) >= 4:
+            break
+    return " ".join(out) if out else None
+
+
 def _tier_of(play: dict[str, Any]) -> int:
     t = play.get("tier")
     return int(t) if isinstance(t, int | float) and not isinstance(t, bool) else TIER2
@@ -225,21 +277,41 @@ def to_play_card(
     home_probable_pitcher: str | None = None,
     away_probable_pitcher: str | None = None,
     pitcher_of_record: str | None = None,
+    pitcher_stat_line: str | None = None,
 ) -> BuiltPlayCard:
     """Assemble a BuiltPlayCard from a raw play + reconstructed frame."""
     description = humanize_description(play.get("description") or "")
     ball_path = ball_path_from_event(frame.event_type, play.get("description") or "")
     profile = classify_animation_profile(frame.event_type, play.get("description") or "")
 
+    # Batter name resolution. `play["batter"]` is the dict the scraper
+    # wrote to raw_data — `{"id": ..., "name": ...}` — so the previous
+    # `play.get("batter") or play.get("playerName")` chain returned the
+    # dict, failed the `isinstance(str)` guard, and silently nulled the
+    # name. Pull `["name"]` out of the dict, then fall through to
+    # `playerName` (normalized column), then to the play description
+    # (always batter-led for MLB), so live games never render the
+    # generic "The batter…" placeholder.
     batter_name = (
-        play.get("batterName") or play.get("batter") or play.get("playerName")
+        _name_string(play.get("batterName"))
+        or _name_from_player_dict(play.get("batter"))
+        or _name_string(play.get("playerName"))
+        or _name_from_description(play.get("description"))
     )
-    batter_name = batter_name.strip() or None if isinstance(batter_name, str) else None
 
+    # Pitcher name resolution. Order:
+    #   1. `pitcher_of_record` from MLBPitcherGameStats. Only populated
+    #      after the boxscore is ingested → null on every live game.
+    #   2. Per-play pitcher from the scraper's raw_data (`pitcher.name`).
+    #      The live scraper writes this for every play, so it carries
+    #      through during live games when (1) is empty.
+    #   3. Probable starter from the schedule. Currently always None
+    #      because `data_source._serialize_game` hardcodes it; remains
+    #      here as the documented fallback for when that gets wired up.
     pitcher_name = pitcher_of_record
     if not pitcher_name:
-        # Fallback: probable starter on the opposing side. half=top => home
-        # is pitching => use home probable.
+        pitcher_name = _name_from_player_dict(play.get("pitcher"))
+    if not pitcher_name:
         pitcher_name = (
             home_probable_pitcher if frame.half == "top" else away_probable_pitcher
         )
@@ -293,6 +365,7 @@ def to_play_card(
         pitcher_name=pitcher_name,
         balls_before=balls_before,
         strikes_before=strikes_before,
+        pitcher_stat_line=pitcher_stat_line,
     )
 
 

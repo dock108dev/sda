@@ -36,6 +36,7 @@ from ._dto import (
 )
 from .deck_builder import build_scene_setter, select_plays, to_play_card
 from .game_state import (
+    compute_pitcher_stat_snapshots,
     compute_pitcher_timeline,
     compute_timeline,
     summarize_half_innings,
@@ -170,6 +171,10 @@ def build_deck_from_upstream(
     pitcher_timeline = compute_pitcher_timeline(
         plays, pitchers, home_team, away_team, home_abbr
     )
+    # Running stat snapshots per play — IP / K / BB / R / H / HR. Uses
+    # `pitcher_timeline` as the per-play attribution source, so the line
+    # always belongs to whoever was actually on the mound.
+    pitcher_stats = compute_pitcher_stat_snapshots(plays, pitcher_timeline)
 
     # 2. Select plays.
     selected_ids, _reasons = select_plays(plays, timeline, game_id)
@@ -191,6 +196,7 @@ def build_deck_from_upstream(
         frame = timeline.get(pid)
         if not frame:
             continue
+        stat_snapshot = pitcher_stats.get(pid)
         card = to_play_card(
             game_id=game_id,
             sort_order=0,  # set by planner
@@ -199,6 +205,7 @@ def build_deck_from_upstream(
             home_probable_pitcher=home_pp,
             away_probable_pitcher=away_pp,
             pitcher_of_record=pitcher_timeline.get(pid),
+            pitcher_stat_line=stat_snapshot.format_compact() if stat_snapshot else None,
         )
         decorate_play_card(card)
         play_cards.append(card)

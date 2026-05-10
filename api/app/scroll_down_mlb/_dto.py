@@ -131,6 +131,7 @@ def _play_card_dto(card: BuiltPlayCard) -> ScrollDownMlbDeckCard:
         description=card.narrative or card.description,
         batter_name=card.batter_name,
         pitcher_name=card.pitcher_name,
+        pitcher_stat_line=card.pitcher_stat_line,
         balls_before=card.balls_before,
         strikes_before=card.strikes_before,
         outs_before=card.outs_before,

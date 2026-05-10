@@ -33,7 +33,7 @@ from ._advances import (
     parse_description_advances,
     predict_advances,
 )
-from ._pitcher_timeline import compute_pitcher_timeline
+from ._pitcher_timeline import compute_pitcher_stat_snapshots, compute_pitcher_timeline
 from ._state_readers import (
     EMPTY_BASES,
     inning_half_from_upstream,
@@ -55,6 +55,7 @@ LATE_LEVERAGE_INNING = 7
 
 __all__ = [
     "LATE_LEVERAGE_INNING",
+    "compute_pitcher_stat_snapshots",
     "compute_pitcher_timeline",
     "compute_timeline",
     "inning_half_from_upstream",
