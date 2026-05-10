@@ -61,6 +61,7 @@ from app.routers.golf import router as golf_router
 from app.routers.model_odds import router as model_odds_router
 from app.routers.v1 import router as v1_router
 from app.routers.webhooks import router as webhooks_router
+from app.scroll_down_mlb import router as scroll_down_mlb_router
 from app.services.circuit_breaker_registry import registry as _cb_registry
 from app.services.entitlement import EntitlementError, SeatLimitError, SubscriptionPastDueError
 from app.services.pool_lifecycle import TransitionError
@@ -341,6 +342,12 @@ app.include_router(analytics_router, dependencies=auth_dependency)
 # Golf — tournament, player, odds, and DFS endpoints
 # ---------------------------------------------------------------------------
 app.include_router(golf_router, dependencies=auth_dependency)
+
+# ---------------------------------------------------------------------------
+# Scroll Down MLB — spoiler-safe catch-up deck API. Read-only consumer
+# surface backed by the deck builder pipeline in app.scroll_down_mlb.
+# ---------------------------------------------------------------------------
+app.include_router(scroll_down_mlb_router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
 # Admin UI routers — require admin role (Origin-based for admin UI,

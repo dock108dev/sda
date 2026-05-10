@@ -8,6 +8,7 @@ from celery import Celery, signals
 from celery.schedules import crontab
 
 from .config import settings
+from .config_sports import is_golf_odds_enabled, is_pregame_odds_enabled
 from .db import db_models, get_session
 from .logging import logger
 from .odds.metrics import init_odds_metrics
@@ -191,16 +192,8 @@ _polling_schedule = {
         "args": (True,),
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 4},
     },
-    "mainline-odds-sync-every-3m": {
-        "task": "sync_mainline_odds",
-        "schedule": crontab(minute="*/3"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 30, "expires": 170},
-    },
-    "prop-odds-sync-every-15m": {
-        "task": "sync_prop_odds",
-        "schedule": crontab(minute="*/15"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45, "expires": 870},
-    },
+    # Pregame odds (mainline + props) are gated by a global flag in config_sports.py.
+    # Entries are conditionally added to _polling_schedule below.
     # Live orchestrator: runs every 5 seconds to dynamically dispatch
     # per-game polling at sport-appropriate cadences (PBP, stats, odds).
     # Only dispatches work when live games exist.
@@ -243,11 +236,8 @@ _scheduled_tasks = {
         "schedule": crontab(minute=0, hour="6,12,18,0"),
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
     },
-    "golf-odds-every-30m": {
-        "task": "golf_sync_odds",
-        "schedule": crontab(minute="0,30"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 1500},
-    },
+    # Golf odds are gated by a global flag in config_sports.py.
+    # Entry is conditionally added to _scheduled_tasks below.
     "golf-leaderboard-every-5m": {
         "task": "golf_sync_leaderboard",
         "schedule": crontab(minute="*/5"),
@@ -341,6 +331,26 @@ _live_polling_schedule = {
         "options": {"queue": SOCIAL_QUEUE, "routing_key": SOCIAL_QUEUE, "expires": 1680},
     },
 }
+
+# Conditionally add odds-related entries based on global flags in config_sports.py.
+if is_pregame_odds_enabled():
+    _polling_schedule["mainline-odds-sync-every-3m"] = {
+        "task": "sync_mainline_odds",
+        "schedule": crontab(minute="*/3"),
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 30, "expires": 170},
+    }
+    _polling_schedule["prop-odds-sync-every-15m"] = {
+        "task": "sync_prop_odds",
+        "schedule": crontab(minute="*/15"),
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45, "expires": 870},
+    }
+
+if is_golf_odds_enabled():
+    _scheduled_tasks["golf-odds-every-30m"] = {
+        "task": "golf_sync_odds",
+        "schedule": crontab(minute="0,30"),
+        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 1500},
+    }
 
 # All environments run the full schedule — local mirrors production.
 _beat_schedule = {

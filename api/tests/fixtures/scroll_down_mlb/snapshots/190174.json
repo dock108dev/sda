@@ -1,0 +1,4679 @@
+{
+  "gameId": 190174,
+  "lastPlayIndex": 105084,
+  "isFinal": true,
+  "cards": [
+    {
+      "kind": "scene-setter",
+      "gameId": 190174,
+      "cardId": "190174-scene",
+      "index": 0,
+      "homeTeam": "Chicago Cubs",
+      "awayTeam": "Cincinnati Reds",
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "firstPitch": "2026-05-06T23:40:00Z",
+      "homeProbablePitcher": null,
+      "awayProbablePitcher": null,
+      "venue": null
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-10002",
+      "index": 1,
+      "playIndex": 10002,
+      "inning": 1,
+      "inningHalf": "top",
+      "inningLabel": "Top 1st",
+      "battingTeamAbbr": "CIN",
+      "description": "Elly De La Cruz grounds out, first baseman Michael Busch to pitcher Colin Rea. TJ Friedl scores.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Elly De La Cruz",
+        "pitcherName": "Colin Rea"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "TJ Friedl",
+        "first": "JJ Bleday"
+      },
+      "runnerNamesAfter": {
+        "first": "JJ Bleday"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out",
+          "outAt": "first"
+        },
+        {
+          "from": "third",
+          "to": "home"
+        }
+      ],
+      "ballPath": "ground_1b",
+      "eventType": "field_out",
+      "animationProfile": "routine_grounder",
+      "visualIntensity": "low",
+      "narrative": "Cruz gets retired but a run crosses on the play."
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-15007",
+      "index": 2,
+      "playIndex": 15007,
+      "inning": 1,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 1st",
+      "battingTeamAbbr": "CHC",
+      "description": "Ian Happ homers on a fly ball to left center field. Alex Bregman scores.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Ian Happ",
+        "pitcherName": "Brady Singer"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Alex Bregman"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Happ hits a 2-run shot.",
+      "priorAfter": {
+        "score": {
+          "home": 0,
+          "away": 1
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "JJ Bleday"
+        },
+        "outs": 1,
+        "inning": 1,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190174,
+      "cardId": "190174-qs-1-bottom-4-bottom",
+      "index": 3,
+      "label": "THROUGH 4TH",
+      "subtitle": "CHC lead by 1. The score holds.",
+      "score": {
+        "home": 2,
+        "away": 1
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "fromInning": 1,
+      "fromHalf": "bottom",
+      "toInning": 4,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-45030",
+      "index": 4,
+      "playIndex": 45030,
+      "inning": 4,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 4th",
+      "battingTeamAbbr": "CHC",
+      "description": "Seiya Suzuki doubles on a sharp line drive to left fielder JJ Bleday. Ian Happ scores.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Seiya Suzuki",
+        "pitcherName": "Brady Singer"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Ian Happ"
+      },
+      "runnerNamesAfter": {
+        "second": "Seiya Suzuki"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "second"
+        }
+      ],
+      "ballPath": "line_left",
+      "eventType": "double",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Suzuki doubles in a run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-45032",
+      "index": 5,
+      "playIndex": 45032,
+      "inning": 4,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 4th",
+      "battingTeamAbbr": "CHC",
+      "description": "Carson Kelly grounds into a double play, second baseman Matt McLain to shortstop Elly De La Cruz to first baseman Spencer Steer. Seiya Suzuki scores. Michael Busch out at 2nd. Carson Kelly out at 1st.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Carson Kelly",
+        "pitcherName": "Brady Singer"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Seiya Suzuki",
+        "first": "Michael Busch"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "out",
+          "outAt": "second"
+        },
+        {
+          "from": "home",
+          "to": "out",
+          "outAt": "first"
+        },
+        {
+          "from": "third",
+          "to": "home"
+        }
+      ],
+      "ballPath": "ground_2b",
+      "eventType": "double_play",
+      "animationProfile": "double_play_grounder",
+      "visualIntensity": "high",
+      "narrative": "Kelly grounds into a double play — two outs in a hurry.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 1
+        },
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Seiya Suzuki"
+        },
+        "outs": 0,
+        "inning": 4,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190174,
+      "cardId": "190174-tx-4-bottom-5-top",
+      "index": 6,
+      "label": "END 4TH",
+      "phase": "end",
+      "score": {
+        "home": 4,
+        "away": 1
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "subtitle": "CHC lead by 3.",
+      "fromInning": 4,
+      "fromHalf": "bottom",
+      "toInning": 5,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-50035",
+      "index": 7,
+      "playIndex": 50035,
+      "inning": 5,
+      "inningHalf": "top",
+      "inningLabel": "Top 5th",
+      "battingTeamAbbr": "CIN",
+      "description": "Matt McLain homers on a fly ball to right center field.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Matt McLain",
+        "pitcherName": "Colin Rea"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "McLain goes deep for a solo home run."
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190174,
+      "cardId": "190174-qs-5-top-7-bottom",
+      "index": 8,
+      "label": "THROUGH 7TH",
+      "subtitle": "CHC lead by 2. The score holds.",
+      "score": {
+        "home": 4,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "fromInning": 5,
+      "fromHalf": "top",
+      "toInning": 7,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "late-game",
+      "gameId": 190174,
+      "cardId": "190174-lg-7-bottom",
+      "index": 9,
+      "label": "LATE INNINGS",
+      "subtitle": "CHC lead by 2. Every runner matters now.",
+      "score": {
+        "home": 4,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "toInning": 7,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-75054",
+      "index": 10,
+      "playIndex": 75054,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "CHC",
+      "description": "Pete Crow-Armstrong singles on a ground ball to right fielder Will Benson.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Pete Crow-Armstrong",
+        "pitcherName": "Sam Moll"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Pete Crow-Armstrong"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Crow-Armstrong lines a single into play."
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-75055",
+      "index": 11,
+      "playIndex": 75055,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "CHC",
+      "description": "Dansby Swanson singles on a ground ball to shortstop Elly De La Cruz, deflected by pitcher Sam Moll. Pete Crow-Armstrong to 2nd.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Dansby Swanson",
+        "pitcherName": "Sam Moll"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Pete Crow-Armstrong"
+      },
+      "runnerNamesAfter": {
+        "second": "Pete Crow-Armstrong",
+        "first": "Dansby Swanson"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "ground_ss",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Swanson singles and pushes the runner along.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 2
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Pete Crow-Armstrong"
+        },
+        "outs": 0,
+        "inning": 7,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-90064",
+      "index": 12,
+      "playIndex": 90064,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "CIN",
+      "description": "Spencer Steer homers on a fly ball to left center field.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Spencer Steer",
+        "pitcherName": "Phil Maton"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Steer goes deep for a solo home run.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 2
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Pete Crow-Armstrong",
+          "first": "Dansby Swanson"
+        },
+        "outs": 0,
+        "inning": 7,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-90065",
+      "index": 13,
+      "playIndex": 90065,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "CIN",
+      "description": "Will Benson singles on a ground ball to left fielder Ian Happ.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Will Benson",
+        "pitcherName": "Phil Maton"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Will Benson"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Benson lines a single into play.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 3
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 0,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-90066",
+      "index": 14,
+      "playIndex": 90066,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "CIN",
+      "description": "Tyler Stephenson singles on a ground ball to left fielder Ian Happ. Will Benson to 2nd.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Tyler Stephenson",
+        "pitcherName": "Phil Maton"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Will Benson"
+      },
+      "runnerNamesAfter": {
+        "second": "Will Benson",
+        "first": "Tyler Stephenson"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Stephenson singles and pushes the runner along.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Will Benson"
+        },
+        "outs": 0,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-90069",
+      "index": 15,
+      "playIndex": 90069,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "CIN",
+      "description": "JJ Bleday singles on a line drive to right fielder Seiya Suzuki. Will Benson scores. Tyler Stephenson to 3rd. Matt McLain to 2nd.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 4
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "JJ Bleday",
+        "pitcherName": "Hoby Milner"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "first": "Matt McLain",
+        "third": "Will Benson",
+        "second": "Tyler Stephenson"
+      },
+      "runnerNamesAfter": {
+        "third": "Tyler Stephenson",
+        "second": "Matt McLain",
+        "first": "JJ Bleday"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "second",
+          "to": "third"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Bleday singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Will Benson",
+          "first": "Tyler Stephenson"
+        },
+        "outs": 0,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-90070",
+      "index": 16,
+      "playIndex": 90070,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "CIN",
+      "description": "Elly De La Cruz out on a sacrifice fly to right fielder Seiya Suzuki. Tyler Stephenson scores. Matt McLain scores.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 4
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Elly De La Cruz",
+        "pitcherName": "Hoby Milner"
+      },
+      "outsAfter": 3,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Tyler Stephenson",
+        "second": "Matt McLain",
+        "first": "JJ Bleday"
+      },
+      "runnerNamesAfter": {
+        "first": "JJ Bleday"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "out"
+        },
+        {
+          "from": "second",
+          "to": "home"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "sacrifice",
+      "animationProfile": "sacrifice_fly",
+      "visualIntensity": "low",
+      "narrative": "Cruz lifts a sacrifice and 2 runs score.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 4
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Tyler Stephenson",
+          "second": "Matt McLain",
+          "first": "JJ Bleday"
+        },
+        "outs": 2,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190174,
+      "cardId": "190174-tx-9-top-9-bottom",
+      "index": 17,
+      "label": "MID 9TH",
+      "phase": "mid",
+      "score": {
+        "home": 4,
+        "away": 6
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "subtitle": "CIN lead by 2.",
+      "fromInning": 9,
+      "fromHalf": "top",
+      "toInning": 9,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-95073",
+      "index": 18,
+      "playIndex": 95073,
+      "inning": 9,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 9th",
+      "battingTeamAbbr": "CHC",
+      "description": "Carson Kelly singles on a line drive to right fielder Will Benson.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Carson Kelly",
+        "pitcherName": "Graham Ashcraft"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Carson Kelly"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Kelly lines a single into play."
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-95074",
+      "index": 19,
+      "playIndex": 95074,
+      "inning": 9,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 9th",
+      "battingTeamAbbr": "CHC",
+      "description": "Pete Crow-Armstrong homers on a fly ball to left center field. Carson Kelly scores.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Pete Crow-Armstrong",
+        "pitcherName": "Graham Ashcraft"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Carson Kelly"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Crow-Armstrong hits a 2-run shot.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 6
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Carson Kelly"
+        },
+        "outs": 1,
+        "inning": 9,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190174,
+      "cardId": "190174-tx-9-bottom-10-top",
+      "index": 20,
+      "label": "END 9TH",
+      "phase": "end",
+      "score": {
+        "home": 6,
+        "away": 6
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "subtitle": "Tied at 6.",
+      "fromInning": 9,
+      "fromHalf": "bottom",
+      "toInning": 10,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-100077",
+      "index": 21,
+      "playIndex": 100077,
+      "inning": 10,
+      "inningHalf": "top",
+      "inningLabel": "Top 10th",
+      "battingTeamAbbr": "CIN",
+      "description": "Nathaniel Lowe walks.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Nathaniel Lowe",
+        "pitcherName": "Trent Thornton"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Nathaniel Lowe"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Lowe works the count and draws a walk."
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-105081",
+      "index": 22,
+      "playIndex": 105081,
+      "inning": 10,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 10th",
+      "battingTeamAbbr": "CHC",
+      "description": "Brock Burke intentionally walks Alex Bregman.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Alex Bregman",
+        "pitcherName": "Brock Burke"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Alex Bregman"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Bregman works the count and draws a walk.",
+      "priorAfter": {
+        "score": {
+          "home": 6,
+          "away": 6
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Nathaniel Lowe"
+        },
+        "outs": 0,
+        "inning": 10,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-105083",
+      "index": 23,
+      "playIndex": 105083,
+      "inning": 10,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 10th",
+      "battingTeamAbbr": "CHC",
+      "description": "Brock Burke intentionally walks Seiya Suzuki.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Seiya Suzuki",
+        "pitcherName": "Brock Burke"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Alex Bregman"
+      },
+      "runnerNamesAfter": {
+        "second": "Alex Bregman",
+        "first": "Seiya Suzuki"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Suzuki works a walk to add a runner late.",
+      "priorAfter": {
+        "score": {
+          "home": 6,
+          "away": 6
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Alex Bregman"
+        },
+        "outs": 1,
+        "inning": 10,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "final-setup",
+      "gameId": 190174,
+      "cardId": "190174-fs-10-bottom",
+      "index": 24,
+      "label": "FINAL APPROACH",
+      "subtitle": "Bottom 10th, tied.",
+      "score": {
+        "home": 6,
+        "away": 6
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "CIN",
+      "toInning": 10,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190174,
+      "cardId": "190174-105084",
+      "index": 25,
+      "playIndex": 105084,
+      "inning": 10,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 10th",
+      "battingTeamAbbr": "CHC",
+      "description": "Michael Busch walks. Nico Hoerner to 3rd. Seiya Suzuki to 2nd.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Michael Busch",
+        "pitcherName": "Brock Burke"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "second": "Alex Bregman",
+        "first": "Seiya Suzuki"
+      },
+      "runnerNamesAfter": {
+        "third": "Alex Bregman",
+        "second": "Seiya Suzuki",
+        "first": "Michael Busch"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "third"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Busch draws a walk to load the bases."
+    }
+  ],
+  "audit": [
+    {
+      "playIndex": 10000,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "TJ Friedl walks.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "TJ Friedl",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10001,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "JJ Bleday singles on a line drive to left fielder Ian Happ. TJ Friedl to 3rd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "JJ Bleday",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10002,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Elly De La Cruz grounds out, first baseman Michael Busch to pitcher Colin Rea. TJ Friedl scores.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Elly De La Cruz",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 10003,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Sal Stewart grounds out, shortstop Dansby Swanson to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Sal Stewart",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15004,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nico Hoerner grounds out, third baseman Sal Stewart to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15005,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Moisés Ballesteros grounds out, shortstop Elly De La Cruz to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15006,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Alex Bregman singles on a line drive to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15007,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Ian Happ homers (9) on a fly ball to left center field. Alex Bregman scores.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": true,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "lead-change"
+      ]
+    },
+    {
+      "playIndex": 15008,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Seiya Suzuki grounds out, second baseman Matt McLain to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20009,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Nathaniel Lowe called out on strikes.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Nathaniel Lowe",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20010,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Spencer Steer grounds out, shortstop Dansby Swanson to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Spencer Steer",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20011,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Will Benson singles on a line drive to right fielder Seiya Suzuki.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Will Benson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20012,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jose Trevino flies out to center fielder Pete Crow-Armstrong.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Jose Trevino",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25013,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Michael Busch walks.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25014,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Carson Kelly lines out to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25015,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Pete Crow-Armstrong flies out to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25016,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Dansby Swanson strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30017,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Matt McLain singles on a line drive to right fielder Seiya Suzuki.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Matt McLain",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30018,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "TJ Friedl singles on a line drive to right fielder Seiya Suzuki. Matt McLain to 3rd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "TJ Friedl",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30019,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "JJ Bleday strikes out swinging.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "JJ Bleday",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30020,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "fielders_choice",
+      "description": "Elly De La Cruz reaches on a fielder's choice out, first baseman Michael Busch to catcher Carson Kelly. Matt McLain out at home. TJ Friedl to 2nd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Elly De La Cruz",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30021,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Sal Stewart pops out to second baseman Nico Hoerner.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Sal Stewart",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35022,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nico Hoerner flies out to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35023,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Moisés Ballesteros strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35024,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Alex Bregman grounds out, shortstop Elly De La Cruz to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40025,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nathaniel Lowe grounds out, shortstop Dansby Swanson to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Nathaniel Lowe",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40026,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Cubs challenged (pitch result), call on the field was overturned: Spencer Steer called out on strikes.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Spencer Steer",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40027,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Will Benson walks.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Will Benson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40028,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jose Trevino grounds out, shortstop Dansby Swanson to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Jose Trevino",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45029,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ian Happ singles on a ground ball to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45030,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Seiya Suzuki doubles (3) on a sharp line drive to left fielder JJ Bleday. Ian Happ scores.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 45031,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Michael Busch singles on a line drive to right fielder Will Benson. Seiya Suzuki to 3rd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45032,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Carson Kelly grounds into a double play, second baseman Matt McLain to shortstop Elly De La Cruz to first baseman Spencer Steer. Seiya Suzuki scores. Michael Busch out at 2nd. Carson Kelly out at 1st.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 45033,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "hit_by_pitch",
+      "description": "Pete Crow-Armstrong hit by pitch.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 45034,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dansby Swanson flies out to center fielder TJ Friedl.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50035,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Matt McLain homers (3) on a fly ball to right center field.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Matt McLain",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 50036,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "TJ Friedl strikes out swinging.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "TJ Friedl",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50037,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "JJ Bleday grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "JJ Bleday",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50038,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Elly De La Cruz strikes out on a foul tip.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Elly De La Cruz",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55039,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nico Hoerner grounds out, third baseman Sal Stewart to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55040,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Moisés Ballesteros strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55041,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Alex Bregman strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60042,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Sal Stewart walks.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Sal Stewart",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60043,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Nathaniel Lowe singles on a line drive to right fielder Seiya Suzuki. Sal Stewart to 3rd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Nathaniel Lowe",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60044,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "fielders_choice",
+      "description": "Spencer Steer reaches on a fielder's choice out, third baseman Alex Bregman unassisted. Sal Stewart out at home. Nathaniel Lowe to 2nd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Spencer Steer",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60045,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Will Benson grounds out, first baseman Michael Busch to pitcher Jacob Webb. Nathaniel Lowe to 3rd. Spencer Steer to 2nd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Will Benson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60046,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Jose Trevino grounds out, third baseman Alex Bregman to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Jose Trevino",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65047,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ian Happ singles on a line drive to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65048,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Seiya Suzuki flies out to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65049,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Michael Busch strikes out on a foul tip.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65050,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Carson Kelly strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 70051,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Matt McLain grounds out, shortstop Dansby Swanson to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Matt McLain",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70052,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "TJ Friedl grounds out, pitcher Jacob Webb to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "TJ Friedl",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70053,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "JJ Bleday strikes out swinging.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "JJ Bleday",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75054,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Pete Crow-Armstrong singles on a ground ball to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 75055,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Dansby Swanson singles on a ground ball to shortstop Elly De La Cruz, deflected by pitcher Sam Moll. Pete Crow-Armstrong to 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 75056,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "double_play",
+      "description": "Nico Hoerner grounds into a double play, second baseman Matt McLain to shortstop Elly De La Cruz to first baseman Spencer Steer. Pete Crow-Armstrong to 3rd. Dansby Swanson out at 2nd. Nico Hoerner out at 1st.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75057,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Michael Conforto grounds out to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Conforto",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80058,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Elly De La Cruz strikes out swinging.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Elly De La Cruz",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 80059,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Sal Stewart grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Sal Stewart",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80060,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nathaniel Lowe grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Nathaniel Lowe",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85061,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Alex Bregman called out on strikes.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85062,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ian Happ flies out sharply to center fielder TJ Friedl.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85063,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Seiya Suzuki called out on strikes.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90064,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Spencer Steer homers (6) on a fly ball to left center field.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Spencer Steer",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90065,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Will Benson singles on a ground ball to left fielder Ian Happ.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Will Benson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90066,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Tyler Stephenson singles on a ground ball to left fielder Ian Happ. Will Benson to 2nd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Tyler Stephenson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90067,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "sacrifice",
+      "description": "Matt McLain hits a sacrifice bunt. Will Benson to 3rd. Tyler Stephenson to 2nd. Matt McLain to 1st.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Matt McLain",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90068,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Dane Myers strikes out swinging.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Dane Myers",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90069,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 4
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "JJ Bleday singles on a line drive to right fielder Seiya Suzuki. Will Benson scores. Tyler Stephenson to 3rd. Matt McLain to 2nd.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "JJ Bleday",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": true,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "tying",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90070,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 4
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "sacrifice",
+      "description": "Elly De La Cruz out on a sacrifice fly to right fielder Seiya Suzuki. Tyler Stephenson scores. Matt McLain scores.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Elly De La Cruz",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90071,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Sal Stewart grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Sal Stewart",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95072,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Reds challenged (pitch result), call on the field was overturned: Michael Busch called out on strikes.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 95073,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Carson Kelly singles on a line drive to right fielder Will Benson.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 95074,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Pete Crow-Armstrong homers (4) on a fly ball to left center field. Carson Kelly scores.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": true,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "tying",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 95075,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dansby Swanson flies out to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95076,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nico Hoerner grounds out, shortstop Elly De La Cruz to first baseman Spencer Steer.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 100077,
+      "inning": 10,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Nathaniel Lowe walks.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Nathaniel Lowe",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 100078,
+      "inning": 10,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Spencer Steer grounds into a double play, third baseman Alex Bregman to second baseman Nico Hoerner to first baseman Michael Busch. Ke'Bryan Hayes to 3rd. Blake Dunn out at 2nd. Spencer Steer out at 1st.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Spencer Steer",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 100079,
+      "inning": 10,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Will Benson grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "CIN",
+      "batterName": "Will Benson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 105080,
+      "inning": 10,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "sacrifice",
+      "description": "Miguel Amaya out on a sacrifice bunt, pitcher Brock Burke to second baseman Matt McLain.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Miguel Amaya",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 105081,
+      "inning": 10,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Brock Burke intentionally walks Alex Bregman.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 105082,
+      "inning": 10,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ian Happ strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 105083,
+      "inning": 10,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Brock Burke intentionally walks Seiya Suzuki.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 105084,
+      "inning": 10,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Michael Busch walks. Nico Hoerner to 3rd. Seiya Suzuki to 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    }
+  ]
+}

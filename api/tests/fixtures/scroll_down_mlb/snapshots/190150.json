@@ -1,0 +1,4677 @@
+{
+  "gameId": 190150,
+  "lastPlayIndex": 95083,
+  "isFinal": true,
+  "cards": [
+    {
+      "kind": "scene-setter",
+      "gameId": 190150,
+      "cardId": "190150-scene",
+      "index": 0,
+      "homeTeam": "Miami Marlins",
+      "awayTeam": "Baltimore Orioles",
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "firstPitch": "2026-05-05T22:40:00Z",
+      "homeProbablePitcher": null,
+      "awayProbablePitcher": null,
+      "venue": null
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-10003",
+      "index": 1,
+      "playIndex": 10003,
+      "inning": 1,
+      "inningHalf": "top",
+      "inningLabel": "Top 1st",
+      "battingTeamAbbr": "BAL",
+      "description": "Pete Alonso doubles on a ground ball to left fielder Kyle Stowers. Taylor Ward scores. Dylan Beavers scores. Pete Alonso to 3rd. Pete Alonso advances to 3rd, on a fielding error by left fielder Kyle Stowers.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Pete Alonso",
+        "pitcherName": "Sandy Alcantara"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "second": "Taylor Ward",
+        "first": "Dylan Beavers"
+      },
+      "runnerNamesAfter": {
+        "third": "Pete Alonso"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "third"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "double",
+      "animationProfile": "deep_fly",
+      "visualIntensity": "medium",
+      "narrative": "Alonso doubles into the gap and 2 score."
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-10004",
+      "index": 2,
+      "playIndex": 10004,
+      "inning": 1,
+      "inningHalf": "top",
+      "inningLabel": "Top 1st",
+      "battingTeamAbbr": "BAL",
+      "description": "Samuel Basallo doubles on a sharp line drive to center fielder Jakob Marsee. Pete Alonso scores.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Samuel Basallo",
+        "pitcherName": "Sandy Alcantara"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Pete Alonso"
+      },
+      "runnerNamesAfter": {
+        "second": "Samuel Basallo"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "second"
+        }
+      ],
+      "ballPath": "line_center",
+      "eventType": "double",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Basallo doubles in a run.",
+      "priorAfter": {
+        "score": {
+          "home": 0,
+          "away": 2
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Pete Alonso"
+        },
+        "outs": 1,
+        "inning": 1,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190150,
+      "cardId": "190150-tx-1-top-1-bottom",
+      "index": 3,
+      "label": "MID 1ST",
+      "phase": "mid",
+      "score": {
+        "home": 0,
+        "away": 3
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "subtitle": "BAL lead by 3.",
+      "fromInning": 1,
+      "fromHalf": "top",
+      "toInning": 1,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-15009",
+      "index": 4,
+      "playIndex": 15009,
+      "inning": 1,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 1st",
+      "battingTeamAbbr": "MIA",
+      "description": "Otto Lopez grounds out, shortstop Gunnar Henderson to first baseman Pete Alonso. Liam Hicks to 3rd.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Otto Lopez",
+        "pitcherName": "Chris Bassitt"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Xavier Edwards",
+        "first": "Liam Hicks"
+      },
+      "runnerNamesAfter": {
+        "third": "Xavier Edwards"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out",
+          "outAt": "first"
+        },
+        {
+          "from": "first",
+          "to": "home"
+        }
+      ],
+      "ballPath": "ground_ss",
+      "eventType": "field_out",
+      "animationProfile": "routine_grounder",
+      "visualIntensity": "low",
+      "narrative": "Lopez gets retired but a run crosses on the play."
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-25020",
+      "index": 5,
+      "playIndex": 25020,
+      "inning": 2,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 2nd",
+      "battingTeamAbbr": "MIA",
+      "description": "Liam Hicks singles on a sharp line drive to center fielder Leody Taveras. Owen Caissie scores. Graham Pauley scores. Xavier Edwards to 3rd.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Liam Hicks",
+        "pitcherName": "Chris Bassitt"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Owen Caissie",
+        "second": "Graham Pauley",
+        "first": "Xavier Edwards"
+      },
+      "runnerNamesAfter": {
+        "third": "Xavier Edwards",
+        "first": "Liam Hicks"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "third"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Hicks singles and 2 runs come home.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 3
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Xavier Edwards"
+        },
+        "outs": 1,
+        "inning": 1,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190150,
+      "cardId": "190150-tx-2-bottom-3-top",
+      "index": 6,
+      "label": "END 2ND",
+      "phase": "end",
+      "score": {
+        "home": 3,
+        "away": 3
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "subtitle": "Tied at 3.",
+      "fromInning": 2,
+      "fromHalf": "bottom",
+      "toInning": 3,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-30025",
+      "index": 7,
+      "playIndex": 30025,
+      "inning": 3,
+      "inningHalf": "top",
+      "inningLabel": "Top 3rd",
+      "battingTeamAbbr": "BAL",
+      "description": "Samuel Basallo singles on a line drive to right fielder Owen Caissie. Taylor Ward scores. Pete Alonso scores.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 5
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Samuel Basallo",
+        "pitcherName": "Sandy Alcantara"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Taylor Ward",
+        "second": "Pete Alonso"
+      },
+      "runnerNamesAfter": {
+        "first": "Samuel Basallo"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Basallo singles and 2 runs come home."
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190150,
+      "cardId": "190150-tx-3-top-3-bottom",
+      "index": 8,
+      "label": "MID 3RD",
+      "phase": "mid",
+      "score": {
+        "home": 3,
+        "away": 5
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "subtitle": "BAL lead by 2.",
+      "fromInning": 3,
+      "fromHalf": "top",
+      "toInning": 3,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-35031",
+      "index": 9,
+      "playIndex": 35031,
+      "inning": 3,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 3rd",
+      "battingTeamAbbr": "MIA",
+      "description": "Joe Mack singles on a line drive to left fielder Taylor Ward. Kyle Stowers scores. Connor Norby to 2nd.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Joe Mack",
+        "pitcherName": "Chris Bassitt"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Kyle Stowers",
+        "first": "Connor Norby"
+      },
+      "runnerNamesAfter": {
+        "second": "Connor Norby",
+        "first": "Joe Mack"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Mack singles home a run."
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190150,
+      "cardId": "190150-qs-3-bottom-5-top",
+      "index": 10,
+      "label": "THROUGH 4TH",
+      "subtitle": "BAL lead by 1. The score holds.",
+      "score": {
+        "home": 4,
+        "away": 5
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "fromInning": 3,
+      "fromHalf": "bottom",
+      "toInning": 5,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-50043",
+      "index": 11,
+      "playIndex": 50043,
+      "inning": 5,
+      "inningHalf": "top",
+      "inningLabel": "Top 5th",
+      "battingTeamAbbr": "BAL",
+      "description": "Samuel Basallo triples on a ground ball to right fielder Owen Caissie. Pete Alonso scores.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Samuel Basallo",
+        "pitcherName": "Sandy Alcantara"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "first": "Pete Alonso"
+      },
+      "runnerNamesAfter": {
+        "third": "Samuel Basallo"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "third"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "triple",
+      "animationProfile": "deep_fly",
+      "visualIntensity": "high",
+      "narrative": "Basallo legs out a triple and a run scores."
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-50045",
+      "index": 12,
+      "playIndex": 50045,
+      "inning": 5,
+      "inningHalf": "top",
+      "inningLabel": "Top 5th",
+      "battingTeamAbbr": "BAL",
+      "description": "Colton Cowser reaches on a fielder's choice, fielded by shortstop Otto Lopez. Samuel Basallo scores.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Colton Cowser",
+        "pitcherName": "Anthony Bender"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Samuel Basallo"
+      },
+      "runnerNamesAfter": {
+        "first": "Colton Cowser"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        },
+        {
+          "from": "third",
+          "to": "home"
+        }
+      ],
+      "ballPath": "ground_ss",
+      "eventType": "fielders_choice",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Cowser reaches on a fielder's choice and a run comes in.",
+      "priorAfter": {
+        "score": {
+          "home": 4,
+          "away": 6
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Samuel Basallo"
+        },
+        "outs": 0,
+        "inning": 5,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190150,
+      "cardId": "190150-qs-5-top-7-bottom",
+      "index": 13,
+      "label": "THROUGH 7TH",
+      "subtitle": "BAL lead by 3. Neither side scratches.",
+      "score": {
+        "home": 4,
+        "away": 7
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "fromInning": 5,
+      "fromHalf": "top",
+      "toInning": 7,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "late-game",
+      "gameId": 190150,
+      "cardId": "190150-lg-7-bottom",
+      "index": 14,
+      "label": "LATE INNINGS",
+      "subtitle": "BAL lead by 3. Every runner matters now.",
+      "score": {
+        "home": 4,
+        "away": 7
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "toInning": 7,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-75061",
+      "index": 15,
+      "playIndex": 75061,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "MIA",
+      "description": "Liam Hicks homers on a fly ball to right field.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Liam Hicks",
+        "pitcherName": "Keegan Akin"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Hicks goes deep for a solo home run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-75062",
+      "index": 16,
+      "playIndex": 75062,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "MIA",
+      "description": "Otto Lopez homers on a fly ball to center field.",
+      "scoreBefore": {
+        "home": 5,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Otto Lopez",
+        "pitcherName": "Keegan Akin"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_center",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Lopez goes deep for a solo home run.",
+      "priorAfter": {
+        "score": {
+          "home": 5,
+          "away": 7
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 1,
+        "inning": 7,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190150,
+      "cardId": "190150-tx-7-bottom-8-bottom",
+      "index": 17,
+      "label": "END 7TH",
+      "phase": "end",
+      "score": {
+        "home": 6,
+        "away": 7
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "subtitle": "BAL lead by 1.",
+      "fromInning": 7,
+      "fromHalf": "bottom",
+      "toInning": 8,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-85069",
+      "index": 18,
+      "playIndex": 85069,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "MIA",
+      "description": "Joe Mack singles on a sharp line drive to right fielder Colton Cowser.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Joe Mack",
+        "pitcherName": "Andrew Kittredge"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Joe Mack"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Mack lines a single into play."
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-85070",
+      "index": 19,
+      "playIndex": 85070,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "MIA",
+      "description": "Owen Caissie walks.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Owen Caissie",
+        "pitcherName": "Andrew Kittredge"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Joe Mack"
+      },
+      "runnerNamesAfter": {
+        "second": "Joe Mack",
+        "first": "Owen Caissie"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Caissie works a walk to add a runner late.",
+      "priorAfter": {
+        "score": {
+          "home": 6,
+          "away": 7
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Joe Mack"
+        },
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-85071",
+      "index": 20,
+      "playIndex": 85071,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "MIA",
+      "description": "Graham Pauley flies out to right fielder Colton Cowser.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Graham Pauley",
+        "pitcherName": "Andrew Kittredge"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Joe Mack",
+        "first": "Owen Caissie"
+      },
+      "runnerNamesAfter": {
+        "first": "Owen Caissie"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        },
+        {
+          "from": "second",
+          "to": "home"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "field_out",
+      "animationProfile": "shallow_fly",
+      "visualIntensity": "low",
+      "narrative": "Pauley gets retired but a run crosses on the play.",
+      "priorAfter": {
+        "score": {
+          "home": 6,
+          "away": 7
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Joe Mack",
+          "first": "Owen Caissie"
+        },
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-85072",
+      "index": 21,
+      "playIndex": 85072,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "MIA",
+      "description": "Xavier Edwards walks.",
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Xavier Edwards",
+        "pitcherName": "Andrew Kittredge"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Owen Caissie"
+      },
+      "runnerNamesAfter": {
+        "second": "Owen Caissie",
+        "first": "Xavier Edwards"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Edwards works a walk to add a runner late.",
+      "priorAfter": {
+        "score": {
+          "home": 7,
+          "away": 7
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Owen Caissie"
+        },
+        "outs": 2,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190150,
+      "cardId": "190150-tx-8-bottom-9-top",
+      "index": 22,
+      "label": "END 8TH",
+      "phase": "end",
+      "score": {
+        "home": 7,
+        "away": 7
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "subtitle": "Tied at 7.",
+      "fromInning": 8,
+      "fromHalf": "bottom",
+      "toInning": 9,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-90075",
+      "index": 23,
+      "playIndex": 90075,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "BAL",
+      "description": "Taylor Ward walks.",
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Taylor Ward",
+        "pitcherName": "Andrew Nardi"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Taylor Ward"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Ward works the count and draws a walk."
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-90077",
+      "index": 24,
+      "playIndex": 90077,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "BAL",
+      "description": "Pete Alonso walks.",
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Pete Alonso",
+        "pitcherName": "Andrew Nardi"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Taylor Ward"
+      },
+      "runnerNamesAfter": {
+        "second": "Taylor Ward",
+        "first": "Pete Alonso"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Alonso works a walk to add a runner late.",
+      "priorAfter": {
+        "score": {
+          "home": 7,
+          "away": 7
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Taylor Ward"
+        },
+        "outs": 1,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-90078",
+      "index": 25,
+      "playIndex": 90078,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "BAL",
+      "description": "Adley Rutschman singles on a line drive to left fielder Kyle Stowers. Taylor Ward scores. Pete Alonso to 2nd.",
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 8
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Adley Rutschman",
+        "pitcherName": "Andrew Nardi"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Taylor Ward",
+        "first": "Pete Alonso"
+      },
+      "runnerNamesAfter": {
+        "second": "Pete Alonso",
+        "first": "Adley Rutschman"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Rutschman singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 7,
+          "away": 7
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Taylor Ward",
+          "first": "Pete Alonso"
+        },
+        "outs": 2,
+        "inning": 9,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "final-setup",
+      "gameId": 190150,
+      "cardId": "190150-fs-9-top",
+      "index": 26,
+      "label": "FINAL APPROACH",
+      "subtitle": "Top 9th. Hold the lead.",
+      "score": {
+        "home": 7,
+        "away": 8
+      },
+      "homeTeamAbbr": "MIA",
+      "awayTeamAbbr": "BAL",
+      "toInning": 9,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190150,
+      "cardId": "190150-90079",
+      "index": 27,
+      "playIndex": 90079,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "BAL",
+      "description": "Leody Taveras singles on a line drive to right fielder Owen Caissie. Pete Alonso scores. Adley Rutschman to 2nd.",
+      "scoreBefore": {
+        "home": 7,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 9
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Leody Taveras",
+        "pitcherName": "Andrew Nardi"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Pete Alonso",
+        "first": "Adley Rutschman"
+      },
+      "runnerNamesAfter": {
+        "second": "Adley Rutschman",
+        "first": "Leody Taveras"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Taveras singles home a run."
+    }
+  ],
+  "audit": [
+    {
+      "playIndex": 10000,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Gunnar Henderson singles on a line drive to right fielder Owen Caissie.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Gunnar Henderson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10001,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Taylor Ward grounds into a force out, third baseman Graham Pauley to second baseman Xavier Edwards. Gunnar Henderson out at 2nd. Taylor Ward to 1st.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Taylor Ward",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10002,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Dylan Beavers walks. Taylor Ward to 2nd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Dylan Beavers",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10003,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "double",
+      "description": "Pete Alonso doubles (9) on a ground ball to left fielder Kyle Stowers. Taylor Ward scores. Dylan Beavers scores. Pete Alonso to 3rd. Pete Alonso advances to 3rd, on a fielding error by left fielder Kyle Stowers.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Pete Alonso",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 10004,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Samuel Basallo doubles (4) on a sharp line drive to center fielder Jakob Marsee. Pete Alonso scores.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Samuel Basallo",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 10005,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Leody Taveras flies out to right fielder Owen Caissie. Samuel Basallo to 3rd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Leody Taveras",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10006,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Colton Cowser strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Colton Cowser",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15007,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Xavier Edwards singles on a ground ball to second baseman Blaze Alexander.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Xavier Edwards",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15008,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Liam Hicks singles on a ground ball to center fielder Leody Taveras. Xavier Edwards to 3rd.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Liam Hicks",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15009,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Otto Lopez grounds out, shortstop Gunnar Henderson to first baseman Pete Alonso. Liam Hicks to 3rd.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Otto Lopez",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 15010,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Kyle Stowers strikes out swinging.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Kyle Stowers",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15011,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Jakob Marsee pops out to second baseman Blaze Alexander.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Jakob Marsee",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20012,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Coby Mayo strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Coby Mayo",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20013,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Blaze Alexander strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Blaze Alexander",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20014,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Gunnar Henderson flies out to right fielder Owen Caissie.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Gunnar Henderson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25015,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "hit_by_pitch",
+      "description": "Connor Norby hit by pitch.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Connor Norby",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25016,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Joe Mack flies out to left fielder Taylor Ward.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Joe Mack",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25017,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "hit_by_pitch",
+      "description": "Owen Caissie hit by pitch.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Owen Caissie",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25018,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Graham Pauley walks. Owen Caissie to 2nd.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Graham Pauley",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25019,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Xavier Edwards walks. Owen Caissie to 3rd. Graham Pauley to 2nd.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Xavier Edwards",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25020,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Liam Hicks singles on a sharp line drive to center fielder Leody Taveras. Owen Caissie scores. Graham Pauley scores. Xavier Edwards to 3rd.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Liam Hicks",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": true,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "tying"
+      ]
+    },
+    {
+      "playIndex": 25021,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Otto Lopez flies out to center fielder Leody Taveras.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Otto Lopez",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30022,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Taylor Ward walks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Taylor Ward",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30023,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dylan Beavers lines out sharply to center fielder Jakob Marsee.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Dylan Beavers",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30024,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "double",
+      "description": "Pete Alonso doubles (10) on a fly ball to left fielder Kyle Stowers. Taylor Ward to 3rd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Pete Alonso",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30025,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 5
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Samuel Basallo singles on a line drive to right fielder Owen Caissie. Taylor Ward scores. Pete Alonso scores.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Samuel Basallo",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 30026,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Leody Taveras strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Leody Taveras",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30027,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Colton Cowser strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Colton Cowser",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35028,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 3,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Kyle Stowers walks.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Kyle Stowers",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35029,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jakob Marsee called out on strikes.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Jakob Marsee",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35030,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Connor Norby singles on a line drive to center fielder Leody Taveras. Kyle Stowers to 2nd.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Connor Norby",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35031,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Joe Mack singles on a line drive to left fielder Taylor Ward. Kyle Stowers scores. Connor Norby to 2nd.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Joe Mack",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 35032,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Owen Caissie called out on strikes.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Owen Caissie",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35033,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Graham Pauley grounds out to first baseman Pete Alonso.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Graham Pauley",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40034,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Coby Mayo grounds out, third baseman Graham Pauley to first baseman Liam Hicks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Coby Mayo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40035,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Blaze Alexander singles on a line drive to right fielder Owen Caissie.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Blaze Alexander",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40036,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Gunnar Henderson flies out to right fielder Owen Caissie.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Gunnar Henderson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40037,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Taylor Ward singles on a ground ball to third baseman Graham Pauley. Blaze Alexander to 2nd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Taylor Ward",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40038,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dylan Beavers grounds into a force out, fielded by shortstop Otto Lopez. Taylor Ward out at 2nd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Dylan Beavers",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45039,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Xavier Edwards flies out to center fielder Leody Taveras.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Xavier Edwards",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45040,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Liam Hicks singles on a ground ball to right fielder Colton Cowser.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Liam Hicks",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45041,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Otto Lopez grounds into a double play, first baseman Pete Alonso to shortstop Gunnar Henderson to first baseman Pete Alonso. Liam Hicks out at 2nd. Otto Lopez out at 1st.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Otto Lopez",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50042,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 5
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Pete Alonso walks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Pete Alonso",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50043,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 4,
+        "away": 5
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "triple",
+      "description": "Samuel Basallo triples (1) on a ground ball to right fielder Owen Caissie. Pete Alonso scores.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Samuel Basallo",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 50044,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 6
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Leody Taveras grounds out, second baseman Xavier Edwards to first baseman Liam Hicks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Leody Taveras",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50045,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 6
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "fielders_choice",
+      "description": "Colton Cowser reaches on a fielder's choice, fielded by shortstop Otto Lopez. Samuel Basallo scores.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Colton Cowser",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 50046,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "fielders_choice",
+      "description": "Coby Mayo reaches on a fielder's choice out, shortstop Otto Lopez to third baseman Graham Pauley. Colton Cowser out at 3rd. Coby Mayo to 2nd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Coby Mayo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50047,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Blaze Alexander grounds out, second baseman Xavier Edwards to first baseman Liam Hicks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Blaze Alexander",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55048,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Kyle Stowers pops out to first baseman Pete Alonso in foul territory.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Kyle Stowers",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55049,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jakob Marsee flies out to right fielder Colton Cowser.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Jakob Marsee",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55050,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Connor Norby strikes out swinging.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Connor Norby",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60051,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Gunnar Henderson strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Gunnar Henderson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60052,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Taylor Ward strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Taylor Ward",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60053,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dylan Beavers flies out to left fielder Kyle Stowers.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Dylan Beavers",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65054,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Joe Mack strikes out swinging.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Joe Mack",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65055,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Owen Caissie grounds out, first baseman Pete Alonso to pitcher Anthony Nunez.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Owen Caissie",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65056,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Graham Pauley lines out to first baseman Pete Alonso.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Graham Pauley",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70057,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Pete Alonso strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Pete Alonso",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 70058,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Samuel Basallo strikes out on a foul tip.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Samuel Basallo",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 70059,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Leody Taveras lines out sharply to center fielder Jakob Marsee.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Leody Taveras",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75060,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Xavier Edwards grounds out, third baseman Coby Mayo to first baseman Pete Alonso.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Xavier Edwards",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75061,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 5,
+        "away": 7
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Liam Hicks homers (8) on a fly ball to right field.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Liam Hicks",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 75062,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 5,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Otto Lopez homers (4) on a fly ball to center field.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Otto Lopez",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 75063,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Kyle Stowers strikes out swinging.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Kyle Stowers",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75064,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jakob Marsee strikes out swinging, catcher Samuel Basallo to first baseman Pete Alonso.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Jakob Marsee",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 80065,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Colton Cowser strikes out swinging.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Colton Cowser",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 80066,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Coby Mayo flies out to right fielder Owen Caissie.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Coby Mayo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80067,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Blaze Alexander grounds out, third baseman Graham Pauley to first baseman Liam Hicks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Blaze Alexander",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85068,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Connor Norby strikes out on a foul tip.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Connor Norby",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85069,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Joe Mack singles on a sharp line drive to right fielder Colton Cowser.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Joe Mack",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85070,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Owen Caissie walks.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Owen Caissie",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85071,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Marlins challenged (force play), call on the field was overturned: Graham Pauley flies out to right fielder Colton Cowser.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Graham Pauley",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": true,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "tying",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85072,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Xavier Edwards walks.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Xavier Edwards",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85073,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Liam Hicks strikes out swinging.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Liam Hicks",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90074,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Gunnar Henderson lines out to right fielder Owen Caissie.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Gunnar Henderson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90075,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Taylor Ward walks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Taylor Ward",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90076,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Tyler O'Neill flies out sharply to center fielder Jakob Marsee.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Tyler O'Neill",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90077,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 7
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Pete Alonso walks.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Pete Alonso",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90078,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 7,
+        "away": 7
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 8
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Adley Rutschman singles on a line drive to left fielder Kyle Stowers. Taylor Ward scores. Pete Alonso to 2nd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Adley Rutschman",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90079,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 7,
+        "away": 8
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 9
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Leody Taveras singles on a line drive to right fielder Owen Caissie. Pete Alonso scores. Adley Rutschman to 2nd.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Leody Taveras",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90080,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 7,
+        "away": 9
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 9
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Colton Cowser flies out to left fielder Kyle Stowers.",
+      "battingTeamAbbr": "BAL",
+      "batterName": "Colton Cowser",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95081,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 7,
+        "away": 9
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 9
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Otto Lopez grounds out, shortstop Gunnar Henderson to first baseman Pete Alonso.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Otto Lopez",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95082,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 7,
+        "away": 9
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 9
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Kyle Stowers grounds out softly, third baseman Blaze Alexander to first baseman Pete Alonso.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Kyle Stowers",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 95083,
+      "inning": 9,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 7,
+        "away": 9
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 9
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jakob Marsee strikes out swinging.",
+      "battingTeamAbbr": "MIA",
+      "batterName": "Jakob Marsee",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    }
+  ]
+}

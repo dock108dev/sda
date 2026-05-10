@@ -39,6 +39,7 @@
 | Guide | Description |
 |-------|-------------|
 | [Game summary contract](gameflow/contract.md) | v3-summary schema, voice rules, pipeline shape |
+| [Scroll Down MLB](scroll-down-mlb.md) | Spoiler-safe MLB catch-up deck — endpoints, build pipeline, persistence |
 | [PBP assumptions](gameflow/pbp-assumptions.md) | Technical assumptions for PBP |
 | [Timeline assembly](gameflow/timeline-assembly.md) | Merging PBP, social, odds |
 | [Timeline validation](gameflow/timeline-validation.md) | Validation rules |

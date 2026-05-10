@@ -1,0 +1,8 @@
+# Mark vendored / generated test corpora so GitHub:
+#   - collapses them in PR diff view
+#   - excludes them from language stats
+#
+# Scroll Down MLB parity corpus: verbatim copies of upstream TS fixtures
+# (see api/tests/fixtures/scroll_down_mlb/README.md). Refreshed by running
+# the TS exporter, not edited by hand.
+api/tests/fixtures/scroll_down_mlb/**/*.json linguist-generated=true

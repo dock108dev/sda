@@ -1,0 +1,3529 @@
+{
+  "gameId": 190168,
+  "lastPlayIndex": 90065,
+  "isFinal": true,
+  "cards": [
+    {
+      "kind": "scene-setter",
+      "gameId": 190168,
+      "cardId": "190168-scene",
+      "index": 0,
+      "homeTeam": "Seattle Mariners",
+      "awayTeam": "Atlanta Braves",
+      "homeTeamAbbr": "SEA",
+      "awayTeamAbbr": "ATL",
+      "firstPitch": "2026-05-06T20:10:00Z",
+      "homeProbablePitcher": null,
+      "awayProbablePitcher": null,
+      "venue": null
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-20007",
+      "index": 1,
+      "playIndex": 20007,
+      "inning": 2,
+      "inningHalf": "top",
+      "inningLabel": "Top 2nd",
+      "battingTeamAbbr": "ATL",
+      "description": "Mauricio Dubón strikes out swinging.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Mauricio Dubón",
+        "pitcherName": "Bryan Woo"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Woo strikes out Dubón."
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190168,
+      "cardId": "190168-qs-2-top-3-bottom",
+      "index": 2,
+      "label": "THROUGH 3RD",
+      "subtitle": "Still scoreless. Both pitchers in command.",
+      "score": {
+        "home": 0,
+        "away": 0
+      },
+      "homeTeamAbbr": "SEA",
+      "awayTeamAbbr": "ATL",
+      "fromInning": 2,
+      "fromHalf": "top",
+      "toInning": 3,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-35020",
+      "index": 3,
+      "playIndex": 35020,
+      "inning": 3,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 3rd",
+      "battingTeamAbbr": "SEA",
+      "description": "Cal Raleigh grounds into a double play, shortstop Jim Jarvis to second baseman Ozzie Albies to first baseman Matt Olson. Jhonny Pereda scores. Leo Rivas to 3rd. J.P. Crawford out at 2nd. Cal Raleigh out at 1st.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Cal Raleigh",
+        "pitcherName": "Martín Pérez"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Jhonny Pereda",
+        "second": "Leo Rivas",
+        "first": "J.P. Crawford"
+      },
+      "runnerNamesAfter": {
+        "third": "Leo Rivas"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "third"
+        },
+        {
+          "from": "first",
+          "to": "out",
+          "outAt": "second"
+        },
+        {
+          "from": "home",
+          "to": "out",
+          "outAt": "first"
+        },
+        {
+          "from": "third",
+          "to": "home"
+        }
+      ],
+      "ballPath": "ground_ss",
+      "eventType": "double_play",
+      "animationProfile": "double_play_grounder",
+      "visualIntensity": "high",
+      "narrative": "Raleigh grounds into a double play — two outs in a hurry."
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-40023",
+      "index": 4,
+      "playIndex": 40023,
+      "inning": 4,
+      "inningHalf": "top",
+      "inningLabel": "Top 4th",
+      "battingTeamAbbr": "ATL",
+      "description": "Matt Olson strikes out swinging.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Matt Olson",
+        "pitcherName": "Bryan Woo"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Ozzie Albies"
+      },
+      "runnerNamesAfter": {
+        "first": "Ozzie Albies"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Woo strikes out Olson.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 0
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Leo Rivas"
+        },
+        "outs": 2,
+        "inning": 3,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190168,
+      "cardId": "190168-qs-4-top-6-bottom",
+      "index": 5,
+      "label": "THROUGH 6TH",
+      "subtitle": "SEA lead by 1. The score holds.",
+      "score": {
+        "home": 1,
+        "away": 0
+      },
+      "homeTeamAbbr": "SEA",
+      "awayTeamAbbr": "ATL",
+      "fromInning": 4,
+      "fromHalf": "top",
+      "toInning": 6,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-65041",
+      "index": 6,
+      "playIndex": 65041,
+      "inning": 6,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 6th",
+      "battingTeamAbbr": "SEA",
+      "description": "Julio Rodríguez homers on a fly ball to center field.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Julio Rodríguez",
+        "pitcherName": "Martín Pérez"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_center",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Rodríguez goes deep for a solo home run."
+    },
+    {
+      "kind": "late-game",
+      "gameId": 190168,
+      "cardId": "190168-lg-7-bottom",
+      "index": 7,
+      "label": "LATE INNINGS",
+      "subtitle": "SEA lead by 2. Every runner matters now.",
+      "score": {
+        "home": 2,
+        "away": 0
+      },
+      "homeTeamAbbr": "SEA",
+      "awayTeamAbbr": "ATL",
+      "toInning": 7,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-75051",
+      "index": 8,
+      "playIndex": 75051,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "SEA",
+      "description": "J.P. Crawford walks.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "J.P. Crawford",
+        "pitcherName": "Didier Fuentes"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "J.P. Crawford"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Crawford works the count and draws a walk."
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-80053",
+      "index": 9,
+      "playIndex": 80053,
+      "inning": 8,
+      "inningHalf": "top",
+      "inningLabel": "Top 8th",
+      "battingTeamAbbr": "ATL",
+      "description": "Mike Yastrzemski singles on a sharp line drive to center fielder Julio Rodríguez.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Mike Yastrzemski",
+        "pitcherName": "Eduard Bazardo"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Mike Yastrzemski"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Yastrzemski lines a single into play.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 0
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "J.P. Crawford"
+        },
+        "outs": 2,
+        "inning": 7,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-80054",
+      "index": 10,
+      "playIndex": 80054,
+      "inning": 8,
+      "inningHalf": "top",
+      "inningLabel": "Top 8th",
+      "battingTeamAbbr": "ATL",
+      "description": "Sean Murphy singles on a sharp line drive to center fielder Julio Rodríguez. Mike Yastrzemski to 3rd.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Sean Murphy",
+        "pitcherName": "Eduard Bazardo"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "first": "Mike Yastrzemski"
+      },
+      "runnerNamesAfter": {
+        "third": "Mike Yastrzemski",
+        "first": "Sean Murphy"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "third"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Murphy singles and pushes the runner along.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 0
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Mike Yastrzemski"
+        },
+        "outs": 0,
+        "inning": 8,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-80055",
+      "index": 11,
+      "playIndex": 80055,
+      "inning": 8,
+      "inningHalf": "top",
+      "inningLabel": "Top 8th",
+      "battingTeamAbbr": "ATL",
+      "description": "Dominic Smith out on a sacrifice fly to center fielder Julio Rodríguez. Mike Yastrzemski scores.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Dominic Smith",
+        "pitcherName": "Eduard Bazardo"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Mike Yastrzemski",
+        "first": "Sean Murphy"
+      },
+      "runnerNamesAfter": {
+        "first": "Sean Murphy"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "sacrifice",
+      "animationProfile": "sacrifice_fly",
+      "visualIntensity": "low",
+      "narrative": "Smith lifts a sacrifice and a run scores.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 0
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Mike Yastrzemski",
+          "first": "Sean Murphy"
+        },
+        "outs": 0,
+        "inning": 8,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-80056",
+      "index": 12,
+      "playIndex": 80056,
+      "inning": 8,
+      "inningHalf": "top",
+      "inningLabel": "Top 8th",
+      "battingTeamAbbr": "ATL",
+      "description": "Drake Baldwin singles on a ground ball to center fielder Julio Rodríguez.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Drake Baldwin",
+        "pitcherName": "Eduard Bazardo"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Sean Murphy"
+      },
+      "runnerNamesAfter": {
+        "second": "Sean Murphy",
+        "first": "Drake Baldwin"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "second"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Baldwin singles and pushes the runner along.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 1
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Sean Murphy"
+        },
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190168,
+      "cardId": "190168-tx-8-top-8-bottom",
+      "index": 13,
+      "label": "MID 8TH",
+      "phase": "mid",
+      "score": {
+        "home": 2,
+        "away": 1
+      },
+      "homeTeamAbbr": "SEA",
+      "awayTeamAbbr": "ATL",
+      "subtitle": "SEA lead by 1.",
+      "fromInning": 8,
+      "fromHalf": "top",
+      "toInning": 8,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-85058",
+      "index": 14,
+      "playIndex": 85058,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SEA",
+      "description": "Julio Rodríguez called out on strikes.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Julio Rodríguez",
+        "pitcherName": "Didier Fuentes"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Fuentes strikes out Rodríguez."
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-85059",
+      "index": 15,
+      "playIndex": 85059,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SEA",
+      "description": "Josh Naylor singles on a sharp line drive to center fielder Eli White.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Josh Naylor",
+        "pitcherName": "Didier Fuentes"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Josh Naylor"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Naylor lines a single into play.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 1
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-85061",
+      "index": 16,
+      "playIndex": 85061,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SEA",
+      "description": "Cole Young doubles on a sharp line drive to right fielder Mike Yastrzemski. Josh Naylor scores.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Cole Young",
+        "pitcherName": "Didier Fuentes"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Josh Naylor"
+      },
+      "runnerNamesAfter": {
+        "second": "Cole Young"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "second"
+        }
+      ],
+      "ballPath": "line_right",
+      "eventType": "double",
+      "animationProfile": "line_drive",
+      "visualIntensity": "medium",
+      "narrative": "Young doubles in a run.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 1
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Josh Naylor"
+        },
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190168,
+      "cardId": "190168-tx-8-bottom-9-top",
+      "index": 17,
+      "label": "END 8TH",
+      "phase": "end",
+      "score": {
+        "home": 3,
+        "away": 1
+      },
+      "homeTeamAbbr": "SEA",
+      "awayTeamAbbr": "ATL",
+      "subtitle": "SEA lead by 2.",
+      "fromInning": 8,
+      "fromHalf": "bottom",
+      "toInning": 9,
+      "toHalf": "top"
+    },
+    {
+      "kind": "final-setup",
+      "gameId": 190168,
+      "cardId": "190168-fs-9-top",
+      "index": 18,
+      "label": "FINAL APPROACH",
+      "subtitle": "Top 9th. Down to the wire.",
+      "score": {
+        "home": 3,
+        "away": 1
+      },
+      "homeTeamAbbr": "SEA",
+      "awayTeamAbbr": "ATL",
+      "toInning": 9,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190168,
+      "cardId": "190168-90065",
+      "index": 19,
+      "playIndex": 90065,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "ATL",
+      "description": "Mauricio Dubón called out on strikes.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Mauricio Dubón",
+        "pitcherName": "Jose A. Ferrer"
+      },
+      "outsAfter": 3,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Ferrer punches out Dubón to end the half."
+    }
+  ],
+  "audit": [
+    {
+      "playIndex": 10000,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Drake Baldwin strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10001,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ozzie Albies pops out to third baseman Leo Rivas.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10002,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Matt Olson walks.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10003,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Michael Harris II flies out to center fielder Julio Rodríguez.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Michael Harris II",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15004,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "J.P. Crawford grounds out, second baseman Ozzie Albies to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "J.P. Crawford",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15005,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Cal Raleigh flies out to left fielder Michael Harris II.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cal Raleigh",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15006,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Julio Rodríguez called out on strikes.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Julio Rodríguez",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20007,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Mauricio Dubón strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 20008,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Austin Riley called out on strikes.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20009,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mike Yastrzemski pops out to shortstop J.P. Crawford.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mike Yastrzemski",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25010,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Josh Naylor called out on strikes.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Josh Naylor",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25011,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Randy Arozarena grounds out, third baseman Austin Riley to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Randy Arozarena",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25012,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Cole Young singles on a sharp ground ball to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cole Young",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25013,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Connor Joe lines out to right fielder Mike Yastrzemski.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Connor Joe",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30014,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Sean Murphy grounds out, third baseman Leo Rivas to first baseman Josh Naylor.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Sean Murphy",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30015,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jim Jarvis grounds out, shortstop J.P. Crawford to first baseman Josh Naylor.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jim Jarvis",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30016,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Drake Baldwin lines out to right fielder Connor Joe.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35017,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Jhonny Pereda singles on a sharp line drive to left fielder Michael Harris II.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Jhonny Pereda",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35018,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "double",
+      "description": "Leo Rivas doubles (2) on a ground ball to left fielder Michael Harris II. Jhonny Pereda to 3rd.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Leo Rivas",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35019,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "J.P. Crawford walks.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "J.P. Crawford",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35020,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "double_play",
+      "description": "Cal Raleigh grounds into a double play, shortstop Jim Jarvis to second baseman Ozzie Albies to first baseman Matt Olson. Jhonny Pereda scores. Leo Rivas to 3rd. J.P. Crawford out at 2nd. Cal Raleigh out at 1st.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cal Raleigh",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 35021,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Julio Rodríguez grounds out, second baseman Ozzie Albies to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Julio Rodríguez",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40022,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Ozzie Albies walks.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40023,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Matt Olson strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 40024,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Michael Harris II strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Michael Harris II",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40025,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Mauricio Dubón singles on a sharp line drive to right fielder Connor Joe. Ozzie Albies to 3rd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40026,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Austin Riley grounds out, third baseman Leo Rivas to first baseman Josh Naylor.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45027,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Josh Naylor grounds out, first baseman Matt Olson to pitcher Martín Pérez.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Josh Naylor",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45028,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Randy Arozarena grounds out, third baseman Austin Riley to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Randy Arozarena",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45029,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Cole Young strikes out swinging.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cole Young",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50030,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mike Yastrzemski pops out to third baseman Leo Rivas in foul territory.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mike Yastrzemski",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50031,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Sean Murphy strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Sean Murphy",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50032,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jim Jarvis called out on strikes.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Jim Jarvis",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55033,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Connor Joe strikes out swinging.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Connor Joe",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55034,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Jhonny Pereda singles on a fly ball to center fielder Mauricio Dubón.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Jhonny Pereda",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55035,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Leo Rivas grounds into a force out, third baseman Austin Riley to second baseman Ozzie Albies. Jhonny Pereda out at 2nd. Leo Rivas to 1st.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Leo Rivas",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55036,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "J.P. Crawford grounds out softly, second baseman Ozzie Albies to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "J.P. Crawford",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60037,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Drake Baldwin strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60038,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ozzie Albies pops out to third baseman Leo Rivas.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60039,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Matt Olson called out on strikes.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65040,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Cal Raleigh strikes out swinging.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cal Raleigh",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65041,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Julio Rodríguez homers (5) on a fly ball to center field.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Julio Rodríguez",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 65042,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Josh Naylor pops out to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Josh Naylor",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65043,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Randy Arozarena singles on a ground ball to left fielder Michael Harris II, deflected by shortstop Jim Jarvis.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Randy Arozarena",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65044,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "double",
+      "description": "Cole Young doubles (5) on a sharp line drive to right fielder Mike Yastrzemski. Randy Arozarena to 3rd.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cole Young",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65045,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Connor Joe grounds out, third baseman Austin Riley to first baseman Matt Olson.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Connor Joe",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70046,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Michael Harris II grounds out sharply, shortstop J.P. Crawford to first baseman Josh Naylor.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Michael Harris II",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70047,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Mauricio Dubón lines out to right fielder Connor Joe.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70048,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Austin Riley strikes out swinging.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Austin Riley",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75049,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dominic Canzone flies out to left fielder Michael Harris II.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Dominic Canzone",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75050,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Sean Murphy challenged (pitch result), call on the field was overturned: Leo Rivas called out on strikes.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Leo Rivas",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75051,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "J.P. Crawford walks.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "J.P. Crawford",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 75052,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Cal Raleigh strikes out swinging.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cal Raleigh",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 80053,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Mike Yastrzemski singles on a sharp line drive to center fielder Julio Rodríguez.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mike Yastrzemski",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 80054,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Sean Murphy singles on a sharp line drive to center fielder Julio Rodríguez. Mike Yastrzemski to 3rd.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Sean Murphy",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 80055,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "sacrifice",
+      "description": "Dominic Smith out on a sacrifice fly to center fielder Julio Rodríguez. Mike Yastrzemski scores.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Dominic Smith",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 80056,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Drake Baldwin singles on a ground ball to center fielder Julio Rodríguez.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Drake Baldwin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 80057,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ozzie Albies strikes out swinging, catcher Mitch Garver to first baseman Josh Naylor.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Ozzie Albies",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85058,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Julio Rodríguez challenged (pitch result), call on the field was confirmed: Julio Rodríguez called out on strikes.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Julio Rodríguez",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 85059,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Josh Naylor singles on a sharp line drive to center fielder Eli White.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Josh Naylor",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85060,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Randy Arozarena strikes out on a foul tip. Josh Naylor steals (7) 2nd base.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Randy Arozarena",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85061,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Cole Young doubles (6) on a sharp line drive to right fielder Mike Yastrzemski. Josh Naylor scores.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Cole Young",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85062,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Connor Joe flies out to right fielder Mike Yastrzemski in foul territory.",
+      "battingTeamAbbr": "SEA",
+      "batterName": "Connor Joe",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90063,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Matt Olson flies out sharply to left fielder Randy Arozarena.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Matt Olson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90064,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Michael Harris II grounds out, shortstop J.P. Crawford to first baseman Josh Naylor.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Michael Harris II",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90065,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Mauricio Dubón challenged (pitch result), call on the field was confirmed: Mauricio Dubón called out on strikes.",
+      "battingTeamAbbr": "ATL",
+      "batterName": "Mauricio Dubón",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    }
+  ]
+}

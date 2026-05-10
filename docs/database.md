@@ -63,6 +63,12 @@ DATABASE_URL = "postgresql+psycopg://user:pass@host:5432/sports"
 | `sports_pbp_snapshots` | PBP data at different processing stages (for debugging/comparison) |
 | `sports_entity_resolutions` | Entity resolution tracking for PBP data |
 
+### Scroll Down MLB
+
+| Table | Description |
+|-------|-------------|
+| `scroll_down_mlb_decks` | Generated catch-up decks (live and official). Keyed by `(game_id, deck_version, spoiler_policy)`. Full DTO stored in `payload_json` (JSONB). ORM: `ScrollDownMlbDeck`. See [Scroll Down MLB](scroll-down-mlb.md). |
+
 ### Operations & Monitoring
 
 | Table | Description |

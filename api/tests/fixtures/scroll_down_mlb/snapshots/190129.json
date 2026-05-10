@@ -1,0 +1,3736 @@
+{
+  "gameId": 190129,
+  "lastPlayIndex": 90067,
+  "isFinal": true,
+  "cards": [
+    {
+      "kind": "scene-setter",
+      "gameId": 190129,
+      "cardId": "190129-scene",
+      "index": 0,
+      "homeTeam": "San Diego Padres",
+      "awayTeam": "Chicago White Sox",
+      "homeTeamAbbr": "SD",
+      "awayTeamAbbr": "CWS",
+      "firstPitch": "2026-05-03T20:10:00Z",
+      "homeProbablePitcher": null,
+      "awayProbablePitcher": null,
+      "venue": null
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-30015",
+      "index": 1,
+      "playIndex": 30015,
+      "inning": 3,
+      "inningHalf": "top",
+      "inningLabel": "Top 3rd",
+      "battingTeamAbbr": "CWS",
+      "description": "Drew Romo homers on a fly ball to right field.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Drew Romo",
+        "pitcherName": "Griffin Canning"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_right",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Romo goes deep for a solo home run."
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190129,
+      "cardId": "190129-qs-3-top-4-bottom",
+      "index": 2,
+      "label": "THROUGH 4TH",
+      "subtitle": "CWS lead by 1. The score holds.",
+      "score": {
+        "home": 0,
+        "away": 1
+      },
+      "homeTeamAbbr": "SD",
+      "awayTeamAbbr": "CWS",
+      "fromInning": 3,
+      "fromHalf": "top",
+      "toInning": 4,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-45026",
+      "index": 3,
+      "playIndex": 45026,
+      "inning": 4,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 4th",
+      "battingTeamAbbr": "SD",
+      "description": "Miguel Andujar homers on a fly ball to left center field.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Miguel Andujar",
+        "pitcherName": "Anthony Kay"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Andujar goes deep for a solo home run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-45028",
+      "index": 4,
+      "playIndex": 45028,
+      "inning": 4,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 4th",
+      "battingTeamAbbr": "SD",
+      "description": "Manny Machado homers on a fly ball to left center field.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Manny Machado",
+        "pitcherName": "Anthony Kay"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Machado goes deep for a solo home run.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 1
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 0,
+        "inning": 4,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-45032",
+      "index": 5,
+      "playIndex": 45032,
+      "inning": 4,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 4th",
+      "battingTeamAbbr": "SD",
+      "description": "Freddy Fermin walks. Xander Bogaerts scores. Ty France to 3rd. Passed ball by catcher Drew Romo.",
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Freddy Fermin",
+        "pitcherName": "Anthony Kay"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Xander Bogaerts",
+        "second": "Ty France"
+      },
+      "runnerNamesAfter": {
+        "first": "Freddy Fermin",
+        "third": "Ty France"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        },
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "second",
+          "to": "third"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Fermin draws a walk and another runner is aboard.",
+      "priorAfter": {
+        "score": {
+          "home": 2,
+          "away": 1
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 1,
+        "inning": 4,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190129,
+      "cardId": "190129-qs-4-bottom-6-top",
+      "index": 6,
+      "label": "THROUGH 5TH",
+      "subtitle": "SD lead by 2. The score holds.",
+      "score": {
+        "home": 3,
+        "away": 1
+      },
+      "homeTeamAbbr": "SD",
+      "awayTeamAbbr": "CWS",
+      "fromInning": 4,
+      "fromHalf": "bottom",
+      "toInning": 6,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-60040",
+      "index": 7,
+      "playIndex": 60040,
+      "inning": 6,
+      "inningHalf": "top",
+      "inningLabel": "Top 6th",
+      "battingTeamAbbr": "CWS",
+      "description": "Munetaka Murakami called out on strikes.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Munetaka Murakami",
+        "pitcherName": "Griffin Canning"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Canning strikes out Murakami."
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-60042",
+      "index": 8,
+      "playIndex": 60042,
+      "inning": 6,
+      "inningHalf": "top",
+      "inningLabel": "Top 6th",
+      "battingTeamAbbr": "CWS",
+      "description": "Colson Montgomery strikes out swinging.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Colson Montgomery",
+        "pitcherName": "Griffin Canning"
+      },
+      "outsAfter": 3,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Canning punches out Montgomery to end the half.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 1
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 1,
+        "inning": 6,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "late-game",
+      "gameId": 190129,
+      "cardId": "190129-lg-7-top",
+      "index": 9,
+      "label": "LATE INNINGS",
+      "subtitle": "SD lead by 2. Every runner matters now.",
+      "score": {
+        "home": 3,
+        "away": 1
+      },
+      "homeTeamAbbr": "SD",
+      "awayTeamAbbr": "CWS",
+      "toInning": 7,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-70046",
+      "index": 10,
+      "playIndex": 70046,
+      "inning": 7,
+      "inningHalf": "top",
+      "inningLabel": "Top 7th",
+      "battingTeamAbbr": "CWS",
+      "description": "Chase Meidroth singles on a ground ball to left fielder Ramón Laureano.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Chase Meidroth",
+        "pitcherName": "Griffin Canning"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Chase Meidroth"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Meidroth lines a single into play."
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-70047",
+      "index": 11,
+      "playIndex": 70047,
+      "inning": 7,
+      "inningHalf": "top",
+      "inningLabel": "Top 7th",
+      "battingTeamAbbr": "CWS",
+      "description": "Derek Hill homers on a fly ball to center field. Chase Meidroth scores.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Derek Hill",
+        "pitcherName": "Griffin Canning"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Chase Meidroth"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_center",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Hill hits a 2-run shot.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 1
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Chase Meidroth"
+        },
+        "outs": 0,
+        "inning": 7,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190129,
+      "cardId": "190129-tx-7-top-8-top",
+      "index": 12,
+      "label": "END 7TH",
+      "phase": "end",
+      "score": {
+        "home": 3,
+        "away": 3
+      },
+      "homeTeamAbbr": "SD",
+      "awayTeamAbbr": "CWS",
+      "subtitle": "Tied at 3.",
+      "fromInning": 7,
+      "fromHalf": "top",
+      "toInning": 8,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-80056",
+      "index": 13,
+      "playIndex": 80056,
+      "inning": 8,
+      "inningHalf": "top",
+      "inningLabel": "Top 8th",
+      "battingTeamAbbr": "CWS",
+      "description": "Miguel Vargas singles on a soft ground ball to pitcher Jason Adam.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Miguel Vargas",
+        "pitcherName": "Adrian Morejon"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Miguel Vargas"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "ground_p",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Vargas lines a single into play."
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-85058",
+      "index": 14,
+      "playIndex": 85058,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SD",
+      "description": "Ramón Laureano walks.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Ramón Laureano",
+        "pitcherName": "Bryan Hudson"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Ramón Laureano"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Laureano works the count and draws a walk.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Miguel Vargas"
+        },
+        "outs": 2,
+        "inning": 8,
+        "inningHalf": "top"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-85059",
+      "index": 15,
+      "playIndex": 85059,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SD",
+      "description": "Miguel Andujar strikes out swinging.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Miguel Andujar",
+        "pitcherName": "Bryan Hudson"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Ramón Laureano"
+      },
+      "runnerNamesAfter": {
+        "first": "Ramón Laureano"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Hudson strikes out Andujar.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Ramón Laureano"
+        },
+        "outs": 0,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-85060",
+      "index": 16,
+      "playIndex": 85060,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SD",
+      "description": "Jackson Merrill singles on a ground ball to second baseman Chase Meidroth, deflected by first baseman Munetaka Murakami. Ramón Laureano to 3rd.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Jackson Merrill",
+        "pitcherName": "Tyler Davis"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "first": "Ramón Laureano"
+      },
+      "runnerNamesAfter": {
+        "third": "Ramón Laureano",
+        "first": "Jackson Merrill"
+      },
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "third"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "ground_2b",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Merrill singles and pushes the runner along.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Ramón Laureano"
+        },
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-85061",
+      "index": 17,
+      "playIndex": 85061,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SD",
+      "description": "Manny Machado strikes out swinging.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Manny Machado",
+        "pitcherName": "Tyler Davis"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Ramón Laureano",
+        "first": "Jackson Merrill"
+      },
+      "runnerNamesAfter": {
+        "third": "Ramón Laureano",
+        "first": "Jackson Merrill"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Davis strikes out Machado.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Ramón Laureano",
+          "first": "Jackson Merrill"
+        },
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-85062",
+      "index": 18,
+      "playIndex": 85062,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "SD",
+      "description": "Xander Bogaerts singles on a soft ground ball to third baseman Colson Montgomery. Ramón Laureano scores. Jackson Merrill to 3rd.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Xander Bogaerts",
+        "pitcherName": "Tyler Davis"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Ramón Laureano",
+        "first": "Jackson Merrill"
+      },
+      "runnerNamesAfter": {
+        "third": "Jackson Merrill",
+        "first": "Xander Bogaerts"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "third"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "ground_3b",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Bogaerts singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 3
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Ramón Laureano",
+          "first": "Jackson Merrill"
+        },
+        "outs": 2,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190129,
+      "cardId": "190129-tx-8-bottom-9-top",
+      "index": 19,
+      "label": "END 8TH",
+      "phase": "end",
+      "score": {
+        "home": 4,
+        "away": 3
+      },
+      "homeTeamAbbr": "SD",
+      "awayTeamAbbr": "CWS",
+      "subtitle": "SD lead by 1.",
+      "fromInning": 8,
+      "fromHalf": "bottom",
+      "toInning": 9,
+      "toHalf": "top"
+    },
+    {
+      "kind": "final-setup",
+      "gameId": 190129,
+      "cardId": "190129-fs-9-top",
+      "index": 20,
+      "label": "FINAL APPROACH",
+      "subtitle": "Top 9th. Down to the wire.",
+      "score": {
+        "home": 4,
+        "away": 3
+      },
+      "homeTeamAbbr": "SD",
+      "awayTeamAbbr": "CWS",
+      "toInning": 9,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190129,
+      "cardId": "190129-90066",
+      "index": 21,
+      "playIndex": 90066,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "CWS",
+      "description": "Tristan Peters singles on a ground ball to right fielder Bryce Johnson.",
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Tristan Peters",
+        "pitcherName": "Mason Miller"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Tristan Peters"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Peters lines a single into play."
+    }
+  ],
+  "audit": [
+    {
+      "playIndex": 10000,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Sam Antonacci walks.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Sam Antonacci",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10001,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Munetaka Murakami flies out to left fielder Ramón Laureano.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Munetaka Murakami",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10002,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Andrew Benintendi strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Andrew Benintendi",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10003,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Colson Montgomery walks. Sam Antonacci to 2nd.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Colson Montgomery",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10004,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Chase Meidroth singles on a ground ball to shortstop Xander Bogaerts. Sam Antonacci out at home, shortstop Xander Bogaerts to catcher Freddy Fermin. Colson Montgomery to 2nd.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Chase Meidroth",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15005,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ramón Laureano strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ramón Laureano",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15006,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Miguel Andujar grounds out, shortstop Luisangel Acuña to first baseman Munetaka Murakami.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Miguel Andujar",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15007,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jackson Merrill strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Jackson Merrill",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20008,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jarred Kelenic grounds out, shortstop Xander Bogaerts to first baseman Ty France.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Jarred Kelenic",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20009,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Tristan Peters grounds out, second baseman Jake Cronenworth to first baseman Ty France.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Tristan Peters",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20010,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Luisangel Acuña grounds out, third baseman Manny Machado to first baseman Ty France.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Luisangel Acuña",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25011,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Manny Machado singles on a ground ball to center fielder Tristan Peters.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Manny Machado",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25012,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Xander Bogaerts grounds into a double play, shortstop Luisangel Acuña to second baseman Chase Meidroth to first baseman Munetaka Murakami. Manny Machado out at 2nd. Xander Bogaerts out at 1st.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Xander Bogaerts",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25013,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ty France singles on a fly ball to left fielder Sam Antonacci.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ty France",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25014,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Nick Castellanos doubles (4) on a sharp line drive to left fielder Sam Antonacci. Ty France out at home on the throw, left fielder Sam Antonacci to second baseman Chase Meidroth to catcher Drew Romo.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Nick Castellanos",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30015,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Drew Romo homers (3) on a fly ball to right field.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Drew Romo",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 30016,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Sam Antonacci called out on strikes.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Sam Antonacci",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30017,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Munetaka Murakami flies out to center fielder Jackson Merrill.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Munetaka Murakami",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30018,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Andrew Benintendi flies out sharply to center fielder Jackson Merrill.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Andrew Benintendi",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35019,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Freddy Fermin grounds out, shortstop Luisangel Acuña to first baseman Munetaka Murakami.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Freddy Fermin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35020,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jake Cronenworth flies out to center fielder Tristan Peters.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Jake Cronenworth",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35021,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ramón Laureano strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ramón Laureano",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40022,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Colson Montgomery walks.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Colson Montgomery",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40023,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Freddy Fermin challenged (pitch result), call on the field was overturned: Chase Meidroth called out on strikes.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Chase Meidroth",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40024,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Jarred Kelenic singles on a ground ball to right fielder Nick Castellanos. Colson Montgomery to 3rd.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Jarred Kelenic",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40025,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Tristan Peters strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Tristan Peters",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 45026,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 0,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Miguel Andujar homers (2) on a fly ball to left center field.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Miguel Andujar",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": true,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "tying"
+      ]
+    },
+    {
+      "playIndex": 45027,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jackson Merrill pops out to third baseman Colson Montgomery in foul territory.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Jackson Merrill",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45028,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Manny Machado homers (5) on a fly ball to left center field.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Manny Machado",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 45029,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Xander Bogaerts singles on a ground ball to left fielder Sam Antonacci.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Xander Bogaerts",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45030,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ty France singles on a line drive to left fielder Sam Antonacci. Xander Bogaerts to 2nd.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ty France",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45031,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 2,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Nick Castellanos grounds out softly, pitcher Anthony Kay to first baseman Munetaka Murakami. Xander Bogaerts to 3rd. Ty France to 2nd.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Nick Castellanos",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45032,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 2,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Freddy Fermin walks. Xander Bogaerts scores. Ty France to 3rd. Passed ball by catcher Drew Romo.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Freddy Fermin",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 45033,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Jake Cronenworth strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Jake Cronenworth",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50034,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Luisangel Acuña strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Luisangel Acuña",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50035,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Drew Romo strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Drew Romo",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50036,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Sam Antonacci strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Sam Antonacci",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55037,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ramón Laureano strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ramón Laureano",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55038,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Miguel Andujar grounds out, pitcher Anthony Kay to first baseman Munetaka Murakami.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Miguel Andujar",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55039,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jackson Merrill grounds out, first baseman Munetaka Murakami to pitcher Anthony Kay.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Jackson Merrill",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60040,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Freddy Fermin challenged (pitch result), call on the field was overturned: Munetaka Murakami called out on strikes.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Munetaka Murakami",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 60041,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Miguel Vargas strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Miguel Vargas",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 60042,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Colson Montgomery strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Colson Montgomery",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 65043,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Manny Machado grounds out, shortstop Luisangel Acuña to first baseman Munetaka Murakami.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Manny Machado",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65044,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Xander Bogaerts flies out to left fielder Sam Antonacci.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Xander Bogaerts",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65045,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ty France strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ty France",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 70046,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 1
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Chase Meidroth singles on a ground ball to left fielder Ramón Laureano.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Chase Meidroth",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 70047,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 3,
+        "away": 1
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Derek Hill homers (2) on a fly ball to center field. Chase Meidroth scores.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Derek Hill",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": true,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "tying",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 70048,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Tristan Peters pops out to third baseman Manny Machado.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Tristan Peters",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70049,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Luisangel Acuña grounds out, shortstop Xander Bogaerts to first baseman Ty France.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Luisangel Acuña",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70050,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Drew Romo strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Drew Romo",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75051,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Gavin Sheets flies out to right fielder Derek Hill.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Gavin Sheets",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75052,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Freddy Fermin grounds out, shortstop Luisangel Acuña to first baseman Munetaka Murakami.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Freddy Fermin",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75053,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jake Cronenworth lines out to second baseman Chase Meidroth.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Jake Cronenworth",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80054,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Sam Antonacci flies out sharply to center fielder Jackson Merrill.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Sam Antonacci",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80055,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Munetaka Murakami called out on strikes.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Munetaka Murakami",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 80056,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Miguel Vargas singles on a soft ground ball to pitcher Jason Adam.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Miguel Vargas",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 80057,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Colson Montgomery flies out to left fielder Ramón Laureano.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Colson Montgomery",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85058,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Ramón Laureano walks.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ramón Laureano",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85059,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Miguel Andujar strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Miguel Andujar",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 85060,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Jackson Merrill singles on a ground ball to second baseman Chase Meidroth, deflected by first baseman Munetaka Murakami. Ramón Laureano to 3rd.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Jackson Merrill",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85061,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Manny Machado strikes out swinging.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Manny Machado",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 85062,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Xander Bogaerts singles on a soft ground ball to third baseman Colson Montgomery. Ramón Laureano scores. Jackson Merrill to 3rd.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Xander Bogaerts",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 85063,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Ty France grounds out, shortstop Luisangel Acuña to first baseman Munetaka Murakami.",
+      "battingTeamAbbr": "SD",
+      "batterName": "Ty France",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90064,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Chase Meidroth called out on strikes.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Chase Meidroth",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90065,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Edgar Quero strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Edgar Quero",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90066,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Tristan Peters singles on a ground ball to right fielder Bryce Johnson.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Tristan Peters",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": true,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "late-leverage"
+      ]
+    },
+    {
+      "playIndex": 90067,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 4,
+        "away": 3
+      },
+      "scoreAfter": {
+        "home": 4,
+        "away": 3
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Luisangel Acuña strikes out swinging.",
+      "battingTeamAbbr": "CWS",
+      "batterName": "Luisangel Acuña",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    }
+  ]
+}

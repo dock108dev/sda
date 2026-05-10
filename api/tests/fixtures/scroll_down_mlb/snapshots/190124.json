@@ -1,0 +1,3850 @@
+{
+  "gameId": 190124,
+  "lastPlayIndex": 90078,
+  "isFinal": true,
+  "cards": [
+    {
+      "kind": "scene-setter",
+      "gameId": 190124,
+      "cardId": "190124-scene",
+      "index": 0,
+      "homeTeam": "Chicago Cubs",
+      "awayTeam": "Arizona Diamondbacks",
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "ARI",
+      "firstPitch": "2026-05-03T18:20:00Z",
+      "homeProbablePitcher": null,
+      "awayProbablePitcher": null,
+      "venue": null
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-20009",
+      "index": 1,
+      "playIndex": 20009,
+      "inning": 2,
+      "inningHalf": "top",
+      "inningLabel": "Top 2nd",
+      "battingTeamAbbr": "ARI",
+      "description": "Gabriel Moreno homers on a fly ball to left center field. Nolan Arenado scores.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Gabriel Moreno",
+        "pitcherName": "Matthew Boyd"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Nolan Arenado"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Moreno hits a 2-run shot."
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190124,
+      "cardId": "190124-tx-2-top-2-bottom",
+      "index": 2,
+      "label": "MID 2ND",
+      "phase": "mid",
+      "score": {
+        "home": 0,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "ARI",
+      "subtitle": "ARI lead by 2.",
+      "fromInning": 2,
+      "fromHalf": "top",
+      "toInning": 2,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-25014",
+      "index": 3,
+      "playIndex": 25014,
+      "inning": 2,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 2nd",
+      "battingTeamAbbr": "CHC",
+      "description": "Carson Kelly singles on a ground ball to center fielder Jorge Barrosa. Michael Busch scores.",
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Carson Kelly",
+        "pitcherName": "Merrill Kelly"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Michael Busch"
+      },
+      "runnerNamesAfter": {
+        "first": "Carson Kelly"
+      },
+      "runnerAdvances": [
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_cf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Kelly singles home a run."
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-35022",
+      "index": 4,
+      "playIndex": 35022,
+      "inning": 3,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 3rd",
+      "battingTeamAbbr": "CHC",
+      "description": "Moisés Ballesteros homers on a line drive to left center field. Nico Hoerner scores.",
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Moisés Ballesteros",
+        "pitcherName": "Merrill Kelly"
+      },
+      "outsAfter": 0,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Nico Hoerner"
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_left",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Ballesteros hits a 2-run shot.",
+      "priorAfter": {
+        "score": {
+          "home": 1,
+          "away": 2
+        },
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {
+          "first": "Carson Kelly"
+        },
+        "outs": 2,
+        "inning": 2,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-35023",
+      "index": 5,
+      "playIndex": 35023,
+      "inning": 3,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 3rd",
+      "battingTeamAbbr": "CHC",
+      "description": "Alex Bregman strikes out swinging.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Alex Bregman",
+        "pitcherName": "Merrill Kelly"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "out"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "strikeout",
+      "animationProfile": "strikeout",
+      "visualIntensity": "low",
+      "narrative": "Kelly strikes out Bregman.",
+      "priorAfter": {
+        "score": {
+          "home": 3,
+          "away": 2
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "runnerNames": {},
+        "outs": 0,
+        "inning": 3,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190124,
+      "cardId": "190124-qs-3-bottom-5-bottom",
+      "index": 6,
+      "label": "THROUGH 5TH",
+      "subtitle": "CHC lead by 1. The score holds.",
+      "score": {
+        "home": 3,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "ARI",
+      "fromInning": 3,
+      "fromHalf": "bottom",
+      "toInning": 5,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-55042",
+      "index": 7,
+      "playIndex": 55042,
+      "inning": 5,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 5th",
+      "battingTeamAbbr": "CHC",
+      "description": "Michael Busch triples on a fly ball to right fielder Corbin Carroll. Moisés Ballesteros scores. Alex Bregman scores. Ian Happ scores.",
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Michael Busch",
+        "pitcherName": "Ryan Thompson"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Moisés Ballesteros",
+        "second": "Alex Bregman",
+        "first": "Ian Happ"
+      },
+      "runnerNamesAfter": {
+        "third": "Michael Busch"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "second",
+          "to": "home"
+        },
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "third"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "triple",
+      "animationProfile": "deep_fly",
+      "visualIntensity": "high",
+      "narrative": "Busch legs out a triple and 3 runs score."
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190124,
+      "cardId": "190124-tx-5-bottom-6-top",
+      "index": 8,
+      "label": "END 5TH",
+      "phase": "end",
+      "score": {
+        "home": 6,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "ARI",
+      "subtitle": "CHC lead by 4.",
+      "fromInning": 5,
+      "fromHalf": "bottom",
+      "toInning": 6,
+      "toHalf": "top"
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-60046",
+      "index": 9,
+      "playIndex": 60046,
+      "inning": 6,
+      "inningHalf": "top",
+      "inningLabel": "Top 6th",
+      "battingTeamAbbr": "ARI",
+      "description": "Corbin Carroll walks.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Corbin Carroll",
+        "pitcherName": "Matthew Boyd"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {},
+      "runnerNamesAfter": {
+        "first": "Corbin Carroll"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Carroll works the count and draws a walk."
+    },
+    {
+      "kind": "quiet-stretch",
+      "gameId": 190124,
+      "cardId": "190124-qs-6-top-7-bottom",
+      "index": 10,
+      "label": "THROUGH 7TH",
+      "subtitle": "CHC lead by 4. Neither side scratches.",
+      "score": {
+        "home": 6,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "ARI",
+      "fromInning": 6,
+      "fromHalf": "top",
+      "toInning": 7,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "late-game",
+      "gameId": 190124,
+      "cardId": "190124-lg-7-bottom",
+      "index": 11,
+      "label": "LATE INNINGS",
+      "subtitle": "CHC lead by 4. Every runner matters now.",
+      "score": {
+        "home": 6,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "ARI",
+      "toInning": 7,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-75060",
+      "index": 12,
+      "playIndex": 75060,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "CHC",
+      "description": "Michael Busch out on a sacrifice fly to right fielder Corbin Carroll. Ian Happ scores. Seiya Suzuki to 3rd.",
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 0,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": true
+        },
+        "batterName": "Michael Busch",
+        "pitcherName": "Brandon Pfaadt"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "runnerNamesBefore": {
+        "third": "Ian Happ",
+        "second": "Seiya Suzuki"
+      },
+      "runnerNamesAfter": {
+        "third": "Seiya Suzuki"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "out"
+        },
+        {
+          "from": "second",
+          "to": "third"
+        }
+      ],
+      "ballPath": "fly_rf",
+      "eventType": "sacrifice",
+      "animationProfile": "sacrifice_fly",
+      "visualIntensity": "low",
+      "narrative": "Busch lifts a sacrifice and a run scores."
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-75061",
+      "index": 13,
+      "playIndex": 75061,
+      "inning": 7,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 7th",
+      "battingTeamAbbr": "CHC",
+      "description": "Carson Kelly singles on a ground ball to left fielder Lourdes Gurriel Jr. Seiya Suzuki scores.",
+      "scoreBefore": {
+        "home": 7,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "batterName": "Carson Kelly",
+        "pitcherName": "Brandon Pfaadt"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "third": "Seiya Suzuki"
+      },
+      "runnerNamesAfter": {
+        "first": "Carson Kelly"
+      },
+      "runnerAdvances": [
+        {
+          "from": "third",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "fly_lf",
+      "eventType": "single",
+      "animationProfile": "hard_grounder",
+      "visualIntensity": "medium",
+      "narrative": "Kelly singles home a run.",
+      "priorAfter": {
+        "score": {
+          "home": 7,
+          "away": 2
+        },
+        "baseState": {
+          "first": false,
+          "second": false,
+          "third": true
+        },
+        "runnerNames": {
+          "third": "Seiya Suzuki"
+        },
+        "outs": 1,
+        "inning": 7,
+        "inningHalf": "bottom"
+      }
+    },
+    {
+      "kind": "inning-transition",
+      "gameId": 190124,
+      "cardId": "190124-tx-7-bottom-8-bottom",
+      "index": 14,
+      "label": "END 7TH",
+      "phase": "end",
+      "score": {
+        "home": 8,
+        "away": 2
+      },
+      "homeTeamAbbr": "CHC",
+      "awayTeamAbbr": "ARI",
+      "subtitle": "CHC lead by 6.",
+      "fromInning": 7,
+      "fromHalf": "bottom",
+      "toInning": 8,
+      "toHalf": "bottom"
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-85070",
+      "index": 15,
+      "playIndex": 85070,
+      "inning": 8,
+      "inningHalf": "bottom",
+      "inningLabel": "Bottom 8th",
+      "battingTeamAbbr": "CHC",
+      "description": "Alex Bregman walks.",
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "situationBefore": {
+        "outs": 1,
+        "baseState": {
+          "first": false,
+          "second": true,
+          "third": false
+        },
+        "batterName": "Alex Bregman",
+        "pitcherName": "Paul Sewald"
+      },
+      "outsAfter": 1,
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "second": "Nico Hoerner"
+      },
+      "runnerNamesAfter": {
+        "second": "Nico Hoerner",
+        "first": "Alex Bregman"
+      },
+      "runnerAdvances": [
+        {
+          "from": "home",
+          "to": "first"
+        }
+      ],
+      "ballPath": "none",
+      "eventType": "walk",
+      "animationProfile": "walk",
+      "visualIntensity": "low",
+      "narrative": "Bregman works a walk to add a runner late."
+    },
+    {
+      "kind": "play",
+      "gameId": 190124,
+      "cardId": "190124-90077",
+      "index": 16,
+      "playIndex": 90077,
+      "inning": 9,
+      "inningHalf": "top",
+      "inningLabel": "Top 9th",
+      "battingTeamAbbr": "ARI",
+      "description": "Adrian Del Castillo homers on a fly ball to center field. Lourdes Gurriel Jr. scores.",
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 4
+      },
+      "situationBefore": {
+        "outs": 2,
+        "baseState": {
+          "first": true,
+          "second": false,
+          "third": false
+        },
+        "batterName": "Adrian Del Castillo",
+        "pitcherName": "Corbin Martin"
+      },
+      "outsAfter": 2,
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "runnerNamesBefore": {
+        "first": "Lourdes Gurriel Jr."
+      },
+      "runnerNamesAfter": {},
+      "runnerAdvances": [
+        {
+          "from": "first",
+          "to": "home"
+        },
+        {
+          "from": "home",
+          "to": "home"
+        }
+      ],
+      "ballPath": "home_run_center",
+      "eventType": "home_run",
+      "animationProfile": "home_run",
+      "visualIntensity": "high",
+      "narrative": "Castillo hits a 2-run shot.",
+      "priorAfter": {
+        "score": {
+          "home": 8,
+          "away": 2
+        },
+        "baseState": {
+          "first": true,
+          "second": true,
+          "third": false
+        },
+        "runnerNames": {
+          "second": "Nico Hoerner",
+          "first": "Alex Bregman"
+        },
+        "outs": 1,
+        "inning": 8,
+        "inningHalf": "bottom"
+      }
+    }
+  ],
+  "audit": [
+    {
+      "playIndex": 10000,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ketel Marte strikes out swinging.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ketel Marte",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 10001,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Geraldo Perdomo pops out softly to catcher Carson Kelly in foul territory.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Geraldo Perdomo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 10002,
+      "inning": 1,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Corbin Carroll strikes out swinging.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Corbin Carroll",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 15003,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nico Hoerner lines out to center fielder Jorge Barrosa.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15004,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Moisés Ballesteros singles on a sharp line drive to center fielder Jorge Barrosa.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 15005,
+      "inning": 1,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Alex Bregman grounds into a double play, shortstop Geraldo Perdomo to second baseman Ketel Marte to first baseman Ildemaro Vargas. Moisés Ballesteros out at 2nd. Alex Bregman out at 1st.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20006,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ildemaro Vargas pops out to catcher Carson Kelly in foul territory.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ildemaro Vargas",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20007,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Nolan Arenado doubles (3) on a sharp line drive to left fielder Ian Happ.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Nolan Arenado",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 20008,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 0
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Lourdes Gurriel Jr. strikes out swinging.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Lourdes Gurriel Jr.",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 20009,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 0
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Gabriel Moreno homers (1) on a fly ball to left center field. Nolan Arenado scores.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Gabriel Moreno",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 20010,
+      "inning": 2,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jose Fernandez grounds out, pitcher Matthew Boyd to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Jose Fernandez",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25011,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ian Happ strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25012,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Seiya Suzuki called out on strikes.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 25013,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 0,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Michael Busch doubles (7) on a fly ball to shortstop Geraldo Perdomo, deflected by center fielder Jorge Barrosa.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25014,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 0,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Carson Kelly singles on a ground ball to center fielder Jorge Barrosa. Michael Busch scores.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 25015,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "double",
+      "description": "Pete Crow-Armstrong doubles (4) on a ground ball to right fielder Corbin Carroll. Carson Kelly to 3rd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 25016,
+      "inning": 2,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Dansby Swanson strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 30017,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jorge Barrosa lines out to center fielder Pete Crow-Armstrong.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Jorge Barrosa",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30018,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ketel Marte lines out sharply to center fielder Pete Crow-Armstrong.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ketel Marte",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30019,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Geraldo Perdomo doubles (4) on a line drive to left fielder Ian Happ.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Geraldo Perdomo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 30020,
+      "inning": 3,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Corbin Carroll grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Corbin Carroll",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35021,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 1,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Nico Hoerner singles on a ground ball to shortstop Geraldo Perdomo.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35022,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 1,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Moisés Ballesteros homers (6) on a line drive to left center field. Nico Hoerner scores.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": true,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring",
+        "lead-change"
+      ]
+    },
+    {
+      "playIndex": 35023,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Alex Bregman strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 35024,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ian Happ lines out sharply to center fielder Jorge Barrosa.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35025,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Seiya Suzuki singles on a sharp line drive to left fielder Lourdes Gurriel Jr.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 35026,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Michael Busch walks. Seiya Suzuki to 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 35027,
+      "inning": 3,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Carson Kelly grounds out, third baseman Nolan Arenado to first baseman Ildemaro Vargas.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40028,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ildemaro Vargas lines out sharply to center fielder Pete Crow-Armstrong.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ildemaro Vargas",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40029,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Nolan Arenado called out on strikes.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Nolan Arenado",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 40030,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Lourdes Gurriel Jr. singles on a line drive to right fielder Seiya Suzuki.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Lourdes Gurriel Jr.",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 40031,
+      "inning": 4,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Gabriel Moreno grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Gabriel Moreno",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45032,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Pete Crow-Armstrong lines out to right fielder Corbin Carroll.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45033,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dansby Swanson lines out to shortstop Geraldo Perdomo.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 45034,
+      "inning": 4,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nico Hoerner grounds out, third baseman Nolan Arenado to first baseman Ildemaro Vargas.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50035,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Jose Fernandez strikes out swinging, catcher Carson Kelly to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Jose Fernandez",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 50036,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jorge Barrosa lines out to left fielder Ian Happ.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Jorge Barrosa",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 50037,
+      "inning": 5,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Ketel Marte grounds out, shortstop Dansby Swanson to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ketel Marte",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55038,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Moisés Ballesteros walks.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55039,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "fielders_choice",
+      "description": "Alex Bregman reaches on a fielder's choice, fielded by third baseman Nolan Arenado. Moisés Ballesteros to 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55040,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Ian Happ walks. Moisés Ballesteros to 3rd. Alex Bregman to 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55041,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 3,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Seiya Suzuki challenged (pitch result), call on the field was confirmed: Seiya Suzuki called out on strikes.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 55042,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 3,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 3,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "triple",
+      "description": "Michael Busch triples (1) on a fly ball to right fielder Corbin Carroll. Moisés Ballesteros scores. Alex Bregman scores. Ian Happ scores.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 55043,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "field_out",
+      "description": "Carson Kelly grounds out, pitcher Ryan Thompson to first baseman Ildemaro Vargas.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 55044,
+      "inning": 5,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Pete Crow-Armstrong grounds out, second baseman Ketel Marte to first baseman Ildemaro Vargas.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60045,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Geraldo Perdomo grounds out, shortstop Dansby Swanson to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Geraldo Perdomo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 60046,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Corbin Carroll walks.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Corbin Carroll",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 60047,
+      "inning": 6,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "double_play",
+      "description": "Ildemaro Vargas pops into a double play, second baseman Nico Hoerner to first baseman Michael Busch. Corbin Carroll out at 1st.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ildemaro Vargas",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65048,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Dansby Swanson walks.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 65049,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nico Hoerner pops out to second baseman Ketel Marte.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65050,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Moisés Ballesteros grounds out, shortstop Geraldo Perdomo to first baseman Ildemaro Vargas. Dansby Swanson to 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 65051,
+      "inning": 6,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Alex Bregman pops out to first baseman Ildemaro Vargas.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70052,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nolan Arenado grounds out, first baseman Michael Busch to pitcher Phil Maton.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Nolan Arenado",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70053,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Lourdes Gurriel Jr. singles on a ground ball to left fielder Ian Happ.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Lourdes Gurriel Jr.",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70054,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Gabriel Moreno flies out to right fielder Seiya Suzuki.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Gabriel Moreno",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 70055,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "hit_by_pitch",
+      "description": "Jose Fernandez hit by pitch. Lourdes Gurriel Jr. to 2nd.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Jose Fernandez",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 70056,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "walk",
+      "description": "Jorge Barrosa challenged (pitch result), call on the field was overturned: Jorge Barrosa walks. Lourdes Gurriel Jr. to 3rd. Jose Fernandez to 2nd.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Jorge Barrosa",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 70057,
+      "inning": 7,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Ketel Marte strikes out swinging.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ketel Marte",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75058,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Ian Happ walks.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 75059,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 6,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "eventType": "double",
+      "description": "Seiya Suzuki doubles (2) on a sharp line drive to left fielder Lourdes Gurriel Jr. Ian Happ to 3rd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75060,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 6,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 7,
+        "away": 2
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "eventType": "sacrifice",
+      "description": "Michael Busch out on a sacrifice fly to right fielder Corbin Carroll. Ian Happ scores. Seiya Suzuki to 3rd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 75061,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 7,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 1,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Carson Kelly singles on a ground ball to left fielder Lourdes Gurriel Jr. Seiya Suzuki scores.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Carson Kelly",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 75062,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Pete Crow-Armstrong lines out to shortstop Geraldo Perdomo.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Pete Crow-Armstrong",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 75063,
+      "inning": 7,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Dansby Swanson grounds into a force out, shortstop Geraldo Perdomo to second baseman Ketel Marte. Carson Kelly out at 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Dansby Swanson",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80064,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Geraldo Perdomo grounds out, second baseman Nico Hoerner to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Geraldo Perdomo",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80065,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Corbin Carroll grounds out, pitcher Hoby Milner to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Corbin Carroll",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80066,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "single",
+      "description": "Ildemaro Vargas singles on a ground ball to left fielder Ian Happ.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ildemaro Vargas",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 80067,
+      "inning": 8,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Nolan Arenado lines out to second baseman Nico Hoerner.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Nolan Arenado",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85068,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "double",
+      "description": "Nico Hoerner doubles (10) on a sharp line drive to center fielder Jorge Barrosa.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Nico Hoerner",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85069,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Moisés Ballesteros strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Moisés Ballesteros",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85070,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Alex Bregman walks.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Alex Bregman",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-2-sampled"
+      ]
+    },
+    {
+      "playIndex": 85071,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "single",
+      "description": "Ian Happ singles on a ground ball to second baseman Ketel Marte. Nico Hoerner to 3rd. Alex Bregman to 2nd.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Ian Happ",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 85072,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Seiya Suzuki strikes out swinging.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Seiya Suzuki",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 85073,
+      "inning": 8,
+      "half": "bottom",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": true,
+        "third": true
+      },
+      "eventType": "strikeout",
+      "description": "Michael Busch called out on strikes.",
+      "battingTeamAbbr": "CHC",
+      "batterName": "Michael Busch",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90074,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 0,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "walk",
+      "description": "Lourdes Gurriel Jr. walks.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Lourdes Gurriel Jr.",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90075,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 0,
+      "outsAfter": 1,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Gabriel Moreno strikes out swinging.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Gabriel Moreno",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    },
+    {
+      "playIndex": 90076,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 1,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 2
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "eventType": "field_out",
+      "description": "Jose Fernandez pops out to first baseman Michael Busch.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Jose Fernandez",
+      "tier": 3,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-3-skipped"
+      ]
+    },
+    {
+      "playIndex": 90077,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 2,
+      "scoreBefore": {
+        "home": 8,
+        "away": 2
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 4
+      },
+      "runsScored": 2,
+      "baseStateBefore": {
+        "first": true,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "home_run",
+      "description": "Adrian Del Castillo homers (3) on a fly ball to center field. Lourdes Gurriel Jr. scores.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Adrian Del Castillo",
+      "tier": 1,
+      "isScoringPlay": true,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": true,
+      "selectionReasons": [
+        "tier-1",
+        "scoring"
+      ]
+    },
+    {
+      "playIndex": 90078,
+      "inning": 9,
+      "half": "top",
+      "outsBefore": 2,
+      "outsAfter": 3,
+      "scoreBefore": {
+        "home": 8,
+        "away": 4
+      },
+      "scoreAfter": {
+        "home": 8,
+        "away": 4
+      },
+      "runsScored": 0,
+      "baseStateBefore": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "baseStateAfter": {
+        "first": false,
+        "second": false,
+        "third": false
+      },
+      "eventType": "strikeout",
+      "description": "Ketel Marte strikes out swinging.",
+      "battingTeamAbbr": "ARI",
+      "batterName": "Ketel Marte",
+      "tier": 2,
+      "isScoringPlay": false,
+      "isTyingPlay": false,
+      "isLeadChangePlay": false,
+      "isLateLeverage": false,
+      "isSelectedForCatchup": false,
+      "selectionReasons": [
+        "tier-2-not-sampled"
+      ]
+    }
+  ]
+}

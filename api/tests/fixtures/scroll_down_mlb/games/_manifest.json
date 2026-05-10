@@ -1,0 +1,471 @@
+[
+  {
+    "id": "190121",
+    "category": "extra_innings",
+    "final": {
+      "home": 2,
+      "away": 1
+    },
+    "totalRuns": 3,
+    "margin": 1,
+    "leadChanges": 1,
+    "lastLeadChangeInning": 10,
+    "finalWinnerTrailed": true,
+    "inningsPlayed": 10,
+    "playsTotal": 75,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190123",
+    "category": "steady_control",
+    "final": {
+      "home": 1,
+      "away": 4
+    },
+    "totalRuns": 5,
+    "margin": 3,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 76,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190124",
+    "category": "back_and_forth",
+    "final": {
+      "home": 8,
+      "away": 4
+    },
+    "totalRuns": 12,
+    "margin": 4,
+    "leadChanges": 1,
+    "lastLeadChangeInning": 3,
+    "finalWinnerTrailed": true,
+    "inningsPlayed": 9,
+    "playsTotal": 79,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190125",
+    "category": "chaotic",
+    "final": {
+      "home": 6,
+      "away": 11
+    },
+    "totalRuns": 17,
+    "margin": 5,
+    "leadChanges": 3,
+    "lastLeadChangeInning": 5,
+    "finalWinnerTrailed": true,
+    "inningsPlayed": 9,
+    "playsTotal": 88,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": {
+      "early": "uncertain",
+      "middle": "wild swings",
+      "late": "one-sided closing"
+    },
+    "reviewNotes": [
+      "High-action game \u2014 pacing should not feel rushed despite many displayed plays",
+      "Lead changes should each get a transition since they're the spine of the game"
+    ]
+  },
+  {
+    "id": "190126",
+    "category": "blowout",
+    "final": {
+      "home": 7,
+      "away": 1
+    },
+    "totalRuns": 8,
+    "margin": 6,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 74,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190127",
+    "category": "back_and_forth",
+    "final": {
+      "home": 1,
+      "away": 5
+    },
+    "totalRuns": 6,
+    "margin": 4,
+    "leadChanges": 1,
+    "lastLeadChangeInning": 4,
+    "finalWinnerTrailed": true,
+    "inningsPlayed": 9,
+    "playsTotal": 75,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190128",
+    "category": "back_and_forth",
+    "final": {
+      "home": 1,
+      "away": 4
+    },
+    "totalRuns": 5,
+    "margin": 3,
+    "leadChanges": 1,
+    "lastLeadChangeInning": 4,
+    "finalWinnerTrailed": true,
+    "inningsPlayed": 9,
+    "playsTotal": 72,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190129",
+    "category": "back_and_forth",
+    "final": {
+      "home": 4,
+      "away": 3
+    },
+    "totalRuns": 7,
+    "margin": 1,
+    "leadChanges": 1,
+    "lastLeadChangeInning": 4,
+    "finalWinnerTrailed": true,
+    "inningsPlayed": 9,
+    "playsTotal": 68,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190130",
+    "category": "blowout",
+    "final": {
+      "home": 7,
+      "away": 1
+    },
+    "totalRuns": 8,
+    "margin": 6,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 69,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190136",
+    "category": "steady_control",
+    "final": {
+      "home": 5,
+      "away": 1
+    },
+    "totalRuns": 6,
+    "margin": 4,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 72,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190137",
+    "category": "pitchers_duel",
+    "final": {
+      "home": 0,
+      "away": 1
+    },
+    "totalRuns": 1,
+    "margin": 1,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 68,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": {
+      "early": "exploratory",
+      "middle": "tightening",
+      "late": "high tension",
+      "finale": "decisive single moment"
+    },
+    "reviewNotes": [
+      "Should feel like a pitcher's duel \u2014 quiet stretches earn their place",
+      "Late-game beat must read as pressure, not interruption",
+      "The lone scoring play must land as 'this was the game'"
+    ]
+  },
+  {
+    "id": "190138",
+    "category": "blowout",
+    "final": {
+      "home": 12,
+      "away": 1
+    },
+    "totalRuns": 13,
+    "margin": 11,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 79,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": {
+      "early": "one-sided",
+      "middle": "one-sided",
+      "late": "no late-game beat needed"
+    },
+    "reviewNotes": [
+      "A blowout should compress quickly \u2014 no late-game card",
+      "Quiet stretches between scoring innings are appropriate"
+    ]
+  },
+  {
+    "id": "190141",
+    "category": "steady_control",
+    "final": {
+      "home": 6,
+      "away": 3
+    },
+    "totalRuns": 9,
+    "margin": 3,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 81,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190143",
+    "category": "steady_control",
+    "final": {
+      "home": 2,
+      "away": 4
+    },
+    "totalRuns": 6,
+    "margin": 2,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 65,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190144",
+    "category": "blowout",
+    "final": {
+      "home": 0,
+      "away": 6
+    },
+    "totalRuns": 6,
+    "margin": 6,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 76,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190147",
+    "category": "blowout",
+    "final": {
+      "home": 3,
+      "away": 10
+    },
+    "totalRuns": 13,
+    "margin": 7,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 79,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190150",
+    "category": "steady_control",
+    "final": {
+      "home": 7,
+      "away": 9
+    },
+    "totalRuns": 16,
+    "margin": 2,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 84,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190153",
+    "category": "extra_innings",
+    "final": {
+      "home": 3,
+      "away": 2
+    },
+    "totalRuns": 5,
+    "margin": 1,
+    "leadChanges": 1,
+    "lastLeadChangeInning": 10,
+    "finalWinnerTrailed": true,
+    "inningsPlayed": 10,
+    "playsTotal": 81,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190156",
+    "category": "pitchers_duel",
+    "final": {
+      "home": 2,
+      "away": 1
+    },
+    "totalRuns": 3,
+    "margin": 1,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 65,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190162",
+    "category": "pitchers_duel",
+    "final": {
+      "home": 3,
+      "away": 0
+    },
+    "totalRuns": 3,
+    "margin": 3,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 66,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190168",
+    "category": "pitchers_duel",
+    "final": {
+      "home": 3,
+      "away": 1
+    },
+    "totalRuns": 4,
+    "margin": 2,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 66,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190169",
+    "category": "pitchers_duel",
+    "final": {
+      "home": 0,
+      "away": 4
+    },
+    "totalRuns": 4,
+    "margin": 4,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 9,
+    "playsTotal": 74,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": null,
+    "reviewNotes": []
+  },
+  {
+    "id": "190174",
+    "category": "extra_innings",
+    "final": {
+      "home": 6,
+      "away": 6
+    },
+    "totalRuns": 12,
+    "margin": 0,
+    "leadChanges": 2,
+    "lastLeadChangeInning": 9,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 10,
+    "playsTotal": 85,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "expectedFeel": {
+      "early": "building",
+      "middle": "back-and-forth tension",
+      "late": "climactic",
+      "finale": "walkoff energy"
+    },
+    "reviewNotes": [
+      "Lead changes should each read as a punch",
+      "Extra innings need extra breathing room",
+      "Final play should land with payoff"
+    ]
+  }
+]
