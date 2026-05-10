@@ -23,6 +23,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.scroll_down_mlb import data_source, persistence, service
+from app.scroll_down_mlb._pipeline import _source_hash
 from app.scroll_down_mlb.schemas import (
     DeckCardType,
     GenerationOutcome,
@@ -31,7 +32,6 @@ from app.scroll_down_mlb.schemas import (
     ScrollDownMlbDeckCard,
     ScrollDownMlbDeckResponse,
 )
-
 
 _FIXTURES_DIR = (
     Path(__file__).parent / "fixtures" / "scroll_down_mlb" / "games"
@@ -238,8 +238,8 @@ async def test_get_game_reveal_returns_none_for_invalid_id() -> None:
 
 def test_source_hash_stable_for_identical_payloads() -> None:
     payload = _load_fixture_payload("190121")
-    h1 = service._source_hash(payload)
-    h2 = service._source_hash(payload)
+    h1 = _source_hash(payload)
+    h2 = _source_hash(payload)
     assert h1 == h2
 
 
@@ -247,7 +247,7 @@ def test_source_hash_changes_when_play_count_changes() -> None:
     payload_a = _load_fixture_payload("190121")
     payload_b = _load_fixture_payload("190121")
     payload_b["plays"] = payload_b["plays"][:-1]
-    assert service._source_hash(payload_a) != service._source_hash(payload_b)
+    assert _source_hash(payload_a) != _source_hash(payload_b)
 
 
 def test_source_hash_changes_when_status_transitions_to_final() -> None:
@@ -255,4 +255,4 @@ def test_source_hash_changes_when_status_transitions_to_final() -> None:
     payload_a["game"]["status"] = "live"
     payload_b = _load_fixture_payload("190121")
     payload_b["game"]["status"] = "final"
-    assert service._source_hash(payload_a) != service._source_hash(payload_b)
+    assert _source_hash(payload_a) != _source_hash(payload_b)
