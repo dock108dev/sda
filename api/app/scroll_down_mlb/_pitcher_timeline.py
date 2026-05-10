@@ -172,7 +172,7 @@ def compute_pitcher_timeline(
 def compute_pitcher_stat_snapshots(
     plays: list[dict[str, Any]],
     pitcher_timeline: dict[int, str | None],
-    timeline: dict[int, "TimelineEntry"] | None = None,
+    timeline: dict[int, TimelineEntry] | None = None,
 ) -> dict[int, PitcherStatSnapshot]:
     """Walk plays in order and produce, per `playIndex`, the running
     stat line for the pitcher of record at that play.
@@ -249,7 +249,7 @@ def _per_play_pitcher_name(play: dict[str, Any]) -> str | None:
 
 def _runs_charged_on_play(
     play: dict[str, Any],
-    timeline: dict[int, "TimelineEntry"] | None,
+    timeline: dict[int, TimelineEntry] | None,
 ) -> int:
     """Runs the pitcher gave up on this play. Always non-negative.
 
