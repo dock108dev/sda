@@ -22,10 +22,27 @@ Redis key **`sports:tasks_held`** (when set to `1`) causes beat-scheduled tasks 
 
 - **Every 5s:** `poll_live_pbp(True)` (live-only path), `live_orchestrator_tick`.
 - **Every minute (hour windows excluding quiet hours):** `update_game_states`, `poll_live_pbp` (full path).
-- **Every 3 min:** `sync_mainline_odds`.
-- **Every 15 min:** `sync_prop_odds`, `poll_game_calendars`.
-- **Daily (UTC):** `run_scheduled_ingestion` (08:30 UTC — aligns with 3:30 AM Eastern in standard time), `run_daily_sweep`, `sweep_missing_flows`, golf tasks as scheduled.
+- **Every 3 min:** `sync_mainline_odds` — **conditionally scheduled** (see "Pregame & golf odds gating" below).
+- **Every 15 min:** `sync_prop_odds` — **conditionally scheduled**; `poll_game_calendars` (always on).
+- **Daily (UTC):** `run_scheduled_ingestion` (08:30 UTC — aligns with 3:30 AM Eastern in standard time), `run_daily_sweep`, `sweep_missing_flows`. Golf leaderboard polling is always on; `golf_sync_odds` is conditionally scheduled.
 - **Social (UTC minute marks):** `collect_game_social` hourly at `:00`; `map_social_to_games` at `:15` and `:45`; `check_playwright_session_health` at `:10` and `:40` (see `_live_polling_schedule` in `celery_app.py`).
+
+### Pregame & golf odds gating
+
+Three Celery beat entries are added to the schedule **only when** the
+corresponding flag in `scraper/sports_scraper/config_sports.py` is `True`:
+
+| Flag | Beat entries gated | Default |
+|---|---|---|
+| `PREGAME_ODDS_ENABLED` | `mainline-odds-sync-every-3m`, `prop-odds-sync-every-15m` | `False` |
+| `GOLF_ODDS_ENABLED` | `golf-odds-every-30m` | `False` |
+| `LIVE_ODDS_ENABLED` | runtime guard inside `live_orchestrator` and `live_odds_tasks` | `False` |
+
+When a flag is `False` the task is **not registered** with beat — there
+is no scheduled invocation. The task functions still exist and can be
+dispatched manually from the admin UI for one-off runs. See
+[Known limitations](known-limitations.md) for the operational impact on
+`/api/fairbet/odds`.
 
 ### API Celery app (`api/app/celery_app.py`)
 

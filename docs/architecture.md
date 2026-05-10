@@ -170,6 +170,25 @@ specification of the v3-summary pipeline and output schema.
 
 ---
 
+## Scroll Down MLB
+
+Spoiler-safe MLB catch-up deck served at `/api/v1/scroll-down-mlb/...`.
+Self-contained module with three consumer endpoints (`/recent`, `/deck`,
+`/reveal`), a multi-stage builder pipeline, and a persistence shell
+keyed on `(game_id, deck_version, spoiler_policy)`. The pre-reveal
+endpoints omit post-play scores and winners by construction; the reveal
+endpoint is the only place final-score data may appear, enforced by a
+serialized-payload scan inside the build pipeline.
+
+**Code:** `api/app/scroll_down_mlb/`
+**Persistence:** `scroll_down_mlb_decks` (see
+[Database](database.md#scroll-down-mlb))
+
+See [Scroll Down MLB](scroll-down-mlb.md) for the spoiler-safety
+contract, pipeline ordering, and live-vs-official policy split.
+
+---
+
 ## Timeline System
 
 The timeline system merges PBP events, social media posts, and odds data into a unified game timeline. Social and odds data are optional — the pipeline works with PBP alone.

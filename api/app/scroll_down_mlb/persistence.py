@@ -116,6 +116,9 @@ async def upsert_deck(
                 ],
                 "source_hash": source_hash,
                 "generated_at": datetime.now(UTC),
+                # ORM-level `onupdate` doesn't fire for ON CONFLICT DO UPDATE,
+                # so refresh updated_at explicitly on regeneration.
+                "updated_at": datetime.now(UTC),
                 "card_count": len(deck.cards),
                 "generator_label": generator_label,
             },

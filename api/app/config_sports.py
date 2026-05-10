@@ -58,15 +58,6 @@ class LeagueConfig:
     season_crosses_year: bool = False         # True if season spans two calendar years
 
 
-# Global switch for in-game Odds API polling.
-#
-# This is intentionally not per-league: live odds are either enabled for the
-# whole platform or disabled for the whole platform. Current architecture uses
-# pregame odds and closing lines only, so this must remain False unless we
-# intentionally decide to spend Odds API credits on live markets.
-LIVE_ODDS_ENABLED = False
-
-
 # Master configuration for all leagues
 LEAGUE_CONFIG: dict[str, LeagueConfig] = {
     "NBA": LeagueConfig(
@@ -153,11 +144,6 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
         season_crosses_year=True,
     ),
 }
-
-def is_live_odds_enabled() -> bool:
-    """Return whether in-game Odds API polling is enabled platform-wide."""
-    return LIVE_ODDS_ENABLED
-
 
 def get_league_config(league_code: str) -> LeagueConfig:
     """

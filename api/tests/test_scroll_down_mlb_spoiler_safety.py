@@ -13,8 +13,10 @@ nested field can't hide.
 from __future__ import annotations
 
 import re
+from datetime import UTC
 from typing import Any
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -40,17 +42,25 @@ FORBIDDEN_PRE_REVEAL_KEYS = frozenset(
 FORBIDDEN_RECENT_KEYS = FORBIDDEN_PRE_REVEAL_KEYS | frozenset({"runs", "totalRuns"})
 
 
-def _build_client() -> TestClient:
+@pytest.fixture
+def client():
+    """Spoiler-safety test client with stubbed service-layer responses.
+
+    Uses a context-managed MonkeyPatch so the stubs on
+    `app.scroll_down_mlb.service` are torn down after each test instead
+    of leaking into unrelated tests that may import the same module.
+    """
+    from datetime import datetime
     from unittest.mock import AsyncMock
-    from datetime import datetime, timezone
+
     from app.db import get_db
     from app.scroll_down_mlb import service as sdm_service
     from app.scroll_down_mlb.schemas import (
+        BaseState,
         DeckCardType,
+        PlannerReport,
         PlayPayload,
         ScoreState,
-        BaseState,
-        PlannerReport,
         ScrollDownMlbDeckCard,
         ScrollDownMlbDeckResponse,
     )
@@ -65,7 +75,7 @@ def _build_client() -> TestClient:
         return ScrollDownMlbDeckResponse(
             game_id="190203",
             deck_version="stub-v0",
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             is_final=False,
             cards=[
                 ScrollDownMlbDeckCard(
@@ -92,14 +102,10 @@ def _build_client() -> TestClient:
     async def _empty(*_a, **_kw):
         return []
 
-    sdm_service.get_game_deck.__wrapped__ = None  # noqa: E501 — defensive no-op
-    import pytest as _pytest
-    mp = _pytest.MonkeyPatch()
-    mp.setattr(sdm_service, "get_game_deck", _stub_deck)
-    mp.setattr(sdm_service, "get_recent_games", _empty)
-    # The MonkeyPatch is bound to the test client lifetime; in practice
-    # this helper is recreated per-test so leakage is bounded.
-    return TestClient(app)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(sdm_service, "get_game_deck", _stub_deck)
+        mp.setattr(sdm_service, "get_recent_games", _empty)
+        yield TestClient(app)
 
 
 def _collect_keys(node: Any) -> set[str]:
@@ -120,8 +126,7 @@ def _collect_keys(node: Any) -> set[str]:
 # ---------------------------------------------------------------------------
 
 
-def test_recent_response_contains_no_forbidden_keys() -> None:
-    client = _build_client()
+def test_recent_response_contains_no_forbidden_keys(client: TestClient) -> None:
     body = client.get("/api/v1/scroll-down-mlb/games/recent").json()
     keys = _collect_keys(body)
     leaks = keys & FORBIDDEN_RECENT_KEYS
@@ -133,28 +138,29 @@ def test_recent_response_contains_no_forbidden_keys() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_deck_response_contains_no_forbidden_keys() -> None:
-    client = _build_client()
+def test_deck_response_contains_no_forbidden_keys(client: TestClient) -> None:
     body = client.get("/api/v1/scroll-down-mlb/games/190203/deck").json()
     keys = _collect_keys(body)
     leaks = keys & FORBIDDEN_PRE_REVEAL_KEYS
     assert not leaks, f"/deck leaked spoiler-shaped keys: {sorted(leaks)}"
 
 
-def test_deck_response_does_not_contain_score_after_anywhere() -> None:
+def test_deck_response_does_not_contain_score_after_anywhere(
+    client: TestClient,
+) -> None:
     """Belt-and-suspenders: the JSON text itself must not contain the
     string `scoreAfter`. Catches the case where a future PlayPayload field
     is renamed to bypass `FORBIDDEN_PRE_REVEAL_KEYS` but still ships."""
-    client = _build_client()
     raw = client.get("/api/v1/scroll-down-mlb/games/190203/deck").text
     assert not re.search(r'"score_?after"', raw, re.IGNORECASE)
 
 
-def test_deck_response_keeps_score_before_for_running_score() -> None:
+def test_deck_response_keeps_score_before_for_running_score(
+    client: TestClient,
+) -> None:
     """`scoreBefore` is allowed (and necessary) for the running scoreboard.
     This test pins the contract so a well-meaning future cleanup doesn't
     over-strip."""
-    client = _build_client()
     body = client.get("/api/v1/scroll-down-mlb/games/190203/deck").json()
     keys = _collect_keys(body)
     play_cards = [c for c in body.get("cards", []) if c.get("type") == "play"]

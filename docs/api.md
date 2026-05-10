@@ -30,7 +30,8 @@
 8. [Health Check](#health-check)
 9. [Games](#games)
 10. [Game Summary](#game-summary)
-11. [Timeline](#timeline)
+11. [Scroll Down MLB](#scroll-down-mlb)
+12. [Timeline](#timeline)
 12. [Teams](#teams)
 13. [Scraper Runs](#scraper-runs)
 14. [Game Flow Pipeline](#game-flow-pipeline)
@@ -796,6 +797,52 @@ after the first generation are served from `sports_game_stories`.
   storage for history but are no longer served from any endpoint.
 - The endpoint is cached indefinitely after first generation. Triggering
   fresh generation requires the admin pipeline endpoints.
+
+---
+
+## Scroll Down MLB
+
+Spoiler-safe MLB catch-up deck. Three endpoints under
+`/api/v1/scroll-down-mlb/...`. The pre-reveal endpoints intentionally
+omit final scores and winners; only the reveal endpoint exposes the
+result. See [Scroll Down MLB](scroll-down-mlb.md) for the full
+spoiler-safety contract, build pipeline, and persistence model.
+
+### `GET /api/v1/scroll-down-mlb/games/recent`
+
+Recent-games feed for the consumer home grid. Returns up to 50 MLB
+games whose first pitch falls in the last 48 hours, joined with the
+deck table for `hasDeck` / `deckVersion`. Spoiler-safe: no scores,
+winners, or run totals.
+
+Response: `ScrollDownMlbRecentResponse`.
+
+### `GET /api/v1/scroll-down-mlb/games/{gameId}/deck`
+
+Returns the live or official deck for one game. Behavior:
+
+- Game not found / not MLB → `404`
+- Pregame / scheduled → `404`
+- Live: build a fresh provisional deck from current play data.
+- Final: serve the persisted official deck if present; otherwise build,
+  validate, persist, return.
+
+Spoiler-safe by construction: `scoreAfter` is intentionally absent from
+play payloads; only `scoreBefore` + `runsScoredOnPlay` are exposed so
+the running scoreboard works without leaking the final.
+
+Clients use `deckVersion` to detect updates without diffing the cards
+array.
+
+Response: `ScrollDownMlbDeckResponse` with `spoilerPolicy: "pre_reveal"`.
+
+### `GET /api/v1/scroll-down-mlb/games/{gameId}/reveal`
+
+The only endpoint allowed to expose `finalScore` and `winnerTeamId`.
+Returns `409` when the game has not yet produced a reveal payload (live,
+postponed, or upstream not ready).
+
+Response: `ScrollDownMlbRevealResponse`.
 
 ---
 

@@ -63,14 +63,21 @@ upsert_odds()  ─── Match snapshot to a SportsGame ───
 
 ### Celery Tasks
 
-Two tasks run on separate cadences:
+Two tasks run on separate cadences when scheduled:
 
 | Task | Cadence | Markets | Description |
 |------|---------|---------|-------------|
-| `sync_mainline_odds` | Every 60s | h2h, spreads, totals | All leagues, today + tomorrow |
-| `sync_prop_odds` | Every 60s | Player/team props, alternates | All leagues, pregame events |
+| `sync_mainline_odds` | Every 3 min (`crontab(minute="*/3")`) | h2h, spreads, totals | All leagues, today + tomorrow |
+| `sync_prop_odds` | Every 15 min (`crontab(minute="*/15")`) | Player/team props, alternates | All leagues, pregame events |
 
-Both tasks run continuously with no quiet window.
+Both tasks run with no quiet window — when scheduled.
+
+> **Currently off by default.** Both entries are conditionally added to
+> the beat schedule based on `PREGAME_ODDS_ENABLED` in
+> `scraper/sports_scraper/config_sports.py`, which defaults to `False`.
+> While the flag is off the work table is **not refreshed** by beat;
+> consumer endpoints serve whatever was in the table on the last run.
+> See [Known limitations](../known-limitations.md#odds-polling-deliberately-paused).
 
 Configuration: `scraper/sports_scraper/celery_app.py`
 

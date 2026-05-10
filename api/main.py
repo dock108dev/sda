@@ -345,8 +345,7 @@ app.include_router(golf_router, dependencies=auth_dependency)
 
 # ---------------------------------------------------------------------------
 # Scroll Down MLB — spoiler-safe catch-up deck API. Read-only consumer
-# surface. Real generation logic ports in Phase 3; Phase 2 ships the
-# contract + persistence shell only.
+# surface backed by the deck builder pipeline in app.scroll_down_mlb.
 # ---------------------------------------------------------------------------
 app.include_router(scroll_down_mlb_router, dependencies=auth_dependency)
 
