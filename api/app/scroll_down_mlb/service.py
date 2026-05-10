@@ -75,13 +75,14 @@ async def get_recent_games(
     """Spoiler-safe recent-games feed.
 
     Returns MLB games whose first pitch falls within the last
-    `_RECENT_WINDOW_HOURS` plus any later same-day games. Joined against
-    the deck table for `hasDeck` / `deckVersion` so the home grid can
-    show whether catch-up is ready without a second query.
+    `_RECENT_WINDOW_HOURS`, capped at `now` so future-scheduled games
+    never appear (this is a catch-up product — there is nothing to
+    reconstruct for a game that hasn't started). Joined against the
+    deck table for `hasDeck` / `deckVersion` so the home grid can show
+    whether catch-up is ready without a second query.
     """
-    cutoff = (now or datetime.now(UTC)) - timedelta(
-        hours=_RECENT_WINDOW_HOURS
-    )
+    end_cap = now or datetime.now(UTC)
+    cutoff = end_cap - timedelta(hours=_RECENT_WINDOW_HOURS)
 
     # Subquery: latest deck row per game.
     deck_subq = (
@@ -116,6 +117,7 @@ async def get_recent_games(
         .where(
             func.lower(SportsLeague.code) == "mlb",
             SportsGame.game_date >= cutoff,
+            SportsGame.game_date <= end_cap,
         )
         .order_by(desc(SportsGame.game_date))
         .limit(50)
