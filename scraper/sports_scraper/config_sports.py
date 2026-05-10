@@ -53,6 +53,14 @@ class LeagueConfig:
 # intentionally decide to spend Odds API credits on live markets.
 LIVE_ODDS_ENABLED = False
 
+# Global switch for pregame Odds API polling (mainline + props).
+# Gates the beat-scheduled `sync_mainline_odds` and `sync_prop_odds` tasks.
+PREGAME_ODDS_ENABLED = False
+
+# Global switch for DataGolf odds polling.
+# Gates the beat-scheduled `golf_sync_odds` task.
+GOLF_ODDS_ENABLED = False
+
 
 # Master configuration for all leagues
 LEAGUE_CONFIG: dict[str, LeagueConfig] = {
@@ -119,6 +127,16 @@ LEAGUE_CONFIG: dict[str, LeagueConfig] = {
 def is_live_odds_enabled() -> bool:
     """Return whether in-game Odds API polling is enabled platform-wide."""
     return LIVE_ODDS_ENABLED
+
+
+def is_pregame_odds_enabled() -> bool:
+    """Return whether pregame Odds API polling (mainline + props) is enabled."""
+    return PREGAME_ODDS_ENABLED
+
+
+def is_golf_odds_enabled() -> bool:
+    """Return whether DataGolf odds polling is enabled."""
+    return GOLF_ODDS_ENABLED
 
 
 def get_league_config(league_code: str) -> LeagueConfig:
