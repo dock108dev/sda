@@ -42,7 +42,8 @@ The contract is enforced by tests, not just convention:
 
 Spoiler-safe feed for the home grid. Returns up to 50 MLB games whose
 first pitch falls in the last 48 hours (`_RECENT_WINDOW_HOURS` in
-`service.py`), joined with the deck table for `hasDeck` / `deckVersion`.
+`service.py`), capped at the current time so future-scheduled games
+never appear, joined with the deck table for `hasDeck` / `deckVersion`.
 
 Response: `ScrollDownMlbRecentResponse` (`api/app/scroll_down_mlb/schemas.py`).
 

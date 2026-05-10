@@ -811,9 +811,10 @@ spoiler-safety contract, build pipeline, and persistence model.
 ### `GET /api/v1/scroll-down-mlb/games/recent`
 
 Recent-games feed for the consumer home grid. Returns up to 50 MLB
-games whose first pitch falls in the last 48 hours, joined with the
-deck table for `hasDeck` / `deckVersion`. Spoiler-safe: no scores,
-winners, or run totals.
+games whose first pitch falls in the last 48 hours, capped at "now"
+(future-scheduled games are excluded — this is a catch-up product),
+joined with the deck table for `hasDeck` / `deckVersion`.
+Spoiler-safe: no scores, winners, or run totals.
 
 Response: `ScrollDownMlbRecentResponse`.
 
