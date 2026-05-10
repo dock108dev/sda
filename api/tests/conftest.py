@@ -27,3 +27,4 @@ import app.db.nba_advanced  # noqa: F401, E402
 import app.db.ncaab_advanced  # noqa: F401, E402
 import app.db.nfl_advanced  # noqa: F401, E402
 import app.db.nhl_advanced  # noqa: F401, E402
+import app.db.scroll_down_mlb  # noqa: F401, E402 — registers ScrollDownMlbDeck
