@@ -108,6 +108,10 @@ export type ScrollDownMlbPlayPayload = {
   description?: string | null;
   batterName?: string | null;
   pitcherName?: string | null;
+  /** Pre-formatted running stat line for the pitcher at this play —
+   *  e.g. "4.1 IP · 6 K · 1 BB · 2 R". Backend produces the string; the
+   *  renderer just displays it. Null when the pitcher is unknown. */
+  pitcherStatLine?: string | null;
   ballsBefore?: number | null;
   strikesBefore?: number | null;
   outsBefore?: number | null;
