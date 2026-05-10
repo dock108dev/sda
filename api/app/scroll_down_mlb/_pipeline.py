@@ -172,9 +172,11 @@ def build_deck_from_upstream(
         plays, pitchers, home_team, away_team, home_abbr
     )
     # Running stat snapshots per play — IP / K / BB / R / H / HR. Uses
-    # `pitcher_timeline` as the per-play attribution source, so the line
-    # always belongs to whoever was actually on the mound.
-    pitcher_stats = compute_pitcher_stat_snapshots(plays, pitcher_timeline)
+    # `pitcher_timeline` for attribution and `timeline` for the per-play
+    # runs delta. The timeline is required for correct run accounting:
+    # without it, the snapshot falls back to upstream-provided
+    # `runsScoredOnPlay`, which the live scraper does not emit.
+    pitcher_stats = compute_pitcher_stat_snapshots(plays, pitcher_timeline, timeline)
 
     # 2. Select plays.
     selected_ids, _reasons = select_plays(plays, timeline, game_id)

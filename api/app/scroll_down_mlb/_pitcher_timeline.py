@@ -18,9 +18,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .visual_mapper import classify_event, outs_delta_for
+
+if TYPE_CHECKING:
+    from .internal_types import TimelineEntry
 
 __all__ = ["compute_pitcher_timeline", "compute_pitcher_stat_snapshots", "PitcherStatSnapshot"]
 
@@ -169,6 +172,7 @@ def compute_pitcher_timeline(
 def compute_pitcher_stat_snapshots(
     plays: list[dict[str, Any]],
     pitcher_timeline: dict[int, str | None],
+    timeline: dict[int, "TimelineEntry"] | None = None,
 ) -> dict[int, PitcherStatSnapshot]:
     """Walk plays in order and produce, per `playIndex`, the running
     stat line for the pitcher of record at that play.
@@ -179,6 +183,14 @@ def compute_pitcher_stat_snapshots(
     play already shows the new K count and the bumped IP. The downstream
     deck builder embeds this on the play card, so the user reads "after
     this play, here's where the pitcher stood."
+
+    Runs are pulled from `timeline[pid].runs_scored` when the timeline
+    is supplied (the authoritative per-play delta). Without the
+    timeline we fall through to `play.runsScoredOnPlay` only — never to
+    a `score - scoreBefore` delta, because upstream play rows often
+    ship the post-play running score with no scoreBefore companion, so
+    the delta computes against zero and counts the cumulative tally on
+    every play (the regression that produced "7 R" after a single run).
 
     Earned runs are intentionally absent — see module docstring.
     """
@@ -207,7 +219,7 @@ def compute_pitcher_stat_snapshots(
             bucket["walks"] += 1
         if event == "strikeout":
             bucket["strikeouts"] += 1
-        bucket["runs"] += _runs_charged_on_play(play)
+        bucket["runs"] += _runs_charged_on_play(play, timeline)
 
         snapshots[pid] = PitcherStatSnapshot(
             name=name,
@@ -235,23 +247,32 @@ def _per_play_pitcher_name(play: dict[str, Any]) -> str | None:
     return None
 
 
-def _runs_charged_on_play(play: dict[str, Any]) -> int:
-    """Runs the pitcher gave up on this play. Derived from the
-    upstream-provided `runsScoredOnPlay` when present, otherwise from
-    the score-delta. Always non-negative."""
+def _runs_charged_on_play(
+    play: dict[str, Any],
+    timeline: dict[int, "TimelineEntry"] | None,
+) -> int:
+    """Runs the pitcher gave up on this play. Always non-negative.
+
+    Source priority:
+      1. `timeline[pid].runs_scored` — the authoritative per-play delta
+         reconstructed in `compute_timeline`. This is the only source
+         that's safe when upstream rows ship the running post-play
+         score with no scoreBefore companion.
+      2. `play["runsScoredOnPlay"]` — set by some upstream payloads
+         (Phase 3 DTO carries it; the live scraper does not).
+
+    NOTE: we intentionally do NOT fall back to a `score - scoreBefore`
+    delta. Upstream play rows often only carry the post-play running
+    score, with no scoreBefore — the delta then equals the cumulative
+    score and the pitcher's R accumulates that value on every play,
+    producing nonsense like "7 R" after a single run scored.
+    """
+    if timeline is not None:
+        pid = play.get("playIndex", 0)
+        frame = timeline.get(pid)
+        if frame is not None:
+            return max(0, frame.runs_scored)
     rs = play.get("runsScoredOnPlay")
     if isinstance(rs, int) and rs >= 0:
         return rs
-    # Score-delta fallback. We don't know which team scored without
-    # cross-referencing the half-inning, so use the absolute change —
-    # in practice only the batting team's score ticks up.
-    score_before = play.get("scoreBefore") or {}
-    score_after = play.get("score") or {}
-    if isinstance(score_before, dict) and isinstance(score_after, dict):
-        delta = (
-            (score_after.get("home", 0) - score_before.get("home", 0))
-            + (score_after.get("away", 0) - score_before.get("away", 0))
-        )
-        if isinstance(delta, int) and delta > 0:
-            return delta
     return 0

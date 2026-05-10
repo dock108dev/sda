@@ -500,25 +500,28 @@ def test_compute_pitcher_stat_snapshots_accumulates_per_pitcher() -> None:
 
     plays = [
         # Pitcher A faces 3 batters: K, BB, single. 1 out, 1 H, 1 BB, 1 K.
+        # runsScoredOnPlay carries the per-play delta. Score-delta against a
+        # missing scoreBefore used to count the cumulative tally on every
+        # play; that fallback was removed (produced "7 R" after one run).
         {"playIndex": 1, "playType": "STRIKEOUT", "description": "Strikes out.",
          "pitcher": {"id": 1, "name": "A"}, "teamAbbreviation": "AWY",
-         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 0}},
+         "runsScoredOnPlay": 0},
         {"playIndex": 2, "playType": "WALK", "description": "Walks.",
          "pitcher": {"id": 1, "name": "A"}, "teamAbbreviation": "AWY",
-         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 0}},
+         "runsScoredOnPlay": 0},
         {"playIndex": 3, "playType": "SINGLE", "description": "Singles.",
          "pitcher": {"id": 1, "name": "A"}, "teamAbbreviation": "AWY",
-         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 0}},
+         "runsScoredOnPlay": 0},
         # Pitcher B takes over: gives up an HR (1 R), then another out.
         {"playIndex": 4, "playType": "HOME_RUN", "description": "Homers.",
          "pitcher": {"id": 2, "name": "B"}, "teamAbbreviation": "AWY",
-         "scoreBefore": {"home": 0, "away": 0}, "score": {"home": 0, "away": 1}},
+         "runsScoredOnPlay": 1},
         {"playIndex": 5, "playType": "FIELD_OUT", "description": "Grounds out.",
          "pitcher": {"id": 2, "name": "B"}, "teamAbbreviation": "AWY",
-         "scoreBefore": {"home": 0, "away": 1}, "score": {"home": 0, "away": 1}},
+         "runsScoredOnPlay": 0},
     ]
-    timeline = compute_pitcher_timeline(plays, None, "Home", "Away", "HME")
-    snaps = compute_pitcher_stat_snapshots(plays, timeline)
+    pitcher_timeline = compute_pitcher_timeline(plays, None, "Home", "Away", "HME")
+    snaps = compute_pitcher_stat_snapshots(plays, pitcher_timeline)
 
     # Pitcher A through play 3.
     assert snaps[3].name == "A"
