@@ -100,6 +100,9 @@ jobs:
             echo "Pre-deploy cleanup (free space for new images)..."
             docker image prune -af --filter "until=1h" 2>/dev/null || true
             docker builder prune -af 2>/dev/null || true
+            # Reclaim anonymous volumes from prior `compose run --rm` invocations.
+            # Named volumes (LINKS>0) are untouched.
+            docker volume prune -f 2>/dev/null || true
 
             echo "Pulling images for selected tag..."
             docker compose --profile prod pull --policy always
@@ -137,6 +140,7 @@ jobs:
             echo "Post-deploy cleanup..."
             docker image prune -af
             docker builder prune -af
+            docker volume prune -f
 
             echo "Deployment status:"
             docker compose --profile prod ps

@@ -574,6 +574,11 @@ jobs:
             # and superseded :latest pulls get freed regardless of age.
             docker image prune -af 2>/dev/null || true
             docker builder prune -af 2>/dev/null || true
+            # Anonymous volumes left behind by `compose run --rm migrate` and
+            # earlier service starts accumulate over time. Named volumes
+            # (infra_postgres-data, infra_model-artifacts, infra_scraper-cache)
+            # have LINKS>0 and are never touched by `volume prune`.
+            docker volume prune -f 2>/dev/null || true
 
             echo "Pulling images..."
             docker compose --profile prod pull --policy always
@@ -667,6 +672,7 @@ jobs:
             echo "Post-deploy cleanup..."
             docker image prune -af
             docker builder prune -af
+            docker volume prune -f
 
             echo "Deployment status:"
             docker compose --profile prod ps
