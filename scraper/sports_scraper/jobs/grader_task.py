@@ -135,7 +135,14 @@ def grade_flow_task(
     if result is None:
         return {"skipped": True, "reason": "grader_returned_none"}
 
-    # Persist combined score and emit OTel metric
+    # Persist combined score and emit OTel metric.
+    # If the score write fails, log at ERROR (not WARNING) so it pages: the
+    # quality gate below still runs against `result.combined_score`, but the
+    # row on disk will be stale, which means downstream consumers (review
+    # dashboards, regen replays) see a misleading score. Don't retry — the
+    # grader has already run and a retry would re-incur its LLM cost; the
+    # gate decision below is still made from the in-memory result.
+    # See docs/audits/error-handling-report.md §B5.
     try:
         with get_session() as session:
             flow = session.get(db_models.SportsGameFlow, flow_id)
@@ -143,7 +150,7 @@ def grade_flow_task(
                 flow.quality_score = result.combined_score
                 session.flush()
     except Exception:
-        logger.warning(
+        logger.error(
             "grade_flow_task_score_persist_failed",
             exc_info=True,
             extra={"flow_id": flow_id, "score": result.combined_score},

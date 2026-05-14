@@ -263,6 +263,24 @@ async def stripe_webhook(
             logger.warning("stripe_webhook_rollback_failed", exc_info=True)
         # Lazy import avoids circular dependency at module load time.
         from app.tasks.webhook_retry import process_stripe_webhook_event
-        process_stripe_webhook_event.delay(event.id, payload.decode())
+        # If the broker is unreachable, .delay() raises before any retry is
+        # scheduled. Returning 202 in that case would have Stripe consider the
+        # event delivered while we have no durable record of it. Return 503
+        # so Stripe retries the delivery itself per its standard schedule.
+        try:
+            process_stripe_webhook_event.delay(event.id, payload.decode())
+        except Exception:
+            logger.error(
+                "stripe_webhook_enqueue_failed",
+                extra={"event_id": event.id, "event_type": event.type},
+                exc_info=True,
+            )
+            return JSONResponse(
+                {
+                    "error": "webhook_enqueue_failed",
+                    "message": "Could not durably enqueue event for retry.",
+                },
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         stripe_webhook_async_queued_total.inc()
         return JSONResponse({"status": "queued"}, status_code=202)

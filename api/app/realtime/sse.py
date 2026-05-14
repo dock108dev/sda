@@ -21,7 +21,7 @@ from starlette.responses import StreamingResponse
 
 from .auth import verify_sse_api_key
 from .manager import SSEConnection, realtime_manager
-from .models import RealtimeEvent, is_valid_channel
+from .models import MAX_CHANNELS_PER_CONNECTION, RealtimeEvent, is_valid_channel
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,19 @@ async def sse_endpoint(
     the client should do a full data refetch.
     """
     channel_list = [ch.strip() for ch in channels.split(",") if ch.strip()]
+
+    # Reject requests that ask for more channels than a connection is allowed
+    # to hold. manager.subscribe enforces the same cap and silently drops
+    # excess channels, but failing fast here makes resource-exhaustion attempts
+    # (huge ?channels= lists) visible as 400s instead of partial successes.
+    if len(channel_list) > MAX_CHANNELS_PER_CONNECTION:
+        return StreamingResponse(
+            iter([
+                "data: {\"type\":\"error\",\"message\":\"Too many channels\"}\n\n",
+            ]),
+            media_type="text/event-stream",
+            status_code=400,
+        )
 
     # Validate channels upfront
     valid = [ch for ch in channel_list if is_valid_channel(ch)]

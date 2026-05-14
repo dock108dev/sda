@@ -561,6 +561,11 @@ async def metrics() -> Response:
     from app.db.golf_pools import GolfPool
     from app.db.stripe import WebhookDeliveryAttempt
 
+    # Per-metric query failures are caught individually so a single bad query
+    # doesn't blank the entire `/metrics` response. WARNING (not ERROR) because
+    # one failed scrape isn't pageable on its own — but include `exc_info` and
+    # the metric name so ops can correlate a flat gauge in Prometheus with the
+    # underlying DB error. See docs/audits/error-handling-report.md §R6.
     try:
         async with get_async_session() as db:
             pool_count = await db.scalar(
@@ -570,7 +575,11 @@ async def metrics() -> Response:
             )
             _metrics.active_pools_total.set(pool_count or 0)
     except Exception:
-        logger.warning("metrics: failed to query active_pools_total")
+        logger.warning(
+            "metrics_query_failed",
+            extra={"metric": "active_pools_total"},
+            exc_info=True,
+        )
 
     try:
         async with get_async_session() as db:
@@ -582,6 +591,10 @@ async def metrics() -> Response:
             )
             _metrics.webhook_queue_depth.set(depth or 0)
     except Exception:
-        logger.warning("metrics: failed to query webhook_queue_depth")
+        logger.warning(
+            "metrics_query_failed",
+            extra={"metric": "webhook_queue_depth"},
+            exc_info=True,
+        )
 
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

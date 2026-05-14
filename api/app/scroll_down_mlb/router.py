@@ -13,7 +13,7 @@ stays thin — orchestration lives in `service.py`.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Response, status
 
 from app.db import AsyncSession, get_db
 
@@ -23,6 +23,21 @@ from .schemas import (
     ScrollDownMlbRecentResponse,
     ScrollDownMlbRevealResponse,
 )
+
+
+def _if_none_match_hits(if_none_match: str, current_etag: str) -> bool:
+    """RFC 7232-flavored match: split on commas, strip W/ prefix + quotes."""
+    for candidate in if_none_match.split(","):
+        token = candidate.strip()
+        if token == "*":
+            return True
+        if token.startswith("W/"):
+            token = token[2:]
+        if len(token) >= 2 and token.startswith('"') and token.endswith('"'):
+            token = token[1:-1]
+        if token == current_etag:
+            return True
+    return False
 
 router = APIRouter(prefix="/api/v1/scroll-down-mlb", tags=["scroll-down-mlb"])
 
@@ -50,20 +65,37 @@ async def list_recent_games(
     response_model_by_alias=True,
 )
 async def get_game_deck(
-    game_id: str = Path(..., min_length=1, max_length=64),
+    response: Response,
+    game_id: str = Path(..., min_length=1, max_length=64, pattern=r"^[0-9]+$"),
+    if_none_match: str | None = Header(default=None, alias="If-None-Match"),
     session: AsyncSession = Depends(get_db),
-) -> ScrollDownMlbDeckResponse:
+):
     """Spoiler-safe deck for the catch-up flow.
 
     Returns whichever deck (live provisional or official) is most current.
     The client uses `deckVersion` to detect updates without diffing cards.
+
+    Supports conditional GETs: when the client sends `If-None-Match` with
+    the previously seen `deckVersion`, the server short-circuits to 304
+    using a lightweight metadata-only version check — avoiding both the
+    payload load and the full build pipeline when nothing has changed.
     """
+    if if_none_match is not None:
+        current_etag = await service.compute_deck_etag(session, game_id)
+        if current_etag is not None and _if_none_match_hits(
+            if_none_match, current_etag
+        ):
+            return Response(
+                status_code=status.HTTP_304_NOT_MODIFIED,
+                headers={"ETag": f'"{current_etag}"'},
+            )
     deck = await service.get_game_deck(session, game_id)
     if deck is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No deck available for this game yet.",
         )
+    response.headers["ETag"] = f'"{deck.deck_version}"'
     return deck
 
 
@@ -73,7 +105,7 @@ async def get_game_deck(
     response_model_by_alias=True,
 )
 async def get_game_reveal(
-    game_id: str = Path(..., min_length=1, max_length=64),
+    game_id: str = Path(..., min_length=1, max_length=64, pattern=r"^[0-9]+$"),
     session: AsyncSession = Depends(get_db),
 ) -> ScrollDownMlbRevealResponse:
     """Final-score reveal — the ONLY endpoint allowed to leak the result.

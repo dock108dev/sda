@@ -13,9 +13,10 @@ from ..logging import logger
 from ..models import NormalizedPlayerBoxscore, NormalizedTeamBoxscore
 from ..utils.cache import APICache, should_cache_final
 from ..utils.datetime_utils import now_utc
+from ..utils.math import parse_minutes
 from ..utils.parsing import parse_int
 from .ncaa_constants import NCAA_BOXSCORE_URL
-from .ncaab_helpers import build_team_identity, parse_minutes
+from .ncaab_helpers import build_team_identity
 from .ncaab_models import NCAABBoxscore
 
 

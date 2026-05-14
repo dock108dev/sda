@@ -11,8 +11,11 @@ Conversion to the DTO happens at the persistence/response boundary in
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from .schemas import BaseMovement, GameSituation, GameSituationAfter
 
 BaseName = Literal["home", "first", "second", "third"]
 AdvanceTo = Literal["first", "second", "third", "home", "out"]
@@ -30,7 +33,16 @@ class RunnerAdvance:
 
 @dataclass
 class TimelineEntry:
-    """Per-play reconstructed game state. Mirror of the TS TimelineEntry."""
+    """Per-play reconstructed game state. Mirror of the TS TimelineEntry.
+
+    `situation_before` and `situation_after` are the deterministic
+    snapshots required by the spoiler-safe wire contract. They are
+    populated by `compute_timeline` using the per-half sequential replay.
+    `situation_after` uses the score-less `GameSituationAfter` type so the
+    post-play cumulative score cannot leak — the legacy `score_after_*`
+    fields remain on the internal entry for pipeline use (and per-event
+    `score_change` derivation) but never leave the service layer.
+    """
 
     play_index: int
     inning: int
@@ -53,6 +65,14 @@ class TimelineEntry:
     is_lead_change_play: bool
     is_late_leverage: bool
     half_from_upstream: bool
+    situation_before: GameSituation
+    situation_after: GameSituationAfter
+    # Deterministic per-event movement diff. Held runners produce no entry
+    # (they are absent from `advances`); batter putouts produce no entry
+    # (the in-place flare is profile-driven). Runner identities are pulled
+    # from `situation_before.bases` for on-base runners and from the batter
+    # for `from_base="home"` advances.
+    movements: list[BaseMovement] = field(default_factory=list)
 
 
 @dataclass

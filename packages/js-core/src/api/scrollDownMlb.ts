@@ -71,23 +71,10 @@ export type ScrollDownMlbPlannerReport = {
 // Visual payload
 // ---------------------------------------------------------------------------
 
-export type ScrollDownMlbRunnerBase = "home" | "first" | "second" | "third";
-export type ScrollDownMlbRunnerDestination = ScrollDownMlbRunnerBase | "out";
-export type ScrollDownMlbRunnerStyle = "advance" | "score" | "out" | "hold";
-
-export type ScrollDownMlbRunnerMovement = {
-  runner: string;
-  from: ScrollDownMlbRunnerBase;
-  to: ScrollDownMlbRunnerDestination;
-  style: ScrollDownMlbRunnerStyle;
-  outAt?: "first" | "second" | "third" | "home" | null;
-};
-
 export type ScrollDownMlbVisualIntensity = "low" | "medium" | "high";
 
 export type ScrollDownMlbVisualPayload = {
   trajectory?: string | null;
-  runnerMovements: ScrollDownMlbRunnerMovement[];
   intensity?: ScrollDownMlbVisualIntensity | null;
   animationProfile?: string | null;
 };

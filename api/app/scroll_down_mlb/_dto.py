@@ -15,17 +15,19 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from .internal_types import BuiltPlayCard, RunnerAdvance
+from .internal_types import BuiltPlayCard
 from .narrative import narrative_for_card
 from .result_labels import result_chip_label
 from .rhythm_planner import DeckItem
 from .schemas import (
     BaseState,
     DeckCardType,
+    DisplayHints,
     PlannerNote,
     PlayPayload,
-    RunnerMovement,
+    ScoreChange,
     ScoreState,
+    ScrollDownHalfInningContainer,
     ScrollDownMlbDeckCard,
     ScrollDownMlbDeckResponse,
     TeamSummary,
@@ -36,7 +38,10 @@ from .schemas import (
     PlannerReport as DtoPlannerReport,
 )
 from .validation import validate_no_final_score_leak
-from .visual_mapper import classify_runner_style, compute_leverage_tier
+from .visual_mapper import (
+    compute_leverage_tier,
+    display_hint_fields,
+)
 
 __all__ = [
     "built_deck_to_dto",
@@ -51,40 +56,6 @@ def _base_state_dto(state: dict[str, bool]) -> BaseState:
         second=bool(state.get("second")),
         third=bool(state.get("third")),
     )
-
-
-def _runner_movements_dto(
-    advances: list[RunnerAdvance],
-    event_type: str | None,
-    runner_names_before: dict[str, str],
-    batter_name: str | None,
-) -> list[RunnerMovement]:
-    out: list[RunnerMovement] = []
-    for adv in advances:
-        # Resolve the runner's display name.
-        if adv.from_base in ("first", "second", "third"):
-            name = runner_names_before.get(adv.from_base) or "Runner"
-        elif adv.from_base == "home":
-            name = batter_name or "Batter"
-        else:
-            name = "Runner"
-        style = classify_runner_style(adv, event_type)
-        out.append(
-            RunnerMovement(
-                runner=name,
-                from_base=adv.from_base,
-                to_base=adv.to,
-                style=(
-                    "score"
-                    if style == "score"
-                    else "out"
-                    if style in ("forced_out", "tagged_out", "in_place_out", "double_play")
-                    else "advance"
-                ),
-                out_at=adv.out_at,
-            )
-        )
-    return out
 
 
 def decorate_play_card(card: BuiltPlayCard) -> None:
@@ -110,10 +81,9 @@ def decorate_play_card(card: BuiltPlayCard) -> None:
 
 def _play_card_dto(card: BuiltPlayCard) -> ScrollDownMlbDeckCard:
     """Convert a BuiltPlayCard to its spoiler-safe DTO. Drops score_after."""
-    runs_scored = (
-        (card.score_after_home - card.score_before_home)
-        + (card.score_after_away - card.score_before_away)
-    )
+    home_delta = card.score_after_home - card.score_before_home
+    away_delta = card.score_after_away - card.score_before_away
+    runs_scored = home_delta + away_delta
 
     # Filter runner names to the spoiler-safe per-base map (no batter).
     def _names(src: dict[str, str]) -> dict[str, str]:
@@ -144,17 +114,20 @@ def _play_card_dto(card: BuiltPlayCard) -> ScrollDownMlbDeckCard:
             home=card.score_before_home, away=card.score_before_away
         ),
         runs_scored_on_play=max(0, runs_scored),
+        score_change=ScoreChange(home=home_delta, away=away_delta),
+    )
+    show_overlay, hit_location, suppress_lines = display_hint_fields(
+        card.event_type, card.ball_path, card.animation_profile
     )
     visual = VisualPayload(
         trajectory=card.ball_path if card.ball_path not in (None, "none") else None,
-        runner_movements=_runner_movements_dto(
-            card.advances,
-            card.event_type,
-            card.runner_names_before,
-            card.batter_name,
-        ),
         intensity=card.visual_intensity if card.visual_intensity in ("low", "medium", "high") else None,
         animation_profile=card.animation_profile,
+        display_hints=DisplayHints(
+            show_batted_ball_overlay=show_overlay,
+            hit_location=hit_location,
+            suppress_movement_lines=suppress_lines,
+        ),
     )
     return ScrollDownMlbDeckCard(
         id=f"{card.game_id}-{card.play_index}",
@@ -209,6 +182,7 @@ def built_deck_to_dto(
     deck_version: str,
     home_team: TeamSummary | None = None,
     away_team: TeamSummary | None = None,
+    half_innings: list[ScrollDownHalfInningContainer] | None = None,
     last_play_index: int | None = None,
     first_pitch: str | None = None,
     venue: str | None = None,
@@ -258,6 +232,7 @@ def built_deck_to_dto(
         home_probable_pitcher=home_probable_pitcher,
         away_probable_pitcher=away_probable_pitcher,
         cards=cards,
+        half_innings=list(half_innings or []),
         planner_report=planner_report,
         validation_warnings=validation_warnings,
     )

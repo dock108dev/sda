@@ -53,6 +53,10 @@ class RedisStreamsBridge:
     _READ_COUNT = 100
     _INITIAL_BACKOFF = 1.0
     _MAX_BACKOFF = 60.0
+    # After this many consecutive ack failures the consumer escalates to an
+    # ERROR log and resets the counter. Tunable via the constant rather than
+    # env because failure escalation should be deterministic across deploys.
+    _ACK_FAILURE_ESCALATE_AT = 10
 
     def __init__(self, redis_url: str, boot_epoch: str) -> None:
         self._redis_url = redis_url
@@ -64,6 +68,8 @@ class RedisStreamsBridge:
         self._consumer_client: aioredis.Redis | None = None
         self._task: asyncio.Task | None = None
         self._dispatch_fn: DispatchFn | None = None
+        self._consecutive_ack_failures: int = 0
+        self._consecutive_dispatch_failures: int = 0
 
     @property
     def consumer_id(self) -> str:
@@ -251,23 +257,61 @@ class RedisStreamsBridge:
         if self._dispatch_fn is not None:
             try:
                 await self._dispatch_fn(channel, event_type, seq, payload)
+                self._consecutive_dispatch_failures = 0
             except Exception:
-                logger.exception(
-                    "streams_dispatch_error",
-                    extra={"channel": channel, "entry_id": entry_id},
-                )
+                self._consecutive_dispatch_failures += 1
+                # Always log; escalate if dispatch failure is persistent. We
+                # still ack: a poisoned entry would otherwise loop forever
+                # and block fresh events. See docs/audits/error-handling-report.md §B2.
+                if (
+                    self._consecutive_dispatch_failures
+                    >= self._ACK_FAILURE_ESCALATE_AT
+                ):
+                    logger.error(
+                        "streams_dispatch_error_persistent",
+                        extra={
+                            "channel": channel,
+                            "entry_id": entry_id,
+                            "consecutive_failures": self._consecutive_dispatch_failures,
+                        },
+                        exc_info=True,
+                    )
+                else:
+                    logger.exception(
+                        "streams_dispatch_error",
+                        extra={"channel": channel, "entry_id": entry_id},
+                    )
 
         await self._ack(entry_id)
 
     async def _ack(self, entry_id: str) -> None:
         try:
             await self._consumer_client.xack(STREAM_KEY, self._group_name, entry_id)
+            self._consecutive_ack_failures = 0
         except Exception:
-            logger.warning(
-                "streams_ack_error",
-                extra={"entry_id": entry_id},
-                exc_info=True,
-            )
+            self._consecutive_ack_failures += 1
+            # Ack failures cause Redis Streams to re-deliver to this consumer
+            # on its next read, which means duplicate dispatch. Single failures
+            # are usually transient (Redis connection blip); persistent
+            # failures need ops attention because backlog grows unbounded.
+            # See docs/audits/error-handling-report.md §B3.
+            if self._consecutive_ack_failures >= self._ACK_FAILURE_ESCALATE_AT:
+                logger.error(
+                    "streams_ack_error_persistent",
+                    extra={
+                        "entry_id": entry_id,
+                        "consecutive_failures": self._consecutive_ack_failures,
+                    },
+                    exc_info=True,
+                )
+                # Reset so we don't keep emitting the same alert until restart.
+                self._consecutive_ack_failures = 0
+            else:
+                logger.warning(
+                    "streams_ack_error",
+                    extra={"entry_id": entry_id},
+                    exc_info=True,
+                )
 
     # ------------------------------------------------------------------
     # Helpers

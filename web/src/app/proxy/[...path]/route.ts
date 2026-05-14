@@ -67,9 +67,24 @@ async function proxyRequest(
   try {
     upstream = await fetch(targetUrl, init);
   } catch (error) {
-    console.error("Proxy error:", error);
+    // Log full detail server-side; never return the internal target URL or
+    // raw fetch error message to the client. Both can leak internal network
+    // topology (SPORTS_API_INTERNAL_URL host/port, DNS failure modes) even
+    // when the admin UI is auth-gated. See docs/audits/security-report.md.
+    const cause = error instanceof Error ? error.message : String(error);
+    const correlationId =
+      globalThis.crypto?.randomUUID?.() ?? `proxy-${Date.now()}`;
+    console.error("Proxy error:", {
+      correlationId,
+      method: request.method,
+      target: targetUrl,
+      message: cause,
+    });
     return NextResponse.json(
-      { error: "Failed to proxy request to backend" },
+      {
+        error: "Failed to proxy request to backend",
+        correlationId,
+      },
       { status: 502 },
     );
   }

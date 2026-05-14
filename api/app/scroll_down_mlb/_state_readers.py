@@ -14,11 +14,15 @@ from typing import Any
 __all__ = [
     "EMPTY_BASES",
     "inning_half_from_upstream",
+    "normalize_runner_label",
     "read_base_state_after",
     "read_base_state_before",
+    "read_count",
+    "read_count_before",
     "read_num",
     "read_str",
     "read_upstream_runner_names",
+    "read_upstream_runner_names_before",
 ]
 
 
@@ -47,6 +51,46 @@ def read_str(*candidates: Any) -> str | None:
         if isinstance(c, str) and c.strip():
             return c.strip()
     return None
+
+
+# ---------------------------------------------------------------------------
+# Player-name normalization
+# ---------------------------------------------------------------------------
+
+
+def normalize_runner_label(raw: str | None) -> str | None:
+    """Normalize a player name to ``FIRST_INITIAL LAST_NAME`` form.
+
+    The canonical wire format is a single uppercase first-name initial,
+    one space, then the uppercased last name (e.g. ``"C CARROLL"``).
+    Applied at the data-reader layer so ``TimelineEntry``, the API
+    payload, and audit rows all carry the same form.
+
+    Rules:
+      * ``None`` and ``""`` pass through unchanged.
+      * Periods are stripped (``"C. Carroll"`` → ``"C CARROLL"``).
+      * Whitespace tokens drive the split; first-token's first
+        character becomes the initial, last token becomes the last name.
+        Hyphens inside the last token are preserved (``"Smith-Jones"``
+        → ``"SMITH-JONES"``).
+      * Multi-part first names take only the first token's initial
+        (``"Jo-El Rodriguez"`` → ``"J RODRIGUEZ"``).
+      * Single-token input (last name only) is uppercased as-is.
+    """
+    if raw is None:
+        return None
+    name = raw.strip()
+    if not name:
+        return name
+    cleaned = name.replace(".", " ")
+    parts = cleaned.split()
+    if not parts:
+        return name
+    if len(parts) == 1:
+        return parts[0].upper()
+    initial = parts[0][0].upper()
+    last = parts[-1].upper()
+    return f"{initial} {last}"
 
 
 # ---------------------------------------------------------------------------
@@ -98,16 +142,18 @@ def _read_base_state(raw: Any) -> dict[str, bool] | None:
 
 
 def read_base_state_before(play: dict[str, Any]) -> dict[str, bool] | None:
-    """Coalesce the many upstream names for "bases before this play"."""
+    """Read "bases before this play" — *Before-keyed fields only.
+
+    Ambiguous keys (`runners`, `runnersOn`, `baseRunners`, `bases`) may
+    carry post-play state and are intentionally not consulted here. The
+    caller is expected to fall back to the prior play's `situation_after`
+    when no explicit before-state key is present.
+    """
     return (
         _read_base_state(play.get("baseStateBefore"))
         or _read_base_state(play.get("runnersBefore"))
         or _read_base_state(play.get("baseRunnersBefore"))
         or _read_base_state(play.get("basesBefore"))
-        or _read_base_state(play.get("runners"))
-        or _read_base_state(play.get("runnersOn"))
-        or _read_base_state(play.get("baseRunners"))
-        or _read_base_state(play.get("bases"))
     )
 
 
@@ -121,8 +167,71 @@ def read_base_state_after(play: dict[str, Any]) -> dict[str, bool] | None:
     )
 
 
+def read_upstream_runner_names_before(play: dict[str, Any]) -> dict[str, str] | None:
+    """Read pre-play runner names — *Before-keyed fields only.
+
+    Mirrors `read_base_state_before`: skips the ambiguous keys
+    (`runners`, `runnersOn`, `baseRunners`, `bases`) because they may
+    carry post-play snapshots in some vendor feeds.
+    """
+    return (
+        read_upstream_runner_names(play.get("runnersBefore"))
+        or read_upstream_runner_names(play.get("baseRunnersBefore"))
+    )
+
+
+def read_count_before(play: dict[str, Any]) -> tuple[int, int] | None:
+    """Read pre-play `(balls, strikes)` — *Before-keyed fields only.
+
+    Returns `None` if either is missing. Ambiguous `balls`/`strikes`/
+    `count` keys (which may be post-pitch) are intentionally ignored.
+    """
+    balls = read_num(
+        play.get("ballsBefore"),
+        (play.get("countBefore") or {}).get("balls"),
+    )
+    strikes = read_num(
+        play.get("strikesBefore"),
+        (play.get("countBefore") or {}).get("strikes"),
+    )
+    if balls is None or strikes is None:
+        return None
+    return balls, strikes
+
+
+def read_count(play: dict[str, Any]) -> tuple[int, int] | None:
+    """Read `(balls, strikes)` from ambiguous upstream count keys.
+
+    Coalesces top-level `balls`/`strikes`, `ballCount`/`strikeCount`,
+    and the object form `count.balls`/`count.strikes`. Returns `None`
+    when either component is absent — the caller treats `None` as
+    "upstream did not provide count for this play" (no fallback guessing).
+    """
+    count_obj = play.get("count")
+    if not isinstance(count_obj, dict):
+        count_obj = {}
+    balls = read_num(
+        play.get("balls"),
+        play.get("ballCount"),
+        count_obj.get("balls"),
+    )
+    strikes = read_num(
+        play.get("strikes"),
+        play.get("strikeCount"),
+        count_obj.get("strikes"),
+    )
+    if balls is None or strikes is None:
+        return None
+    return balls, strikes
+
+
 def read_upstream_runner_names(raw: Any) -> dict[str, str] | None:
-    """Extract a `{base: name}` map from any of the runner-list shapes upstream uses."""
+    """Extract a `{base: name}` map from any of the runner-list shapes upstream uses.
+
+    All extracted names are normalized to ``FIRST_INITIAL LAST_NAME``
+    form via :func:`normalize_runner_label` so downstream consumers
+    (timeline, API payload, audit) all receive the canonical label.
+    """
     if not raw:
         return None
     if isinstance(raw, dict):
@@ -132,12 +241,16 @@ def read_upstream_runner_names(raw: Any) -> dict[str, str] | None:
             for k in keys:
                 v = raw.get(k)
                 if isinstance(v, str) and v.strip():
-                    names[slot] = v.strip()
+                    label = normalize_runner_label(v)
+                    if label:
+                        names[slot] = label
                     return
                 if isinstance(v, dict):
                     n = v.get("name") or v.get("runnerName") or v.get("playerName")
                     if isinstance(n, str) and n.strip():
-                        names[slot] = n.strip()
+                        label = normalize_runner_label(n)
+                        if label:
+                            names[slot] = label
                         return
 
         grab("first", "first", "1", "1B")
@@ -164,7 +277,9 @@ def read_upstream_runner_names(raw: Any) -> dict[str, str] | None:
                 continue
             name = entry.get("name") or entry.get("runnerName") or entry.get("playerName")
             if isinstance(name, str) and name.strip():
-                names[slot] = name.strip()
+                label = normalize_runner_label(name)
+                if label:
+                    names[slot] = label
         if names:
             return names
     return None

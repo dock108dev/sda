@@ -44,37 +44,6 @@ def extract_points(value: int | dict | None) -> int:
     return parse_int(value) or 0
 
 
-def parse_minutes(value: str | int | float | None) -> float | None:
-    """Parse minutes value which may be 'MM:SS' or numeric."""
-    if value is None:
-        return None
-
-    if isinstance(value, int | float):
-        return float(value)
-
-    if isinstance(value, str):
-        # Try parsing "MM:SS" format
-        if ":" in value:
-            try:
-                parts = value.split(":")
-                if len(parts) == 2:
-                    mins = int(parts[0])
-                    secs = int(parts[1])
-                    return round(mins + secs / 60, 2)
-            except (ValueError, IndexError):
-                # If "MM:SS" parsing fails, fall through to numeric parsing
-                pass
-
-        # Try parsing as plain number
-        try:
-            return float(value)
-        except ValueError:
-            # If numeric parsing fails, return None below
-            pass
-
-    return None
-
-
 def extract_total(value: int | dict | None) -> int | None:
     """Extract an int from a value that may be int or ``{"total": int, ...}``.
 

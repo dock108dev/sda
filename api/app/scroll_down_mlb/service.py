@@ -29,13 +29,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.scroll_down_mlb import ScrollDownMlbDeck
-from app.db.sports import GameStatus, SportsGame, SportsLeague
+from app.db.sports import GameStatus, SportsGame, SportsGamePlay, SportsLeague
 
 from . import persistence
 from ._dto import built_deck_to_dto, scan_response_for_final_score_leaks
 from ._pipeline import (
     apply_validation_policy,
     build_deck_from_upstream,
+    compute_deck_version_from_components,
     generate_final_deck,
     generate_live_deck,
 )
@@ -45,6 +46,7 @@ from .schemas import (
     ScrollDownMlbDeckResponse,
     ScrollDownMlbRecentGame,
     ScrollDownMlbRevealResponse,
+    SpoilerPolicy,
     TeamSummary,
 )
 
@@ -54,6 +56,7 @@ __all__ = [
     "apply_validation_policy",
     "build_deck_from_upstream",
     "built_deck_to_dto",
+    "compute_deck_etag",
     "generate_final_deck",
     "generate_live_deck",
     "get_game_deck",
@@ -162,6 +165,97 @@ async def get_recent_games(
             )
         )
     return games
+
+
+async def compute_deck_etag(
+    session: AsyncSession, game_id: str
+) -> str | None:
+    """Compute the `deck_version` `get_game_deck` would return, cheaply.
+
+    Powers the `If-None-Match` short-circuit on the /deck endpoint: the
+    router calls this first, and if the value matches what the client
+    last received, it serves a 304 without invoking the full builder.
+
+    Avoids `load_game_payload` and `build_deck_from_upstream`. For live
+    games it issues a small metadata query (game row + a COUNT/MAX
+    aggregate on plays) and reproduces the `deck_version` stamp via
+    `compute_deck_version_from_components`. For final games it reads the
+    persisted deck's version directly. Returns None when no deck is
+    available (unknown game, non-MLB, pregame).
+    """
+    try:
+        gid = int(game_id)
+    except (TypeError, ValueError):
+        return None
+
+    game_stmt = (
+        select(
+            SportsGame.id,
+            SportsGame.status,
+            SportsGame.home_score,
+            SportsGame.away_score,
+            SportsGame.last_pbp_at,
+            SportsGame.last_ingested_at,
+            SportsLeague.code.label("league_code"),
+        )
+        .join(SportsLeague, SportsLeague.id == SportsGame.league_id)
+        .where(SportsGame.id == gid)
+    )
+    row = (await session.execute(game_stmt)).one_or_none()
+    if row is None:
+        return None
+    if (row.league_code or "").lower() != "mlb":
+        return None
+
+    status_str = row.status
+    is_final = GameStatus.is_final_or_post_final_status(status_str)
+    is_pregame = (status_str or "").lower() in ("scheduled", "pregame")
+    if is_pregame:
+        return None
+
+    if is_final:
+        persisted_stmt = (
+            select(ScrollDownMlbDeck.deck_version)
+            .where(
+                ScrollDownMlbDeck.game_id == gid,
+                ScrollDownMlbDeck.spoiler_policy == SpoilerPolicy.pre_reveal.value,
+                ScrollDownMlbDeck.is_final.is_(True),
+            )
+            .order_by(ScrollDownMlbDeck.generated_at.desc())
+            .limit(1)
+        )
+        persisted_version = (
+            await session.execute(persisted_stmt)
+        ).scalar_one_or_none()
+        if persisted_version:
+            return persisted_version
+
+    play_agg_stmt = select(
+        func.count(SportsGamePlay.id),
+        func.max(SportsGamePlay.play_index),
+    ).where(SportsGamePlay.game_id == gid)
+    play_count_raw, last_play_index_raw = (
+        await session.execute(play_agg_stmt)
+    ).one()
+    play_count = int(play_count_raw or 0)
+    last_play_index = (
+        int(last_play_index_raw) if last_play_index_raw is not None else None
+    )
+
+    policy = GenerationPolicy.official if is_final else GenerationPolicy.live
+    return compute_deck_version_from_components(
+        policy=policy,
+        game_id=gid,
+        status=status_str,
+        play_count=play_count,
+        last_play_index=last_play_index,
+        home_score=row.home_score,
+        away_score=row.away_score,
+        last_play_at=row.last_pbp_at.isoformat() if row.last_pbp_at else None,
+        last_ingested_at=(
+            row.last_ingested_at.isoformat() if row.last_ingested_at else None
+        ),
+    )
 
 
 async def get_game_deck(

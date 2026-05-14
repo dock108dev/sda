@@ -103,7 +103,8 @@ async def _run_and_record(
         # the synchronous route already verified the signature before enqueueing).
         try:
             event = _parse_stripe_event(payload)
-        except Exception as parse_exc:
+        except (json.JSONDecodeError, ValueError, TypeError) as parse_exc:
+            # Malformed payload — no retry will fix it; dead-letter immediately.
             logger.error(
                 "webhook_payload_parse_error",
                 extra={"event_id": event_id, "error": str(parse_exc)},
@@ -135,6 +136,11 @@ async def _run_and_record(
             )
 
         # Record attempt (best-effort — don't fail the task if this write fails).
+        # The handler outcome above is the source of truth; the attempt row is
+        # only an audit aid. Failing the task here would re-trigger the
+        # already-completed handler on retry. Log at ERROR so persistent
+        # failures of the audit table are visible to ops via log alerts.
+        # See docs/audits/error-handling-report.md §B7.
         try:
             async with sf() as db:
                 db.add(
@@ -150,9 +156,10 @@ async def _run_and_record(
                 )
                 await db.commit()
         except Exception as rec_exc:
-            logger.warning(
+            logger.error(
                 "webhook_attempt_record_failed",
                 extra={"event_id": event_id, "error": str(rec_exc)},
+                exc_info=True,
             )
 
         return error

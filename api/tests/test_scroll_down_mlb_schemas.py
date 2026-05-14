@@ -110,6 +110,32 @@ def test_play_payload_round_trips_score_before_only() -> None:
     assert "scoreAfter" not in dumped
 
 
+def test_play_payload_emits_score_change_default_zero() -> None:
+    """`scoreChange` is non-null on every event — `0/0` for non-scoring
+    plays. The renderer combines it with `scoreBefore` to reconstruct
+    `scoreAfter` locally without ever reading a cumulative wire total."""
+    payload = PlayPayload(
+        play_id="p",
+        score_before=ScoreState(home=1, away=0),
+        runs_scored_on_play=0,
+    )
+    dumped = payload.model_dump(by_alias=True)
+    assert dumped["scoreChange"] == {"home": 0, "away": 0}
+
+
+def test_play_payload_round_trips_score_change_per_team_delta() -> None:
+    from app.scroll_down_mlb.schemas import ScoreChange
+
+    payload = PlayPayload(
+        play_id="p",
+        score_before=ScoreState(home=2, away=1),
+        runs_scored_on_play=2,
+        score_change=ScoreChange(home=2, away=0),
+    )
+    dumped = payload.model_dump(by_alias=True)
+    assert dumped["scoreChange"] == {"home": 2, "away": 0}
+
+
 # ---------------------------------------------------------------------------
 # Deck response constraints
 # ---------------------------------------------------------------------------

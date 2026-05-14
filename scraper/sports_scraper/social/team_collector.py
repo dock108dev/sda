@@ -152,8 +152,16 @@ class TeamTweetCollector:
                 .all()
             )
             recent_post_ids = {row[0] for row in recent_rows}
-        except Exception:
-            pass  # Non-critical — scrolling just won't terminate early
+        except Exception as recent_lookup_exc:
+            # Non-critical — scroll won't short-circuit, but the scrape still
+            # collects. Log at warning so persistent DB errors surface in ops
+            # dashboards instead of dying silently.
+            # See docs/audits/error-handling-report.md §B4.
+            logger.warning(
+                "team_collector_recent_posts_lookup_failed",
+                team_id=team_id,
+                error=str(recent_lookup_exc),
+            )
 
         # Narrow the scrape range by skipping days that already have
         # sufficient coverage.  Used by backfill so we don't re-scrape

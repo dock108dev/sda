@@ -133,16 +133,24 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
     );
   }
 
-  // Load available features and saved loadouts when sport changes
+  // Load available features and saved loadouts when sport changes.
+  // Loadout failures degrade gracefully (the picker just shows nothing),
+  // but a feature-list failure leaves the form unusable — surface it so the
+  // admin sees the error instead of an infinite "Loading…" state.
+  // See docs/audits/error-handling-report.md §F5.
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
       if (cancelled) return;
       setFeaturesLoading(true);
+      setError(null);
       setFeatureGrid([]);
       Promise.all([
         getAvailableFeatures(sportCode),
-        listFeatureLoadouts(sportCode).catch(() => ({ loadouts: [] })),
+        listFeatureLoadouts(sportCode).catch((loadoutErr) => {
+          console.warn("experiments_loadouts_load_failed", loadoutErr);
+          return { loadouts: [] };
+        }),
       ])
         .then(([featRes, loadoutRes]) => {
           if (cancelled) return;
@@ -151,7 +159,13 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
           setFeatureGrid(buildDefaultGrid(feats));
           setLoadouts(loadoutRes.loadouts || []);
         })
-        .catch((err) => { console.error("experiments_feature_load_failed", err); })
+        .catch((err) => {
+          console.error("experiments_feature_load_failed", err);
+          if (!cancelled) {
+            const msg = err instanceof Error ? err.message : String(err);
+            setError(`Failed to load available features: ${msg}`);
+          }
+        })
         .finally(() => {
           if (!cancelled) setFeaturesLoading(false);
         });
