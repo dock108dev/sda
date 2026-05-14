@@ -36,6 +36,58 @@ export type ScrollDownMlbFinalScore = {
   away: number;
 };
 
+export type ScrollDownMlbScoreChange = {
+  home: number;
+  away: number;
+};
+
+export type ScrollDownMlbRunnerSummary = {
+  id?: string | null;
+  name: string;
+};
+
+export type ScrollDownMlbPlayerSummary = {
+  id?: string | null;
+  name: string;
+};
+
+export type ScrollDownMlbBasesSituation = {
+  first?: ScrollDownMlbRunnerSummary | null;
+  second?: ScrollDownMlbRunnerSummary | null;
+  third?: ScrollDownMlbRunnerSummary | null;
+};
+
+export type ScrollDownMlbCountSituation = {
+  balls: number;
+  strikes: number;
+};
+
+export type ScrollDownMlbGameSituation = {
+  inning: number;
+  half: "top" | "bottom";
+  outs: number;
+  score?: ScrollDownMlbScoreState | null;
+  count?: ScrollDownMlbCountSituation | null;
+  bases: ScrollDownMlbBasesSituation;
+};
+
+export type ScrollDownMlbGameSituationAfter = {
+  inning: number;
+  half: "top" | "bottom";
+  outs: number;
+  count?: ScrollDownMlbCountSituation | null;
+  bases: ScrollDownMlbBasesSituation;
+};
+
+export type ScrollDownMlbBaseMovement = {
+  runner: ScrollDownMlbRunnerSummary;
+  fromBase: "home" | "first" | "second" | "third";
+  toBase: "home" | "first" | "second" | "third" | "out";
+  style: "advance" | "score" | "out";
+  outAt?: "first" | "second" | "third" | "home" | null;
+  reason?: string | null;
+};
+
 export type ScrollDownMlbKeyStat = {
   label: string;
   value: string;
@@ -73,10 +125,17 @@ export type ScrollDownMlbPlannerReport = {
 
 export type ScrollDownMlbVisualIntensity = "low" | "medium" | "high";
 
+export type ScrollDownMlbDisplayHints = {
+  showBattedBallOverlay: boolean;
+  hitLocation?: string | null;
+  suppressMovementLines: boolean;
+};
+
 export type ScrollDownMlbVisualPayload = {
   trajectory?: string | null;
   intensity?: ScrollDownMlbVisualIntensity | null;
   animationProfile?: string | null;
+  displayHints?: ScrollDownMlbDisplayHints | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -109,6 +168,24 @@ export type ScrollDownMlbPlayPayload = {
   runnerNamesAfter: ScrollDownMlbRunnerNames;
   scoreBefore?: ScrollDownMlbScoreState | null;
   runsScoredOnPlay: number;
+  scoreChange: ScrollDownMlbScoreChange;
+};
+
+export type ScrollDownMlbEventResult = {
+  label: string;
+  description: string;
+  eventType?: string | null;
+  isOut: boolean;
+  isStrikeout: boolean;
+  isWalk: boolean;
+  isHit: boolean;
+  isScoringPlay: boolean;
+  isInningEnding: boolean;
+};
+
+export type ScrollDownMlbEventMatchup = {
+  batter?: ScrollDownMlbPlayerSummary | null;
+  pitcher?: ScrollDownMlbPlayerSummary | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -137,6 +214,51 @@ export type ScrollDownMlbDeckCard = {
 };
 
 // ---------------------------------------------------------------------------
+// Half-inning containers — full-game event grouping
+// ---------------------------------------------------------------------------
+
+export type ScrollDownMlbRevealType =
+  | "pitch"
+  | "plate_appearance"
+  | "play";
+
+export type ScrollDownMlbHalfInningEvent = {
+  sequence: number;
+  playIndex: number;
+  eventType?: string | null;
+  outsBefore?: number | null;
+  outsAfter?: number | null;
+  baseStateBefore?: ScrollDownMlbBaseState | null;
+  baseStateAfter?: ScrollDownMlbBaseState | null;
+  scoreBefore?: ScrollDownMlbScoreState | null;
+  runsScoredOnPlay: number;
+  scoreChange: ScrollDownMlbScoreChange;
+  movements: ScrollDownMlbBaseMovement[];
+  revealType: ScrollDownMlbRevealType;
+  result: ScrollDownMlbEventResult;
+  matchup: ScrollDownMlbEventMatchup;
+  isSelected: boolean;
+};
+
+export type ScrollDownMlbHalfInningMeta = {
+  scoredRuns: number;
+  hadActivity: boolean;
+  hadLeadChange: boolean;
+  hadTying: boolean;
+};
+
+export type ScrollDownMlbHalfInningContainer = {
+  gameId: string;
+  inning: number;
+  half: ScrollDownMlbInningHalf;
+  battingTeam: ScrollDownMlbTeamSummary;
+  fieldingTeam: ScrollDownMlbTeamSummary;
+  events: ScrollDownMlbHalfInningEvent[];
+  meta: ScrollDownMlbHalfInningMeta;
+  selectedPlayIndices: number[];
+};
+
+// ---------------------------------------------------------------------------
 // Top-level responses
 // ---------------------------------------------------------------------------
 
@@ -156,6 +278,7 @@ export type ScrollDownMlbDeckResponse = {
   homeProbablePitcher?: string | null;
   awayProbablePitcher?: string | null;
   cards: ScrollDownMlbDeckCard[];
+  halfInnings: ScrollDownMlbHalfInningContainer[];
   plannerReport?: ScrollDownMlbPlannerReport | null;
   validationWarnings: ScrollDownMlbValidationWarning[];
 };
