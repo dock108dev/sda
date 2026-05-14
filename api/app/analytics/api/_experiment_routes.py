@@ -433,22 +433,15 @@ async def start_replay(
         job.status = "queued"
         await db.flush()
     except Exception:
-        # Mirrors B8 in docs/audits/error-handling-report.md: dispatch failure used
-        # to return 200 + {"status": "submitted"} while job.status="failed". Surface
-        # as 503 so the admin UI's catch branch sees the real outcome.
+        # Replay follows the training-job contract: persist the failed job
+        # record and return it to the caller so admin clients can render the
+        # job status from the normal response shape.
         logger.exception("Failed to dispatch replay job job_id=%s", job.id)
         job.status = "failed"
         job.error_message = "Failed to dispatch task"
         await db.flush()
         await db.refresh(job)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "status": "failed",
-                "reason": "Failed to dispatch replay task to worker queue",
-                "job": _serialize_replay_job(job),
-            },
-        )
+        return {"status": "submitted", "job": _serialize_replay_job(job)}
 
     await db.refresh(job)
     return {"status": "submitted", "job": _serialize_replay_job(job)}

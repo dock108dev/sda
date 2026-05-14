@@ -119,7 +119,16 @@ class ExecuteStageRequest(BaseModel):
 
 
 class RunFullPipelineRequest(BaseModel):
-    """Request to run the complete pipeline."""
+    """Request to run the complete pipeline.
+
+    Compatibility note: ``scraper/sports_scraper/jobs/regen_flow_task.py``
+    still POSTs ``regen_attempt`` and ``failure_reasons`` when the grade gate
+    asks the API to regenerate a flow. This endpoint currently does not persist
+    or consume that metadata; Pydantic ignores the extra keys and the scraper
+    keeps the context in its own task logs. If regen provenance needs to land
+    in SDA, wire those fields through ``PipelineExecutor.run_full_pipeline``
+    and ``pipeline_runs`` instead of assuming they are handled here.
+    """
 
     # ``triggered_by`` is persisted into ``pipeline_runs.triggered_by``, a
     # ``VARCHAR(20)`` NOT NULL column. Bound length + charset at the request
@@ -434,5 +443,4 @@ class BulkGenerateStatusResponse(BaseModel):
         default=None,
         description="Final result when job completes",
     )
-
 
