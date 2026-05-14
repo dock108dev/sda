@@ -7,12 +7,13 @@ can evolve without churn while the deck shape stabilizes.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     Index,
     Integer,
@@ -95,5 +96,44 @@ class ScrollDownMlbDeck(Base):
             "ix_scroll_down_mlb_decks_game_id_generated_at",
             "game_id",
             "generated_at",
+        ),
+    )
+
+
+class ArcadeDailyPressurePack(Base):
+    """A daily snapshot of the arcade pressure pack.
+
+    One row per ``pack_date``; ``pack_version`` increments when the same
+    date's pack is regenerated. ``is_final`` flips to true once the day's
+    real-world signals are settled and the pack will not be regenerated.
+    """
+
+    __tablename__ = "arcade_daily_pressure_packs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    pack_date: Mapped[date] = mapped_column(Date, nullable=False)
+    pack_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    is_final: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+    source_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_arcade_daily_pressure_packs_pack_date",
+            "pack_date",
+            unique=True,
         ),
     )
