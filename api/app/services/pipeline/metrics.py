@@ -12,8 +12,6 @@ _logger = logging.getLogger(__name__)
 
 _initialized = False
 _stage_duration = None
-_regen_count = None
-_fallback_count = None
 _published_count = None
 _score_mismatch_count = None
 
@@ -35,9 +33,9 @@ _NOOP = _Noop()
 
 
 def _instruments():
-    global _initialized, _stage_duration, _regen_count, _fallback_count, _published_count, _score_mismatch_count
+    global _initialized, _stage_duration, _published_count, _score_mismatch_count
     if _initialized:
-        return _stage_duration, _regen_count, _fallback_count, _published_count, _score_mismatch_count
+        return _stage_duration, _published_count, _score_mismatch_count
 
     _initialized = True
     try:
@@ -49,14 +47,6 @@ def _instruments():
             description="Duration of each pipeline stage in milliseconds",
             unit="ms",
         )
-        _regen_count = meter.create_counter(
-            name="pipeline.regen.count",
-            description="Number of regen decisions (legacy v2-blocks pipeline)",
-        )
-        _fallback_count = meter.create_counter(
-            name="pipeline.fallback.count",
-            description="Number of fallback decisions (legacy v2-blocks pipeline)",
-        )
         _published_count = meter.create_counter(
             name="pipeline.flow.published.count",
             description="Number of summaries successfully persisted by FINALIZE_SUMMARY",
@@ -67,37 +57,20 @@ def _instruments():
         )
     except ImportError:
         _logger.debug("opentelemetry not available — pipeline metrics are no-ops")
-        _stage_duration = _regen_count = _fallback_count = _published_count = _score_mismatch_count = _NOOP
+        _stage_duration = _published_count = _score_mismatch_count = _NOOP
 
-    return _stage_duration, _regen_count, _fallback_count, _published_count, _score_mismatch_count
+    return _stage_duration, _published_count, _score_mismatch_count
 
 
 def record_stage_duration(stage_name: str, sport: str, duration_ms: float) -> None:
     """Record how long a pipeline stage took to execute."""
-    hist, _, _, _, _ = _instruments()
+    hist, _, _ = _instruments()
     hist.record(duration_ms, attributes={"stage": stage_name, "sport": sport})
-
-
-def increment_regen(sport: str, reason: str) -> None:
-    """Increment the REGENERATE decision counter.
-
-    Args:
-        sport: League code (e.g. "NBA", "NFL").
-        reason: Why regeneration was triggered — "coverage_fail" or "quality_fail".
-    """
-    _, counter, _, _, _ = _instruments()
-    counter.add(1, attributes={"sport": sport, "reason": reason})
-
-
-def increment_fallback(sport: str, reason: str = "max_regen_exceeded") -> None:
-    """Increment the FALLBACK decision counter (template substitution path)."""
-    _, _, counter, _, _ = _instruments()
-    counter.add(1, attributes={"sport": sport, "reason": reason})
 
 
 def increment_published(sport: str) -> None:
     """Increment the published-flow counter on successful FINALIZE_SUMMARY."""
-    _, _, _, counter, _ = _instruments()
+    _, counter, _ = _instruments()
     counter.add(1, attributes={"sport": sport})
 
 
@@ -146,5 +119,5 @@ def increment_score_mismatch(sport: str) -> None:
     Args:
         sport: League code (e.g. "NBA", "NFL").
     """
-    _, _, _, _, counter = _instruments()
+    _, _, counter = _instruments()
     counter.add(1, attributes={"sport": sport})

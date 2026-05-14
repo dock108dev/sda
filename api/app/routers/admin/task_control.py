@@ -326,7 +326,15 @@ async def get_session_health() -> SessionHealthResponse:
 
     try:
         data = json.loads(raw)
-    except Exception:
+    except json.JSONDecodeError:
+        # See docs/audits/error-handling-report.md §M4 — was broad `except Exception`
+        # with no log. The response already carries the failure mode but a
+        # persistent malformed snapshot indicates a writer bug worth a log line.
+        logger.warning(
+            "session_health_snapshot_malformed",
+            extra={"raw_length": len(raw) if raw else 0},
+            exc_info=True,
+        )
         return SessionHealthResponse(
             is_valid=False,
             circuit_open=circuit_open,
@@ -341,7 +349,10 @@ async def get_session_health() -> SessionHealthResponse:
             checked_at = datetime.fromisoformat(checked_at_str)
             age = (datetime.now(UTC) - checked_at).total_seconds()
             stale = age > _HEALTH_STALE_SECONDS
-        except Exception:
+        except (ValueError, TypeError):
+            # Narrowed from broad Exception. fromisoformat raises ValueError on
+            # malformed dates and TypeError on non-string input — anything else
+            # is a programmer bug and should surface.
             stale = True
 
     return SessionHealthResponse(
