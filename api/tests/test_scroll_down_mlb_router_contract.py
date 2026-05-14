@@ -8,7 +8,10 @@ service functions so router behavior is tested in isolation from the DB.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import datetime
+import sys
+from datetime import UTC
+from datetime import datetime as dt
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -16,8 +19,14 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+import app.scroll_down_mlb.router  # noqa: F401  — ensure submodule is loaded
 from app.db import get_db
 from app.scroll_down_mlb import service as sdm_service
+from app.scroll_down_mlb.arcade_pack_service import (
+    DailyPressurePack,
+    NoPressurePackAvailable,
+    PressureMoment,
+)
 from app.scroll_down_mlb.router import router as scroll_down_mlb_router
 from app.scroll_down_mlb.schemas import (
     DeckCardType,
@@ -26,6 +35,12 @@ from app.scroll_down_mlb.schemas import (
     ScrollDownMlbDeckResponse,
     ScrollDownMlbRecentResponse,
 )
+
+# The package's ``__init__`` rebinds ``app.scroll_down_mlb.router`` to the
+# APIRouter object, shadowing the submodule. Reach for the module via
+# ``sys.modules`` so monkeypatching ``today_et`` and ``build_daily_pressure_pack``
+# in tests actually targets the names the router calls at runtime.
+router_module = sys.modules["app.scroll_down_mlb.router"]
 
 
 def _build_client() -> TestClient:
@@ -42,7 +57,7 @@ def _stub_deck(game_id: str = "190203") -> ScrollDownMlbDeckResponse:
     return ScrollDownMlbDeckResponse(
         game_id=game_id,
         deck_version="stub-v0",
-        generated_at=datetime.now(timezone.utc),
+        generated_at=dt.now(UTC),
         is_final=False,
         cards=[
             ScrollDownMlbDeckCard(
@@ -267,3 +282,202 @@ def test_reveal_returns_409_when_not_available(monkeypatch: pytest.MonkeyPatch) 
     assert resp.status_code == 409
     body = resp.json()
     assert "detail" in body
+
+
+# ---------------------------------------------------------------------------
+# /pressure/today + /pressure/daily/{date}
+# ---------------------------------------------------------------------------
+
+
+def _make_pack(pack_date: datetime.date, *, count: int = 2) -> DailyPressurePack:
+    """Helper: build a small DailyPressurePack stub for route shape tests."""
+    moments = tuple(
+        PressureMoment(
+            game_id=100 + i,
+            play_index=10 + i,
+            rank=i + 1,
+            difficulty=80 - 5 * i,
+            tier="high",
+            card_payload={"id": f"card-{i}", "type": "play"},
+        )
+        for i in range(count)
+    )
+    return DailyPressurePack(pack_date=pack_date, moments=moments)
+
+
+def test_pressure_today_uses_yesterday_in_eastern_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`/today` must request yesterday's MLB calendar date — ET, not UTC.
+
+    Pin both ``today_et`` (used by the router) so the test is deterministic
+    regardless of when it runs.
+    """
+    fixed_today = datetime.date(2026, 5, 14)
+    expected_yesterday = datetime.date(2026, 5, 13)
+
+    seen_dates: list[datetime.date] = []
+
+    async def _builder(target_date: datetime.date, *_a: Any, **_kw: Any) -> DailyPressurePack:
+        seen_dates.append(target_date)
+        return _make_pack(target_date)
+
+    monkeypatch.setattr(router_module, "today_et", lambda: fixed_today)
+    monkeypatch.setattr(router_module, "build_daily_pressure_pack", _builder)
+
+    client = _build_client()
+    resp = client.get("/api/v1/scroll-down-mlb/pressure/today")
+
+    assert resp.status_code == 200
+    assert seen_dates == [expected_yesterday]
+    body = resp.json()
+    assert body["date"] == "2026-05-13"
+    assert isinstance(body["moments"], list)
+    assert body["moments"][0]["gameId"] == "100"
+    assert body["moments"][0]["rank"] == 1
+
+
+def test_pressure_today_returns_structured_404_when_no_pack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The 404 body must be flat ``{detail, date}`` so the client can
+    read the date without traversing a nested FastAPI error envelope."""
+    fixed_today = datetime.date(2026, 5, 14)
+
+    async def _raise(target_date: datetime.date, *_a: Any, **_kw: Any) -> DailyPressurePack:
+        raise NoPressurePackAvailable(target_date)
+
+    monkeypatch.setattr(router_module, "today_et", lambda: fixed_today)
+    monkeypatch.setattr(router_module, "build_daily_pressure_pack", _raise)
+
+    client = _build_client()
+    resp = client.get("/api/v1/scroll-down-mlb/pressure/today")
+
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body == {
+        "detail": "No pressure pack available for 2026-05-13",
+        "date": "2026-05-13",
+    }
+
+
+def test_pressure_daily_serves_explicit_date_pack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixed_today = datetime.date(2026, 5, 14)
+    target = datetime.date(2026, 5, 10)
+
+    captured: list[datetime.date] = []
+
+    async def _builder(target_date: datetime.date, *_a: Any, **_kw: Any) -> DailyPressurePack:
+        captured.append(target_date)
+        return _make_pack(target_date, count=1)
+
+    monkeypatch.setattr(router_module, "today_et", lambda: fixed_today)
+    monkeypatch.setattr(router_module, "build_daily_pressure_pack", _builder)
+
+    client = _build_client()
+    resp = client.get("/api/v1/scroll-down-mlb/pressure/daily/2026-05-10")
+
+    assert resp.status_code == 200
+    assert captured == [target]
+    body = resp.json()
+    assert body["date"] == "2026-05-10"
+    assert len(body["moments"]) == 1
+
+
+def test_pressure_daily_rejects_malformed_date_with_422(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`2026-5-1` is not strict ISO 8601 and must 422 with a clear message."""
+    monkeypatch.setattr(router_module, "today_et", lambda: datetime.date(2026, 5, 14))
+
+    client = _build_client()
+    # The 10-char path constraint catches `2026-5-1` (which is 8 chars)
+    # before the regex even runs — FastAPI returns 422 from path validation.
+    # We assert the API contract: malformed dates do not 200/500/404, they 422.
+    resp = client.get("/api/v1/scroll-down-mlb/pressure/daily/2026-5-1")
+    assert resp.status_code == 422
+
+
+def test_pressure_daily_rejects_non_iso_format_with_422(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Other 10-char strings that aren't `\\d{4}-\\d{2}-\\d{2}` must 422
+    via the in-handler regex gate (not 200, not 500)."""
+    monkeypatch.setattr(router_module, "today_et", lambda: datetime.date(2026, 5, 14))
+
+    client = _build_client()
+    resp = client.get("/api/v1/scroll-down-mlb/pressure/daily/2026.05.10")
+    assert resp.status_code == 422
+    body = resp.json()
+    assert "Invalid date format" in body["detail"]
+
+
+def test_pressure_daily_rejects_future_date_with_400(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixed_today = datetime.date(2026, 5, 14)
+    monkeypatch.setattr(router_module, "today_et", lambda: fixed_today)
+    # The builder should NOT be called for a future date.
+    builder_calls: list[Any] = []
+
+    async def _builder(*args: Any, **kwargs: Any) -> DailyPressurePack:
+        builder_calls.append((args, kwargs))
+        return _make_pack(datetime.date(2026, 5, 14))
+
+    monkeypatch.setattr(router_module, "build_daily_pressure_pack", _builder)
+
+    client = _build_client()
+    # Yesterday (in ET) is 2026-05-13; anything later must 400.
+    resp = client.get("/api/v1/scroll-down-mlb/pressure/daily/2026-05-14")
+    assert resp.status_code == 400
+    assert "No games have been played yet for 2026-05-14" in resp.json()["detail"]
+    assert builder_calls == []
+
+
+def test_pressure_daily_returns_structured_404_for_empty_pack(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixed_today = datetime.date(2026, 5, 14)
+    monkeypatch.setattr(router_module, "today_et", lambda: fixed_today)
+
+    async def _raise(target_date: datetime.date, *_a: Any, **_kw: Any) -> DailyPressurePack:
+        raise NoPressurePackAvailable(target_date)
+
+    monkeypatch.setattr(router_module, "build_daily_pressure_pack", _raise)
+
+    client = _build_client()
+    resp = client.get("/api/v1/scroll-down-mlb/pressure/daily/2026-05-10")
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body == {
+        "detail": "No pressure pack available for 2026-05-10",
+        "date": "2026-05-10",
+    }
+
+
+def test_pressure_response_uses_camel_case_keys_on_wire(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Wire shape must use camelCase (`gameId`, `playIndex`, `cardPayload`)."""
+    fixed_today = datetime.date(2026, 5, 14)
+
+    async def _builder(target_date: datetime.date, *_a: Any, **_kw: Any) -> DailyPressurePack:
+        return _make_pack(target_date, count=1)
+
+    monkeypatch.setattr(router_module, "today_et", lambda: fixed_today)
+    monkeypatch.setattr(router_module, "build_daily_pressure_pack", _builder)
+
+    client = _build_client()
+    body = client.get("/api/v1/scroll-down-mlb/pressure/today").json()
+    assert "date" in body
+    assert "moments" in body
+    moment = body["moments"][0]
+    assert "gameId" in moment
+    assert "playIndex" in moment
+    assert "cardPayload" in moment
+    # Snake-case wire keys would be a regression.
+    assert "game_id" not in moment
+    assert "play_index" not in moment
+    assert "card_payload" not in moment

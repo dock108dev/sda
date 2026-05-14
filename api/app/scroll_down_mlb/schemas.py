@@ -620,6 +620,54 @@ class ScrollDownMlbRevealResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Arcade daily pressure pack
+# ---------------------------------------------------------------------------
+
+
+class ArcadePressureTier(str, Enum):
+    """Coarse difficulty banding surfaced alongside the numeric score."""
+
+    low = "low"
+    medium = "medium"
+    high = "high"
+    extreme = "extreme"
+
+
+class ArcadePressureMomentResponse(BaseModel):
+    """One selected moment in the daily pressure pack.
+
+    The card payload is a raw passthrough of the deck builder's per-play
+    wire card so downstream renderers can derive batter/pitcher/situation
+    without a second backend hop. The arcade BFF maps it to the richer
+    arcade contract; the SDA endpoint stays a thin wrapper over the
+    selection service.
+    """
+
+    model_config = _CAMEL
+
+    game_id: str
+    play_index: int
+    rank: int
+    difficulty: int
+    tier: ArcadePressureTier
+    card_payload: dict[str, Any]
+
+
+class ArcadeDailyPressurePackResponse(BaseModel):
+    """Pack of high-leverage moments selected for a single MLB calendar date.
+
+    `date` is the MLB scheduling date (ET) the pack covers — for the
+    `/pressure/today` endpoint this is yesterday's date, since "today's
+    games" in arcade-speak means the games that finished overnight.
+    """
+
+    model_config = _CAMEL
+
+    date: date
+    moments: list[ArcadePressureMomentResponse] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
 # Internal/admin payloads (not exposed via public router yet)
 # ---------------------------------------------------------------------------
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,10 +86,22 @@ async def start_backtest(
         job.status = "queued"
         await db.flush()
     except Exception:
+        # Mirrors B8 in docs/audits/error-handling-report.md: dispatch failure used
+        # to return 200 + {"status": "submitted"} while job.status="failed", so the
+        # admin toast read "submitted" for a broker outage. Surface as 503 instead.
         logger.exception("Failed to dispatch backtest task job_id=%s", job.id)
         job.status = "failed"
         job.error_message = "Failed to dispatch task"
         await db.flush()
+        await db.refresh(job)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "status": "failed",
+                "reason": "Failed to dispatch backtest task to worker queue",
+                "job": _serialize_backtest_job(job),
+            },
+        )
 
     await db.refresh(job)
 

@@ -44,9 +44,14 @@ class StageStatusEnum(str, Enum):
 class StartPipelineRequest(BaseModel):
     """Request to start a new pipeline run for a game."""
 
+    # Match the ``pipeline_runs.triggered_by`` VARCHAR(20) column shape;
+    # see ``RunFullPipelineRequest.triggered_by`` for the full rationale.
     triggered_by: str = Field(
         default="admin",
         description="Who triggered the run: admin, manual, backfill, prod_auto",
+        min_length=1,
+        max_length=20,
+        pattern=r"^[A-Za-z0-9_-]+$",
     )
     auto_chain: bool | None = Field(
         default=None,
@@ -66,17 +71,31 @@ class StartPipelineRequest(BaseModel):
 class RerunPipelineRequest(BaseModel):
     """Request to re-run a pipeline for a game."""
 
+    # Match the ``pipeline_runs.triggered_by`` VARCHAR(20) column shape;
+    # see ``RunFullPipelineRequest.triggered_by`` for the full rationale.
     triggered_by: str = Field(
         default="admin",
         description="Who triggered the re-run",
+        min_length=1,
+        max_length=20,
+        pattern=r"^[A-Za-z0-9_-]+$",
     )
+    # ``execute_through_stage`` is coerced into the ``PipelineStage`` enum
+    # in ``rerun_pipeline``; on a miss the raw value is echoed in the 400
+    # body. Capped at 64 chars / identifier-charset so an oversized or
+    # control-character payload can't reach the error path.
     execute_through_stage: str | None = Field(
         default=None,
         description="Execute all stages up to and including this stage.",
+        max_length=64,
+        pattern=r"^[A-Za-z0-9_]+$",
     )
+    # Free-form audit note. Capped at 500 chars so a runaway admin input
+    # can't smuggle a huge blob into log fields / audit rows.
     reason: str | None = Field(
         default=None,
         description="Optional reason for re-running (for audit trail)",
+        max_length=500,
     )
 
     model_config = {
@@ -102,23 +121,19 @@ class ExecuteStageRequest(BaseModel):
 class RunFullPipelineRequest(BaseModel):
     """Request to run the complete pipeline."""
 
+    # ``triggered_by`` is persisted into ``pipeline_runs.triggered_by``, a
+    # ``VARCHAR(20)`` NOT NULL column. Bound length + charset at the request
+    # boundary so an oversized or oddly-shaped value fails Pydantic
+    # validation with 422 rather than producing a truncated row or a SQL
+    # exception that the generic 500 handler obscures. Restricted charset
+    # matches the documented canonical values ("admin", "manual", "prod_auto",
+    # "backfill") plus future-safe ASCII identifiers — see security-report.md.
     triggered_by: str = Field(
         default="admin",
         description="Who triggered the run",
-    )
-    regen_attempt: int = Field(
-        default=0,
-        description=(
-            "Legacy quality-gate regen counter. Retained for compatibility "
-            "with existing callers; not consumed by the v3-summary pipeline."
-        ),
-    )
-    failure_reasons: list[str] = Field(
-        default_factory=list,
-        description=(
-            "Legacy failure reasons list. Retained for compatibility with "
-            "existing callers; not consumed by the v3-summary pipeline."
-        ),
+        min_length=1,
+        max_length=20,
+        pattern=r"^[A-Za-z0-9_-]+$",
     )
 
 

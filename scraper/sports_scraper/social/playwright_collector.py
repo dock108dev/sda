@@ -200,7 +200,11 @@ class PlaywrightXCollector:
         try:
             from dateutil import parser
             return parser.isoparse(datetime_str)
-        except Exception:
+        except (ValueError, TypeError):
+            # See docs/audits/error-handling-report.md §L3. Narrowed from broad
+            # Exception. isoparse raises ValueError on malformed input and
+            # TypeError on non-string input; anything else (e.g. dateutil
+            # missing) is a deploy bug that should surface.
             return None
 
     def _scrape_once(  # pragma: no cover - requires browser

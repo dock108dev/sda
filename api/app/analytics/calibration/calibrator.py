@@ -117,8 +117,19 @@ class SimCalibrator:
         try:
             from app.analytics.models.core.artifact_signing import sign_artifact
             sign_artifact(path)
-        except (RuntimeError, Exception):
-            logger.warning("calibrator_signing_skipped", extra={"path": str(path)})
+        except (RuntimeError, FileNotFoundError, PermissionError, OSError):
+            # See docs/audits/error-handling-report.md §M3. The original
+            # `except (RuntimeError, Exception)` was Exception-equivalent and
+            # silently absorbed programmer bugs (renamed import, missing key
+            # config) as "signing skipped." Narrowed to the actual signing
+            # failure modes (missing signing key, FS errors) and bumped to ERROR
+            # with exc_info — unsigned artifacts are still usable but a persistent
+            # signing outage is an ops concern.
+            logger.error(
+                "calibrator_signing_failed",
+                extra={"path": str(path)},
+                exc_info=True,
+            )
         logger.info("calibrator_saved", extra={"path": str(path)})
 
     def load(self, path: str | Path) -> None:

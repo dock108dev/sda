@@ -70,9 +70,6 @@ class PipelineExecutor:
             session: Async database session
         """
         self.session = session
-        # Set by run_full_pipeline when dispatched via the quality gate regen path.
-        self._regen_attempt: int = 0
-        self._failure_reasons: list[str] = []
 
     async def start_pipeline(
         self,
@@ -219,13 +216,6 @@ class PipelineExecutor:
             "away_team_abbrev": game.away_team.abbreviation if game.away_team else "AWAY",
             "player_names": player_names,
         }
-        # Legacy regen context (v2-blocks pipeline). Retained as pass-through
-        # so existing callers' kwargs don't error; the v3-summary pipeline
-        # does not consume these.
-        if self._regen_attempt:
-            ctx["regen_attempt"] = self._regen_attempt
-        if self._failure_reasons:
-            ctx["grade_gate_failures"] = self._failure_reasons
         return ctx
 
     async def _resolve_league_code(self, game_id: int) -> str | None:
@@ -511,8 +501,6 @@ class PipelineExecutor:
         self,
         game_id: int,
         triggered_by: str = "prod_auto",
-        regen_attempt: int = 0,
-        failure_reasons: list[str] | None = None,
     ) -> GamePipelineRun:
         """Run the complete pipeline for a game.
 
@@ -522,16 +510,10 @@ class PipelineExecutor:
         Args:
             game_id: Game to process
             triggered_by: Who triggered the run
-            regen_attempt: Legacy parameter retained for caller compatibility;
-                not consumed by the v3-summary pipeline.
-            failure_reasons: Legacy parameter retained for caller compatibility;
-                not consumed by the v3-summary pipeline.
 
         Returns:
             Completed GamePipelineRun record
         """
-        self._regen_attempt = regen_attempt
-        self._failure_reasons = failure_reasons or []
         # Start pipeline
         run = await self.start_pipeline(game_id, triggered_by, auto_chain=True)
 

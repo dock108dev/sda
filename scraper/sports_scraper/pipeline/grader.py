@@ -33,6 +33,8 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+import redis
+
 from .grader_rules.generic_phrases import (
     GENERIC_PHRASE_WEIGHT,
 )
@@ -228,6 +230,41 @@ def _compute_prompt_hash(blocks: list[dict], game_data: dict) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
+# Rubric dimensions scored by both the Haiku and Sonnet Tier 2 prompts;
+# the per-prompt instructions above ask for these exact JSON keys.
+_TIER2_RUBRIC_DIMS: tuple[str, ...] = (
+    "factual_accuracy",
+    "sport_specific_voice",
+    "narrative_coherence",
+    "no_generic_filler",
+)
+
+
+def _strip_code_fence(text: str) -> str:
+    """Strip a leading Markdown ```lang fence and trailing backticks/whitespace."""
+    if text.startswith("```"):
+        return re.sub(r"^```[a-z]*\n?", "", text).rstrip("` \n")
+    return text
+
+
+def _parse_tier2_rubric_json(raw: str) -> tuple[float, dict[str, float]]:
+    """Parse cleaned rubric JSON into ``(score, rubric)``.
+
+    Each dimension is clamped to ``[0, 25]`` and the score is the rounded
+    sum. Raises ``json.JSONDecodeError``/``ValueError``/``KeyError``/
+    ``IndexError``/``TypeError`` on malformed responses; the Tier 2 callers
+    turn those into a neutral 50 + structured warning log.
+    """
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"expected JSON object, got {type(parsed).__name__}")
+    rubric = {
+        dim: float(min(max(parsed.get(dim, 0), 0), 25))
+        for dim in _TIER2_RUBRIC_DIMS
+    }
+    return round(sum(rubric.values()), 1), rubric
+
+
 # ── Tier 1 ────────────────────────────────────────────────────────────────────
 
 
@@ -397,6 +434,14 @@ def grade_tier2_cached(
 
     rubric: dict[str, float] = {}
     score = 0.0
+    raw = ""
+    # Split the SDK call from the response-parse so a bug in the parsing
+    # block (NameError, AttributeError on a renamed field, etc.) is not
+    # masked as an "LLM call failed". The outer catch stays broad because
+    # `anthropic` may be a mock module in tests (test_grader.py patches
+    # sys.modules and raises RuntimeError as `messages.create.side_effect`),
+    # and `anthropic.APIError` on a MagicMock is not a real exception class.
+    # See error-handling-report.md §R7′.
     try:
         client = anthropic.Anthropic()
         message = client.messages.create(
@@ -404,14 +449,6 @@ def grade_tier2_cached(
             max_tokens=256,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("` \n")
-        parsed = json.loads(raw)
-        dims = ["factual_accuracy", "sport_specific_voice", "narrative_coherence", "no_generic_filler"]
-        for dim in dims:
-            rubric[dim] = float(min(max(parsed.get(dim, 0), 0), 25))
-        score = round(sum(rubric.values()), 1)
     except Exception:
         logger.warning(
             "grader_t2_llm_call_failed",
@@ -421,6 +458,22 @@ def grade_tier2_cached(
         # Neutral score on LLM failure; pipeline is not blocked
         score = 50.0
         rubric = {}
+    else:
+        try:
+            raw = _strip_code_fence(message.content[0].text.strip())
+            score, rubric = _parse_tier2_rubric_json(raw)
+        except (json.JSONDecodeError, ValueError, KeyError, IndexError, TypeError):
+            logger.warning(
+                "grader_t2_llm_parse_failed",
+                exc_info=True,
+                extra={
+                    "flow_id": flow_id,
+                    "model": model,
+                    "raw_length": len(raw),
+                },
+            )
+            score = 50.0
+            rubric = {}
 
     result = TierTwoResult(score=score, rubric=rubric, cache_hit=False, model=model)
     try:
@@ -429,7 +482,12 @@ def grade_tier2_cached(
             TIER2_CACHE_TTL,
             json.dumps({"score": score, "rubric": rubric}),
         )
-    except Exception:
+    except redis.RedisError:
+        # Narrowed from `Exception` per error-handling-report.md §R7′ — a
+        # cache-write failure is by definition a Redis client error; any
+        # other exception (TypeError on json.dumps, etc.) should propagate
+        # because it signals a programming bug rather than a transient
+        # backing-store outage.
         logger.warning(
             "grader_t2_cache_write_failed",
             exc_info=True,
@@ -493,6 +551,11 @@ def grade_tier2_sonnet_cached(
 
     rubric: dict[str, float] = {}
     score = 0.0
+    raw = ""
+    # See error-handling-report.md §R7′ — same split-catch rationale as the
+    # Haiku path above. The SDK call stays broad (test stubs raise plain
+    # RuntimeError), the response-parse is narrowed so a parsing bug
+    # propagates instead of silently neutral-scoring.
     try:
         client = anthropic.Anthropic()
         message = client.messages.create(
@@ -500,14 +563,6 @@ def grade_tier2_sonnet_cached(
             max_tokens=512,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("` \n")
-        parsed = json.loads(raw)
-        dims = ["factual_accuracy", "sport_specific_voice", "narrative_coherence", "no_generic_filler"]
-        for dim in dims:
-            rubric[dim] = float(min(max(parsed.get(dim, 0), 0), 25))
-        score = round(sum(rubric.values()), 1)
     except Exception:
         logger.warning(
             "grader_t2s_llm_call_failed",
@@ -517,6 +572,22 @@ def grade_tier2_sonnet_cached(
         # Neutral score on LLM failure; pipeline is not blocked
         score = 50.0
         rubric = {}
+    else:
+        try:
+            raw = _strip_code_fence(message.content[0].text.strip())
+            score, rubric = _parse_tier2_rubric_json(raw)
+        except (json.JSONDecodeError, ValueError, KeyError, IndexError, TypeError):
+            logger.warning(
+                "grader_t2s_llm_parse_failed",
+                exc_info=True,
+                extra={
+                    "flow_id": flow_id,
+                    "model": SONNET_MODEL,
+                    "raw_length": len(raw),
+                },
+            )
+            score = 50.0
+            rubric = {}
 
     result = TierTwoResult(score=score, rubric=rubric, cache_hit=False, model=SONNET_MODEL)
     try:
@@ -525,7 +596,9 @@ def grade_tier2_sonnet_cached(
             TIER2_CACHE_TTL,
             json.dumps({"score": score, "rubric": rubric}),
         )
-    except Exception:
+    except redis.RedisError:
+        # Narrowed from `Exception` per error-handling-report.md §R7′ —
+        # same rationale as the Haiku cache-write block above.
         logger.warning(
             "grader_t2s_cache_write_failed",
             exc_info=True,

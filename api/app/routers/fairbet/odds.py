@@ -76,6 +76,14 @@ def _safe_game_load_options() -> tuple[Any, ...]:
             selectinload(FairbetGameOddsWork.game).selectinload(SportsGame.away_team),
         )
     except Exception:
+        # See docs/audits/error-handling-report.md §M6. SQLAlchemy raises
+        # InvalidRequestError / ArgumentError when mappers leak through in unit
+        # tests; we tolerate that but still log because the same fallback in
+        # prod silently degrades every odds query to N+1 lookups.
+        logger.warning(
+            "fairbet_eager_load_options_unavailable_falling_back_to_lazy",
+            exc_info=True,
+        )
         return ()
 
 
