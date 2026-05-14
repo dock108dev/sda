@@ -311,3 +311,24 @@ export type ScrollDownMlbRevealResponse = {
   gameFlow: unknown[];
   generatedAt?: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Arcade daily pressure pack
+// ---------------------------------------------------------------------------
+
+export type ArcadePressureTier = "low" | "medium" | "high" | "extreme";
+
+export type ArcadePressureMomentResponse = {
+  gameId: string;
+  playIndex: number;
+  rank: number;
+  difficulty: number;
+  tier: ArcadePressureTier;
+  cardPayload: Record<string, unknown>;
+};
+
+export type ArcadeDailyPressurePackResponse = {
+  /** MLB scheduling date (ET) covered by the pressure pack. */
+  date: string;
+  moments: ArcadePressureMomentResponse[];
+};
