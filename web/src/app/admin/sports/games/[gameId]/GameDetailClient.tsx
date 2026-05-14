@@ -13,6 +13,7 @@ import { SocialPostsSection } from "./SocialPostsSection";
 import { FlowSection } from "./FlowSection";
 import { OddsSection } from "./OddsSection";
 import { MLBAdvancedStatsSection } from "./MLBAdvancedStatsSection";
+import { ScrollDownMlbDebugSection } from "./ScrollDownMlbDebugSection";
 import { NBAAdvancedStatsSection } from "./NBAAdvancedStatsSection";
 import { NHLAdvancedStatsSection } from "./NHLAdvancedStatsSection";
 import { NFLAdvancedStatsSection } from "./NFLAdvancedStatsSection";
@@ -310,6 +311,12 @@ export default function GameDetailClient() {
               </div>
             );
           })()}
+        </CollapsibleSection>
+      )}
+
+      {g.leagueCode === "MLB" && (
+        <CollapsibleSection title="Scroll Down MLB Debug" defaultOpen={false}>
+          <ScrollDownMlbDebugSection gameId={g.id} />
         </CollapsibleSection>
       )}
 

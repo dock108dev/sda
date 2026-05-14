@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -254,6 +254,64 @@ class GameDetailResponse(BaseModel):
     data_health: NHLDataHealth | None = Field(None, alias="dataHealth")
     odds_table: list[dict[str, Any]] | None = Field(None, alias="oddsTable")
     stat_annotations: list[dict[str, Any]] | None = Field(None, alias="statAnnotations")
+
+
+class ScrollDownMlbAdminDebugFinding(BaseModel):
+    """Admin-only validation/debug finding for Scroll Down MLB deck inspection."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    code: str
+    severity: Literal["info", "warning", "error"]
+    message: str
+    play_id: str | None = Field(None, alias="playId")
+    scope: str | None = None
+
+
+class ScrollDownMlbAdminHalfInningDebug(BaseModel):
+    """Per-half-inning admin summary for Scroll Down MLB deck inspection."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    inning: int
+    half: Literal["top", "bottom"]
+    batting_team: str = Field(..., alias="battingTeam")
+    fielding_team: str = Field(..., alias="fieldingTeam")
+    event_count: int = Field(..., alias="eventCount")
+    selected_count: int = Field(..., alias="selectedCount")
+    scored_runs: int = Field(..., alias="scoredRuns")
+    had_activity: bool = Field(..., alias="hadActivity")
+    had_lead_change: bool = Field(..., alias="hadLeadChange")
+    had_tying: bool = Field(..., alias="hadTying")
+    min_play_index: int | None = Field(None, alias="minPlayIndex")
+    max_play_index: int | None = Field(None, alias="maxPlayIndex")
+    status: Literal["ok", "warning", "error"]
+    findings: list[ScrollDownMlbAdminDebugFinding] = Field(default_factory=list)
+
+
+class ScrollDownMlbAdminDebugResponse(BaseModel):
+    """Admin-only envelope for inspecting the current Scroll Down MLB deck."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    available: bool
+    status: Literal["available", "not_available", "blocked"]
+    reason: str | None = None
+    policy: Literal["live", "official"] | None = None
+    deck_version: str | None = Field(None, alias="deckVersion")
+    is_final: bool | None = Field(None, alias="isFinal")
+    card_count: int = Field(0, alias="cardCount")
+    last_play_index: int | None = Field(None, alias="lastPlayIndex")
+    half_inning_count: int = Field(0, alias="halfInningCount")
+    event_count: int = Field(0, alias="eventCount")
+    selected_event_count: int = Field(0, alias="selectedEventCount")
+    warnings: list[ScrollDownMlbAdminDebugFinding] = Field(default_factory=list)
+    errors: list[ScrollDownMlbAdminDebugFinding] = Field(default_factory=list)
+    half_innings: list[ScrollDownMlbAdminHalfInningDebug] = Field(
+        default_factory=list,
+        alias="halfInnings",
+    )
+    deck: dict[str, Any] | None = None
 
 
 class GamePreviewScoreResponse(BaseModel):

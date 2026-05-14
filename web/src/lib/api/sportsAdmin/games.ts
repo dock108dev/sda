@@ -1,5 +1,11 @@
 import { HttpError, request } from "./client";
-import type { AdminGameDetail, GameFilters, GameListResponse, JobResponse } from "./types";
+import type {
+  AdminGameDetail,
+  GameFilters,
+  GameListResponse,
+  JobResponse,
+  ScrollDownMlbDebugResponse,
+} from "./types";
 import type { FlowStatusResponse, GameSummaryResponse } from "./gameFlowTypes";
 
 export async function listGames(filters: GameFilters): Promise<GameListResponse> {
@@ -35,6 +41,16 @@ export async function fetchGame(gameId: number | string): Promise<AdminGameDetai
 
 export async function resyncGame(gameId: number): Promise<JobResponse> {
   return request(`/api/admin/sports/games/${gameId}/resync`, { method: "POST" });
+}
+
+export async function fetchScrollDownMlbDebug(
+  gameId: number | string,
+): Promise<ScrollDownMlbDebugResponse> {
+  const idStr = String(gameId);
+  if (!/^\d+$/.test(idStr)) {
+    throw new Error(`Invalid game id: ${idStr}`);
+  }
+  return request(`/api/admin/sports/games/${idStr}/scroll-down-mlb-debug`);
 }
 
 /**

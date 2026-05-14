@@ -35,6 +35,7 @@ from ...db.nhl_advanced import (
 )
 from ...db.social import TeamSocialPost
 from ...db.sports import (
+    GameStatus,
     SportsGame,
     SportsGamePlay,
     SportsPlayerBoxscore,
@@ -43,6 +44,13 @@ from ...db.sports import (
 from ...game_metadata.nuggets import generate_nugget
 from ...game_metadata.scoring import excitement_score, quality_score
 from ...game_metadata.services import RatingsService, StandingsService
+from ...scroll_down_mlb import service as scroll_down_mlb_service
+from ...scroll_down_mlb.data_source import load_game_payload as load_scroll_down_mlb_payload
+from ...scroll_down_mlb.schemas import (
+    GenerationPolicy,
+    ScrollDownMlbDeckResponse,
+    ValidationWarning,
+)
 from ...services.derived_metrics import compute_derived_metrics
 from ...services.game_status import compute_status_flags
 from ...services.odds_table import build_odds_table
@@ -85,11 +93,213 @@ from .schemas import (
     NHLGoalieStat,
     NHLSkaterStat,
     OddsEntry,
+    ScrollDownMlbAdminDebugFinding,
+    ScrollDownMlbAdminDebugResponse,
+    ScrollDownMlbAdminHalfInningDebug,
 )
 from .schemas.common import _score_obj
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _scroll_down_debug_finding(
+    *,
+    code: str,
+    severity: str,
+    message: str,
+    play_id: str | None = None,
+    scope: str | None = None,
+) -> ScrollDownMlbAdminDebugFinding:
+    return ScrollDownMlbAdminDebugFinding(
+        code=code,
+        severity=severity,  # type: ignore[arg-type]
+        message=message,
+        play_id=play_id,
+        scope=scope,
+    )
+
+
+def _builder_finding_to_admin(
+    finding: ValidationWarning,
+) -> ScrollDownMlbAdminDebugFinding:
+    return _scroll_down_debug_finding(
+        code=finding.code,
+        severity=finding.severity.value,
+        message=finding.message,
+        play_id=finding.play_id,
+        scope="deck",
+    )
+
+
+def _status_for_findings(
+    findings: list[ScrollDownMlbAdminDebugFinding],
+) -> str:
+    if any(f.severity == "error" for f in findings):
+        return "error"
+    if findings:
+        return "warning"
+    return "ok"
+
+
+def _half_inning_debug(
+    deck: ScrollDownMlbDeckResponse,
+) -> tuple[
+    list[ScrollDownMlbAdminHalfInningDebug],
+    list[ScrollDownMlbAdminDebugFinding],
+]:
+    """Validate half-inning containers and return admin summaries/findings."""
+    play_index_counts: dict[int, int] = {}
+    for container in deck.half_innings:
+        for event in container.events:
+            play_index_counts[event.play_index] = (
+                play_index_counts.get(event.play_index, 0) + 1
+            )
+
+    rows: list[ScrollDownMlbAdminHalfInningDebug] = []
+    all_findings: list[ScrollDownMlbAdminDebugFinding] = []
+    max_play_index: int | None = None
+
+    for container in deck.half_innings:
+        scope = f"{container.inning}:{container.half}"
+        event_indices = [event.play_index for event in container.events]
+        event_index_set = set(event_indices)
+        selected_index_set = set(container.selected_play_indices)
+        findings: list[ScrollDownMlbAdminDebugFinding] = []
+
+        if not container.events:
+            findings.append(
+                _scroll_down_debug_finding(
+                    code="empty_half_inning",
+                    severity="warning",
+                    message="Half-inning container has no events.",
+                    scope=scope,
+                )
+            )
+
+        for play_index in sorted(event_index_set):
+            if play_index_counts.get(play_index, 0) > 1:
+                findings.append(
+                    _scroll_down_debug_finding(
+                        code="duplicate_event_play_index",
+                        severity="error",
+                        message=f"playIndex {play_index} appears in multiple half-inning events.",
+                        play_id=str(play_index),
+                        scope=scope,
+                    )
+                )
+
+        for play_index in sorted(selected_index_set - event_index_set):
+            findings.append(
+                _scroll_down_debug_finding(
+                    code="selected_play_index_missing_event",
+                    severity="error",
+                    message=f"selectedPlayIndices contains {play_index}, but no event in this half has that playIndex.",
+                    play_id=str(play_index),
+                    scope=scope,
+                )
+            )
+
+        for event in container.events:
+            max_play_index = (
+                event.play_index
+                if max_play_index is None
+                else max(max_play_index, event.play_index)
+            )
+            selected_by_list = event.play_index in selected_index_set
+            if event.is_selected != selected_by_list:
+                findings.append(
+                    _scroll_down_debug_finding(
+                        code="event_selected_flag_mismatch",
+                        severity="error",
+                        message=(
+                            f"event.isSelected={event.is_selected} disagrees with "
+                            f"selectedPlayIndices membership for playIndex {event.play_index}."
+                        ),
+                        play_id=str(event.play_index),
+                        scope=scope,
+                    )
+                )
+            if not event.result.label.strip():
+                findings.append(
+                    _scroll_down_debug_finding(
+                        code="event_result_label_empty",
+                        severity="warning",
+                        message=f"Event {event.play_index} has an empty result label.",
+                        play_id=str(event.play_index),
+                        scope=scope,
+                    )
+                )
+
+        all_findings.extend(findings)
+        rows.append(
+            ScrollDownMlbAdminHalfInningDebug(
+                inning=container.inning,
+                half=container.half,
+                batting_team=container.batting_team.abbreviation,
+                fielding_team=container.fielding_team.abbreviation,
+                event_count=len(container.events),
+                selected_count=len(container.selected_play_indices),
+                scored_runs=container.meta.scored_runs,
+                had_activity=container.meta.had_activity,
+                had_lead_change=container.meta.had_lead_change,
+                had_tying=container.meta.had_tying,
+                min_play_index=min(event_indices) if event_indices else None,
+                max_play_index=max(event_indices) if event_indices else None,
+                status=_status_for_findings(findings),  # type: ignore[arg-type]
+                findings=findings,
+            )
+        )
+
+    if max_play_index is not None and deck.last_play_index != max_play_index:
+        all_findings.append(
+            _scroll_down_debug_finding(
+                code="deck_last_play_index_mismatch",
+                severity="warning",
+                message=(
+                    f"deck.lastPlayIndex is {deck.last_play_index}, but max "
+                    f"half-inning event playIndex is {max_play_index}."
+                ),
+                play_id=str(max_play_index),
+                scope="deck",
+            )
+        )
+
+    return rows, all_findings
+
+
+def _scroll_down_debug_response_from_deck(
+    *,
+    deck: ScrollDownMlbDeckResponse,
+    builder_warnings: list[ValidationWarning] | None = None,
+    builder_errors: list[ValidationWarning] | None = None,
+) -> ScrollDownMlbAdminDebugResponse:
+    half_innings, half_findings = _half_inning_debug(deck)
+    warnings = [
+        _builder_finding_to_admin(w) for w in (builder_warnings or deck.validation_warnings)
+    ]
+    errors = [_builder_finding_to_admin(e) for e in (builder_errors or [])]
+    warnings.extend(f for f in half_findings if f.severity != "error")
+    errors.extend(f for f in half_findings if f.severity == "error")
+    event_count = sum(row.event_count for row in half_innings)
+    selected_event_count = sum(row.selected_count for row in half_innings)
+    return ScrollDownMlbAdminDebugResponse(
+        available=True,
+        status="available",
+        reason=None,
+        policy="official" if deck.is_final else "live",
+        deck_version=deck.deck_version,
+        is_final=deck.is_final,
+        card_count=len(deck.cards),
+        last_play_index=deck.last_play_index,
+        half_inning_count=len(half_innings),
+        event_count=event_count,
+        selected_event_count=selected_event_count,
+        warnings=warnings,
+        errors=errors,
+        half_innings=half_innings,
+        deck=deck.model_dump(mode="json", by_alias=True),
+    )
 
 
 @router.get("/games/{game_id}/preview-score", response_model=GamePreviewScoreResponse)
@@ -148,6 +358,83 @@ async def get_game_preview_score(
         nugget=generate_nugget(context, tags),
     )
     return preview
+
+
+@router.get(
+    "/games/{game_id}/scroll-down-mlb-debug",
+    response_model=ScrollDownMlbAdminDebugResponse,
+    response_model_by_alias=True,
+)
+async def get_game_scroll_down_mlb_debug(
+    game_id: int,
+    session: AsyncSession = Depends(get_db),
+) -> ScrollDownMlbAdminDebugResponse:
+    """Admin-only view of the current Scroll Down MLB deck/debug state."""
+    result = await session.execute(
+        select(SportsGame)
+        .options(selectinload(SportsGame.league))
+        .where(SportsGame.id == game_id)
+    )
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
+
+    league_code = game.league.code if game.league else None
+    if (league_code or "").lower() != "mlb":
+        return ScrollDownMlbAdminDebugResponse(
+            available=False,
+            status="not_available",
+            reason="Scroll Down MLB debug is only available for MLB games.",
+        )
+
+    if (game.status or "").lower() in ("scheduled", "pregame"):
+        return ScrollDownMlbAdminDebugResponse(
+            available=False,
+            status="not_available",
+            reason="Scroll Down MLB deck is not available before first pitch.",
+            policy="live",
+        )
+
+    deck = await scroll_down_mlb_service.get_game_deck(session, str(game_id))
+    if deck is not None:
+        return _scroll_down_debug_response_from_deck(deck=deck)
+
+    payload = await load_scroll_down_mlb_payload(session, game_id)
+    if payload is None:
+        return ScrollDownMlbAdminDebugResponse(
+            available=False,
+            status="not_available",
+            reason="No Scroll Down MLB source payload is available for this game.",
+        )
+
+    policy = (
+        GenerationPolicy.official
+        if GameStatus.is_final_or_post_final_status(game.status)
+        else GenerationPolicy.live
+    )
+    outcome = scroll_down_mlb_service.build_deck_from_upstream(
+        payload,
+        policy=policy,
+    )
+    if outcome.deck is not None:
+        return _scroll_down_debug_response_from_deck(
+            deck=outcome.deck,
+            builder_warnings=outcome.warnings,
+            builder_errors=outcome.errors,
+        )
+
+    return ScrollDownMlbAdminDebugResponse(
+        available=False,
+        status="blocked" if outcome.blocked else "not_available",
+        reason=(
+            "Scroll Down MLB deck generation is blocked by validation errors."
+            if outcome.blocked
+            else "Scroll Down MLB deck generation did not produce a deck."
+        ),
+        policy=policy.value,
+        warnings=[_builder_finding_to_admin(w) for w in outcome.warnings],
+        errors=[_builder_finding_to_admin(e) for e in outcome.errors],
+    )
 
 
 @router.get("/games/{game_id}", response_model=GameDetailResponse)

@@ -36,6 +36,9 @@ from .games import (
     GamePreviewScoreResponse,
     GameSummary,
     JobResponse,
+    ScrollDownMlbAdminDebugFinding,
+    ScrollDownMlbAdminDebugResponse,
+    ScrollDownMlbAdminHalfInningDebug,
 )
 from .mlb_advanced import (
     MLBAdvancedPlayerStats,
@@ -92,6 +95,9 @@ __all__ = [
     "GamePreviewScoreResponse",
     "GameSummary",
     "JobResponse",
+    "ScrollDownMlbAdminDebugFinding",
+    "ScrollDownMlbAdminDebugResponse",
+    "ScrollDownMlbAdminHalfInningDebug",
     # mlb_advanced
     "MLBAdvancedPlayerStats",
     "MLBAdvancedTeamStats",

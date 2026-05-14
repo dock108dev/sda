@@ -477,6 +477,49 @@ export type TieredPlayGroup = {
   summaryLabel: string;
 };
 
+export type ScrollDownMlbDebugFinding = {
+  code: string;
+  severity: "info" | "warning" | "error";
+  message: string;
+  playId: string | null;
+  scope: string | null;
+};
+
+export type ScrollDownMlbHalfInningDebug = {
+  inning: number;
+  half: "top" | "bottom";
+  battingTeam: string;
+  fieldingTeam: string;
+  eventCount: number;
+  selectedCount: number;
+  scoredRuns: number;
+  hadActivity: boolean;
+  hadLeadChange: boolean;
+  hadTying: boolean;
+  minPlayIndex: number | null;
+  maxPlayIndex: number | null;
+  status: "ok" | "warning" | "error";
+  findings: ScrollDownMlbDebugFinding[];
+};
+
+export type ScrollDownMlbDebugResponse = {
+  available: boolean;
+  status: "available" | "not_available" | "blocked";
+  reason: string | null;
+  policy: "live" | "official" | null;
+  deckVersion: string | null;
+  isFinal: boolean | null;
+  cardCount: number;
+  lastPlayIndex: number | null;
+  halfInningCount: number;
+  eventCount: number;
+  selectedEventCount: number;
+  warnings: ScrollDownMlbDebugFinding[];
+  errors: ScrollDownMlbDebugFinding[];
+  halfInnings: ScrollDownMlbHalfInningDebug[];
+  deck: Record<string, unknown> | null;
+};
+
 export type AdminGameDetail = {
   game: {
     id: number;
