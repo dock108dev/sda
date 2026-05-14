@@ -306,6 +306,26 @@ def test_score_change_default_is_zero_zero_for_non_scoring_play() -> None:
     assert dumped["scoreChange"] == {"home": 0, "away": 0}
 
 
+def test_half_inning_event_result_defaults_for_partial_legacy_data() -> None:
+    """Partial half-inning data should not fail DTO construction when result is absent."""
+    from app.scroll_down_mlb.schemas import HalfInningEvent
+
+    event = HalfInningEvent(sequence=1, play_index=1)
+
+    dumped = event.model_dump(by_alias=True)
+    assert dumped["result"] == {
+        "label": "",
+        "description": "",
+        "eventType": None,
+        "isOut": False,
+        "isStrikeout": False,
+        "isWalk": False,
+        "isHit": False,
+        "isScoringPlay": False,
+        "isInningEnding": False,
+    }
+
+
 def test_score_change_reflects_per_team_delta_for_scoring_play() -> None:
     """A scoring play attributes the run delta to the batting team —
     home delta when bottom inning, away delta when top inning."""

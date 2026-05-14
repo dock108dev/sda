@@ -26,9 +26,44 @@ logger = logging.getLogger(__name__)
 _MAX_RETRIES = 3
 
 
+class NonRetryableWebhookError(Exception):
+    """Failure that should be dead-lettered without another Celery retry."""
+
+
+class WebhookPayloadParseError(NonRetryableWebhookError):
+    """Stored Stripe webhook payload could not be parsed into a valid event."""
+
+
+def _stripe_error_types() -> tuple[type[BaseException], ...]:
+    stripe_error_module = getattr(stripe, "error", None)
+    candidates = (
+        getattr(stripe, "StripeError", None),
+        getattr(stripe_error_module, "StripeError", None),
+        getattr(stripe, "SignatureVerificationError", None),
+        getattr(stripe_error_module, "SignatureVerificationError", None),
+    )
+    error_types: list[type[BaseException]] = []
+    for candidate in candidates:
+        if isinstance(candidate, type) and candidate not in error_types:
+            error_types.append(candidate)
+    return tuple(error_types)
+
+
+_PAYLOAD_PARSE_ERROR_TYPES = (
+    json.JSONDecodeError,
+    ValueError,
+    TypeError,
+    AttributeError,
+    KeyError,
+    *_stripe_error_types(),
+)
+
+
 def _parse_stripe_event(payload: str) -> Any:
     """Deserialise a Stripe event from its JSON payload without re-verifying the signature."""
     return stripe.Event.construct_from(json.loads(payload), key=None)
+
+
 _BACKOFF_BASE_SECONDS = 60  # countdown = base * 2^retry_index  (60s, 120s, 240s)
 
 
@@ -60,7 +95,7 @@ def process_stripe_webhook_event(self, event_id: str, payload: str) -> dict:
     if exc is None:
         return {"status": "ok", "event_id": event_id}
 
-    if is_last:
+    if is_last or isinstance(exc, NonRetryableWebhookError):
         stripe_webhook_dead_letter_total.inc()
         logger.error(
             "webhook_dead_letter",
@@ -103,15 +138,19 @@ async def _run_and_record(
         # the synchronous route already verified the signature before enqueueing).
         try:
             event = _parse_stripe_event(payload)
-        except (json.JSONDecodeError, ValueError, TypeError) as parse_exc:
+            event_type: str = event.type
+            if not event_type:
+                raise ValueError("Stripe event payload is missing type")
+        except _PAYLOAD_PARSE_ERROR_TYPES as parse_exc:
             # Malformed payload — no retry will fix it; dead-letter immediately.
             logger.error(
                 "webhook_payload_parse_error",
                 extra={"event_id": event_id, "error": str(parse_exc)},
             )
-            return parse_exc
+            error = WebhookPayloadParseError(str(parse_exc))
+            error.__cause__ = parse_exc
+            return error
 
-        event_type: str = event.type
         handler = _HANDLERS.get(event_type)
         if handler is None:
             logger.debug(

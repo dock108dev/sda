@@ -17,7 +17,7 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, Query, Request
-from starlette.responses import StreamingResponse
+from starlette.responses import JSONResponse, Response, StreamingResponse
 
 from .auth import verify_sse_api_key
 from .manager import SSEConnection, realtime_manager
@@ -37,7 +37,7 @@ async def sse_endpoint(
     last_seq: int | None = Query(default=None, alias="lastSeq"),
     last_epoch: str | None = Query(default=None, alias="lastEpoch"),
     _auth: None = Depends(verify_sse_api_key),
-) -> StreamingResponse:
+) -> Response:
     """SSE realtime endpoint.
 
     Streams JSON events as `data:` lines. Sends keepalive comments every 15s.
@@ -54,20 +54,16 @@ async def sse_endpoint(
     # excess channels, but failing fast here makes resource-exhaustion attempts
     # (huge ?channels= lists) visible as 400s instead of partial successes.
     if len(channel_list) > MAX_CHANNELS_PER_CONNECTION:
-        return StreamingResponse(
-            iter([
-                "data: {\"type\":\"error\",\"message\":\"Too many channels\"}\n\n",
-            ]),
-            media_type="text/event-stream",
+        return JSONResponse(
+            {"type": "error", "message": "Too many channels"},
             status_code=400,
         )
 
     # Validate channels upfront
     valid = [ch for ch in channel_list if is_valid_channel(ch)]
     if not valid:
-        return StreamingResponse(
-            iter(["data: {\"type\":\"error\",\"message\":\"No valid channels\"}\n\n"]),
-            media_type="text/event-stream",
+        return JSONResponse(
+            {"type": "error", "message": "No valid channels"},
             status_code=400,
         )
 

@@ -14,7 +14,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from celery.exceptions import Retry
+import stripe
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -135,6 +135,27 @@ class TestProcessStripeWebhookEventTask:
         log_extra = mock_logger.error.call_args.kwargs["extra"]
         assert log_extra["event"] == "webhook_dead_letter"
         assert log_extra["event_id"] == "evt_dl"
+
+    def test_non_retryable_failure_dead_letters_immediately(self) -> None:
+        from app.tasks.webhook_retry import WebhookPayloadParseError
+
+        exc = WebhookPayloadParseError("malformed payload")
+
+        with (
+            patch("asyncio.new_event_loop") as mock_loop_factory,
+            patch("app.tasks.webhook_retry.logger") as mock_logger,
+        ):
+            loop = MagicMock()
+            loop.run_until_complete = MagicMock(side_effect=lambda c: (c.close(), exc)[1])
+            mock_loop_factory.return_value = loop
+
+            result = _call_task("evt_bad_payload", "{", retries=0)
+
+        assert result["status"] == "dead_letter"
+        assert result["event_id"] == "evt_bad_payload"
+        extra = mock_logger.error.call_args.kwargs["extra"]
+        assert extra["event"] == "webhook_dead_letter"
+        assert extra["attempts"] == 1
 
     def test_dead_letter_log_includes_attempt_count(self) -> None:
         exc = RuntimeError("db crash")
@@ -272,6 +293,38 @@ class TestRunAndRecord:
             result = self._run(_run_and_record("evt_fail", _CHECKOUT_PAYLOAD, 1, False))
 
         assert result is handler_exc
+
+    def test_stripe_parse_error_is_non_retryable(self) -> None:
+        from app.tasks.webhook_retry import WebhookPayloadParseError, _run_and_record
+
+        db = self._make_db(already_processed=False)
+        parse_exc = stripe.error.StripeError("bad stripe event")
+
+        with (
+            patch("app.tasks.webhook_retry._task_db", return_value=self._task_db_ctx(db)),
+            patch("app.tasks.webhook_retry._parse_stripe_event", side_effect=parse_exc),
+            patch("app.tasks.webhook_retry.logger"),
+        ):
+            result = self._run(_run_and_record("evt_bad_stripe", _CHECKOUT_PAYLOAD, 1, False))
+
+        assert isinstance(result, WebhookPayloadParseError)
+        assert result.__cause__ is parse_exc
+
+    def test_missing_event_type_is_non_retryable(self) -> None:
+        from app.tasks.webhook_retry import WebhookPayloadParseError, _run_and_record
+
+        db = self._make_db(already_processed=False)
+        mock_event = MagicMock()
+        mock_event.type = None
+
+        with (
+            patch("app.tasks.webhook_retry._task_db", return_value=self._task_db_ctx(db)),
+            patch("app.tasks.webhook_retry._parse_stripe_event", return_value=mock_event),
+            patch("app.tasks.webhook_retry.logger"),
+        ):
+            result = self._run(_run_and_record("evt_no_type", _CHECKOUT_PAYLOAD, 1, False))
+
+        assert isinstance(result, WebhookPayloadParseError)
 
     def test_dead_letter_flag_set_on_last_attempt(self) -> None:
         from app.tasks.webhook_retry import _run_and_record

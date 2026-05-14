@@ -259,6 +259,10 @@ class ScrollDownEventResult(BaseModel):
     is_inning_ending: bool = False
 
 
+def _empty_event_result() -> ScrollDownEventResult:
+    return ScrollDownEventResult(label="", description="")
+
+
 class ScrollDownEventMatchup(BaseModel):
     """Batter/pitcher at the start of the event. Spoiler-safe.
 
@@ -488,7 +492,7 @@ class HalfInningEvent(BaseModel):
     # the animation profile, not a movement record).
     movements: list[BaseMovement] = Field(default_factory=list)
     reveal_type: Literal["pitch", "plate_appearance", "play"] = "play"
-    result: ScrollDownEventResult
+    result: ScrollDownEventResult = Field(default_factory=_empty_event_result)
     matchup: ScrollDownEventMatchup = Field(default_factory=ScrollDownEventMatchup)
     is_selected: bool = False
 
