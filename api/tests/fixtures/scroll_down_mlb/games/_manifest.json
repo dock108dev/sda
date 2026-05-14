@@ -16,7 +16,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": false,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190123",
@@ -35,7 +42,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": false,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190124",
@@ -54,7 +68,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": true,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190125",
@@ -80,7 +101,14 @@
     "reviewNotes": [
       "High-action game \u2014 pacing should not feel rushed despite many displayed plays",
       "Lead changes should each get a transition since they're the spine of the game"
-    ]
+    ],
+    "hasDouble": true,
+    "hasTriple": true,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": true,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190126",
@@ -99,7 +127,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": false,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190127",
@@ -118,7 +153,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190128",
@@ -137,7 +179,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": false,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": true,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190129",
@@ -156,7 +205,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190130",
@@ -175,7 +231,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": true,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190136",
@@ -194,7 +257,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190137",
@@ -222,7 +292,14 @@
       "Should feel like a pitcher's duel \u2014 quiet stretches earn their place",
       "Late-game beat must read as pressure, not interruption",
       "The lone scoring play must land as 'this was the game'"
-    ]
+    ],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190138",
@@ -248,7 +325,14 @@
     "reviewNotes": [
       "A blowout should compress quickly \u2014 no late-game card",
       "Quiet stretches between scoring innings are appropriate"
-    ]
+    ],
+    "hasDouble": true,
+    "hasTriple": true,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": true,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190141",
@@ -267,7 +351,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190143",
@@ -286,7 +377,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": true,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190144",
@@ -305,7 +403,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190147",
@@ -324,7 +429,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": false,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190150",
@@ -343,7 +455,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": true,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190153",
@@ -362,7 +481,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": false,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": false,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190156",
@@ -381,7 +507,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190162",
@@ -400,7 +533,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": false,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190168",
@@ -419,7 +559,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190169",
@@ -438,7 +585,14 @@
     "hasTriplePlay": false,
     "hasCatcherInterference": false,
     "expectedFeel": null,
-    "reviewNotes": []
+    "reviewNotes": [],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": false,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   },
   {
     "id": "190174",
@@ -466,6 +620,39 @@
       "Lead changes should each read as a punch",
       "Extra innings need extra breathing room",
       "Final play should land with payoff"
-    ]
+    ],
+    "hasDouble": true,
+    "hasTriple": false,
+    "hasHomeRun": true,
+    "hasDoublePlay": true,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
+  },
+  {
+    "id": "999125",
+    "category": "live_partial_inning",
+    "final": null,
+    "totalRuns": 7,
+    "margin": 1,
+    "leadChanges": 0,
+    "lastLeadChangeInning": 0,
+    "finalWinnerTrailed": false,
+    "inningsPlayed": 5,
+    "playsTotal": 45,
+    "hasTriplePlay": false,
+    "hasCatcherInterference": false,
+    "isLive": true,
+    "expectedFeel": null,
+    "reviewNotes": [
+      "Synthetic \u2014 derived from 190125 by truncation at play 50044 to cover the open-container path of _group_into_containers (live game, non-zero outs, no inning-end signal)."
+    ],
+    "hasDouble": true,
+    "hasTriple": true,
+    "hasHomeRun": true,
+    "hasDoublePlay": false,
+    "hasPitchingChange": false,
+    "hasBasesLoadedWalk": false,
+    "hasRunnersStayingPut": true
   }
 ]

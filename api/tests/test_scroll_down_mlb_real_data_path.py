@@ -23,8 +23,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.scroll_down_mlb import persistence, service
-from app.scroll_down_mlb._pipeline import _source_hash
+from app.scroll_down_mlb._pipeline import (
+    _source_hash,
+    compute_deck_version_from_components,
+)
 from app.scroll_down_mlb.schemas import (
+    GenerationPolicy,
     PlannerReport,
     ScrollDownMlbDeckResponse,
 )
@@ -295,3 +299,40 @@ def test_source_hash_changes_when_status_transitions_to_final() -> None:
     payload_b = _load_fixture_payload("190121")
     payload_b["game"]["status"] = "final"
     assert _source_hash(payload_a) != _source_hash(payload_b)
+
+
+def test_source_hash_changes_when_last_ingested_at_advances() -> None:
+    """Retroactive upstream edits (the half-inning-sealing hazard from the
+    polling research) re-emit existing plays with a fresh `lastIngestedAt`
+    even when play count and indices are unchanged. The hash must catch
+    that so a sealed-container update isn't silently 304'd."""
+    payload_a = _load_fixture_payload("190121", is_final=False)
+    payload_b = _load_fixture_payload("190121", is_final=False)
+    payload_a["game"]["lastIngestedAt"] = "2026-05-14T18:00:00+00:00"
+    payload_b["game"]["lastIngestedAt"] = "2026-05-14T18:00:05+00:00"
+    assert _source_hash(payload_a) != _source_hash(payload_b)
+
+
+def test_compute_deck_version_from_components_matches_payload_path() -> None:
+    """The metadata-only stamp must equal what `build_deck_from_upstream`
+    writes onto a live deck for the same upstream snapshot — otherwise the
+    304 short-circuit would fire on a stale version mismatch."""
+    payload = _load_fixture_payload("190121", is_final=False)
+    game = payload["game"]
+    plays = payload["plays"]
+    last_play_index = max(
+        (int(p.get("playIndex", 0)) for p in plays), default=None
+    )
+    components_version = compute_deck_version_from_components(
+        policy=GenerationPolicy.live,
+        game_id=game.get("id"),
+        status=game.get("status"),
+        play_count=len(plays),
+        last_play_index=last_play_index,
+        home_score=game.get("homeScore"),
+        away_score=game.get("awayScore"),
+        last_play_at=game.get("lastPlayAt"),
+        last_ingested_at=game.get("lastIngestedAt"),
+    )
+    payload_version = f"live-{_source_hash(payload)}"
+    assert components_version == payload_version

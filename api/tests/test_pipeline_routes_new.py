@@ -127,9 +127,10 @@ class TestCreateExperimentSuite:
             "model_type": "plate_appearance",
             "parameter_grid": {},
         })
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["status"] == "submitted"
+        assert resp.status_code == 503
+        detail = resp.json()["detail"]
+        assert detail["error"] == "experiment_dispatch_failed"
+        assert detail["suite_id"] == 1
 
 
 class TestListExperimentSuites:

@@ -183,27 +183,72 @@ def _walk_keys(node: Any) -> Iterable[str]:
             yield from _walk_keys(v)
 
 
+def _find_situation_after_score_paths(
+    node: Any, path: str = "$"
+) -> Iterable[str]:
+    """Locate any non-null `situationAfter.score` value anywhere in the tree.
+
+    The post-play snapshot must never carry a cumulative score: on the
+    final play of a completed game it would equal the final score and
+    break the pre-reveal contract. The `GameSituationAfter` schema makes
+    this a structural impossibility, but this path-aware walker is a
+    defense-in-depth check against future schema drift (e.g. a permissive
+    `dict[str, Any]` field, an alias collision, or a manual response
+    construction that bypasses the typed model).
+    """
+    if isinstance(node, dict):
+        sa = node.get("situationAfter") or node.get("situation_after")
+        if isinstance(sa, dict):
+            score = sa.get("score")
+            if score is not None:
+                yield f"{path}.situationAfter.score"
+        for key, value in node.items():
+            yield from _find_situation_after_score_paths(value, f"{path}.{key}")
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            yield from _find_situation_after_score_paths(item, f"{path}[{index}]")
+
+
 def validate_no_final_score_leak(payload: dict[str, Any]) -> list[ValidationWarning]:
     """Last-mile sanity check: scan the serialized DTO for forbidden keys.
 
     Belt-and-suspenders against a future PR adding a "convenience" final-score
-    field to the deck schema.
+    field to the deck schema. Combines a flat key-name check with a path-
+    aware walk for the nested `situationAfter.score` leak introduced by
+    unified `GameSituation` snapshots.
     """
+    findings: list[ValidationWarning] = []
+
     keys = set(_walk_keys(payload))
     leaked = keys & _FORBIDDEN_PRE_REVEAL_KEYS
-    if not leaked:
-        return []
-    return [
-        ValidationWarning(
-            code="final_score_leak_in_pre_reveal",
-            severity=ValidationSeverity.error,
-            message=(
-                f"{_ERROR_MESSAGES['final_score_leak_in_pre_reveal']} "
-                f"Leaked keys: {sorted(leaked)}"
-            ),
-            play_id=None,
+    if leaked:
+        findings.append(
+            ValidationWarning(
+                code="final_score_leak_in_pre_reveal",
+                severity=ValidationSeverity.error,
+                message=(
+                    f"{_ERROR_MESSAGES['final_score_leak_in_pre_reveal']} "
+                    f"Leaked keys: {sorted(leaked)}"
+                ),
+                play_id=None,
+            )
         )
-    ]
+
+    nested_paths = sorted(set(_find_situation_after_score_paths(payload)))
+    if nested_paths:
+        findings.append(
+            ValidationWarning(
+                code="final_score_leak_in_pre_reveal",
+                severity=ValidationSeverity.error,
+                message=(
+                    f"{_ERROR_MESSAGES['final_score_leak_in_pre_reveal']} "
+                    f"Forbidden situationAfter.score at: {nested_paths}"
+                ),
+                play_id=None,
+            )
+        )
+
+    return findings
 
 
 def warning_catalog() -> dict[str, str]:

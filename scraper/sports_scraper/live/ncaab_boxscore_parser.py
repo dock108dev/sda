@@ -13,13 +13,13 @@ from ..models import (
     TeamIdentity,
 )
 from ..utils.datetime_utils import now_utc
+from ..utils.math import parse_minutes
 from ..utils.parsing import parse_int
 from .ncaab_helpers import (
     build_team_identity,
     extract_points,
     extract_shooting_stat,
     extract_total,
-    parse_minutes,
 )
 from .ncaab_models import NCAABBoxscore
 

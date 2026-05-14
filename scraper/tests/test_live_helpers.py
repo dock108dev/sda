@@ -28,8 +28,8 @@ os.environ.setdefault("ENVIRONMENT", "development")
 from sports_scraper.live.ncaab_helpers import (
     build_team_identity,
     extract_points,
-    parse_minutes,
 )
+from sports_scraper.utils.math import parse_minutes
 
 
 class TestBuildTeamIdentity:

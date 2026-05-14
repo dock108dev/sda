@@ -33,14 +33,26 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
     // browser fetch to /api/v1/games/{id} silently 401s.
     try {
       const res = await fetch(`${getApiBase()}/api/v1/games/${gameId}`);
-      if (!res.ok || !mountedRef.current) return;
+      if (!res.ok || !mountedRef.current) {
+        if (res && !res.ok) {
+          console.warn(
+            `[useLiveGameScore] initial state fetch returned ${res.status} for game ${gameId}; SSE will retry on reconnect`,
+          );
+        }
+        return;
+      }
       const data = await res.json();
       if (!mountedRef.current) return;
       if (data.score != null) setScore(data.score as ScoreObject);
       if (data.clock != null) setClock(data.clock as string);
       if (data.status != null) setStatus(data.status as GameStatus);
-    } catch {
+    } catch (err) {
       // Initial-state fetch failed; SSE may still recover on reconnect.
+      // Log so persistent failures are visible in browser consoles / Sentry.
+      console.warn(
+        `[useLiveGameScore] initial state fetch failed for game ${gameId}`,
+        err,
+      );
     }
   }, [gameId]);
 
@@ -74,7 +86,15 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
       let data: LiveGameEvent;
       try {
         data = JSON.parse(event.data as string) as LiveGameEvent;
-      } catch {
+      } catch (parseErr) {
+        // Malformed SSE message — usually a partial frame on reconnect.
+        // Log so persistent server-side encoding bugs are visible; do not
+        // close the stream over a single bad frame.
+        // See docs/audits/error-handling-report.md §F1.
+        console.warn(
+          `[useLiveGameScore] dropped malformed SSE message for game ${gameId}`,
+          parseErr,
+        );
         return;
       }
 

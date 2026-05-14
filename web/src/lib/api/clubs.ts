@@ -1,6 +1,6 @@
 /** API client functions for public club endpoints. */
 
-import { request } from "./sportsAdmin/client";
+import { HttpError, request } from "./sportsAdmin/client";
 
 export interface ActivePool {
   pool_id: number;
@@ -36,7 +36,7 @@ export async function fetchClubBySlug(slug: string): Promise<ClubPublic> {
   try {
     return await request<ClubPublic>(`/api/v1/clubs/${encodeURIComponent(slug)}`);
   } catch (err) {
-    if (err instanceof Error && err.message.includes("(404)")) {
+    if (err instanceof HttpError && err.status === 404) {
       throw new ClubNotFoundError(slug);
     }
     throw err;

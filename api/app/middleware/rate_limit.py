@@ -146,9 +146,14 @@ class RateLimitMiddleware:
                     skip_memory_auth = True
                 except Exception:
                     rate_limit_redis_fallback_total.labels("auth_strict").inc()
-                    # Log only static fields: path/request data and exception objects are
-                    # treated as potentially credential-bearing by security scanners.
-                    logger.warning(
+                    # Auth-strict shares limits across replicas via Redis;
+                    # falling back to per-replica in-memory counters means an
+                    # attacker can multiply their budget by the replica count.
+                    # Log at ERROR so a Redis outage pages on-call. Static
+                    # fields only: path/request data and exception objects are
+                    # treated as potentially credential-bearing by scanners.
+                    # See docs/audits/error-handling-report.md §B6.
+                    logger.error(
                         "rate_limit_redis_auth_fallback",
                         extra={"tier": "auth_strict"},
                     )
@@ -186,7 +191,11 @@ class RateLimitMiddleware:
                     return
                 except Exception:
                     rate_limit_redis_fallback_total.labels("onboarding_strict").inc()
-                    logger.warning(
+                    # Same risk as auth_strict above: shared Redis quota
+                    # degrades into per-replica memory quota during a Redis
+                    # outage, enabling abuse of public onboarding forms.
+                    # See docs/audits/error-handling-report.md §B6.
+                    logger.error(
                         "rate_limit_redis_onboarding_fallback",
                         extra={"tier": "onboarding_strict"},
                     )

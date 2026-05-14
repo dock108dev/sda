@@ -18,12 +18,14 @@ from __future__ import annotations
 import re
 
 from .internal_types import RunnerAdvance
+from .schemas import BaseMovement, BasesSituation, RunnerSummary
 from .visual_mapper import batter_dest_for_event, downgrade_implausible
 
 __all__ = [
     "apply_advances",
     "apply_run_constraint",
     "apply_runner_names",
+    "build_base_movements",
     "diff_advances",
     "merge_parsed_advances",
     "names_match",
@@ -338,6 +340,62 @@ def apply_runner_names(
         if adv.to in ("first", "second", "third"):
             after[adv.to] = name
     return after
+
+
+_VALID_OUT_AT = ("first", "second", "third", "home")
+
+
+def build_base_movements(
+    advances: list[RunnerAdvance],
+    bases_before: BasesSituation,
+    batter: RunnerSummary | None,
+) -> list[BaseMovement]:
+    """Derive `BaseMovement[]` from a play's advance list.
+
+    The advance list is itself a diff of `situation_before.bases` vs
+    `situation_after.bases` (plus the batter's destination from event
+    context), so this transformation preserves the deterministic-diff
+    contract: held runners are absent from `advances` and therefore
+    absent from the result.
+
+    Filters batter putouts (`from_base="home"` and `to_base="out"`):
+    the in-place flare is driven by the animation profile, not a
+    movement record. Resolves runner identity from `bases_before` for
+    on-base runners and from `batter` for batter-originating advances.
+    """
+    movements: list[BaseMovement] = []
+    for adv in advances:
+        if adv.from_base == "home" and adv.to == "out":
+            continue
+        if adv.from_base == "home":
+            runner = batter or RunnerSummary(id=None, name="Batter")
+        else:
+            existing = getattr(bases_before, adv.from_base, None)
+            runner = existing or RunnerSummary(id=None, name="Runner")
+        if adv.to == "out":
+            style = "out"
+            reason = "runner_out"
+        elif adv.to == "home":
+            style = "score"
+            reason = "scored"
+        elif adv.from_base == "home":
+            style = "advance"
+            reason = "batter_reached"
+        else:
+            style = "advance"
+            reason = "base_changed"
+        out_at = adv.out_at if adv.out_at in _VALID_OUT_AT else None
+        movements.append(
+            BaseMovement(
+                runner=runner,
+                from_base=adv.from_base,
+                to_base=adv.to,
+                style=style,
+                out_at=out_at,
+                reason=reason,
+            )
+        )
+    return movements
 
 
 def diff_advances(

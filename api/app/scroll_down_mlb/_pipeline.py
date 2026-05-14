@@ -36,6 +36,7 @@ from ._dto import (
 )
 from .deck_builder import build_scene_setter, select_plays, to_play_card
 from .game_state import (
+    _group_into_containers,
     compute_pitcher_stat_snapshots,
     compute_pitcher_timeline,
     compute_timeline,
@@ -55,6 +56,7 @@ from .validation import validate_no_duplicate_play_ids, validate_play_card
 __all__ = [
     "apply_validation_policy",
     "build_deck_from_upstream",
+    "compute_deck_version_from_components",
     "generate_final_deck",
     "generate_live_deck",
 ]
@@ -95,6 +97,39 @@ def apply_validation_policy(
 # ---------------------------------------------------------------------------
 
 
+def _hash_components(
+    *,
+    game_id: Any,
+    status: str | None,
+    play_count: int,
+    last_play_index: int | None,
+    home_score: int | None,
+    away_score: int | None,
+    last_play_at: str | None,
+    last_ingested_at: str | None,
+) -> str:
+    """Compute the deterministic source-hash from individual components.
+
+    Single source of truth for the hash inputs so a payload-driven build
+    and a metadata-only ETag check stamp identical `deck_version`s for
+    the same underlying game state.
+    """
+    digest_input = {
+        "gameId": game_id,
+        "status": status,
+        "playCount": play_count,
+        "lastPlayIndex": last_play_index,
+        "homeScore": home_score,
+        "awayScore": away_score,
+        "lastPlayAt": last_play_at,
+        "lastIngestedAt": last_ingested_at,
+    }
+    digest = hashlib.sha256(
+        json.dumps(digest_input, sort_keys=True).encode("utf-8")
+    )
+    return digest.hexdigest()[:16]
+
+
 def _source_hash(payload: dict[str, Any]) -> str:
     """Stable signature of the inputs a deck was built from.
 
@@ -103,12 +138,14 @@ def _source_hash(payload: dict[str, Any]) -> str:
 
       - gameId      (identity)
       - status      (live → final transitions force a new version)
-      - playCount   (any new play forces a new version)
+      - playCount   (any new play forces a new version — including the
+        third-out play that seals a half-inning container)
       - lastPlayIndex (covers re-orderings and back-fills)
       - homeScore / awayScore (covers backend score corrections that
         don't necessarily add a new play row)
       - lastPlayAt / lastIngestedAt (covers updates that fix data on
-        existing plays — description corrections, runner attribution)
+        existing plays — description corrections, runner attribution,
+        retroactive sealing on prior plays)
 
     These fields together give a deterministic-but-sensitive signature.
     Hash is truncated to 16 hex chars; collision risk is negligible for
@@ -118,20 +155,49 @@ def _source_hash(payload: dict[str, Any]) -> str:
     plays = payload.get("plays") or []
     plays_sorted = sorted(plays, key=lambda p: p.get("playIndex", 0))
     last_idx = plays_sorted[-1].get("playIndex") if plays_sorted else None
-    digest_input = {
-        "gameId": game.get("id"),
-        "status": game.get("status"),
-        "playCount": len(plays),
-        "lastPlayIndex": last_idx,
-        "homeScore": game.get("homeScore"),
-        "awayScore": game.get("awayScore"),
-        "lastPlayAt": game.get("lastPlayAt"),
-        "lastIngestedAt": game.get("lastIngestedAt"),
-    }
-    digest = hashlib.sha256(
-        json.dumps(digest_input, sort_keys=True).encode("utf-8")
+    return _hash_components(
+        game_id=game.get("id"),
+        status=game.get("status"),
+        play_count=len(plays),
+        last_play_index=last_idx,
+        home_score=game.get("homeScore"),
+        away_score=game.get("awayScore"),
+        last_play_at=game.get("lastPlayAt"),
+        last_ingested_at=game.get("lastIngestedAt"),
     )
-    return digest.hexdigest()[:16]
+
+
+def compute_deck_version_from_components(
+    *,
+    policy: GenerationPolicy,
+    game_id: Any,
+    status: str | None,
+    play_count: int,
+    last_play_index: int | None,
+    home_score: int | None,
+    away_score: int | None,
+    last_play_at: str | None,
+    last_ingested_at: str | None,
+) -> str:
+    """Compute the `deck_version` string a build would stamp on this game.
+
+    Mirrors the stamping in `build_deck_from_upstream` so a callee with
+    only lightweight metadata (e.g. an ETag short-circuit) can produce a
+    version that matches what the full builder would produce for the
+    same upstream snapshot.
+    """
+    digest = _hash_components(
+        game_id=game_id,
+        status=status,
+        play_count=play_count,
+        last_play_index=last_play_index,
+        home_score=home_score,
+        away_score=away_score,
+        last_play_at=last_play_at,
+        last_ingested_at=last_ingested_at,
+    )
+    prefix = "official" if policy is GenerationPolicy.official else "live"
+    return f"{prefix}-{digest}"
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +345,20 @@ def build_deck_from_upstream(
         color_dark=game.get("awayTeamColorDark"),
     )
 
+    plays_by_index = {
+        int(p.get("playIndex", 0)): p for p in plays if p.get("playIndex") is not None
+    }
+    half_innings = _group_into_containers(
+        game_id=game_id,
+        timeline=timeline,
+        selected_play_indices=selected_ids,
+        half_meta=half_meta,
+        home_team=home_team_dto,
+        away_team=away_team_dto,
+        plays_by_index=plays_by_index,
+        pitcher_by_play=pitcher_timeline,
+    )
+
     response = built_deck_to_dto(
         game_id=game_id,
         deck=deck,
@@ -288,6 +368,7 @@ def build_deck_from_upstream(
         deck_version=deck_version,
         home_team=home_team_dto,
         away_team=away_team_dto,
+        half_innings=half_innings,
         last_play_index=last_play_index,
         first_pitch=game.get("gameDate"),
         venue=venue,

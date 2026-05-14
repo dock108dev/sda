@@ -12,6 +12,7 @@ from typing import Any
 
 from ..db.sports import SportsGamePlay
 from ..utils.datetime_utils import parse_clock_to_seconds
+from .pipeline.stages.normalize_pbp_helpers import progress_from_index
 from .timeline_phases import (
     nba_block_for_quarter,
     nba_phase_for_quarter,
@@ -22,17 +23,6 @@ from .timeline_types import (
     NBA_QUARTER_REAL_SECONDS,
     phase_sort_order,
 )
-
-
-def progress_from_index(index: int, total: int) -> float:
-    """
-    Calculate progress through the game based on play index.
-
-    Returns 0.0 at start, 1.0 at end.
-    """
-    if total <= 1:
-        return 0.0
-    return index / (total - 1)
 
 
 def build_pbp_events(

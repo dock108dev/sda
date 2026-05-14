@@ -8,7 +8,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,11 +111,22 @@ async def create_experiment_suite(
         suite.celery_task_id = task.id
         suite.status = "queued"
         await db.flush()
-    except Exception:
+    except Exception as dispatch_exc:
         logger.exception("Failed to dispatch experiment suite suite_id=%s", suite.id)
         suite.status = "failed"
         suite.error_message = "Failed to dispatch task"
         await db.flush()
+        # Surface the failure to the caller instead of returning 200 with a
+        # failed suite body — admin clients otherwise treat the response as
+        # success and never retry. See docs/audits/error-handling-report.md §B8.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "experiment_dispatch_failed",
+                "message": "Suite was created but the training task could not be enqueued.",
+                "suite_id": suite.id,
+            },
+        ) from dispatch_exc
 
     await db.refresh(suite)
     return {"status": "submitted", "suite": _serialize_experiment_suite(suite)}

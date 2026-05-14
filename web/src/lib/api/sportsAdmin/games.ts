@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { HttpError, request } from "./client";
 import type { AdminGameDetail, GameFilters, GameListResponse, JobResponse } from "./types";
 import type { FlowStatusResponse, GameSummaryResponse } from "./gameFlowTypes";
 
@@ -49,7 +49,7 @@ export async function fetchGameSummary(
   try {
     return await request(`/api/v1/games/${gameId}/summary`);
   } catch (err) {
-    if (err instanceof Error && err.message.startsWith("Request failed (404)")) {
+    if (err instanceof HttpError && err.status === 404) {
       return null;
     }
     throw err;

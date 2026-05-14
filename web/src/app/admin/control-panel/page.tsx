@@ -487,7 +487,13 @@ export default function ControlPanelPage() {
   useEffect(() => {
     getHoldStatus()
       .then((s) => { setHeld(s.held); setHoldError(false); })
-      .catch(() => setHoldError(true));
+      .catch((err) => {
+        // The UI only renders a generic "unknown" banner, but we want the
+        // underlying status / network error in browser logs for triage.
+        // See docs/audits/error-handling-report.md §F6.
+        console.error("[control-panel] getHoldStatus failed", err);
+        setHoldError(true);
+      });
   }, []);
 
   const toggleHold = useCallback(async () => {
@@ -496,7 +502,8 @@ export default function ControlPanelPage() {
       const res = await setHoldStatus(!held);
       setHeld(res.held);
       setHoldError(false);
-    } catch {
+    } catch (err) {
+      console.error("[control-panel] setHoldStatus failed", err);
       setHoldError(true);
     } finally {
       setToggling(false);

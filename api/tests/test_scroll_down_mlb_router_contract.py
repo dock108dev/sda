@@ -123,6 +123,134 @@ def test_deck_response_uses_camel_case_keys_on_wire(monkeypatch: pytest.MonkeyPa
 
 
 # ---------------------------------------------------------------------------
+# /games/{gameId}/deck — ETag / If-None-Match short-circuit
+# ---------------------------------------------------------------------------
+
+
+def test_deck_response_sets_etag_header_from_deck_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """200 responses must carry an ETag header derived from deckVersion."""
+
+    async def _stub_deck_fn(*_args: Any, **_kwargs: Any) -> ScrollDownMlbDeckResponse:
+        return _stub_deck()
+
+    monkeypatch.setattr(sdm_service, "get_game_deck", _stub_deck_fn)
+    client = _build_client()
+    resp = client.get("/api/v1/scroll-down-mlb/games/190203/deck")
+    assert resp.status_code == 200
+    assert resp.headers["etag"] == '"stub-v0"'
+    # deckVersion must still be present in the body — clients without ETag
+    # support fall back to body-level comparison.
+    assert resp.json()["deckVersion"] == "stub-v0"
+
+
+def test_deck_returns_304_when_if_none_match_matches_current_etag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When client's If-None-Match matches the current etag, return 304
+    with no body and without calling the full builder."""
+
+    builder_calls: list[Any] = []
+
+    async def _etag(*_args: Any, **_kwargs: Any) -> str:
+        return "live-abcdef0123456789"
+
+    async def _builder(*args: Any, **kwargs: Any) -> ScrollDownMlbDeckResponse:
+        builder_calls.append((args, kwargs))
+        return _stub_deck()
+
+    monkeypatch.setattr(sdm_service, "compute_deck_etag", _etag)
+    monkeypatch.setattr(sdm_service, "get_game_deck", _builder)
+    client = _build_client()
+    resp = client.get(
+        "/api/v1/scroll-down-mlb/games/190203/deck",
+        headers={"If-None-Match": '"live-abcdef0123456789"'},
+    )
+    assert resp.status_code == 304
+    assert resp.content == b""
+    assert resp.headers["etag"] == '"live-abcdef0123456789"'
+    # Critical: the full build pipeline must not have run on the 304 path.
+    assert builder_calls == []
+
+
+def test_deck_returns_200_when_if_none_match_differs_from_current_etag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stale If-None-Match must fall through to the full deck build."""
+
+    builder_calls: list[Any] = []
+
+    async def _etag(*_args: Any, **_kwargs: Any) -> str:
+        return "live-newversion0001"
+
+    async def _builder(*args: Any, **kwargs: Any) -> ScrollDownMlbDeckResponse:
+        builder_calls.append((args, kwargs))
+        return _stub_deck()
+
+    monkeypatch.setattr(sdm_service, "compute_deck_etag", _etag)
+    monkeypatch.setattr(sdm_service, "get_game_deck", _builder)
+    client = _build_client()
+    resp = client.get(
+        "/api/v1/scroll-down-mlb/games/190203/deck",
+        headers={"If-None-Match": '"live-oldversion0000"'},
+    )
+    assert resp.status_code == 200
+    assert len(builder_calls) == 1
+    body = resp.json()
+    assert body["deckVersion"] == "stub-v0"
+
+
+def test_deck_omits_etag_check_when_no_header_sent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without an If-None-Match header, the cheap etag computation is
+    skipped — a polite client should still always get a 200 with body."""
+
+    etag_calls: list[Any] = []
+    builder_calls: list[Any] = []
+
+    async def _etag(*args: Any, **_kwargs: Any) -> str:
+        etag_calls.append(args)
+        return "live-shouldnotmatter"
+
+    async def _builder(*args: Any, **kwargs: Any) -> ScrollDownMlbDeckResponse:
+        builder_calls.append((args, kwargs))
+        return _stub_deck()
+
+    monkeypatch.setattr(sdm_service, "compute_deck_etag", _etag)
+    monkeypatch.setattr(sdm_service, "get_game_deck", _builder)
+    client = _build_client()
+    resp = client.get("/api/v1/scroll-down-mlb/games/190203/deck")
+    assert resp.status_code == 200
+    assert len(builder_calls) == 1
+    # No header → no etag pre-check.
+    assert etag_calls == []
+
+
+def test_deck_falls_through_when_current_etag_is_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the lightweight etag computation returns None (no deck
+    available), don't 304 — let the builder produce the canonical 404."""
+
+    async def _etag(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    async def _builder(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(sdm_service, "compute_deck_etag", _etag)
+    monkeypatch.setattr(sdm_service, "get_game_deck", _builder)
+    client = _build_client()
+    resp = client.get(
+        "/api/v1/scroll-down-mlb/games/190203/deck",
+        headers={"If-None-Match": '"anything"'},
+    )
+    assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
 # /games/{gameId}/reveal
 # ---------------------------------------------------------------------------
 

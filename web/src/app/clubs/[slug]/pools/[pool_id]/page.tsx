@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fetchPool, fetchPoolLeaderboard, fetchPoolField } from "@/lib/api/golfPools";
 import { ClubNotFoundError, fetchClubBySlug } from "@/lib/api/clubs";
+import { HttpError } from "@/lib/api/sportsAdmin/client";
 import type { GolfPoolLeaderboardEntry } from "@/lib/api/golfPoolTypes";
 import EntryForm from "./EntryForm";
 
@@ -38,29 +39,40 @@ export default async function PoolPage({ params }: PageProps) {
   try {
     pool = await fetchPool(poolId);
   } catch (err) {
-    if (err instanceof Error && err.message.includes("(404)")) {
+    if (err instanceof HttpError && err.status === 404) {
       notFound();
     }
     throw err;
   }
 
-  // Fetch leaderboard (may be empty before scoring runs)
+  // Fetch leaderboard (may be empty before scoring runs).
+  // Logged so a persistent leaderboard failure surfaces on the server
+  // (no user-visible UI hint — empty leaderboard already reads as
+  // "no scores yet" pre-tournament). See docs/audits/error-handling-report.md §F8.
   let leaderboard: GolfPoolLeaderboardEntry[] = [];
   try {
     leaderboard = await fetchPoolLeaderboard(poolId);
-  } catch {
-    // Leaderboard not yet available — show empty state
+  } catch (leaderboardErr) {
+    console.warn(
+      `[pool ${poolId}] leaderboard fetch failed; rendering empty state`,
+      leaderboardErr,
+    );
   }
 
-  // Fetch field for entry form (only needed when pool accepts entries)
+  // Fetch field for entry form (only needed when pool accepts entries).
   const acceptsEntries = pool.status === "open";
 
   let fieldData = null;
   if (acceptsEntries) {
     try {
       fieldData = await fetchPoolField(poolId);
-    } catch {
-      // Field data unavailable — entry form will be hidden
+    } catch (fieldErr) {
+      // Entry form hides itself when fieldData is null; warn so persistent
+      // failures aren't invisible to ops.
+      console.warn(
+        `[pool ${poolId}] field fetch failed; entry form will be hidden`,
+        fieldErr,
+      );
     }
   }
 
