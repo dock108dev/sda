@@ -17,23 +17,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .validate_env import validate_env
 
 
-class OddsProviderConfig(BaseModel):
-    base_url: str = Field(default="https://api.the-odds-api.com/v4")
-    api_key: str | None = None
-    default_books: list[str] = Field(default_factory=lambda: ["pinnacle", "fanduel"])
-    request_timeout_seconds: int = 15
-    # TTL for live odds cache (future games) - expires before the 5-min sync interval
-    live_odds_cache_ttl_seconds: int = Field(default=240)  # 4 minutes
-    # Regions to fetch odds from — determines which books are available.
-    # us: BetMGM, BetRivers, Bovada, Caesars, DraftKings, FanDuel
-    # eu: 888sport, Betfair Exchange, BetOnline.ag, Pinnacle, William Hill
-    # (us_ex and uk dropped to reduce credit burn — those books overlap or are excluded)
-    regions: list[str] = Field(default_factory=lambda: ["us", "eu"])
-    # Weekly credit cap — prevents backfills from starving live polling.
-    # 5M monthly quota / 4 weeks = 1.25M per week.
-    weekly_credit_cap: int = Field(default=1_250_000)
-
-
 class ScraperConfig(BaseModel):
     sources: list[str] = Field(default_factory=lambda: ["sports_reference"])
     request_timeout_seconds: int = 20
@@ -50,37 +33,6 @@ class ScraperConfig(BaseModel):
     # HTML cache directory for storing scraped pages locally
     html_cache_dir: str = "./game_data"
     force_cache_refresh: bool = False
-
-
-class SocialConfig(BaseModel):
-    platform_rate_limit_max_requests: int = Field(default=300)
-    platform_rate_limit_window_seconds: int = Field(default=900)
-    team_poll_interval_seconds: int = Field(default=900)
-    request_cache_ttl_seconds: int = Field(default=900)
-    # Inter-game cooldown (seconds) between social scrapes (min of random range)
-    inter_game_delay_seconds: int = Field(default=30)
-    # Max inter-game cooldown (seconds) — actual delay is uniform(min, max)
-    inter_game_delay_max_seconds: int = Field(default=60)
-    # Shorter delay when previous game found 0 new tweets (early-exit)
-    early_exit_delay_seconds: int = Field(default=5)
-    # Sweep task uses a longer cooldown between games
-    sweep_inter_game_delay_seconds: int = Field(default=180)
-    # Number of games to process before committing a batch
-    game_batch_size: int = Field(default=5)
-    # Early-exit threshold: stop scrolling after N consecutive known posts
-    consecutive_known_post_exit: int = Field(default=3)
-    # Circuit breaker: abort after N consecutive rate-limit hits
-    max_consecutive_breaker_hits: int = Field(default=2)
-    # Backoff (seconds) after a circuit breaker hit before retrying
-    breaker_backoff_seconds: int = Field(default=300)
-    # Playwright retry backoff (seconds) on login wall / "Something went wrong"
-    playwright_backoff_seconds: int = Field(default=120)
-    # Playwright max attempts per collect_posts call
-    playwright_max_attempts: int = Field(default=2)
-    # Hour (ET) when the pregame tweet window opens on game day
-    pregame_start_hour_et: int = Field(default=5)
-    # Batch size for map_unmapped_tweets processing
-    tweet_mapper_batch_size: int = Field(default=1000)
 
 
 class Settings(BaseSettings):
@@ -139,23 +91,16 @@ class Settings(BaseSettings):
                 self.redis_url = f"redis://{self.redis_host}:6379/{self.redis_db}"
         return self
 
-    odds_api_key: str | None = Field(None, alias="ODDS_API_KEY")
     cbb_stats_api_key: str | None = Field(None, alias="CBB_STATS_API_KEY")
     environment: str = Field("development", alias="ENVIRONMENT")
     log_level: str | None = Field(None, alias="LOG_LEVEL")
     scraper_config: ScraperConfig = Field(default_factory=ScraperConfig)
-    odds_config: OddsProviderConfig = Field(default_factory=OddsProviderConfig)
-    social_config: SocialConfig = Field(default_factory=SocialConfig)
     api_internal_url: str = Field("http://api:8000", alias="API_INTERNAL_URL")
     api_key: str | None = Field(None, alias="API_KEY")
     scraper_html_cache_dir_override: str | None = Field(None, alias="SCRAPER_HTML_CACHE_DIR")
     scraper_force_cache_refresh_override: bool | None = Field(
         None, alias="SCRAPER_FORCE_CACHE_REFRESH"
     )
-    odds_api_regions: str | None = Field(None, alias="ODDS_API_REGIONS")
-    odds_api_weekly_cap: int | None = Field(None, alias="ODDS_API_WEEKLY_CAP")
-    datagolf_api_key: str | None = Field(None, alias="DATAGOLF_API_KEY")
-    catchup_only: bool = Field(False, alias="SCRAPER_CATCHUP_ONLY")
 
     @model_validator(mode="after")
     def _apply_scraper_overrides(self) -> Settings:
@@ -169,10 +114,6 @@ class Settings(BaseSettings):
             self.scraper_config.force_cache_refresh = bool(
                 self.scraper_force_cache_refresh_override
             )
-        if self.odds_api_regions:
-            self.odds_config.regions = [r.strip() for r in self.odds_api_regions.split(",")]
-        if self.odds_api_weekly_cap is not None:
-            self.odds_config.weekly_credit_cap = self.odds_api_weekly_cap
         return self
 
 

@@ -12,7 +12,6 @@ def test_catchup_mode_schedules_only_five_minute_pbp_stats_refresh() -> None:
     env = {
         **os.environ,
         "PYTHONPATH": str(scraper_dir),
-        "SCRAPER_CATCHUP_ONLY": "true",
         "DATABASE_URL": "postgresql+psycopg://test:test@localhost/test",
         "REDIS_URL": "redis://localhost:6379/2",
         "ENVIRONMENT": "development",
@@ -20,10 +19,13 @@ def test_catchup_mode_schedules_only_five_minute_pbp_stats_refresh() -> None:
     script = """
 import json
 from sports_scraper.celery_app import app
+from sports_scraper.config import settings
 payload = {
     "schedule": sorted(app.conf.beat_schedule.keys()),
     "task": app.conf.beat_schedule["catchup-pbp-stats-every-5m"]["task"],
+    "schedule_args": app.conf.beat_schedule["catchup-pbp-stats-every-5m"].get("args"),
     "routes": sorted(app.conf.task_routes.keys()),
+    "has_catchup_only_setting": hasattr(settings, "catchup_only"),
 }
 print("CELERY=" + json.dumps(payload))
 """
@@ -41,5 +43,7 @@ print("CELERY=" + json.dumps(payload))
     assert payload == {
         "schedule": ["catchup-pbp-stats-every-5m"],
         "task": "poll_live_pbp",
+        "schedule_args": None,
         "routes": ["poll_live_pbp"],
+        "has_catchup_only_setting": False,
     }

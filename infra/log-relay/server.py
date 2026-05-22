@@ -16,10 +16,8 @@ from urllib.parse import parse_qs, urlparse
 
 ALLOWED_CONTAINERS: set[str] = {
     "sports-api",
-    "sports-api-worker",
-    "sports-api-training-worker",
     "sports-scraper",
-    "sports-social-scraper",
+    "sports-scraper-beat",
 }
 
 DOCKER_SOCKET = "/var/run/docker.sock"

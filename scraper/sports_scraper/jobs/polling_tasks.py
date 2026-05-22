@@ -1,6 +1,6 @@
 """Polling tasks for game-state-machine architecture.
 
-These tasks run at high frequency (3-5 min) and only touch games that
+These tasks run every 5 minutes and only touch games that
 need attention right now, unlike the old batch sweeps that processed
 everything for the last 96 hours.
 
@@ -23,7 +23,6 @@ import time
 
 from celery import shared_task
 
-from ..config import settings
 from ..db import get_session
 from ..logging import logger
 from .polling_helpers import (
@@ -52,114 +51,19 @@ from ..utils.redis_lock import acquire_redis_lock as _acquire_redis_lock  # noqa
 from ..utils.redis_lock import release_redis_lock as _release_redis_lock  # noqa: E402
 
 
-def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
-    """Dispatch social scrape, flow generation, and closing line capture for a game that just went final."""
-    if settings.catchup_only:
-        logger.info("catchup_mode_final_side_effects_skipped", game_id=game_id)
-        return
-
-    # Ensure closing lines are captured (idempotent — skips if already captured)
-    try:
-        from ..live_odds.closing_lines import capture_closing_lines
-
-        capture_closing_lines(game_id, league_code)
-    except Exception as exc:
-        logger.warning(
-            "closing_lines_capture_error",
-            game_id=game_id,
-            error=str(exc),
-            exc_info=True,
-        )
-
-    try:
-        from .flow_trigger_tasks import trigger_flow_for_game
-
-        trigger_flow_for_game.apply_async(
-            args=[game_id],
-            countdown=3600,
-        )
-        logger.info("flow_trigger_dispatched", game_id=game_id, countdown=3600)
-    except Exception as exc:
-        logger.warning(
-            "flow_trigger_dispatch_error",
-            game_id=game_id,
-            error=str(exc),
-            exc_info=True,
-        )
-
-    # Dispatch advanced stats ingestion for the league (all use same pattern)
-    _ADVANCED_STATS_TASKS = {
-        "MLB": ("mlb_advanced_stats_tasks", "ingest_mlb_advanced_stats"),
-        "NBA": ("nba_advanced_stats_tasks", "ingest_nba_advanced_stats"),
-        "NHL": ("nhl_advanced_stats_tasks", "ingest_nhl_advanced_stats"),
-        "NFL": ("nfl_advanced_stats_tasks", "ingest_nfl_advanced_stats"),
-        "NCAAB": ("ncaab_advanced_stats_tasks", "ingest_ncaab_advanced_stats"),
-    }
-
-    task_info = _ADVANCED_STATS_TASKS.get(league_code)
-    if task_info:
-        module_name, task_name = task_info
-        try:
-            import importlib
-
-            mod = importlib.import_module(f".{module_name}", package="sports_scraper.jobs")
-            task_fn = getattr(mod, task_name)
-            task_fn.apply_async(args=[game_id], countdown=60)
-            logger.info(f"{league_code.lower()}_advanced_stats_dispatched", game_id=game_id)
-        except Exception as exc:
-            logger.warning(
-                f"{league_code.lower()}_advanced_stats_dispatch_error",
-                game_id=game_id,
-                error=str(exc),
-                exc_info=True,
-            )
-
-
-@shared_task(name="update_game_states")
-def update_game_states_task() -> dict:
-    """Promote games through lifecycle states (runs every 3 min).
-
-    Pure DB — no external API calls. Handles:
-    - scheduled → pregame (within pregame_window_hours of game_date)
-    - final → archived (>7 days with timeline artifacts)
-    """
-    from ..services.game_state_updater import update_game_states
-    from ..services.job_runs import complete_job_run, start_job_run
-
-    lock_token = _acquire_redis_lock("lock:update_game_states", timeout=180)
-    if not lock_token:
-        logger.debug("update_game_states_skipped_locked")
-        return {"skipped": True, "reason": "locked"}
-
-    job_run_id = start_job_run("update_game_states", [])
-    try:
-        with get_session() as session:
-            counts = update_game_states(session)
-        complete_job_run(job_run_id, status="success", summary_data=counts)
-        return counts
-    except Exception as exc:
-        complete_job_run(job_run_id, status="error", error_summary=str(exc)[:500])
-        raise
-    finally:
-        _release_redis_lock("lock:update_game_states", lock_token)
-
-
 @shared_task(name="poll_live_pbp")
-def poll_live_pbp_task(live_only: bool = False) -> dict:
-    """Poll PBP, boxscores, and status for games that need live data.
+def poll_live_pbp_task() -> dict:
+    """Poll PBP, boxscores, and status for games that need catch-up data.
 
     Phases:
-    1. NBA/NHL PBP polling (existing — per-game scoreboard + PBP fetch)
-    2. NBA/NHL boxscore polling for live games (per-game fetch)
-    3. NCAAB batch polling (PBP per-game + boxscores via batch endpoint)
-
-    ``live_only=True`` is used by the 5-second schedule and intentionally
-    excludes pregame/postgame backfill work.
+    1. NBA/NHL/MLB PBP polling (per-game scoreboard + PBP fetch)
+    2. NBA/NHL/MLB boxscore polling (per-game fetch)
+    3. NCAAB PBP + boxscore polling (batch via CBB API)
     """
     from ..services.active_games import ActiveGamesResolver
     from ..services.job_runs import complete_job_run, start_job_run
 
-    lock_key = "lock:poll_live_pbp:live" if live_only else "lock:poll_live_pbp"
+    lock_key = "lock:poll_live_pbp"
     lock_token = _acquire_redis_lock(lock_key, timeout=LOCK_TIMEOUT_5MIN)
     if not lock_token:
         logger.debug("poll_live_pbp_skipped_locked")
@@ -170,8 +74,8 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
         resolver = ActiveGamesResolver()
 
         with get_session() as session:
-            # --- Phase 1: NBA/NHL PBP polling (existing) ---
-            pbp_games = resolver.get_games_needing_pbp(session, live_only=live_only)
+            # --- Phase 1: NBA/NHL/MLB PBP polling ---
+            pbp_games = resolver.get_games_needing_pbp(session)
 
             api_calls = 0
             games_polled = 0
@@ -298,7 +202,6 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                     ncaab_pbp=len(ncaab_pbp_games),
                 )
 
-            # NBA/NHL PBP loop (unchanged logic)
             for game in nba_nhl_pbp_games:
                 if api_calls >= _MAX_PBP_CALLS_PER_CYCLE:
                     logger.info("poll_live_pbp_max_calls_reached", api_calls=api_calls)
@@ -311,17 +214,12 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                     time.sleep(random.uniform(_JITTER_MIN, _JITTER_MAX))
 
                 try:
-                    result = _poll_single_game_pbp(session, game, live_poll=live_only)
+                    result = _poll_single_game_pbp(session, game, live_poll=False)
                     api_calls += result.get("api_calls", 1)
                     games_polled += 1
 
                     if result.get("transition"):
                         transitions.append(result["transition"])
-                        if result["transition"]["to"] == "final":
-                            _dispatch_final_actions(
-                                result["transition"]["game_id"],
-                                league_code=league_map.get(game.league_id, ""),
-                            )
                     if result.get("pbp_events", 0) > 0:
                         pbp_updated += 1
 
@@ -344,12 +242,12 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                     )
                     continue
 
-            # --- Phase 2: NBA/NHL boxscore polling for live games ---
+            # --- Phase 2: NBA/NHL/MLB boxscore polling ---
             boxscore_calls = 0
             boxscores_updated = 0
 
             if not rate_limited:
-                boxscore_games = resolver.get_games_needing_boxscore(session, live_only=live_only)
+                boxscore_games = resolver.get_games_needing_boxscore(session)
                 # Filter to NBA/NHL/MLB (NCAAB boxscores handled in batch phase)
                 nba_nhl_box_games = [
                     g
@@ -426,11 +324,6 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                     boxscores_updated += ncaab_stats.get("boxscores_updated", 0)
                     transitions.extend(ncaab_stats.get("transitions", []))
 
-                    # Dispatch final-whistle social + flow for NCAAB games that went final
-                    for tr in ncaab_stats.get("transitions", []):
-                        if tr["to"] == "final":
-                            _dispatch_final_actions(tr["game_id"], league_code="NCAAB")
-
                 except _RateLimitError:
                     logger.warning("poll_ncaab_rate_limited")
                     rate_limited = True
@@ -453,7 +346,6 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                 boxscores_updated=boxscores_updated,
                 ncaab_games=len(ncaab_pbp_games),
                 rate_limited=rate_limited,
-                live_only=live_only,
             )
 
             result = {
@@ -463,7 +355,6 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                 "pbp_updated": pbp_updated,
                 "boxscores_updated": boxscores_updated,
                 "rate_limited": rate_limited,
-                "live_only": live_only,
             }
             summary = {k: v for k, v in result.items() if k != "transitions"}
             summary["transitions"] = len(transitions)

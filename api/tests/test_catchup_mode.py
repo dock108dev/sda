@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+from app.routers.admin.task_control import TASK_REGISTRY
 from app.routers.sports.schemas.catchup import (
     CatchupGameDetailResponse,
     CatchupGameListResponse,
@@ -76,7 +77,6 @@ def test_catchup_mode_exposes_only_catchup_routes() -> None:
     env = {
         **os.environ,
         "PYTHONPATH": str(api_dir),
-        "SDA_CATCHUP_ONLY": "true",
         "DATABASE_URL": "postgresql+asyncpg://test:test@localhost/test",
         "API_KEY": "test",
         "AUTH_ENABLED": "false",
@@ -85,8 +85,13 @@ def test_catchup_mode_exposes_only_catchup_routes() -> None:
     }
     script = """
 import json
+from app.config import settings
 from main import app
-print("ROUTES=" + json.dumps(sorted(route.path for route in app.routes)))
+payload = {
+    "routes": sorted(route.path for route in app.routes),
+    "has_catchup_only_setting": hasattr(settings, "catchup_only"),
+}
+print("APP=" + json.dumps(payload))
 """
     result = subprocess.run(
         [sys.executable, "-c", script],
@@ -96,12 +101,20 @@ print("ROUTES=" + json.dumps(sorted(route.path for route in app.routes)))
         capture_output=True,
         check=True,
     )
-    routes_line = next(line for line in result.stdout.splitlines() if line.startswith("ROUTES="))
-    routes = set(json.loads(routes_line.removeprefix("ROUTES=")))
+    app_line = next(line for line in result.stdout.splitlines() if line.startswith("APP="))
+    payload = json.loads(app_line.removeprefix("APP="))
+    routes = set(payload["routes"])
 
+    assert payload["has_catchup_only_setting"] is False
     assert "/api/admin/sports/games" in routes
     assert "/api/admin/sports/games/{game_id}" in routes
     assert "/api/admin/sports/games/{game_id}/context" in routes
+    assert "/api/admin/tasks/registry" in routes
     assert not any("/api/admin/golf" in route for route in routes)
     assert "/api/admin/sports/jobs" not in routes
     assert "/v1/realtime/status" not in routes
+    assert "/api/auth/login" not in routes
+
+
+def test_task_registry_only_exposes_catchup_refresh() -> None:
+    assert set(TASK_REGISTRY) == {"poll_live_pbp"}

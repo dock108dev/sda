@@ -60,8 +60,6 @@ class Settings(BaseSettings):
     fairbet_odds_snapshot_ttl_seconds: int = Field(
         default=60, alias="FAIRBET_ODDS_SNAPSHOT_TTL_SECONDS"
     )
-    catchup_only: bool = Field(default=False, alias="SDA_CATCHUP_ONLY")
-
     # Subdomain routing
     subdomain_routing: bool = Field(default=False, alias="SUBDOMAIN_ROUTING")
     base_domain: str = Field(default="localhost", alias="BASE_DOMAIN")
