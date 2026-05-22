@@ -20,8 +20,21 @@ from app.middleware.logging import StructuredLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.otel import configure_telemetry, instrument_fastapi
-from app.routers import sports
-from app.routers.admin import task_control
+from app.routers import social, sports
+from app.routers.admin import (
+    circuit_breakers,
+    coverage_report,
+    pbp,
+    pipeline,
+    platform as admin_platform,
+    quality_review,
+    quality_summary,
+    realtime as admin_realtime,
+    resolution,
+    task_control,
+    timeline_jobs,
+)
+from app.routers.v1 import router as v1_router
 
 configure_logging(
     service="sports-data-admin-api",
@@ -55,11 +68,14 @@ app = FastAPI(
     openapi_url=None if _is_prod else "/openapi.json",
     openapi_tags=[
         {
+            "name": "v1",
+            "description": "Consumer-safe sports game summary endpoints.",
+        },
+        {
             "name": "admin",
             "description": (
-                "**Admin API** — Catch-up sports endpoints under ``/api/admin/sports``. "
-                "Legacy scoreboard, odds, golf, simulator, billing, and realtime "
-                "surfaces are not supported by this service."
+                "**Admin API** — Sports data and operational endpoints. "
+                "Odds, analytics, simulator, and golf surfaces are intentionally disabled."
             ),
         },
     ],
@@ -103,11 +119,73 @@ async def _global_exception_handler(request: Request, exc: Exception) -> JSONRes
 # ---------------------------------------------------------------------------
 auth_dependency = [Depends(verify_api_key)]
 
+app.include_router(v1_router)
 app.include_router(sports.router, dependencies=auth_dependency)
+app.include_router(social.router, dependencies=auth_dependency)
+app.include_router(
+    admin_platform.router,
+    prefix="/api/admin",
+    tags=["admin", "platform"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    timeline_jobs.router,
+    prefix="/api/admin/sports",
+    tags=["admin"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    pipeline.router,
+    prefix="/api/admin/sports",
+    tags=["admin", "pipeline"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    pbp.router,
+    prefix="/api/admin/sports",
+    tags=["admin", "pbp"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    resolution.router,
+    prefix="/api/admin/sports",
+    tags=["admin", "resolution"],
+    dependencies=auth_dependency,
+)
 app.include_router(
     task_control.router,
     prefix="/api/admin",
     tags=["admin", "tasks"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    circuit_breakers.router,
+    prefix="/api/admin",
+    tags=["admin", "circuit-breakers"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    coverage_report.router,
+    prefix="/api/admin",
+    tags=["admin", "pipeline"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    quality_summary.router,
+    prefix="/api/admin",
+    tags=["admin", "quality"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    quality_review.router,
+    prefix="/api/admin",
+    tags=["admin", "quality"],
+    dependencies=auth_dependency,
+)
+app.include_router(
+    admin_realtime.router,
+    prefix="/api/admin",
+    tags=["admin", "realtime"],
     dependencies=auth_dependency,
 )
 

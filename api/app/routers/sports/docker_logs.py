@@ -20,8 +20,11 @@ router = APIRouter()
 
 ALLOWED_CONTAINERS: set[str] = {
     "sports-api",
+    "sports-api-training-worker",
+    "sports-api-worker",
     "sports-scraper",
     "sports-scraper-beat",
+    "sports-social-scraper",
 }
 
 LOG_RELAY_URL = os.getenv("LOG_RELAY_URL", "http://log-relay:9999")

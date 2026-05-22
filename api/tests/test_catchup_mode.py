@@ -72,7 +72,7 @@ def test_catchup_context_builds_spoiler_safe_reasons_from_local_data() -> None:
     assert not any("90" in sentence or "88" in sentence for sentence in context)
 
 
-def test_catchup_mode_exposes_only_catchup_routes() -> None:
+def test_admin_surface_keeps_sports_and_system_routes_only() -> None:
     api_dir = Path(__file__).resolve().parents[1]
     env = {
         **os.environ,
@@ -109,12 +109,28 @@ print("APP=" + json.dumps(payload))
     assert "/api/admin/sports/games" in routes
     assert "/api/admin/sports/games/{game_id}" in routes
     assert "/api/admin/sports/games/{game_id}/context" in routes
+    assert "/api/admin/sports/scraper/runs" in routes
+    assert "/api/admin/sports/logs" in routes
+    assert "/api/admin/sports/jobs" in routes
+    assert "/api/admin/sports/pipeline/game/{game_id}" in routes
+    assert "/api/admin/circuit-breakers" in routes
+    assert "/api/admin/coverage-report" in routes
     assert "/api/admin/tasks/registry" in routes
-    assert not any("/api/admin/golf" in route for route in routes)
-    assert "/api/admin/sports/jobs" not in routes
-    assert "/v1/realtime/status" not in routes
+    assert "/api/v1/games/{game_id}/summary" in routes
+    assert not any(route.startswith("/api/admin/golf") for route in routes)
+    assert not any(route.startswith("/api/golf") for route in routes)
+    assert not any(route.startswith("/api/analytics") for route in routes)
+    assert not any(route.startswith("/api/fairbet") for route in routes)
+    assert not any(route.startswith("/api/model-odds") for route in routes)
+    assert not any(route.startswith("/api/simulator") for route in routes)
     assert "/api/auth/login" not in routes
 
 
-def test_task_registry_only_exposes_catchup_refresh() -> None:
-    assert set(TASK_REGISTRY) == {"poll_live_pbp"}
+def test_task_registry_excludes_disabled_odds_analytics_and_golf() -> None:
+    task_names = set(TASK_REGISTRY)
+
+    assert {"run_scheduled_ingestion", "poll_live_pbp", "trigger_flow_for_game"} <= task_names
+    assert not any(name.startswith("golf_") for name in task_names)
+    assert not any("odds" in name for name in task_names)
+    assert not any("analytics" in name for name in task_names)
+    assert "batch_simulate_games" not in task_names
