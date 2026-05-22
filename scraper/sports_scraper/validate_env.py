@@ -49,38 +49,12 @@ def validate_database_credentials(value: str) -> None:
     parsed = urlparse(value)
     _DEFAULT_CREDS = {("postgres", "postgres"), ("sports", "sports")}
     if (parsed.username, parsed.password) in _DEFAULT_CREDS:
-        raise RuntimeError(
-            "DATABASE_URL must not use default credentials in production."
-        )
-
-
-def _validate_social_credentials() -> None:
-    bearer_token = os.getenv("X_BEARER_TOKEN")
-    auth_token = os.getenv("X_AUTH_TOKEN")
-    ct0 = os.getenv("X_CT0")
-    if bearer_token:
-        return
-    if auth_token and ct0:
-        return
-    raise RuntimeError(
-        "Production social scraping requires X_BEARER_TOKEN or X_AUTH_TOKEN + X_CT0."
-    )
-
-
-ALLOWED_SCRAPER_ROLES = {"worker", "beat", "social"}
+        raise RuntimeError("DATABASE_URL must not use default credentials in production.")
 
 
 @lru_cache(maxsize=1)
 def validate_env() -> None:
-    """Validate required environment variables before the worker starts.
-
-    Uses SCRAPER_ROLE to determine which credentials are required so each
-    container only demands the secrets it actually needs.
-
-    Roles:
-        worker / beat — scraping worker or scheduler: needs ODDS_API_KEY.
-        social        — social-only worker: needs X credentials.
-    """
+    """Validate required environment variables before the catch-up worker starts."""
     environment = require_env("ENVIRONMENT")
     validate_environment_value(environment)
 
@@ -91,14 +65,3 @@ def validate_env() -> None:
         validate_non_local_url("DATABASE_URL", database_url)
         validate_database_credentials(database_url)
         validate_non_local_url("REDIS_URL", redis_url)
-
-        role = os.getenv("SCRAPER_ROLE", "worker")
-        if role not in ALLOWED_SCRAPER_ROLES:
-            allowed = ", ".join(sorted(ALLOWED_SCRAPER_ROLES))
-            raise RuntimeError(f"SCRAPER_ROLE must be one of: {allowed}.")
-
-        if role in ("worker", "beat"):
-            require_env("ODDS_API_KEY")
-
-        if role == "social":
-            _validate_social_credentials()

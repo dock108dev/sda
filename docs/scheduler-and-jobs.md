@@ -1,64 +1,43 @@
-# Scheduler & background jobs
+# Scheduler And Jobs
 
-## Authoritative schedule
+The scraper Celery app has one production execution path.
 
-**Celery Beat** for ingestion, polling, golf, and related tasks is defined in **`scraper/sports_scraper/celery_app.py`** (`_polling_schedule`, `_scheduled_tasks`, `_live_polling_schedule`, merged into `app.conf.beat_schedule`). Comments in that file use **UTC** times and note the US/Eastern interpretation for daily jobs.
+## Authoritative Schedule
 
-### Queue layout (scraper Celery app)
+Defined in `scraper/sports_scraper/celery_app.py`:
 
-| Queue | Typical workloads |
-|-------|-------------------|
-| `sports-scraper` | Default ingestion, PBP polling, odds sync, flow triggers, non-social tasks |
-| `social-scraper` | X/Twitter collection (single Playwright session; concurrency kept low) |
-| `social-bulk` | Bulk social mapping (`map_social_to_games`) |
+| Beat entry | Task | Cadence | Queue |
+| --- | --- | --- | --- |
+| `catchup-pbp-stats-every-5m` | `poll_live_pbp` | every 5 minutes | `sports-scraper` |
 
-Routes are set in `app.conf.task_routes` in the same module.
+No other scraper tasks are routed or beat-scheduled by the active Celery app.
 
-### Admin “hold”
+## Task Behavior
 
-Redis key **`sports:tasks_held`** (when set to `1`) causes beat-scheduled tasks to skip execution (`_HoldAwareTask`). Manual triggers can pass `manual_trigger` to bypass. Implementation: `scraper/sports_scraper/celery_app.py`.
+`poll_live_pbp` refreshes:
 
-### High-frequency summary (verify exact crontab in code)
+- play-by-play
+- player box scores
+- team box scores
+- status and final score fields as returned by the league integrations
 
-- **Every 5s:** `poll_live_pbp(True)` (live-only path), `live_orchestrator_tick`.
-- **Every minute (hour windows excluding quiet hours):** `update_game_states`, `poll_live_pbp` (full path).
-- **Every 3 min:** `sync_mainline_odds` — **conditionally scheduled** (see "Pregame & golf odds gating" below).
-- **Every 15 min:** `sync_prop_odds` — **conditionally scheduled**; `poll_game_calendars` (always on).
-- **Daily (UTC):** `run_scheduled_ingestion` (08:30 UTC — aligns with 3:30 AM Eastern in standard time), `run_daily_sweep`, `sweep_missing_flows`. Golf leaderboard polling is always on; `golf_sync_odds` is conditionally scheduled.
-- **Social (UTC minute marks):** `collect_game_social` hourly at `:00`; `map_social_to_games` at `:15` and `:45`; `check_playwright_session_health` at `:10` and `:40` (see `_live_polling_schedule` in `celery_app.py`).
+The task uses a Redis lock so slow runs do not overlap.
 
-### Pregame & golf odds gating
+The task selects active games through `scraper/sports_scraper/services/active_games.py`. It prioritizes scheduled, live, and recently final games near the catch-up window when play-by-play or box score data is stale or missing.
 
-Three Celery beat entries are added to the schedule **only when** the
-corresponding flag in `scraper/sports_scraper/config_sports.py` is `True`:
+On worker startup, the Celery app clears stale Redis locks and marks interrupted scrape/job runs so a previous crash does not permanently block the next run.
 
-| Flag | Beat entries gated | Default |
-|---|---|---|
-| `PREGAME_ODDS_ENABLED` | `mainline-odds-sync-every-3m`, `prop-odds-sync-every-15m` | `False` |
-| `GOLF_ODDS_ENABLED` | `golf-odds-every-30m` | `False` |
-| `LIVE_ODDS_ENABLED` | runtime guard inside `live_orchestrator` and `live_odds_tasks` | `False` |
+## Task Hold
 
-When a flag is `False` the task is **not registered** with beat — there
-is no scheduled invocation. The task functions still exist and can be
-dispatched manually from the admin UI for one-off runs. See
-[Known limitations](known-limitations.md) for the operational impact on
-`/api/fairbet/odds`.
+The Redis key `sports:tasks_held=1` makes beat-scheduled tasks skip execution. Manual triggers pass a `manual_trigger` header and may bypass the hold.
 
-### API Celery app (`api/app/celery_app.py`)
+Admin routes:
 
-Separate Celery application for API-side tasks (training, batch simulations, webhooks, etc.). Broker defaults to `REDIS_URL` / `CELERY_BROKER_URL`. Beat schedules for **analytics** jobs that use the `celery` queue appear in **`scraper/sports_scraper/celery_app.py`** (`record_completed_outcomes`, `refresh_mlb_forecasts`, `generate_pipeline_coverage_report`) — they target the API worker queue on the **same Redis broker** but a different Celery app name.
+- `GET /api/admin/tasks/hold`
+- `PUT /api/admin/tasks/hold`
+- `GET /api/admin/tasks/registry`
+- `POST /api/admin/tasks/trigger`
 
-Docker: **`api-worker`** and **`api-training-worker`** run workers for the API Celery app; **`scraper`** + **`scraper-beat`** run the scraper app. See [Infrastructure](ops/infra.md).
+## Removed Schedules
 
-## Manual operations
-
-- **Admin UI:** Control Panel dispatches registered Celery tasks (`/api/admin/.../tasks` — see [API](api.md)).
-- **On-demand scrapes:** `POST /api/admin/sports/scraper/runs` (and related admin routes).
-
-## What runs automatically vs manually
-
-| Automatic | Manual / on-demand |
-|-----------|-------------------|
-| Beat schedule above | Admin task triggers, single-game rescrape, pipeline runs from UI |
-| Stripe webhooks (HTTP POST) | Database restores, migrations (`migrate` service) |
-| Flow generation on LIVE→FINAL (ORM hook + sweep fallback) | Bulk timeline regeneration endpoints |
+The legacy full scheduler is not supported. There are no active beat entries for ingestion sweeps, odds sync, golf, social scraping, analytics, realtime orchestration, training, or 5-second live polling.

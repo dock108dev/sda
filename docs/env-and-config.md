@@ -1,43 +1,67 @@
-# Environment variables & runtime configuration
+# Environment And Config
 
-This document ties together **where** configuration lives and **how** it is validated. For Docker Compose service names and host ports, see [Infrastructure & local dev](ops/infra.md).
+Use `infra/.env.example` as the local template. Do not commit local `.env` files.
 
-## Docker Compose (`infra/`)
+## Required Runtime Values
 
-- **Template:** `infra/.env.example` — copy to `infra/.env` for local stacks.
-- **Scope:** Database, Redis, API, workers, and web share environment from the same file when using `docker compose` from `infra/`.
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `POSTGRES_DB` | yes | Database name for Docker Postgres |
+| `POSTGRES_USER` | yes | Database user |
+| `POSTGRES_PASSWORD` | yes | Database password |
+| `REDIS_PASSWORD` | recommended | Redis password |
+| `ENVIRONMENT` | yes | `development`, `staging`, or `production` |
+| `DATABASE_URL` | set by compose | API and migration database URL |
+| `REDIS_URL` | set by compose | Redis URL for API and Celery |
+| `API_KEY` | production/staging | Required by catch-up routes |
+| `JWT_SECRET` | production/staging | Required by API settings validation |
+| `ALLOWED_CORS_ORIGINS` | production/staging | Comma-separated origins |
+| `CBB_STATS_API_KEY` | when using NCAAB feeds | Needed by CBB/NCAAB integrations |
+| `OPENAI_API_KEY` | optional | Enables AI-enhanced homepage context copy |
 
-## API service (`api/app/config.py`)
+## Active Settings
 
-The FastAPI app loads **`Settings`** via Pydantic Settings (`pydantic-settings`). Relevant behaviors:
+API settings live in `api/app/config.py`.
 
-| Behavior | Detail |
-|----------|--------|
-| **Env file** | Defaults to `api/../../.env` relative to the `app` package (often repo-root `.env` in dev). |
-| **Unknown keys** | `model_config.extra = "ignore"` — variables not declared on `Settings` are **silently dropped**. Typos in optional keys do not fail startup. |
-| **Production / staging** | `validate_runtime_settings` enforces non-local DB URL shape, `API_KEY` length, `JWT_SECRET`, `ALLOWED_CORS_ORIGINS`, `AUTH_ENABLED`, etc. |
+| Variable | Active use |
+| --- | --- |
+| `ENVIRONMENT` | Controls docs visibility and production validation |
+| `API_KEY` | Protects catch-up and admin task routes |
+| `CONSUMER_API_KEY` | Accepted by settings but rejected for admin task routes |
+| `DATABASE_URL` | API database access |
+| `REDIS_URL` | Rate limiting, task hold, and Celery-compatible Redis access |
+| `ALLOWED_CORS_ORIGINS` | CORS middleware |
+| `OPENAI_API_KEY` | Optional context sentence polishing |
 
-Authoritative field list and defaults: read `Settings` in `api/app/config.py` (each field documents its `alias=` env name).
+Scraper settings live in `scraper/sports_scraper/config.py`.
 
-### Cross-cutting flags (verified in code)
+| Variable | Active use |
+| --- | --- |
+| `DATABASE_URL` | Celery worker database access |
+| `REDIS_URL`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB` | Celery broker/backend and task locks |
+| `CBB_STATS_API_KEY` | NCAAB game and stats ingestion |
+| `SCRAPER_HTML_CACHE_DIR` | Optional scraper cache path |
+| `SCRAPER_FORCE_CACHE_REFRESH` | Optional cache bypass |
 
-| Concern | Env / mechanism | Notes |
-|---------|-----------------|-------|
-| Trust forwarded origin | `TRUST_FORWARDED_ORIGIN` | When `true`, `_is_admin_origin` honors `X-Forwarded-Origin`; only enable behind a trusted proxy that strips this header from untrusted clients (`api/app/dependencies/roles.py`). |
-| Rate limits across replicas | `RATE_LIMIT_USE_REDIS` | Falls back to in-process limits if Redis errors; see [Known limitations](known-limitations.md). |
-| OpenTelemetry | `OTEL_EXPORTER_OTLP_ENDPOINT` | No-op when unset (`api/app/otel.py`). Prometheus metrics at `GET /metrics` are separate (`prometheus_client`). |
-| Email | `EMAIL_BACKEND`, Resend/SMTP vars | Documented on `Settings`; emails log-only when not configured. |
+## Removed Configuration
 
-## Scraper service (`scraper/sports_scraper/config.py`)
+The service is catch-up-only by construction. These old switches and secrets are not used by the active runtime:
 
-Typed **`ScraperSettings`** (and nested models) load from the same environment pattern as the API for shared keys (`DATABASE_URL`, `REDIS_URL`, etc.). Scraper-specific tuning (odds regions, social delays) lives on nested config objects in that module.
+- `SDA_CATCHUP_ONLY`
+- `SCRAPER_CATCHUP_ONLY`
+- `ODDS_API_KEY`
+- `DATAGOLF_API_KEY`
+- `X_AUTH_TOKEN`
+- `X_CT0`
+- `X_BEARER_TOKEN`
+- `SCRAPER_ROLE`
 
-## Celery (API vs scraper)
+## Validation
 
-- **Scraper beat / workers:** `scraper/sports_scraper/celery_app.py` — broker/backend from scraper settings (`REDIS_URL`).
-- **API tasks (training, batch jobs, etc.):** `api/app/celery_app.py` — separate Celery app; queue names and broker URLs come from API env (`CELERY_BROKER_URL`, `REDIS_URL`, etc.). See [Scheduler & background jobs](scheduler-and-jobs.md).
+- `api/app/validate_env.py` validates production API requirements.
+- `scraper/sports_scraper/validate_env.py` validates the catch-up worker's core database and Redis requirements.
+- `Settings.validate_runtime_settings()` rejects production/staging API startup when `API_KEY` is missing.
 
-## CI / validation
+## Non-Active Accepted Keys
 
-- **`api/app/validate_env.py`** — called when settings load; checks required vars for the chosen `ENVIRONMENT`.
-- **Production deploys** should still use a checklist for business-critical keys (Odds API, social tokens) even when optional at runtime.
+Some settings remain accepted by Pydantic because historical modules still import the shared settings class. Examples include email, Stripe, frontend, odds, and FairBet-related values. They are not part of the mounted catch-up API or scheduled worker path.

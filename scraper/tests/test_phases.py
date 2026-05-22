@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRAPER_ROOT = REPO_ROOT / "scraper"
@@ -287,74 +288,19 @@ class TestDispatchSocial:
         cfg.league_code = league
         return cfg
 
-    def test_skips_unsupported_league(self):
+    def test_social_dispatch_removed(self):
         summary = {"social_posts": 0}
-        dispatch_social(
-            1, self._make_config("WNBA"), summary,
-            date(2025, 3, 1), date(2025, 3, 2),
-            ("NBA", "NHL"),
-            get_session=MagicMock(),
-            social_task_exists_fn=MagicMock(),
-            queue_job_run=MagicMock(),
-            enforce_social_queue_limit=MagicMock(),
-        )
+        with pytest.raises(RuntimeError, match="Legacy path removed"):
+            dispatch_social(
+                1, self._make_config("NBA"), summary,
+                date(2025, 3, 1), date(2025, 3, 2),
+                (),
+                get_session=MagicMock(),
+                social_task_exists_fn=MagicMock(),
+                queue_job_run=MagicMock(),
+                enforce_social_queue_limit=MagicMock(),
+            )
         assert summary["social_posts"] == 0
-
-    @patch("sports_scraper.services.phases.social_phase.cap_social_date_range")
-    def test_skips_empty_range(self, mock_cap):
-        mock_cap.return_value = (date(2025, 3, 5), date(2025, 3, 2))
-        summary = {"social_posts": 0}
-        dispatch_social(
-            1, self._make_config("NBA"), summary,
-            date(2025, 3, 1), date(2025, 3, 2),
-            ("NBA", "NHL"),
-            get_session=MagicMock(),
-            social_task_exists_fn=MagicMock(),
-            queue_job_run=MagicMock(),
-            enforce_social_queue_limit=MagicMock(),
-        )
-        assert summary["social_posts"] == 0
-
-    @patch("sports_scraper.services.phases.social_phase.cap_social_date_range")
-    def test_skips_duplicate(self, mock_cap):
-        mock_cap.return_value = (date(2025, 3, 1), date(2025, 3, 2))
-        summary = {"social_posts": 0}
-        dispatch_social(
-            1, self._make_config("NBA"), summary,
-            date(2025, 3, 1), date(2025, 3, 2),
-            ("NBA", "NHL"),
-            get_session=MagicMock(),
-            social_task_exists_fn=MagicMock(return_value=True),
-            queue_job_run=MagicMock(),
-            enforce_social_queue_limit=MagicMock(),
-        )
-        assert summary["social_posts"] == "skipped (already queued)"
-
-    @patch("sports_scraper.jobs.social_tasks.collect_team_social")
-    @patch("sports_scraper.jobs.social_tasks.handle_social_task_failure")
-    @patch("sports_scraper.services.phases.social_phase.cap_social_date_range")
-    def test_dispatches_single_task_per_league(self, mock_cap, mock_fail, mock_collect):
-        mock_cap.return_value = (date(2025, 3, 1), date(2025, 3, 3))
-        mock_collect.apply_async = MagicMock()
-        mock_fail.s = MagicMock()
-        summary = {"social_posts": 0}
-        mock_queue = MagicMock(return_value=42)
-
-        dispatch_social(
-            1, self._make_config("NBA"), summary,
-            date(2025, 3, 1), date(2025, 3, 3),
-            ("NBA", "NHL"),
-            get_session=MagicMock(),
-            social_task_exists_fn=MagicMock(return_value=False),
-            queue_job_run=mock_queue,
-            enforce_social_queue_limit=MagicMock(),
-        )
-        # Single task per league covering full date range
-        assert mock_collect.apply_async.call_count == 1
-        assert mock_queue.call_count == 1
-        call_args = mock_collect.apply_async.call_args
-        assert call_args[1]["args"] == ["NBA", "2025-03-01", "2025-03-03"]
-        assert summary["social_posts"] == "dispatched to worker"
 
 
 # ===========================================================================

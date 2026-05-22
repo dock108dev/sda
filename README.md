@@ -1,6 +1,13 @@
 # Sports Data Admin
 
-Centralized sports data platform for Dock108 applications: ingestion, normalization, and serving for odds, play-by-play, box scores, social signals, and admin workflows.
+Sports Data Admin is the backend service for Scroll Down Sports catch-up data. It serves spoiler-light game lists and game detail data built from play-by-play, player stats, team stats, and box scores.
+
+The current runtime is intentionally small:
+
+- FastAPI API at `api/`
+- Celery scraper worker and beat scheduler at `scraper/`
+- Docker/runtime assets at `infra/`
+- Optional local admin web app at `web/`
 
 ## Run Locally
 
@@ -11,34 +18,32 @@ docker compose --profile dev up -d --build
 ```
 
 Local endpoints:
+
 - Admin UI: `http://localhost:3000`
 - API docs: `http://localhost:8000/docs`
 - Health check: `http://localhost:8000/healthz`
 
 ## Deployment Basics
 
-- Infrastructure and runtime setup: `docs/ops/infra.md`
-- Deployment runbook: `docs/ops/deployment.md`
-- Operational procedures: `docs/ops/runbook.md`
+Production uses the same compose file with the `prod` profile:
 
-## Repository Layout
+```bash
+cd infra
+docker compose --profile prod pull --policy always
+docker compose --profile prod run --rm migrate
+docker compose --profile prod up -d --remove-orphans
+```
 
-- `api/` FastAPI backend and services
-- `scraper/` Celery ingestion workers and narrative pipeline
-- `web/` Next.js admin UI
-- `packages/` shared TypeScript types and UI primitives
-- `infra/` Docker and deployment assets
-- `docs/` full technical documentation
+Set production secrets in `infra/.env`, especially `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `API_KEY`, `JWT_SECRET`, and `ALLOWED_CORS_ORIGINS`.
 
-## Further documentation
+## Documentation
 
-Start at [`docs/index.md`](docs/index.md).
+Start with [`docs/index.md`](docs/index.md).
 
-Key references:
+Useful references:
 
-| Topic | Doc |
-|-------|-----|
-| Env vars & settings | [`docs/env-and-config.md`](docs/env-and-config.md) |
-| Celery schedules & queues | [`docs/scheduler-and-jobs.md`](docs/scheduler-and-jobs.md) |
-| Ops (Docker, deploy, runbook) | [`docs/ops/`](docs/ops/) |
-| API contract | [`docs/api.md`](docs/api.md) |
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/api.md`](docs/api.md)
+- [`docs/env-and-config.md`](docs/env-and-config.md)
+- [`docs/scheduler-and-jobs.md`](docs/scheduler-and-jobs.md)
+- [`docs/ops/infra.md`](docs/ops/infra.md)

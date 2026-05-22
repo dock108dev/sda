@@ -1,64 +1,30 @@
-# Documentation index
+# Documentation Index
 
-## Getting started
+These docs describe the current catch-up-only Sports Data Admin service. Code, compose, and tests are the source of truth when docs drift.
 
-| Guide | Description |
-|-------|-------------|
-| [README](../README.md) (repo root) | Clone, Docker quick start, repository layout |
-| [Infrastructure & local dev](ops/infra.md) | Docker Compose, services, migrations, backups |
-| [Environment & configuration](env-and-config.md) | Where env vars live, API/scraper settings, validation rules |
-| [Architecture](architecture.md) | Components, data flow, stack overview |
-| [API reference](api.md) | HTTP endpoints, auth, rate limits, response conventions |
+## Start Here
+
+| Guide | Purpose |
+| --- | --- |
+| [Architecture](architecture.md) | Current service shape and data flow |
+| [API](api.md) | Catch-up API contract and health endpoints |
+| [Environment & config](env-and-config.md) | Runtime settings and required secrets |
+| [Scheduler & jobs](scheduler-and-jobs.md) | Celery queues, beat schedule, and task hold |
+| [Infrastructure](ops/infra.md) | Docker services, local setup, migrations, backups |
+
+## Data
+
+| Guide | Purpose |
+| --- | --- |
+| [Data sources](ingestion/data-sources.md) | External feeds used by the catch-up worker |
+| [Database](database.md) | Tables that back games, plays, and stats |
+| [DB conventions](conventions/db.md) | Naming and migration conventions |
+| [Scroll Down MLB fixtures](testing/scroll-down-mlb-fixtures.md) | Historical regression fixture notes |
 
 ## Operations
 
-| Guide | Description |
-|-------|-------------|
-| [Operator runbook](ops/runbook.md) | Production operations and monitoring |
-| [Deployment](ops/deployment.md) | Server setup, routing, rollbacks |
-| [Scheduler & background jobs](scheduler-and-jobs.md) | Celery beat, queues, hold switch, manual vs automatic work |
-
-## Limits & known tradeoffs
-
-| Guide | Description |
-|-------|-------------|
-| [Known limitations](known-limitations.md) | Intentional tradeoffs (Redis fallback, Stripe 202 path, etc.) |
-
-## Data & ingestion
-
-| Guide | Description |
-|-------|-------------|
-| [Data sources](ingestion/data-sources.md) | External APIs, leagues, ingestion behavior |
-| [Odds & FairBet](ingestion/odds-and-fairbet.md) | Odds pipeline through FairBet APIs |
-| [EV math](ingestion/ev-math.md) | Devig and conversion formulas |
-| [Database integration](database.md) | Querying and schema orientation |
-| [DB conventions](conventions/db.md) | Naming patterns used in migrations |
-
-## Game summary & timelines
-
-| Guide | Description |
-|-------|-------------|
-| [Game summary contract](gameflow/contract.md) | v3-summary schema, voice rules, pipeline shape |
-| [Scroll Down MLB](scroll-down-mlb.md) | Spoiler-safe MLB catch-up deck — endpoints, build pipeline, persistence |
-| [PBP assumptions](gameflow/pbp-assumptions.md) | Technical assumptions for PBP |
-| [Timeline assembly](gameflow/timeline-assembly.md) | Merging PBP, social, odds |
-| [Timeline validation](gameflow/timeline-validation.md) | Validation rules |
-
-## Domains
-
-| Guide | Description |
-|-------|-------------|
-| [Club provisioning](clubs.md) | Onboarding, Stripe, pools |
-| [Analytics engine](analytics.md) | ML, simulation, training, experiments |
-| [Analytics downstream](analytics-downstream.md) | Integration notes for consuming apps (`/api/analytics`) |
-| [Adding sports](adding-sports.md) | Enabling a new league |
-
-## History
-
-| Guide | Description |
-|-------|-------------|
-| [Changelog](changelog.md) | Release-level changes |
-
----
-
-Documentation is maintained against the **current** codebase. If something disagrees with code or `infra/`, treat **code + compose + CI workflows** as authoritative and file an update.
+| Guide | Purpose |
+| --- | --- |
+| [Deployment](ops/deployment.md) | Production deployment and rollback basics |
+| [Runbook](ops/runbook.md) | Common operator checks |
+| [Known limitations](known-limitations.md) | Intentional constraints |

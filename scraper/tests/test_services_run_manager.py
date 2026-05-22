@@ -1127,9 +1127,6 @@ class TestScrapeRunManagerSocial:
 
         assert result["social_posts"] == 0
 
-    @patch("sports_scraper.jobs.social_tasks.map_social_to_games")
-    @patch("sports_scraper.jobs.social_tasks.collect_team_social")
-    @patch("celery.chain")
     @patch("sports_scraper.services.run_manager.get_session")
     @patch("sports_scraper.services.run_manager.start_job_run")
     @patch("sports_scraper.services.run_manager.complete_job_run")
@@ -1137,15 +1134,12 @@ class TestScrapeRunManagerSocial:
     @patch("sports_scraper.services.run_manager.detect_external_id_conflicts")
     @patch("sports_scraper.services.run_manager.LiveFeedManager")
     @patch("sports_scraper.services.run_manager.get_all_scrapers")
-    @patch("sports_scraper.services.run_manager.queue_job_run", return_value=42)
-    @patch("sports_scraper.services.run_manager.enforce_social_queue_limit", return_value=[])
-    @patch("sports_scraper.services.run_manager._social_task_exists_for_league", return_value=False)
-    def test_social_collects_posts(
-        self, mock_exists, mock_enforce, mock_queue, mock_scrapers, mock_live,
+    def test_social_path_is_removed(
+        self, mock_scrapers, mock_live,
         mock_conflicts, mock_missing, mock_complete, mock_start,
-        mock_get_session, mock_chain, mock_collect, mock_map
+        mock_get_session,
     ):
-        """Social dispatches per-day tasks for supported leagues."""
+        """Social no longer dispatches legacy jobs from run manager."""
         mock_scrapers.return_value = {}
         mock_session = MagicMock()
         mock_run = MagicMock()
@@ -1164,7 +1158,9 @@ class TestScrapeRunManagerSocial:
 
         result = manager.run(1, config)
 
-        assert "dispatched" in result["social_posts"]
+        assert result["social_posts"] == 0
+        assert mock_run.status == "error"
+        assert "Failed phases: social" in mock_run.summary
 
 
 class TestScrapeRunManagerErrorHandling:

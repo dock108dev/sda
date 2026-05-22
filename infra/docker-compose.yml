@@ -64,7 +64,7 @@ services:
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
       # API authentication key (required for production/staging)
       API_KEY: ${API_KEY:-}
-      # OpenAI configuration for AI-enhanced timeline generation
+      # OpenAI configuration for homepage game context.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL_CLASSIFICATION: ${OPENAI_MODEL_CLASSIFICATION:-}
       OPENAI_MODEL_SUMMARY: ${OPENAI_MODEL_SUMMARY:-}
@@ -89,8 +89,6 @@ services:
     networks:
       - internal
       - app
-    volumes:
-      - model-artifacts:/app/models
     ports:
       - "8000:8000"
     healthcheck:
@@ -98,72 +96,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # General-purpose worker: batch sims, flow generation, outcomes, experiments orchestrator.
-  # Always has capacity — never blocked by training.
-  api-worker:
-    image: ghcr.io/dock108dev/sda-api:${IMAGE_TAG:-latest}
-    build:
-      context: ..
-      dockerfile: infra/api.Dockerfile
-    container_name: sports-api-worker
-    profiles: ["dev", "prod"]
-    logging: *default-logging
-    command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=celery", "--concurrency=2", "-O", "fair", "-n", "general@%h"]
-    volumes:
-      - model-artifacts:/app/models
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
-      REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/0
-      CELERY_BROKER_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
-      ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      API_KEY: ${API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL_CLASSIFICATION: ${OPENAI_MODEL_CLASSIFICATION:-}
-      OPENAI_MODEL_SUMMARY: ${OPENAI_MODEL_SUMMARY:-}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - internal
-      - app
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A app.celery_app.celery_app inspect ping -d general@$(hostname) --timeout=5 | grep -q pong"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Training worker: only model training tasks. Lowest priority — never blocks other work.
-  api-training-worker:
-    image: ghcr.io/dock108dev/sda-api:${IMAGE_TAG:-latest}
-    build:
-      context: ..
-      dockerfile: infra/api.Dockerfile
-    container_name: sports-api-training-worker
-    profiles: ["dev", "prod"]
-    logging: *default-logging
-    command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=training", "--concurrency=${CELERY_TRAINING_CONCURRENCY:-2}", "-O", "fair", "-n", "training@%h"]
-    volumes:
-      - model-artifacts:/app/models
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
-      REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/0
-      CELERY_BROKER_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      API_KEY: ${API_KEY:-}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - internal
-      - app
 
   scraper:
     image: ghcr.io/dock108dev/sda-scraper:${IMAGE_TAG:-latest}
@@ -179,15 +111,10 @@ services:
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_DB: "2"
-      ODDS_API_KEY: ${ODDS_API_KEY:-}
       CBB_STATS_API_KEY: ${CBB_STATS_API_KEY:-}
-      DATAGOLF_API_KEY: ${DATAGOLF_API_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
       API_KEY: ${API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL_SUMMARY: ${OPENAI_MODEL_SUMMARY:-gpt-4o}
-      OPENAI_MODEL_CLASSIFICATION: ${OPENAI_MODEL_CLASSIFICATION:-gpt-4o-mini}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
       postgres:
@@ -220,15 +147,10 @@ services:
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_DB: "2"
-      ODDS_API_KEY: ${ODDS_API_KEY:-}
       CBB_STATS_API_KEY: ${CBB_STATS_API_KEY:-}
-      DATAGOLF_API_KEY: ${DATAGOLF_API_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
       API_KEY: ${API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL_SUMMARY: ${OPENAI_MODEL_SUMMARY:-gpt-4o}
-      OPENAI_MODEL_CLASSIFICATION: ${OPENAI_MODEL_CLASSIFICATION:-gpt-4o-mini}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
       postgres:
@@ -238,73 +160,6 @@ services:
     networks:
       - internal
       - app
-
-  social-scraper:
-    image: ghcr.io/dock108dev/sda-scraper:${IMAGE_TAG:-latest}
-    build:
-      context: ..
-      dockerfile: infra/scraper.Dockerfile
-    container_name: sports-social-scraper
-    profiles: ["dev", "prod"]
-    logging: *default-logging
-    # Live social tasks only (final-whistle, game polling, mapping).
-    # Concurrency=1 for consistent IP and sequential X requests.
-    # Separated from bulk so multi-hour bulk jobs never block live tasks.
-    command: ["celery", "-A", "sports_scraper.celery_app.app", "worker", "--loglevel=info", "--queues=social-scraper", "--concurrency=1"]
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
-      REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
-      REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      REDIS_DB: "2"
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      SCRAPER_ROLE: social
-      # X auth cookies — injected directly into each browser context
-      X_AUTH_TOKEN: ${X_AUTH_TOKEN:-}
-      X_CT0: ${X_CT0:-}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - internal
-      - app
-    # No healthcheck needed - social scraping is best-effort
-
-  social-bulk:
-    image: ghcr.io/dock108dev/sda-scraper:${IMAGE_TAG:-latest}
-    build:
-      context: ..
-      dockerfile: infra/scraper.Dockerfile
-    container_name: sports-social-bulk
-    profiles: ["dev", "prod"]
-    logging: *default-logging
-    # Bulk social collection (collect_team_social, collect_social_for_league).
-    # Runs on its own worker so long-running bulk jobs never block live tasks.
-    command: ["celery", "-A", "sports_scraper.celery_app.app", "worker", "--loglevel=info", "--queues=social-bulk", "--concurrency=1"]
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sports}:${POSTGRES_PASSWORD:-sports}@postgres:5432/${POSTGRES_DB:-sports}
-      REDIS_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
-      REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      REDIS_DB: "2"
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      SCRAPER_ROLE: social
-      # X auth cookies — injected directly into each browser context
-      X_AUTH_TOKEN: ${X_AUTH_TOKEN:-}
-      X_CT0: ${X_CT0:-}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - internal
-      - app
-    # No healthcheck needed - social scraping is best-effort
 
   migrate:
     image: ghcr.io/dock108dev/sda-api:${IMAGE_TAG:-latest}
@@ -527,7 +382,6 @@ services:
 volumes:
   postgres-data:
   scraper-cache:
-  model-artifacts:
   grafana-data:
   prometheus-data:
 
