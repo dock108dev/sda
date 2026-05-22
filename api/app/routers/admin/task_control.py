@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 import redis
@@ -53,6 +55,18 @@ class HoldStatusResponse(BaseModel):
     held: bool
 
 
+class SessionHealthResponse(BaseModel):
+    model_config = _ALIAS_CFG
+
+    is_valid: bool
+    checked_at: str | None = None
+    failure_reason: str | None = None
+    auth_token_present: bool = False
+    ct0_present: bool = False
+    circuit_open: bool = False
+    stale: bool = False
+
+
 # ---------------------------------------------------------------------------
 # Task registry — whitelist of tasks that can be triggered via the admin UI.
 # Only tasks listed here are dispatchable.  The queue value determines which
@@ -62,10 +76,105 @@ class HoldStatusResponse(BaseModel):
 TASK_REGISTRY: dict[str, TaskRegistryEntry] = {
     entry.name: entry
     for entry in [
+        # Ingestion
+        TaskRegistryEntry(
+            name="run_scheduled_ingestion",
+            queue="sports-scraper",
+            description="Full scheduled ingestion (NBA, NHL, NCAAB sequentially)",
+        ),
+        TaskRegistryEntry(
+            name="run_daily_sweep",
+            queue="sports-scraper",
+            description="Daily truth repair and backfill sweep",
+        ),
+        TaskRegistryEntry(
+            name="ingest_nba_historical",
+            queue="sports-scraper",
+            description="Backfill NBA boxscores and PBP from Basketball Reference",
+        ),
+        # Polling
+        TaskRegistryEntry(
+            name="update_game_states",
+            queue="sports-scraper",
+            description="Update game state machine for all tracked games",
+        ),
         TaskRegistryEntry(
             name="poll_live_pbp",
             queue="sports-scraper",
             description="Poll play-by-play, player stats, team stats, and boxscores",
+        ),
+        TaskRegistryEntry(
+            name="live_orchestrator_tick",
+            queue="sports-scraper",
+            description="Run one live orchestrator tick for active game polling",
+        ),
+        # Social
+        TaskRegistryEntry(
+            name="collect_game_social",
+            queue="social-scraper",
+            description="Collect social for games with missing or stale social data",
+        ),
+        TaskRegistryEntry(
+            name="collect_social_for_league",
+            queue="social-scraper",
+            description="Collect social content for a specific league",
+        ),
+        TaskRegistryEntry(
+            name="map_social_to_games",
+            queue="social-bulk",
+            description="Map collected social posts to games",
+        ),
+        TaskRegistryEntry(
+            name="run_final_whistle_social",
+            queue="social-scraper",
+            description="Collect post-game social content for a specific game",
+        ),
+        TaskRegistryEntry(
+            name="check_playwright_session_health",
+            queue="social-scraper",
+            description="Run a Playwright session health probe against X/Twitter",
+        ),
+        # Flows and timelines
+        TaskRegistryEntry(
+            name="run_scheduled_flow_generation",
+            queue="sports-scraper",
+            description="Run flow generation for all leagues",
+        ),
+        TaskRegistryEntry(
+            name="run_scheduled_nba_flow_generation",
+            queue="sports-scraper",
+            description="Run flow generation for NBA games",
+        ),
+        TaskRegistryEntry(
+            name="run_scheduled_nhl_flow_generation",
+            queue="sports-scraper",
+            description="Run flow generation for NHL games",
+        ),
+        TaskRegistryEntry(
+            name="run_scheduled_ncaab_flow_generation",
+            queue="sports-scraper",
+            description="Run flow generation for NCAAB games",
+        ),
+        TaskRegistryEntry(
+            name="trigger_flow_for_game",
+            queue="sports-scraper",
+            description="Trigger flow generation for a specific game",
+        ),
+        TaskRegistryEntry(
+            name="run_scheduled_timeline_generation",
+            queue="sports-scraper",
+            description="Run scheduled timeline generation for all leagues",
+        ),
+        # Sport data utilities
+        TaskRegistryEntry(
+            name="ingest_mlb_advanced_stats",
+            queue="sports-scraper",
+            description="Ingest Statcast-derived advanced stats for an MLB game",
+        ),
+        TaskRegistryEntry(
+            name="clear_scraper_cache",
+            queue="sports-scraper",
+            description="Clear scraper cache for a league",
         ),
     ]
 }
@@ -95,6 +204,62 @@ async def set_hold_status(body: HoldStatusResponse) -> HoldStatusResponse:
 async def get_task_registry() -> list[TaskRegistryEntry]:
     """Return the list of tasks that can be triggered via the admin UI."""
     return list(TASK_REGISTRY.values())
+
+
+_HEALTH_KEY = "playwright:session:health"
+_CIRCUIT_OPEN_KEY = "playwright:session:circuit_open"
+_HEALTH_STALE_SECONDS = 35 * 60
+
+
+@router.get("/social/session-health", response_model=SessionHealthResponse)
+async def get_session_health() -> SessionHealthResponse:
+    """Return the most recent Playwright session health snapshot from Redis."""
+    r = _redis()
+    raw = r.get(_HEALTH_KEY)
+    circuit_open = r.get(_CIRCUIT_OPEN_KEY) == "1"
+
+    if not raw:
+        return SessionHealthResponse(
+            is_valid=False,
+            circuit_open=circuit_open,
+            failure_reason="no health snapshot — probe has not run yet",
+            stale=True,
+        )
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning(
+            "session_health_snapshot_malformed",
+            extra={"raw_length": len(raw) if raw else 0},
+            exc_info=True,
+        )
+        return SessionHealthResponse(
+            is_valid=False,
+            circuit_open=circuit_open,
+            failure_reason="malformed health snapshot in Redis",
+            stale=True,
+        )
+
+    stale = False
+    checked_at_str = data.get("checked_at")
+    if checked_at_str:
+        try:
+            checked_at = datetime.fromisoformat(checked_at_str)
+            age = (datetime.now(UTC) - checked_at).total_seconds()
+            stale = age > _HEALTH_STALE_SECONDS
+        except (ValueError, TypeError):
+            stale = True
+
+    return SessionHealthResponse(
+        is_valid=data.get("is_valid", False),
+        checked_at=checked_at_str,
+        failure_reason=data.get("failure_reason"),
+        auth_token_present=data.get("auth_token_present", False),
+        ct0_present=data.get("ct0_present", False),
+        circuit_open=circuit_open,
+        stale=stale,
+    )
 
 
 @router.post("/tasks/trigger", response_model=TriggerResponse)

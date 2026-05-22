@@ -18,7 +18,16 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from . import flow as _flow  # noqa: F401 — register relationship targets
 from . import hooks as _hooks  # noqa: F401 — registers ORM event listeners
+from . import mlb_advanced as _mlb_advanced  # noqa: F401 — register relationship targets
+from . import nba_advanced as _nba_advanced  # noqa: F401 — register relationship targets
+from . import ncaab_advanced as _ncaab_advanced  # noqa: F401 — register relationship targets
+from . import nfl_advanced as _nfl_advanced  # noqa: F401 — register relationship targets
+from . import nhl_advanced as _nhl_advanced  # noqa: F401 — register relationship targets
+from . import odds as _odds  # noqa: F401 — register relationship targets
+from . import scraper as _scraper  # noqa: F401 — register relationship targets
+from . import social as _social  # noqa: F401 — register relationship targets
 from . import telemetry as _telemetry  # noqa: F401 — registers CircuitBreakerTripEvent mapper
 from .audit import AuditEvent  # noqa: F401 — register ORM model for Alembic autogenerate
 from .base import Base
@@ -57,9 +66,7 @@ def _get_engine() -> AsyncEngine:
         from ..config import settings
         from ..otel import instrument_sqlalchemy_engine
 
-        _engine = create_async_engine(
-            settings.database_url, echo=settings.sql_echo, future=True
-        )
+        _engine = create_async_engine(settings.database_url, echo=settings.sql_echo, future=True)
         instrument_sqlalchemy_engine(_engine)
     return _engine
 
