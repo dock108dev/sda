@@ -236,21 +236,22 @@ class TestBuildSelectionKey:
 
 
 # ---------------------------------------------------------------------------
-# Task registry includes new tasks
+# Task registry exposes only the catch-up polling task
 # ---------------------------------------------------------------------------
 
 
-class TestTaskRegistryUpdated:
-    def test_new_tasks_in_registry(self):
+class TestTaskRegistryCatchupOnly:
+    def test_only_catchup_task_in_registry(self):
         from app.routers.admin.task_control import TASK_REGISTRY
 
-        assert "live_orchestrator_tick" in TASK_REGISTRY
-        assert "poll_live_odds_mainline" in TASK_REGISTRY
-        assert "poll_live_odds_props" in TASK_REGISTRY
+        assert set(TASK_REGISTRY) == {"poll_live_pbp"}
+        assert "live_orchestrator_tick" not in TASK_REGISTRY
+        assert "poll_live_odds_mainline" not in TASK_REGISTRY
+        assert "poll_live_odds_props" not in TASK_REGISTRY
 
-    def test_new_tasks_on_correct_queue(self):
+    def test_catchup_task_on_correct_queue(self):
         from app.routers.admin.task_control import TASK_REGISTRY
 
-        assert TASK_REGISTRY["live_orchestrator_tick"].queue == "sports-scraper"
-        assert TASK_REGISTRY["poll_live_odds_mainline"].queue == "sports-scraper"
-        assert TASK_REGISTRY["poll_live_odds_props"].queue == "sports-scraper"
+        entry = TASK_REGISTRY["poll_live_pbp"]
+        assert entry.queue == "sports-scraper"
+        assert "play-by-play" in entry.description

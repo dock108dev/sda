@@ -164,13 +164,13 @@ async def list_catchup_games(
         )
         .where(
             SportsGame.game_date >= window_start,
-            SportsGame.game_date <= window_end,
+            SportsGame.game_date < window_end,
             SportsGame.status.notin_((GameStatus.CANCELLED.value, GameStatus.postponed.value)),
         )
     )
     count_stmt = select(func.count(SportsGame.id)).where(
         SportsGame.game_date >= window_start,
-        SportsGame.game_date <= window_end,
+        SportsGame.game_date < window_end,
         SportsGame.status.notin_((GameStatus.CANCELLED.value, GameStatus.postponed.value)),
     )
 

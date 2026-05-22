@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from sports_scraper.services.active_games import (
-    _DEFAULT_LIVE_STALE_SECONDS,
     _DEFAULT_PBP_STALE_MINUTES,
     _DEFAULT_POSTGAME_HOURS,
     _DEFAULT_PREGAME_HOURS,
@@ -40,19 +39,16 @@ class TestActiveGamesResolverInit:
         assert resolver.pregame_hours == _DEFAULT_PREGAME_HOURS
         assert resolver.postgame_hours == _DEFAULT_POSTGAME_HOURS
         assert resolver.pbp_stale_minutes == _DEFAULT_PBP_STALE_MINUTES
-        assert resolver.live_stale_seconds == _DEFAULT_LIVE_STALE_SECONDS
 
     def test_custom_params(self):
         resolver = ActiveGamesResolver(
             pregame_hours=12,
             postgame_hours=6,
             pbp_stale_minutes=10,
-            live_stale_seconds=7,
         )
         assert resolver.pregame_hours == 12
         assert resolver.postgame_hours == 6
         assert resolver.pbp_stale_minutes == 10
-        assert resolver.live_stale_seconds == 7
 
 
 # ---------------------------------------------------------------------------
@@ -151,69 +147,9 @@ class TestGetGamesNeedingPbp:
 
 
 # ---------------------------------------------------------------------------
-# get_games_needing_social
+# removed legacy selectors
 # ---------------------------------------------------------------------------
-class TestGetGamesNeedingSocial:
-    def test_deduplicates_team_pairs(self):
-        resolver = ActiveGamesResolver()
-        game1 = _make_game(id=1, home_team_id=100, away_team_id=200)
-        game2 = _make_game(id=2, home_team_id=100, away_team_id=300)
-
-        with patch.object(
-            ActiveGamesResolver, "get_active_games",
-            return_value=[(game1, "IN"), (game2, "PRE")],
-        ):
-            session = MagicMock()
-            pairs = resolver.get_games_needing_social(session)
-            team_ids = [t for _, t in pairs]
-            assert len(team_ids) == len(set(team_ids))
-            assert 100 in team_ids
-            assert 200 in team_ids
-            assert 300 in team_ids
-
-    def test_empty_when_no_active_games(self):
-        resolver = ActiveGamesResolver()
-        with patch.object(
-            ActiveGamesResolver, "get_active_games",
-            return_value=[],
-        ):
-            session = MagicMock()
-            pairs = resolver.get_games_needing_social(session)
-            assert pairs == []
-
-
-# ---------------------------------------------------------------------------
-# get_games_needing_odds
-# ---------------------------------------------------------------------------
-class TestGetGamesNeedingOdds:
-    @patch("sports_scraper.services.active_games.now_utc", return_value=_utc_now())
-    def test_pregame_games(self, mock_now):
-        resolver = ActiveGamesResolver()
-        game = _make_game(status="pregame")
-
-        session = MagicMock()
-        session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [game]
-
-        result = resolver.get_games_needing_odds(session)
-        assert len(result) == 1
-
-    @patch("sports_scraper.services.active_games.now_utc", return_value=_utc_now())
-    def test_recently_final_games(self, mock_now):
-        now = _utc_now()
-        resolver = ActiveGamesResolver()
-        game = _make_game(status="final", end_time=now - timedelta(hours=1))
-
-        session = MagicMock()
-        session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [game]
-
-        result = resolver.get_games_needing_odds(session)
-        assert len(result) == 1
-
-    @patch("sports_scraper.services.active_games.now_utc", return_value=_utc_now())
-    def test_empty_result(self, mock_now):
-        resolver = ActiveGamesResolver()
-        session = MagicMock()
-        session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
-
-        result = resolver.get_games_needing_odds(session)
-        assert result == []
+def test_legacy_social_and_odds_selectors_are_removed():
+    resolver = ActiveGamesResolver()
+    assert not hasattr(resolver, "get_games_needing_social")
+    assert not hasattr(resolver, "get_games_needing_odds")

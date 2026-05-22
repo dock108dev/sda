@@ -52,7 +52,7 @@ from ..utils.redis_lock import release_redis_lock as _release_redis_lock  # noqa
 
 
 @shared_task(name="poll_live_pbp")
-def poll_live_pbp_task() -> dict:
+def poll_live_pbp_task(live_only: bool = False) -> dict:
     """Poll PBP, boxscores, and status for games that need catch-up data.
 
     Phases:
