@@ -61,6 +61,7 @@ services:
       CELERY_BROKER_URL: redis://${REDIS_PASSWORD:+:$REDIS_PASSWORD@}redis:6379/2
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      SDA_CATCHUP_ONLY: ${SDA_CATCHUP_ONLY:-true}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
       # API authentication key (required for production/staging)
       API_KEY: ${API_KEY:-}
@@ -107,7 +108,7 @@ services:
       context: ..
       dockerfile: infra/api.Dockerfile
     container_name: sports-api-worker
-    profiles: ["dev", "prod"]
+    profiles: ["full", "prod"]
     logging: *default-logging
     command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=celery", "--concurrency=2", "-O", "fair", "-n", "general@%h"]
     volumes:
@@ -144,7 +145,7 @@ services:
       context: ..
       dockerfile: infra/api.Dockerfile
     container_name: sports-api-training-worker
-    profiles: ["dev", "prod"]
+    profiles: ["full", "prod"]
     logging: *default-logging
     command: ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info", "--queues=training", "--concurrency=${CELERY_TRAINING_CONCURRENCY:-2}", "-O", "fair", "-n", "training@%h"]
     volumes:
@@ -183,6 +184,7 @@ services:
       CBB_STATS_API_KEY: ${CBB_STATS_API_KEY:-}
       DATAGOLF_API_KEY: ${DATAGOLF_API_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      SCRAPER_CATCHUP_ONLY: ${SCRAPER_CATCHUP_ONLY:-true}
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
       API_KEY: ${API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -224,6 +226,7 @@ services:
       CBB_STATS_API_KEY: ${CBB_STATS_API_KEY:-}
       DATAGOLF_API_KEY: ${DATAGOLF_API_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      SCRAPER_CATCHUP_ONLY: ${SCRAPER_CATCHUP_ONLY:-true}
       ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS:-}
       API_KEY: ${API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -245,7 +248,7 @@ services:
       context: ..
       dockerfile: infra/scraper.Dockerfile
     container_name: sports-social-scraper
-    profiles: ["dev", "prod"]
+    profiles: ["full", "prod"]
     logging: *default-logging
     # Live social tasks only (final-whistle, game polling, mapping).
     # Concurrency=1 for consistent IP and sequential X requests.
@@ -279,7 +282,7 @@ services:
       context: ..
       dockerfile: infra/scraper.Dockerfile
     container_name: sports-social-bulk
-    profiles: ["dev", "prod"]
+    profiles: ["full", "prod"]
     logging: *default-logging
     # Bulk social collection (collect_team_social, collect_social_for_league).
     # Runs on its own worker so long-running bulk jobs never block live tasks.

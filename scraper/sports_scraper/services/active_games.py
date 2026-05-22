@@ -72,10 +72,12 @@ class ActiveGamesResolver:
             # PRE: scheduled or pregame within pregame window
             (
                 (
-                    db_models.SportsGame.status.in_([
-                        db_models.GameStatus.scheduled.value,
-                        db_models.GameStatus.pregame.value,
-                    ])
+                    db_models.SportsGame.status.in_(
+                        [
+                            db_models.GameStatus.scheduled.value,
+                            db_models.GameStatus.pregame.value,
+                        ]
+                    )
                 )
                 & (db_models.SportsGame.game_date.isnot(None))
                 & (db_models.SportsGame.game_date < now + timedelta(hours=pregame_hours)),
@@ -107,10 +109,12 @@ class ActiveGamesResolver:
             db_models.SportsGame.status == db_models.GameStatus.live.value,
             # PRE: scheduled/pregame within pregame window
             (
-                db_models.SportsGame.status.in_([
-                    db_models.GameStatus.scheduled.value,
-                    db_models.GameStatus.pregame.value,
-                ])
+                db_models.SportsGame.status.in_(
+                    [
+                        db_models.GameStatus.scheduled.value,
+                        db_models.GameStatus.pregame.value,
+                    ]
+                )
                 & (db_models.SportsGame.game_date.isnot(None))
                 & (db_models.SportsGame.game_date < now + timedelta(hours=pregame_hours))
             ),
@@ -131,9 +135,8 @@ class ActiveGamesResolver:
             List of (game, window_state) tuples where window_state is PRE/IN/POST
         """
         ws = self._window_state_expression(self.pregame_hours, self.postgame_hours)
-        query = (
-            session.query(db_models.SportsGame, ws.label("window_state"))
-            .filter(self._active_window_filter(self.pregame_hours, self.postgame_hours))
+        query = session.query(db_models.SportsGame, ws.label("window_state")).filter(
+            self._active_window_filter(self.pregame_hours, self.postgame_hours)
         )
 
         if league_code:
@@ -164,9 +167,7 @@ class ActiveGamesResolver:
         live_stale_threshold = now - timedelta(seconds=self.live_stale_seconds)
 
         # Get league IDs where live PBP is enabled
-        enabled_leagues = [
-            code for code, cfg in LEAGUE_CONFIG.items() if cfg.live_pbp_enabled
-        ]
+        enabled_leagues = [code for code, cfg in LEAGUE_CONFIG.items() if cfg.live_pbp_enabled]
         if not enabled_leagues:
             return []
 
@@ -181,25 +182,29 @@ class ActiveGamesResolver:
 
         # Include pregame/live games with stale PBP, plus final games
         # that need PBP backfill (missed live window or incomplete data).
-        has_plays = exists().where(
-            db_models.SportsGamePlay.game_id == db_models.SportsGame.id
-        )
+        has_plays = exists().where(db_models.SportsGamePlay.game_id == db_models.SportsGame.id)
 
-        live_stale_clause = (
-            (db_models.SportsGame.status == db_models.GameStatus.live.value)
-            & or_(
-                db_models.SportsGame.last_pbp_at.is_(None),
-                db_models.SportsGame.last_pbp_at < live_stale_threshold,
-            )
+        live_stale_clause = (db_models.SportsGame.status == db_models.GameStatus.live.value) & or_(
+            db_models.SportsGame.last_pbp_at.is_(None),
+            db_models.SportsGame.last_pbp_at < live_stale_threshold,
         )
 
         if live_only:
             stale_filter = live_stale_clause
         else:
             stale_filter = or_(
-                # Pregame stays on the existing slower cadence.
+                # Scheduled/pregame stays on the existing slower cadence.
                 (
-                    (db_models.SportsGame.status == db_models.GameStatus.pregame.value)
+                    (
+                        db_models.SportsGame.status.in_(
+                            [
+                                db_models.GameStatus.scheduled.value,
+                                db_models.GameStatus.pregame.value,
+                            ]
+                        )
+                    )
+                    & (db_models.SportsGame.game_date.isnot(None))
+                    & (db_models.SportsGame.game_date < now + timedelta(hours=self.pregame_hours))
                     & or_(
                         db_models.SportsGame.last_pbp_at.is_(None),
                         db_models.SportsGame.last_pbp_at < stale_threshold,
@@ -257,9 +262,7 @@ class ActiveGamesResolver:
         stale_threshold = now - timedelta(minutes=self.pbp_stale_minutes)
         live_stale_threshold = now - timedelta(seconds=self.live_stale_seconds)
 
-        enabled_leagues = [
-            code for code, cfg in LEAGUE_CONFIG.items() if cfg.live_boxscore_enabled
-        ]
+        enabled_leagues = [code for code, cfg in LEAGUE_CONFIG.items() if cfg.live_boxscore_enabled]
         if not enabled_leagues:
             return []
 
@@ -278,12 +281,9 @@ class ActiveGamesResolver:
             db_models.SportsTeamBoxscore.game_id == db_models.SportsGame.id
         )
 
-        live_stale_clause = (
-            (db_models.SportsGame.status == db_models.GameStatus.live.value)
-            & or_(
-                db_models.SportsGame.last_boxscore_at.is_(None),
-                db_models.SportsGame.last_boxscore_at < live_stale_threshold,
-            )
+        live_stale_clause = (db_models.SportsGame.status == db_models.GameStatus.live.value) & or_(
+            db_models.SportsGame.last_boxscore_at.is_(None),
+            db_models.SportsGame.last_boxscore_at < live_stale_threshold,
         )
 
         if live_only:
@@ -344,9 +344,7 @@ class ActiveGamesResolver:
 
         # Backfill: final games from last 48 hours with no social posts at all
         now = now_utc()
-        has_social = exists().where(
-            db_models.TeamSocialPost.game_id == db_models.SportsGame.id
-        )
+        has_social = exists().where(db_models.TeamSocialPost.game_id == db_models.SportsGame.id)
         backfill_games = (
             session.query(db_models.SportsGame)
             .filter(
@@ -385,9 +383,11 @@ class ActiveGamesResolver:
             .filter(
                 or_(
                     # Pregame games need odds updates
-                    db_models.SportsGame.status.in_([
-                        db_models.GameStatus.pregame.value,
-                    ]),
+                    db_models.SportsGame.status.in_(
+                        [
+                            db_models.GameStatus.pregame.value,
+                        ]
+                    ),
                     # Recently-final games need closing line
                     (
                         (db_models.SportsGame.status == db_models.GameStatus.final.value)

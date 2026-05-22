@@ -38,6 +38,7 @@ def _is_held() -> bool:
         logger.warning("hold_check_redis_unavailable — failing open (tasks proceed)", exc_info=True)
         return False
 
+
 # Canonical queue names — import these instead of using string literals
 DEFAULT_QUEUE = "sports-scraper"
 SOCIAL_QUEUE = "social-scraper"
@@ -58,6 +59,7 @@ celery_config = {
         "visibility_timeout": 86400,  # 24h — prevents re-delivery of long tasks
     },
 }
+
 
 def _mark_job_run_skipped(celery_task_id: str | None) -> None:
     """Mark any SportsJobRun for this task as skipped so it doesn't stay queued."""
@@ -107,11 +109,15 @@ app = Celery(
     "sports-data-scraper",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=[
-        "sports_scraper.jobs.tasks",
-        "sports_scraper.jobs.session_health_task",
-        "sports_scraper.jobs.grader_task",
-    ],
+    include=(
+        ["sports_scraper.jobs.polling_tasks"]
+        if settings.catchup_only
+        else [
+            "sports_scraper.jobs.tasks",
+            "sports_scraper.jobs.session_health_task",
+            "sports_scraper.jobs.grader_task",
+        ]
+    ),
 )
 # Set the default Task class for ALL tasks including @shared_task.
 # task_cls in the constructor only applies to @app.task, not @shared_task.
@@ -149,6 +155,10 @@ app.conf.task_routes = {
     # DB health observability — refreshes the pg.idle_in_txn gauge
     "export_pg_idle_txn_metrics": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
 }
+if settings.catchup_only:
+    app.conf.task_routes = {
+        "poll_live_pbp": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+    }
 # Daily pipeline schedule (all times US Eastern / UTC during EST):
 #
 #   3:30 AM EST (08:30 UTC) — Sports ingestion (NBA → NHL → NCAAB → MLB sequentially)
@@ -179,12 +189,22 @@ _polling_schedule = {
     "game-state-updater-every-60s": {
         "task": "update_game_states",
         "schedule": crontab(minute="*/1", hour="0-7,16-23"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 0, "expires": 55},
+        "options": {
+            "queue": DEFAULT_QUEUE,
+            "routing_key": DEFAULT_QUEUE,
+            "countdown": 0,
+            "expires": 55,
+        },
     },
     "live-pbp-poll-every-60s": {
         "task": "poll_live_pbp",
         "schedule": crontab(minute="*/1", hour="0-7,16-23"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 15, "expires": 55},
+        "options": {
+            "queue": DEFAULT_QUEUE,
+            "routing_key": DEFAULT_QUEUE,
+            "countdown": 15,
+            "expires": 55,
+        },
     },
     "live-game-data-poll-every-5s": {
         "task": "poll_live_pbp",
@@ -333,31 +353,55 @@ _live_polling_schedule = {
 }
 
 # Conditionally add odds-related entries based on global flags in config_sports.py.
-if is_pregame_odds_enabled():
+if not settings.catchup_only and is_pregame_odds_enabled():
     _polling_schedule["mainline-odds-sync-every-3m"] = {
         "task": "sync_mainline_odds",
         "schedule": crontab(minute="*/3"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 30, "expires": 170},
+        "options": {
+            "queue": DEFAULT_QUEUE,
+            "routing_key": DEFAULT_QUEUE,
+            "countdown": 30,
+            "expires": 170,
+        },
     }
     _polling_schedule["prop-odds-sync-every-15m"] = {
         "task": "sync_prop_odds",
         "schedule": crontab(minute="*/15"),
-        "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "countdown": 45, "expires": 870},
+        "options": {
+            "queue": DEFAULT_QUEUE,
+            "routing_key": DEFAULT_QUEUE,
+            "countdown": 45,
+            "expires": 870,
+        },
     }
 
-if is_golf_odds_enabled():
+if not settings.catchup_only and is_golf_odds_enabled():
     _scheduled_tasks["golf-odds-every-30m"] = {
         "task": "golf_sync_odds",
         "schedule": crontab(minute="0,30"),
         "options": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE, "expires": 1500},
     }
 
-# All environments run the full schedule — local mirrors production.
-_beat_schedule = {
-    **_polling_schedule,
-    **_scheduled_tasks,
-    **_live_polling_schedule,
-}
+if settings.catchup_only:
+    _beat_schedule = {
+        "catchup-pbp-stats-every-5m": {
+            "task": "poll_live_pbp",
+            "schedule": crontab(minute="*/5"),
+            "args": (False,),
+            "options": {
+                "queue": DEFAULT_QUEUE,
+                "routing_key": DEFAULT_QUEUE,
+                "expires": 270,
+            },
+        },
+    }
+else:
+    # All environments run the full schedule — local mirrors production.
+    _beat_schedule = {
+        **_polling_schedule,
+        **_scheduled_tasks,
+        **_live_polling_schedule,
+    }
 
 app.conf.beat_schedule = _beat_schedule
 
@@ -455,6 +499,9 @@ def on_worker_ready(sender=None, **kwargs):
     clear_all_locks()
     mark_stale_runs_interrupted()
 
+    if settings.catchup_only:
+        return
+
     # Run an immediate health probe on startup so circuit breaker state is
     # populated before the first beat-scheduled probe fires at :10/:40.
     # Dispatch async so it doesn't block worker initialisation.
@@ -466,7 +513,9 @@ def on_worker_ready(sender=None, **kwargs):
             nx=True,
             ex=STARTUP_HEALTH_PROBE_LOCK_SECONDS,
         ):
-            logger.info("playwright_session_health_startup_probe_skipped_recent", worker=worker_name)
+            logger.info(
+                "playwright_session_health_startup_probe_skipped_recent", worker=worker_name
+            )
             return
         app.send_task("check_playwright_session_health", queue=SOCIAL_QUEUE)
         logger.info("playwright_session_health_startup_probe_dispatched")

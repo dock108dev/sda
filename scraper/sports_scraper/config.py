@@ -28,9 +28,7 @@ class OddsProviderConfig(BaseModel):
     # us: BetMGM, BetRivers, Bovada, Caesars, DraftKings, FanDuel
     # eu: 888sport, Betfair Exchange, BetOnline.ag, Pinnacle, William Hill
     # (us_ex and uk dropped to reduce credit burn — those books overlap or are excluded)
-    regions: list[str] = Field(
-        default_factory=lambda: ["us", "eu"]
-    )
+    regions: list[str] = Field(default_factory=lambda: ["us", "eu"])
     # Weekly credit cap — prevents backfills from starving live polling.
     # 5M monthly quota / 4 weeks = 1.25M per week.
     weekly_credit_cap: int = Field(default=1_250_000)
@@ -93,18 +91,19 @@ class Settings(BaseSettings):
     For local development, loads from root .env file (../../.env) to maintain
     consistency with other services. All settings are validated by Pydantic.
     """
+
     model_config = SettingsConfigDict(
         # Try to load from root .env file (for local dev), but don't fail if it doesn't exist
         # In Docker, env vars are passed directly via environment section
         env_file=Path(__file__).resolve().parents[3] / ".env",  # Root .env file
         env_file_encoding="utf-8",
         env_ignore_empty=True,  # Ignore empty env vars
-        extra="allow"  # Allow extra env vars without validation errors
+        extra="allow",  # Allow extra env vars without validation errors
     )
 
     database_url: str = Field(..., alias="DATABASE_URL")
 
-    @field_validator('database_url', mode='before')
+    @field_validator("database_url", mode="before")
     @classmethod
     def convert_async_to_sync(cls, v: str) -> str:
         """
@@ -114,8 +113,8 @@ class Settings(BaseSettings):
         need synchronous psycopg. This validator automatically converts
         the URL so we can keep a single DATABASE_URL in the .env file.
         """
-        if isinstance(v, str) and 'asyncpg' in v:
-            return v.replace('asyncpg', 'psycopg')
+        if isinstance(v, str) and "asyncpg" in v:
+            return v.replace("asyncpg", "psycopg")
         return v
 
     # Redis configuration - can be set via REDIS_URL or constructed from components
@@ -133,7 +132,9 @@ class Settings(BaseSettings):
         # If redis_host is not localhost, construct the URL from components
         if self.redis_host != "localhost":
             if self.redis_password:
-                self.redis_url = f"redis://:{self.redis_password}@{self.redis_host}:6379/{self.redis_db}"
+                self.redis_url = (
+                    f"redis://:{self.redis_password}@{self.redis_host}:6379/{self.redis_db}"
+                )
             else:
                 self.redis_url = f"redis://{self.redis_host}:6379/{self.redis_db}"
         return self
@@ -148,10 +149,13 @@ class Settings(BaseSettings):
     api_internal_url: str = Field("http://api:8000", alias="API_INTERNAL_URL")
     api_key: str | None = Field(None, alias="API_KEY")
     scraper_html_cache_dir_override: str | None = Field(None, alias="SCRAPER_HTML_CACHE_DIR")
-    scraper_force_cache_refresh_override: bool | None = Field(None, alias="SCRAPER_FORCE_CACHE_REFRESH")
+    scraper_force_cache_refresh_override: bool | None = Field(
+        None, alias="SCRAPER_FORCE_CACHE_REFRESH"
+    )
     odds_api_regions: str | None = Field(None, alias="ODDS_API_REGIONS")
     odds_api_weekly_cap: int | None = Field(None, alias="ODDS_API_WEEKLY_CAP")
     datagolf_api_key: str | None = Field(None, alias="DATAGOLF_API_KEY")
+    catchup_only: bool = Field(False, alias="SCRAPER_CATCHUP_ONLY")
 
     @model_validator(mode="after")
     def _apply_scraper_overrides(self) -> Settings:
@@ -162,7 +166,9 @@ class Settings(BaseSettings):
         if self.scraper_html_cache_dir_override:
             self.scraper_config.html_cache_dir = self.scraper_html_cache_dir_override
         if self.scraper_force_cache_refresh_override is not None:
-            self.scraper_config.force_cache_refresh = bool(self.scraper_force_cache_refresh_override)
+            self.scraper_config.force_cache_refresh = bool(
+                self.scraper_force_cache_refresh_override
+            )
         if self.odds_api_regions:
             self.odds_config.regions = [r.strip() for r in self.odds_api_regions.split(",")]
         if self.odds_api_weekly_cap is not None:

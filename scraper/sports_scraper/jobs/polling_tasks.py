@@ -23,6 +23,7 @@ import time
 
 from celery import shared_task
 
+from ..config import settings
 from ..db import get_session
 from ..logging import logger
 from .polling_helpers import (
@@ -53,9 +54,14 @@ from ..utils.redis_lock import release_redis_lock as _release_redis_lock  # noqa
 
 def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
     """Dispatch social scrape, flow generation, and closing line capture for a game that just went final."""
+    if settings.catchup_only:
+        logger.info("catchup_mode_final_side_effects_skipped", game_id=game_id)
+        return
+
     # Ensure closing lines are captured (idempotent — skips if already captured)
     try:
         from ..live_odds.closing_lines import capture_closing_lines
+
         capture_closing_lines(game_id, league_code)
     except Exception as exc:
         logger.warning(
@@ -95,6 +101,7 @@ def _dispatch_final_actions(game_id: int, league_code: str = "") -> None:
         module_name, task_name = task_info
         try:
             import importlib
+
             mod = importlib.import_module(f".{module_name}", package="sports_scraper.jobs")
             task_fn = getattr(mod, task_name)
             task_fn.apply_async(args=[game_id], countdown=60)
@@ -201,6 +208,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                 from ..services.pbp_nba import populate_nba_game_ids
                 from ..services.pbp_nhl import populate_nhl_game_ids
                 from ..utils.datetime_utils import to_et_date
+
                 game_dates = [to_et_date(g.game_date) for g in pbp_games if g.game_date]
                 if game_dates:
                     start = min(game_dates)

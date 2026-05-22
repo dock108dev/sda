@@ -32,32 +32,20 @@ class Settings(BaseSettings):
     )
     redis_url: str = Field(default="redis://localhost:6379/2", alias="REDIS_URL")
     celery_broker_url: str | None = Field(default=None, alias="CELERY_BROKER_URL")
-    celery_result_backend: str | None = Field(
-        default=None, alias="CELERY_RESULT_BACKEND"
-    )
-    celery_default_queue: str = Field(
-        default="sports-scraper", alias="CELERY_DEFAULT_QUEUE"
-    )
+    celery_result_backend: str | None = Field(default=None, alias="CELERY_RESULT_BACKEND")
+    celery_default_queue: str = Field(default="sports-scraper", alias="CELERY_DEFAULT_QUEUE")
     sql_echo: bool = Field(default=False, alias="SQL_ECHO")
     environment: str = Field(default="development", alias="ENVIRONMENT")
     log_level: str | None = Field(default=None, alias="LOG_LEVEL")
-    allowed_cors_origins_raw: str | None = Field(
-        default=None, alias="ALLOWED_CORS_ORIGINS"
-    )
-    admin_origins_raw: str | None = Field(
-        default=None, alias="ADMIN_ORIGINS"
-    )
+    allowed_cors_origins_raw: str | None = Field(default=None, alias="ALLOWED_CORS_ORIGINS")
+    admin_origins_raw: str | None = Field(default=None, alias="ADMIN_ORIGINS")
     rate_limit_requests: int = Field(default=120, alias="RATE_LIMIT_REQUESTS")
-    rate_limit_window_seconds: int = Field(
-        default=60, alias="RATE_LIMIT_WINDOW_SECONDS"
-    )
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
     # Per-key bucket: requests presenting an X-API-Key header get their own
     # higher-budget bucket. Lets CI workers share a key without throttling
     # each other off a per-IP bucket. Falls back to the IP-keyed limit above
     # when no key is provided.
-    rate_limit_requests_keyed: int = Field(
-        default=600, alias="RATE_LIMIT_REQUESTS_KEYED"
-    )
+    rate_limit_requests_keyed: int = Field(default=600, alias="RATE_LIMIT_REQUESTS_KEYED")
     rate_limit_window_seconds_keyed: int = Field(
         default=60, alias="RATE_LIMIT_WINDOW_SECONDS_KEYED"
     )
@@ -67,15 +55,12 @@ class Settings(BaseSettings):
     # Only honor X-Forwarded-Origin for admin-origin role resolution when a trusted
     # edge injects it (strip this header from untrusted clients at the load balancer).
     trust_forwarded_origin: bool = Field(default=False, alias="TRUST_FORWARDED_ORIGIN")
-    fairbet_odds_cache_enabled: bool = Field(
-        default=True, alias="FAIRBET_ODDS_CACHE_ENABLED"
-    )
-    fairbet_odds_cache_ttl_seconds: int = Field(
-        default=15, alias="FAIRBET_ODDS_CACHE_TTL_SECONDS"
-    )
+    fairbet_odds_cache_enabled: bool = Field(default=True, alias="FAIRBET_ODDS_CACHE_ENABLED")
+    fairbet_odds_cache_ttl_seconds: int = Field(default=15, alias="FAIRBET_ODDS_CACHE_TTL_SECONDS")
     fairbet_odds_snapshot_ttl_seconds: int = Field(
         default=60, alias="FAIRBET_ODDS_SNAPSHOT_TTL_SECONDS"
     )
+    catchup_only: bool = Field(default=False, alias="SDA_CATCHUP_ONLY")
 
     # Subdomain routing
     subdomain_routing: bool = Field(default=False, alias="SUBDOMAIN_ROUTING")
@@ -121,13 +106,9 @@ class Settings(BaseSettings):
     smtp_user: str | None = Field(default=None, alias="SMTP_USER")
     smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
     smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
-    mail_from: str = Field(
-        default="noreply@scrolldownsports.com", alias="MAIL_FROM"
-    )
+    mail_from: str = Field(default="noreply@scrolldownsports.com", alias="MAIL_FROM")
     aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
-    frontend_url: str = Field(
-        default="http://localhost:3000", alias="FRONTEND_URL"
-    )
+    frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
 
     # Onboarding — prospect-facing "claim your club" submissions email here.
     # If unset, submissions are persisted but no notification email is sent.
@@ -199,9 +180,7 @@ class Settings(BaseSettings):
         """Origins that are implicitly treated as admin (the admin UI)."""
         if self.admin_origins_raw:
             return [
-                origin.strip()
-                for origin in self.admin_origins_raw.split(",")
-                if origin.strip()
+                origin.strip() for origin in self.admin_origins_raw.split(",") if origin.strip()
             ]
         return [
             "http://localhost:3000",
@@ -220,9 +199,7 @@ class Settings(BaseSettings):
     def validate_runtime_settings(self) -> Settings:
         if self.environment in {"production", "staging"}:
             if not self.allowed_cors_origins_raw:
-                raise ValueError(
-                    "ALLOWED_CORS_ORIGINS must be set for production or staging."
-                )
+                raise ValueError("ALLOWED_CORS_ORIGINS must be set for production or staging.")
             if any(
                 "localhost" in origin or "127.0.0.1" in origin
                 for origin in self.allowed_cors_origins
@@ -241,9 +218,7 @@ class Settings(BaseSettings):
             if len(self.jwt_secret) < 32:
                 raise ValueError("JWT_SECRET must be at least 32 characters long.")
             if not self.auth_enabled:
-                raise ValueError(
-                    "AUTH_ENABLED must not be False in production or staging."
-                )
+                raise ValueError("AUTH_ENABLED must not be False in production or staging.")
         _valid_backends = {"smtp", "ses"}
         if self.email_backend not in _valid_backends:
             raise ValueError(

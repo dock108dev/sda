@@ -111,6 +111,10 @@ async def lifespan(app: FastAPI):
             "AUTH_ENABLED=false — JWT role resolution treats callers as admin; "
             "intended for local development only (blocked in production/staging)."
         )
+    if settings.catchup_only:
+        yield
+        return
+
     bridge = RedisStreamsBridge(settings.redis_url, realtime_manager.boot_epoch)
     realtime_manager.set_streams_bridge(bridge)
     await bridge.start(realtime_manager._dispatch_local)
@@ -267,210 +271,147 @@ auth_dependency = [Depends(verify_api_key)]
 user_dependency = [Depends(verify_api_key), Depends(require_user)]
 admin_dependency = [Depends(verify_api_key), Depends(require_admin)]
 
-# ---------------------------------------------------------------------------
-# Consumer v1 API — read-only endpoints, per-IP rate limited.
-# Auth (verify_consumer_api_key) is applied at the router level in v1/__init__.py.
-# ---------------------------------------------------------------------------
-app.include_router(v1_router)
+if settings.catchup_only:
+    app.include_router(sports.router, dependencies=auth_dependency)
+else:
+    # Consumer v1 API — read-only endpoints, per-IP rate limited.
+    # Auth (verify_consumer_api_key) is applied at the router level in v1/__init__.py.
+    app.include_router(v1_router)
 
-# ---------------------------------------------------------------------------
-# Auth — public (no API key needed for signup/login/me)
-# ---------------------------------------------------------------------------
-app.include_router(auth.router)
-app.include_router(preferences.router)
+    # Auth, club, onboarding, commerce, and billing surfaces.
+    app.include_router(auth.router)
+    app.include_router(preferences.router)
+    app.include_router(clubs_router)
+    app.include_router(club_branding_router)
+    app.include_router(club_memberships_router)
+    app.include_router(onboarding.router)
+    app.include_router(webhooks_router)
+    app.include_router(commerce_router, dependencies=auth_dependency)
+    app.include_router(billing_router, dependencies=auth_dependency)
 
-# ---------------------------------------------------------------------------
-# Public club lookup — no auth. Used by public club landing pages.
-# ---------------------------------------------------------------------------
-app.include_router(clubs_router)
+    # Public / guest-accessible app endpoints.
+    app.include_router(sports.router, dependencies=auth_dependency)
+    app.include_router(social.router, dependencies=auth_dependency)
+    app.include_router(simulator.router, dependencies=auth_dependency)
 
-# ---------------------------------------------------------------------------
-# Club branding — PUT /api/v1/clubs/:id/branding (owner role, premium plan).
-# ---------------------------------------------------------------------------
-app.include_router(club_branding_router)
+    # FairBet, model odds, analytics, golf, and Scroll Down MLB.
+    app.include_router(fairbet.router, dependencies=auth_dependency)
+    app.include_router(model_odds_router, dependencies=auth_dependency)
+    app.include_router(analytics_router, dependencies=auth_dependency)
+    app.include_router(golf_router, dependencies=auth_dependency)
+    app.include_router(scroll_down_mlb_router, dependencies=auth_dependency)
 
-# ---------------------------------------------------------------------------
-# Club membership — invite flow and RBAC (requires user JWT).
-# ---------------------------------------------------------------------------
-app.include_router(club_memberships_router)
+    # Admin UI routers — require admin role (Origin-based for admin UI,
+    # JWT-based for consumer apps).
+    app.include_router(
+        admin_platform.router,
+        prefix="/api/admin",
+        tags=["admin", "platform"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        admin_clubs.router,
+        prefix="/api/admin",
+        tags=["admin", "provisioning"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        admin_audit.router,
+        prefix="/api/admin",
+        tags=["admin", "audit"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        admin_webhooks.router,
+        prefix="/api/admin",
+        tags=["admin", "webhooks"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        timeline_jobs.router,
+        prefix="/api/admin/sports",
+        tags=["admin"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        pipeline.router,
+        prefix="/api/admin/sports",
+        tags=["admin", "pipeline"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        pbp.router,
+        prefix="/api/admin/sports",
+        tags=["admin", "pbp"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        resolution.router,
+        prefix="/api/admin/sports",
+        tags=["admin", "resolution"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        odds_sync.router,
+        prefix="/api/admin",
+        tags=["admin", "odds"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        task_control.router,
+        prefix="/api/admin",
+        tags=["admin", "tasks"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        circuit_breakers.router,
+        prefix="/api/admin",
+        tags=["admin", "circuit-breakers"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        coverage_report.router,
+        prefix="/api/admin",
+        tags=["admin", "pipeline"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        quality_summary.router,
+        prefix="/api/admin",
+        tags=["admin", "quality"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        quality_review.router,
+        prefix="/api/admin",
+        tags=["admin", "quality"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        users.router,
+        prefix="/api/admin",
+        tags=["admin", "users"],
+        dependencies=admin_dependency,
+    )
+    app.include_router(
+        admin_realtime.router,
+        prefix="/api/admin",
+        tags=["admin", "realtime"],
+        dependencies=admin_dependency,
+    )
 
-# ---------------------------------------------------------------------------
-# Onboarding — PUBLIC (no auth). Prospect-facing "claim your club" form.
-# Rate-limited per-IP via RateLimitMiddleware's onboarding-strict tier.
-# ---------------------------------------------------------------------------
-app.include_router(onboarding.router)
+    # Realtime endpoints — WS uses its own auth (query param / header),
+    # SSE uses dependency-level auth. No router-level auth_dependency needed.
+    app.include_router(ws_router, tags=["realtime"])
+    app.include_router(sse_router, tags=["realtime"])
 
-# ---------------------------------------------------------------------------
-# Stripe webhooks — NO auth (verified by Stripe-Signature header).
-# Must be registered before Commerce so the raw body is readable.
-# ---------------------------------------------------------------------------
-app.include_router(webhooks_router)
-
-# ---------------------------------------------------------------------------
-# Commerce — API key required. Stripe checkout session creation.
-# ---------------------------------------------------------------------------
-app.include_router(commerce_router, dependencies=auth_dependency)
-
-# ---------------------------------------------------------------------------
-# Billing — JWT required (owner role). Stripe Customer Portal self-service.
-# ---------------------------------------------------------------------------
-app.include_router(billing_router, dependencies=auth_dependency)
-
-# ---------------------------------------------------------------------------
-# Public / Guest-accessible endpoints (API key required, no role gate)
-# Games, sports data, reading positions, simulator — accessible to all roles
-# ---------------------------------------------------------------------------
-app.include_router(sports.router, dependencies=auth_dependency)
-app.include_router(social.router, dependencies=auth_dependency)
-app.include_router(simulator.router, dependencies=auth_dependency)
-
-# ---------------------------------------------------------------------------
-# FairBet — API key required, individual endpoints handle role-based
-# filtering (pregame open to guest, full live for user+)
-# ---------------------------------------------------------------------------
-app.include_router(fairbet.router, dependencies=auth_dependency)
-app.include_router(model_odds_router, dependencies=auth_dependency)
-
-# ---------------------------------------------------------------------------
-# Analytics — read-only endpoints (teams, profiles, rosters, predictions)
-# are accessible to any API-key holder.  Mutation endpoints (train, delete,
-# activate, batch jobs) require admin role via per-endpoint Depends.
-# ---------------------------------------------------------------------------
-app.include_router(analytics_router, dependencies=auth_dependency)
-
-# ---------------------------------------------------------------------------
-# Golf — tournament, player, odds, and DFS endpoints
-# ---------------------------------------------------------------------------
-app.include_router(golf_router, dependencies=auth_dependency)
-
-# ---------------------------------------------------------------------------
-# Scroll Down MLB — spoiler-safe catch-up deck API. Read-only consumer
-# surface backed by the deck builder pipeline in app.scroll_down_mlb.
-# ---------------------------------------------------------------------------
-app.include_router(scroll_down_mlb_router, dependencies=auth_dependency)
-
-# ---------------------------------------------------------------------------
-# Admin UI routers — require admin role (Origin-based for admin UI,
-# JWT-based for consumer apps)
-# ---------------------------------------------------------------------------
-# Admin SPA platform endpoints (/api/admin/stats, /api/admin/poll-health).
-# Uses ``admin_dependency`` (API key + ``require_admin``): valid admin API key
-# alone still yields admin role; if a ``Authorization: Bearer`` JWT is also
-# sent, the JWT role wins (so a non-admin user cannot ride the injected key).
-# Caddy Basic Auth still scopes the SPA to operators.
-app.include_router(
-    admin_platform.router,
-    prefix="/api/admin",
-    tags=["admin", "platform"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    admin_clubs.router,
-    prefix="/api/admin",
-    tags=["admin", "provisioning"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    admin_audit.router,
-    prefix="/api/admin",
-    tags=["admin", "audit"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    admin_webhooks.router,
-    prefix="/api/admin",
-    tags=["admin", "webhooks"],
-    dependencies=admin_dependency,
-)
-
-app.include_router(
-    timeline_jobs.router,
-    prefix="/api/admin/sports",
-    tags=["admin"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    pipeline.router,
-    prefix="/api/admin/sports",
-    tags=["admin", "pipeline"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    pbp.router,
-    prefix="/api/admin/sports",
-    tags=["admin", "pbp"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    resolution.router,
-    prefix="/api/admin/sports",
-    tags=["admin", "resolution"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    odds_sync.router,
-    prefix="/api/admin",
-    tags=["admin", "odds"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    task_control.router,
-    prefix="/api/admin",
-    tags=["admin", "tasks"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    circuit_breakers.router,
-    prefix="/api/admin",
-    tags=["admin", "circuit-breakers"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    coverage_report.router,
-    prefix="/api/admin",
-    tags=["admin", "pipeline"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    quality_summary.router,
-    prefix="/api/admin",
-    tags=["admin", "quality"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    quality_review.router,
-    prefix="/api/admin",
-    tags=["admin", "quality"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    users.router,
-    prefix="/api/admin",
-    tags=["admin", "users"],
-    dependencies=admin_dependency,
-)
-app.include_router(
-    admin_realtime.router,
-    prefix="/api/admin",
-    tags=["admin", "realtime"],
-    dependencies=admin_dependency,
-)
-
-# ---------------------------------------------------------------------------
-# Realtime endpoints — WS uses its own auth (query param / header),
-# SSE uses dependency-level auth. No router-level auth_dependency needed.
-# ---------------------------------------------------------------------------
-app.include_router(ws_router, tags=["realtime"])
-app.include_router(sse_router, tags=["realtime"])
-
-
-@app.get("/v1/realtime/status", dependencies=auth_dependency, tags=["realtime"])
-async def realtime_status() -> JSONResponse:
-    """Connected counts per channel and mode, plus listener debug info."""
-    data = realtime_manager.status()
-    data["poller"] = db_poller.stats()
-    data["listener"] = pg_listener.stats()
-    return JSONResponse(data)
+    @app.get("/v1/realtime/status", dependencies=auth_dependency, tags=["realtime"])
+    async def realtime_status() -> JSONResponse:
+        """Connected counts per channel and mode, plus listener debug info."""
+        data = realtime_manager.status()
+        data["poller"] = db_poller.stats()
+        data["listener"] = pg_listener.stats()
+        return JSONResponse(data)
 
 
 @app.get("/healthz")
