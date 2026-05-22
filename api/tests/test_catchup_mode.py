@@ -129,7 +129,7 @@ print("APP=" + json.dumps(payload))
 def test_task_registry_excludes_disabled_odds_analytics_and_golf() -> None:
     task_names = set(TASK_REGISTRY)
 
-    assert {"run_scheduled_ingestion", "poll_live_pbp", "trigger_flow_for_game"} <= task_names
+    assert task_names == {"poll_live_pbp"}
     assert not any(name.startswith("golf_") for name in task_names)
     assert not any("odds" in name for name in task_names)
     assert not any("analytics" in name for name in task_names)

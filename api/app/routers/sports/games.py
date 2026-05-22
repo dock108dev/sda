@@ -23,7 +23,6 @@ from ...db.sports import (
 from ...services.game_status import LIVE_STATUSES
 from ...services.response_cache import (
     build_cache_key,
-    cache_status,
     get_cached,
     set_cached,
     should_bypass_cache,
@@ -105,13 +104,7 @@ async def list_games(
         )
         cached = get_cached(cache_key)
         if cached is not None:
-            return JSONResponse(
-                content=cached,
-                headers={
-                    "Cache-Control": f"public, max-age={_GAMES_LIST_CACHE_TTL_SECONDS}",
-                    "X-Cache": "HIT",
-                },
-            )
+            return JSONResponse(content=cached)
     # Page query: only eager-load relations that summarize_game consumes in
     # full (league, both teams, odds for derived metrics). Booleans and counts
     # come from scalar subqueries; live-game period/clock comes from a
@@ -368,17 +361,6 @@ async def list_games(
             payload.model_dump(by_alias=True, mode="json"),
             ttl_seconds=_GAMES_LIST_CACHE_TTL_SECONDS,
         )
-    response.headers["Cache-Control"] = (
-        f"public, max-age={_GAMES_LIST_CACHE_TTL_SECONDS}"
-    )
-    if cache_bypass:
-        response.headers["X-Cache"] = "BYPASS"
-    elif cache_status()["open"]:
-        # Redis circuit breaker tripped — every request is a cold miss until
-        # the breaker resets. Emit DISABLED so devtools shows the cause.
-        response.headers["X-Cache"] = "DISABLED"
-    else:
-        response.headers["X-Cache"] = "MISS"
     return payload
 
 
