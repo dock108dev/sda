@@ -6,12 +6,14 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 from app.routers.sports.schemas.catchup import (
     CatchupGameDetailResponse,
     CatchupGameListResponse,
 )
 from app.routers.sports.schemas.common import PlayEntry, PlayerStat, TeamStat
+from app.services.catchup_context import build_catchup_context
 
 
 def test_catchup_schemas_keep_list_spoiler_free_and_detail_complete() -> None:
@@ -38,6 +40,35 @@ def test_catchup_schemas_keep_list_spoiler_free_and_detail_complete() -> None:
 
     assert set(detail_data) == {"game", "plays", "playerStats", "teamStats"}
     assert detail_data["game"]["score"] == {"home": 90, "away": 88}
+
+
+def test_catchup_context_builds_spoiler_safe_reasons_from_local_data() -> None:
+    team = SimpleNamespace(abbreviation="BOS", short_name="Boston")
+    game = SimpleNamespace(
+        id=42,
+        league=SimpleNamespace(code="NBA"),
+        away_team=SimpleNamespace(name="Boston Celtics", abbreviation="BOS"),
+        home_team=SimpleNamespace(name="New York Knicks", abbreviation="NYK"),
+        status="final",
+        game_date=datetime.now(UTC),
+        player_boxscores=[
+            SimpleNamespace(
+                player_name="Jalen Brunson",
+                team=team,
+                stats={"points": 30, "assists": 8},
+                game=SimpleNamespace(league=SimpleNamespace(code="NBA")),
+            )
+        ],
+        team_boxscores=[SimpleNamespace(team=team, stats={"rebounds": 44, "turnovers": 11})],
+        plays=[],
+    )
+
+    context = build_catchup_context(game)  # type: ignore[arg-type]
+
+    assert len(context) == 3
+    assert "Boston Celtics at New York Knicks" in context[0]
+    assert "Jalen Brunson" in context[1]
+    assert not any("90" in sentence or "88" in sentence for sentence in context)
 
 
 def test_catchup_mode_exposes_only_catchup_routes() -> None:
@@ -70,6 +101,7 @@ print("ROUTES=" + json.dumps(sorted(route.path for route in app.routes)))
 
     assert "/api/admin/sports/games" in routes
     assert "/api/admin/sports/games/{game_id}" in routes
+    assert "/api/admin/sports/games/{game_id}/context" in routes
     assert not any("/api/admin/golf" in route for route in routes)
     assert "/api/admin/sports/jobs" not in routes
     assert "/v1/realtime/status" not in routes

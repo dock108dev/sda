@@ -18,11 +18,11 @@ from ...db.sports import (
     SportsTeam,
     SportsTeamBoxscore,
 )
-from ...services.period_labels import period_label, time_label
 from ...services.catchup_context import (
     build_catchup_context,
     enhance_catchup_context_with_openai,
 )
+from ...services.period_labels import period_label, time_label
 from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 from .common import serialize_play_entry, serialize_player_stat, serialize_team_stat
 from .schemas.catchup import (

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Any
 
 from app.db.sports import SportsGame, SportsGamePlay, SportsPlayerBoxscore, SportsTeamBoxscore
 from app.services.game_status import compute_status_flags
@@ -100,10 +99,7 @@ def _top_player_note(players: list[SportsPlayerBoxscore]) -> str | None:
 
     _score, label, player = max(scored, key=lambda item: item[0])
     team = player.team.abbreviation or player.team.short_name if player.team else None
-    if label:
-        suffix = f" for {label}"
-    else:
-        suffix = ""
+    suffix = f" for {label}" if label else ""
     if team:
         return f"{player.player_name} ({team}) is the player-stat thread to follow{suffix}."
     return f"{player.player_name} is the player-stat thread to follow{suffix}."
@@ -127,7 +123,7 @@ def _team_stat_note(team_stats: list[SportsTeamBoxscore]) -> str | None:
         "base_on_balls": "free passes",
     }
     for box in team_stats:
-        for key in (box.stats or {}):
+        for key in box.stats or {}:
             label = label_map.get(str(key))
             if label and label not in seen:
                 seen.append(label)
@@ -193,7 +189,9 @@ def build_catchup_context(
                 f"The matchup gives you a clean {away_abbr}-{home_abbr} filter point for the catch-up feed."
             )
         else:
-            sentences.append("The value is the ordered catch-up path: plays first, then player and team stats.")
+            sentences.append(
+                "The value is the ordered catch-up path: plays first, then player and team stats."
+            )
 
     return sentences[:_MAX_CONTEXT_SENTENCES]
 
@@ -210,12 +208,14 @@ def _openai_prompt(game: SportsGame, context: list[str]) -> str:
     return (
         "Rewrite the source facts into 2 or 3 short homepage sentences explaining why a "
         "user might open this game to catch up. Keep it spoiler-safe. Do not include scores, "
-        "winners, margins, or odds. Return JSON like {\"context\": [\"sentence\", ...]}.\n\n"
+        'winners, margins, or odds. Return JSON like {"context": ["sentence", ...]}.\n\n'
         f"Source facts:\n{json.dumps(source, default=str)}"
     )
 
 
-def enhance_catchup_context_with_openai(game: SportsGame, context: list[str]) -> tuple[list[str], str]:
+def enhance_catchup_context_with_openai(
+    game: SportsGame, context: list[str]
+) -> tuple[list[str], str]:
     """Optionally polish context through OpenAI; returns fallback on any issue."""
     client = get_openai_client()
     if client is None:
@@ -238,5 +238,7 @@ def enhance_catchup_context_with_openai(game: SportsGame, context: list[str]) ->
             raise ValueError("context must contain 2-3 sentences")
         return sentences[:_MAX_CONTEXT_SENTENCES], "openai"
     except Exception as exc:
-        logger.warning("catchup_context_openai_failed", extra={"game_id": game.id, "error": str(exc)})
+        logger.warning(
+            "catchup_context_openai_failed", extra={"game_id": game.id, "error": str(exc)}
+        )
         return context, "template"
