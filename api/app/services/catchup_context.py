@@ -55,7 +55,7 @@ def _player_stat_score(player: SportsPlayerBoxscore) -> tuple[float, str | None]
             ("home_runs", "power"),
         ):
             value = stats.get(key)
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 candidates.append((key, float(value), label))
     elif league == "NHL" or "shots_on_goal" in stats:
         for key, label in (
@@ -66,7 +66,7 @@ def _player_stat_score(player: SportsPlayerBoxscore) -> tuple[float, str | None]
             ("saves", "goaltending"),
         ):
             value = stats.get(key)
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 candidates.append((key, float(value), label))
     else:
         for key, label in (
@@ -77,7 +77,7 @@ def _player_stat_score(player: SportsPlayerBoxscore) -> tuple[float, str | None]
             ("blocks", "rim protection"),
         ):
             value = stats.get(key)
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 candidates.append((key, float(value), label))
 
     if not candidates:
