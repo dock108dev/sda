@@ -162,6 +162,8 @@ def validate_detail_contract(plays: list[PlayEntry]) -> None:
             raise DetailContractError(f"{prefix}.importance missing")
         if not (play.display_type or "").strip():
             raise DetailContractError(f"{prefix}.displayType missing")
+        if _is_raw_enum_label(play.display_type):
+            raise DetailContractError(f"{prefix}.displayType must be customer-facing")
         if not (play.period_label or "").strip():
             raise DetailContractError(f"{prefix}.periodLabel missing")
 
@@ -282,30 +284,22 @@ def _is_primary_play(
             return True
         if raw_type in _MLB_THREAT_ENDING_TYPES:
             return True
-        if is_late and is_close and tier <= 2:
-            return True
-        return False
+        return bool(is_late and is_close and tier <= 2)
 
     if league_code in {"NBA", "NCAAB"}:
-        if is_late and is_close and (is_scoring or raw_type in _POSSESSION_SWING_TYPES or tier <= 2):
-            return True
-        return False
+        return is_late and is_close and (is_scoring or raw_type in _POSSESSION_SWING_TYPES or tier <= 2)
 
     if league_code == "NHL":
         if is_scoring and raw_type != "empty_net_goal":
             return True
-        if is_late and is_close and tier <= 2:
-            return True
-        return False
+        return bool(is_late and is_close and tier <= 2)
 
     if league_code in {"NFL", "NCAAF"}:
         if is_scoring:
             return True
         if raw_type in _POSSESSION_SWING_TYPES:
             return True
-        if is_late and is_close and tier <= 2:
-            return True
-        return False
+        return bool(is_late and is_close and tier <= 2)
 
     return is_scoring or (is_late and is_close and tier <= 2)
 
@@ -382,6 +376,11 @@ def _rank(
 
 def _normalize_type(raw_type: str | None) -> str:
     return (raw_type or "").strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def _is_raw_enum_label(value: str | None) -> bool:
+    label = (value or "").strip()
+    return "_" in label or (len(label) > 1 and any(ch.isalpha() for ch in label) and label == label.upper())
 
 
 def _fallback_period_label(play: PlayEntry) -> str:
