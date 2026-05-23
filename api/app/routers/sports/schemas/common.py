@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -224,6 +224,33 @@ class LiveSnapshot(BaseModel):
     game_clock: str | None = Field(None, alias="gameClock")
 
 
+class PlayModeEligibility(BaseModel):
+    """Backend-owned stream mode eligibility for a play."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    important: bool
+    standard: bool
+    all: bool = True
+
+
+class PlayImportance(BaseModel):
+    """Backend-owned play importance contract for stream clients."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    level: Literal["primary", "secondary", "tertiary"]
+    rank: int | None = None
+    reasons: list[str] = Field(default_factory=list)
+    is_key_moment: bool = Field(False, alias="isKeyMoment")
+    is_scoring_play: bool = Field(False, alias="isScoringPlay")
+    is_lead_change: bool = Field(False, alias="isLeadChange")
+    is_tying_play: bool = Field(False, alias="isTyingPlay")
+    is_late_game: bool = Field(False, alias="isLateGame")
+    is_final_play: bool = Field(False, alias="isFinalPlay")
+    is_run_ending: bool = Field(False, alias="isRunEnding")
+
+
 class PlayEntry(BaseModel):
     """Play entry with camelCase output."""
 
@@ -244,10 +271,16 @@ class PlayEntry(BaseModel):
     description: str | None = None
     score: ScoreObject | None = None
     tier: int | None = None
+    display_type: str | None = Field(None, alias="displayType")
+    clock_label: str | None = Field(None, alias="clockLabel")
+    importance: PlayImportance | None = None
+    mode_eligibility: PlayModeEligibility | None = Field(None, alias="modeEligibility")
     score_changed: bool | None = Field(None, alias="scoreChanged")
     scoring_team_abbr: str | None = Field(None, alias="scoringTeamAbbr")
     points_scored: int | None = Field(None, alias="pointsScored")
     score_before: ScoreObject | None = Field(None, alias="scoreBefore")
+    score_after: ScoreObject | None = Field(None, alias="scoreAfter")
+    score_display: str | None = Field(None, alias="scoreDisplay")
     phase: str | None = None
 
 
