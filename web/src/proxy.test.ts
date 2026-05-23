@@ -50,6 +50,16 @@ describe("admin proxy gate", () => {
     expect(response.status).toBe(401);
   });
 
+  it("requires auth when only NODE_ENV is production", () => {
+    vi.stubEnv("ENVIRONMENT", "");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ADMIN_PASSWORD", "correct-password");
+
+    const response = proxy(request("/admin"));
+
+    expect(response.status).toBe(401);
+  });
+
   it("allows the request when the configured password matches", () => {
     vi.stubEnv("ENVIRONMENT", "production");
     vi.stubEnv("ADMIN_PASSWORD", "correct-password");
@@ -60,6 +70,16 @@ describe("admin proxy gate", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("rejects malformed basic auth credentials", () => {
+    vi.stubEnv("ENVIRONMENT", "production");
+    vi.stubEnv("ADMIN_PASSWORD", "correct-password");
+
+    expect(proxy(request("/admin", "Basic !!!")).status).toBe(401);
+    expect(proxy(request("/admin", `Basic ${Buffer.from("admin").toString("base64")}`)).status).toBe(
+      401,
+    );
   });
 
   it("fails closed in production when admin auth is not configured", async () => {

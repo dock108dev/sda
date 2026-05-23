@@ -80,6 +80,30 @@ describe("useGameFilters", () => {
     expect(result.current.aggregates?.withBoxscore).toBe(1);
   });
 
+  it("defaults missing aggregate counts to zero", async () => {
+    listGames.mockResolvedValueOnce({
+      games: [],
+      total: 0,
+      nextOffset: null,
+    });
+
+    const { result } = renderHook(() => useGameFilters({ defaultLimit: 10 }));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.aggregates).toEqual({
+      withBoxscore: 0,
+      withPlayerStats: 0,
+      withOdds: 0,
+      withSocial: 0,
+      withPbp: 0,
+      withFlow: 0,
+      withAdvancedStats: 0,
+    });
+  });
+
   it("applyFilters saves and refetches", async () => {
     const { result } = renderHook(() => useGameFilters({ defaultLimit: 10 }));
 
@@ -216,6 +240,26 @@ describe("useGameFilters", () => {
     });
 
     await waitFor(() => expect(result.current.appliedFilters.team).toBe("BOS"));
+  });
+
+  it("applyFilters normalizes missing league arrays", async () => {
+    const { result } = renderHook(() => useGameFilters({ defaultLimit: 10 }));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const filtersWithoutLeagues = {
+      ...result.current.formFilters,
+      leagues: undefined,
+      team: "NYK",
+      offset: 0,
+    } as unknown as import("@/lib/api/sportsAdmin").GameFilters;
+
+    await act(async () => {
+      result.current.applyFilters(filtersWithoutLeagues);
+    });
+
+    await waitFor(() => expect(result.current.appliedFilters.team).toBe("NYK"));
+    expect(result.current.appliedFilters.leagues).toEqual([]);
   });
 
   it("applyFilters without loadMoreMode clears games list", async () => {

@@ -158,6 +158,16 @@ describe("deriveDataStatus", () => {
     expect(staleOdds.reason).toMatch(/\d+d ago/);
   });
 
+  it("keeps current games present without a timestamp and formats day-old stale data", () => {
+    expect(deriveDataStatus("boxscore", true, "2026-04-15").status).toBe("present");
+
+    const staleOdds = deriveDataStatus("odds", true, "2026-04-15", "2026-04-14T17:00:00Z");
+    expect(staleOdds).toEqual({
+      status: "stale",
+      reason: "Last updated 1d ago",
+    });
+  });
+
   it("does not flag stale for completed games", () => {
     const pastGame = "2025-12-01";
     const oldTs = "2025-12-02T12:00:00Z";
