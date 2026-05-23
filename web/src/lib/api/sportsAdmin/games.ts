@@ -36,7 +36,7 @@ export async function fetchGame(gameId: number | string): Promise<AdminGameDetai
   if (!/^\d+$/.test(idStr)) {
     throw new Error(`Invalid game id: ${idStr}`);
   }
-  return request(`/api/admin/sports/games/${idStr}`);
+  return request(`/api/admin/sports/games/${idStr}/admin-detail`);
 }
 
 export async function resyncGame(gameId: number): Promise<JobResponse> {

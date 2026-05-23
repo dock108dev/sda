@@ -25,6 +25,7 @@ from celery import shared_task
 
 from ..db import get_session
 from ..logging import logger
+from .error_samples import suppressed_error_sample
 from .polling_helpers import (
     _poll_mlb_game_boxscore,
     _poll_nba_game_boxscore,
@@ -44,6 +45,7 @@ _JITTER_MAX = 2.0
 
 # Backoff on 429 responses
 _RATE_LIMIT_BACKOFF_SECONDS = 60
+_SUPPRESSED_ERROR_SAMPLE_LIMIT = 10
 
 
 from ..utils.redis_lock import LOCK_TIMEOUT_5MIN  # noqa: E402
@@ -149,7 +151,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                         except Exception as exc:
                             session.rollback()
                             suppressed_errors.append(
-                                {"phase": "populate_nba_ids", "error": str(exc)}
+                                suppressed_error_sample("populate_nba_ids", exc)
                             )
                             logger.warning(
                                 "poll_populate_nba_ids_error",
@@ -163,7 +165,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                         except Exception as exc:
                             session.rollback()
                             suppressed_errors.append(
-                                {"phase": "populate_nhl_ids", "error": str(exc)}
+                                suppressed_error_sample("populate_nhl_ids", exc)
                             )
                             logger.warning(
                                 "poll_populate_nhl_ids_error",
@@ -177,7 +179,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                         except Exception as exc:
                             session.rollback()
                             suppressed_errors.append(
-                                {"phase": "populate_mlb_ids", "error": str(exc)}
+                                suppressed_error_sample("populate_mlb_ids", exc)
                             )
                             logger.warning(
                                 "poll_populate_mlb_ids_error",
@@ -191,7 +193,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                         except Exception as exc:
                             session.rollback()
                             suppressed_errors.append(
-                                {"phase": "populate_ncaab_ids", "error": str(exc)}
+                                suppressed_error_sample("populate_ncaab_ids", exc)
                             )
                             logger.warning(
                                 "poll_populate_ncaab_ids_error",
@@ -247,13 +249,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
 
                 except Exception as exc:
                     session.rollback()
-                    suppressed_errors.append(
-                        {
-                            "phase": "pbp",
-                            "game_id": game.id,
-                            "error": str(exc),
-                        }
-                    )
+                    suppressed_errors.append(suppressed_error_sample("pbp", exc, game_id=game.id))
                     logger.warning(
                         "poll_live_pbp_game_error",
                         game_id=game.id,
@@ -327,11 +323,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                     except Exception as exc:
                         session.rollback()
                         suppressed_errors.append(
-                            {
-                                "phase": "boxscore",
-                                "game_id": game.id,
-                                "error": str(exc),
-                            }
+                            suppressed_error_sample("boxscore", exc, game_id=game.id)
                         )
                         logger.warning(
                             "poll_boxscore_game_error",
@@ -356,7 +348,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                     rate_limited = True
                 except Exception as exc:
                     session.rollback()
-                    suppressed_errors.append({"phase": "ncaab_batch", "error": str(exc)})
+                    suppressed_errors.append(suppressed_error_sample("ncaab_batch", exc))
                     logger.warning(
                         "poll_ncaab_batch_error",
                         error=str(exc),
@@ -377,6 +369,8 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                 suppressed_errors=len(suppressed_errors),
             )
 
+            suppressed_error_count = len(suppressed_errors)
+            suppressed_error_samples = suppressed_errors[:_SUPPRESSED_ERROR_SAMPLE_LIMIT]
             result = {
                 "games_polled": games_polled,
                 "api_calls": total_api_calls,
@@ -384,17 +378,16 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                 "pbp_updated": pbp_updated,
                 "boxscores_updated": boxscores_updated,
                 "rate_limited": rate_limited,
-                "suppressed_errors": suppressed_errors,
+                "suppressed_errors": suppressed_error_count,
             }
+            if suppressed_error_samples:
+                result["suppressed_error_samples"] = suppressed_error_samples
             summary = {k: v for k, v in result.items() if k != "transitions"}
             summary["transitions"] = len(transitions)
-            summary["suppressed_errors"] = len(suppressed_errors)
-            if suppressed_errors:
-                summary["suppressed_error_samples"] = suppressed_errors[:10]
-            final_status = "degraded" if suppressed_errors else "success"
+            final_status = "degraded" if suppressed_error_count else "success"
             error_summary = (
-                f"Completed with {len(suppressed_errors)} suppressed polling errors"
-                if suppressed_errors
+                f"Completed with {suppressed_error_count} suppressed polling errors"
+                if suppressed_error_count
                 else None
             )
             complete_job_run(
