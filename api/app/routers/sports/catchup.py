@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -23,6 +24,12 @@ from ...services.catchup_context import (
     enhance_catchup_context_with_openai,
 )
 from ...services.period_labels import period_label, time_label
+from ...services.play_importance import (
+    DetailContractError,
+    enrich_play_importance,
+    validate_detail_contract,
+)
+from ...services.play_tiers import classify_all_tiers, enrich_play_entries
 from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
 from .common import serialize_play_entry, serialize_player_stat, serialize_team_stat
 from .schemas.catchup import (
@@ -32,9 +39,10 @@ from .schemas.catchup import (
     CatchupGameMeta,
     CatchupGameSummary,
 )
-from .schemas.common import LiveSnapshot, _score_obj
+from .schemas.common import LiveSnapshot, PlayEntry, _score_obj
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 _DEFAULT_LOOKBACK_HOURS = 72
 _DEFAULT_LOOKAHEAD_HOURS = 48
@@ -120,6 +128,48 @@ def _summary(
         play_count=play_count,
         context=context,
     )
+
+
+def _enrich_detail_plays(
+    *,
+    game_id: int,
+    plays: list[PlayEntry],
+    league_code: str | None,
+    home_abbr: str | None,
+    away_abbr: str | None,
+) -> None:
+    if not plays:
+        return
+    if not league_code or not home_abbr or not away_abbr:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Game Detail Incomplete",
+        )
+
+    try:
+        tiers = classify_all_tiers(plays, league_code)
+        for entry, tier in zip(plays, tiers, strict=False):
+            entry.tier = tier
+        enrich_play_entries(plays, league_code, home_abbr, away_abbr)
+        enrich_play_importance(
+            plays,
+            league_code=league_code,
+            home_abbr=home_abbr,
+            away_abbr=away_abbr,
+        )
+        validate_detail_contract(plays)
+    except DetailContractError as exc:
+        logger.warning("Incomplete catch-up detail contract for game %s: %s", game_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Game Detail Incomplete",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Catch-up detail enrichment failed for game %s", game_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Detail Enrichment Failed",
+        ) from exc
 
 
 @router.get(
@@ -268,6 +318,13 @@ async def get_catchup_game(
         serialize_play_entry(play, league_code)
         for play in sorted(game.plays, key=lambda p: p.play_index)
     ]
+    _enrich_detail_plays(
+        game_id=game.id,
+        plays=plays,
+        league_code=league_code,
+        home_abbr=game.home_team.abbreviation if game.home_team else None,
+        away_abbr=game.away_team.abbreviation if game.away_team else None,
+    )
     latest_play = plays[-1] if plays else None
     latest_period = latest_play.quarter if latest_play else None
     latest_clock = latest_play.game_clock if latest_play else None

@@ -83,6 +83,7 @@ class CatchupGameDetailResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    detail_contract_version: int = Field(2, alias="detailContractVersion")
     game: CatchupGameMeta
     plays: list[PlayEntry]
     player_stats: list[PlayerStat] = Field(default_factory=list, alias="playerStats")

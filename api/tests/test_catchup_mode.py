@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.routers.admin.task_control import TASK_REGISTRY
+from app.routers.sports.catchup import _enrich_detail_plays
 from app.routers.sports.schemas.catchup import (
     CatchupGameDetailResponse,
     CatchupGameListResponse,
@@ -40,8 +41,44 @@ def test_catchup_schemas_keep_list_spoiler_free_and_detail_complete() -> None:
     )
     detail_data = detail_payload.model_dump(by_alias=True, mode="json", exclude_none=True)
 
-    assert set(detail_data) == {"game", "plays", "playerStats", "teamStats"}
+    assert set(detail_data) == {
+        "detailContractVersion",
+        "game",
+        "plays",
+        "playerStats",
+        "teamStats",
+    }
+    assert detail_data["detailContractVersion"] == 2
     assert detail_data["game"]["score"] == {"home": 90, "away": 88}
+
+
+def test_catchup_detail_enriches_ios_v2_play_contract() -> None:
+    plays = [
+        PlayEntry(
+            playIndex=1,
+            quarter=1,
+            gameClock="09:00",
+            periodLabel="1st",
+            playType="single",
+            teamAbbreviation="BOS",
+            description="BOS singles to center.",
+            score={"home": 0, "away": 0},
+        )
+    ]
+
+    _enrich_detail_plays(
+        game_id=42,
+        plays=plays,
+        league_code="MLB",
+        home_abbr="NYY",
+        away_abbr="BOS",
+    )
+    payload = plays[0].model_dump(by_alias=True, mode="json", exclude_none=True)
+
+    assert payload["displayType"] == "Single"
+    assert payload["modeEligibility"]["all"] is True
+    assert payload["importance"]["level"] in {"primary", "secondary", "tertiary"}
+    assert payload["periodLabel"] == "1st"
 
 
 def test_catchup_context_builds_spoiler_safe_reasons_from_local_data() -> None:
