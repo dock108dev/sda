@@ -142,7 +142,7 @@ def grade_flow_task(
     # dashboards, regen replays) see a misleading score. Don't retry — the
     # grader has already run and a retry would re-incur its LLM cost; the
     # gate decision below is still made from the in-memory result.
-    # See docs/audits/error-handling-report.md §B5.
+    # See docs/audits/error-handling-report.md Appendix B.
     try:
         with get_session() as session:
             flow = session.get(db_models.SportsGameFlow, flow_id)

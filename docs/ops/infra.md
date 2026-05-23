@@ -38,7 +38,12 @@ Local URLs:
 | `backup` | none | PostgreSQL backup service |
 | `log-relay` | internal `9999` | Docker log relay sidecar |
 
-Observability services are only created with the `observability` profile.
+Observability services are only created with the `observability` profile:
+
+- `otel-collector`: OTLP receiver on `4317` and `4318`, Prometheus scrape
+  endpoint on `8889`
+- `prometheus`: metrics UI on `9090`
+- `grafana`: dashboard UI on `3001`
 
 ## Common Commands
 
@@ -58,7 +63,9 @@ Run migrations explicitly:
 docker compose --profile dev run --rm migrate
 ```
 
-Migration files live in `api/alembic/versions/`.
+Migration files live in `api/alembic/versions/`. The default migrate service
+runs `infra/scripts/migrate_safely.py`, which sets the global task hold, drains
+in-flight worker transactions, runs Alembic, and clears the hold on exit.
 
 ## Backups
 

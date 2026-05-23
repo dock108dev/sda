@@ -95,9 +95,8 @@ app.add_middleware(
     allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
-# Outermost: rewrite HEAD requests to GET so cache/diagnostic headers
-# emitted by GET handlers are visible to HEAD probes (curl -I, uptime
-# monitors, browser DevTools). Body is dropped on the way out.
+# Outermost: rewrite HEAD requests to GET so probes exercise the same handler
+# as GET requests. Body is dropped on the way out.
 app.add_middleware(HeadAsGetMiddleware)
 
 

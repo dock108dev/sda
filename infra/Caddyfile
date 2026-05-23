@@ -4,7 +4,7 @@
 # Do not overwrite the full file if it contains other domains.
 #
 # Caddy sits on the host (outside Docker) and routes traffic to:
-#   - FastAPI  (localhost:8000) — API + auth + realtime + docs
+#   - FastAPI  (localhost:8000) — API + auth + realtime
 #   - Next.js  (localhost:3000) — Admin web UI
 #
 # IMPORTANT: Use `handle`, NOT `handle_path`. handle_path strips the
@@ -39,14 +39,6 @@ sda.dock108.dev {
 	}
 
 	handle /healthz {
-		reverse_proxy localhost:8000
-	}
-
-	handle /docs {
-		reverse_proxy localhost:8000
-	}
-
-	handle /openapi.json {
 		reverse_proxy localhost:8000
 	}
 

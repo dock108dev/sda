@@ -179,7 +179,7 @@ async def _run_and_record(
         # only an audit aid. Failing the task here would re-trigger the
         # already-completed handler on retry. Log at ERROR so persistent
         # failures of the audit table are visible to ops via log alerts.
-        # See docs/audits/error-handling-report.md §B7.
+        # See docs/audits/error-handling-report.md AH-11/AH-31.
         try:
             async with sf() as db:
                 db.add(

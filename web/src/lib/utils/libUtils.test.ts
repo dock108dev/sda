@@ -77,6 +77,7 @@ describe("status", () => {
     expect(getStatusClass("pending")).toBe("runStatusPending");
     expect(getStatusClass("running")).toBe("runStatusRunning");
     expect(getStatusClass("error")).toBe("runStatusError");
+    expect(getStatusClass("degraded")).toBe("runStatusDegraded");
     expect(getStatusClass("interrupted")).toBe("runStatusInterrupted");
     expect(getStatusClass("unknown")).toBe("runStatusPending");
 
@@ -87,6 +88,7 @@ describe("status", () => {
     expect(getStatusLabel("pending")).toBe("Pending");
     expect(getStatusLabel("running")).toBe("Running");
     expect(getStatusLabel("error")).toBe("Error");
+    expect(getStatusLabel("degraded")).toBe("Degraded");
     expect(getStatusLabel("interrupted")).toBe("Interrupted");
     expect(getStatusLabel("custom")).toBe("Custom");
   });

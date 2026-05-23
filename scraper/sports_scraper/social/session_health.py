@@ -258,7 +258,7 @@ def get_cached_health(redis_client: Any) -> dict | None:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # See docs/audits/error-handling-report.md §M5. Was broad Exception that
+        # See docs/audits/error-handling-report.md AH-29. Was broad Exception that
         # silently returned None — a malformed snapshot now logs so a writer bug
         # is diagnosable rather than masquerading as "no probe has run."
         logger.warning(

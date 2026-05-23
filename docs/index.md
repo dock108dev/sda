@@ -1,6 +1,7 @@
 # Documentation Index
 
-These docs describe the current catch-up-only Sports Data Admin service. Code, compose, and tests are the source of truth when docs drift.
+These docs describe the current catch-up-centered Sports Data Admin service.
+Code, compose, and tests are the source of truth when docs drift.
 
 ## Start Here
 
@@ -28,3 +29,16 @@ These docs describe the current catch-up-only Sports Data Admin service. Code, c
 | [Deployment](ops/deployment.md) | Production deployment and rollback basics |
 | [Runbook](ops/runbook.md) | Common operator checks |
 | [Known limitations](known-limitations.md) | Intentional constraints |
+
+## Audits
+
+| Guide | Purpose |
+| --- | --- |
+| [Abend handling](audits/error-handling-report.md) | Error suppression, fallback, retry, and prod strictness audit |
+| [Security review](audits/security-report.md) | Auth, proxy, deployment, data exposure, and hardening audit |
+
+## Maintenance
+
+| Guide | Purpose |
+| --- | --- |
+| [Oversized file follow-up](maintenance/oversized-files.md) | Files still above the cleanup size target |

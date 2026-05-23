@@ -441,7 +441,7 @@ def grade_tier2_cached(
     # `anthropic` may be a mock module in tests (test_grader.py patches
     # sys.modules and raises RuntimeError as `messages.create.side_effect`),
     # and `anthropic.APIError` on a MagicMock is not a real exception class.
-    # See error-handling-report.md §R7′.
+    # See docs/audits/error-handling-report.md Appendix B.
     try:
         client = anthropic.Anthropic()
         message = client.messages.create(
@@ -483,7 +483,7 @@ def grade_tier2_cached(
             json.dumps({"score": score, "rubric": rubric}),
         )
     except redis.RedisError:
-        # Narrowed from `Exception` per error-handling-report.md §R7′ — a
+        # Narrowed from `Exception` per docs/audits/error-handling-report.md Appendix B: a
         # cache-write failure is by definition a Redis client error; any
         # other exception (TypeError on json.dumps, etc.) should propagate
         # because it signals a programming bug rather than a transient
@@ -552,7 +552,7 @@ def grade_tier2_sonnet_cached(
     rubric: dict[str, float] = {}
     score = 0.0
     raw = ""
-    # See error-handling-report.md §R7′ — same split-catch rationale as the
+    # See docs/audits/error-handling-report.md Appendix B: same split-catch rationale as the
     # Haiku path above. The SDK call stays broad (test stubs raise plain
     # RuntimeError), the response-parse is narrowed so a parsing bug
     # propagates instead of silently neutral-scoring.
@@ -597,7 +597,7 @@ def grade_tier2_sonnet_cached(
             json.dumps({"score": score, "rubric": rubric}),
         )
     except redis.RedisError:
-        # Narrowed from `Exception` per error-handling-report.md §R7′ —
+        # Narrowed from `Exception` per docs/audits/error-handling-report.md Appendix B:
         # same rationale as the Haiku cache-write block above.
         logger.warning(
             "grader_t2s_cache_write_failed",

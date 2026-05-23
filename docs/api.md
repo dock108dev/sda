@@ -1,8 +1,13 @@
 # API
 
-The API is a FastAPI service focused on catch-up game data. Runtime OpenAPI is available locally at `GET /docs` and `GET /openapi.json`; those docs are disabled in production and staging.
+The API is a FastAPI service centered on Scroll Down catch-up data plus the
+operator routes needed to inspect and control that data. Runtime OpenAPI is
+available locally at `GET /docs` and `GET /openapi.json`; those docs are
+disabled in production and staging.
 
-Authoritative route wiring lives in `api/main.py`. The only mounted product router is `api/app/routers/sports/catchup.py`, mounted under `/api/admin/sports`.
+Authoritative route wiring lives in `api/main.py`. Catch-up list/detail
+ownership lives in `api/app/routers/sports/catchup.py`, mounted under
+`/api/admin/sports`.
 
 ## Authentication
 
@@ -63,13 +68,35 @@ Optional query parameters:
 
 The response includes `source`, currently `template` or `openai`.
 
+## Mounted Route Boundary
+
+`api/main.py` currently mounts these route families:
+
+- `/api/admin/sports/*`: catch-up list/detail routes plus sports admin
+  diagnostics, runs, jobs, timeline, pipeline, play-by-play, resolution,
+  coverage, and quality endpoints.
+- `/api/admin/*`: platform stats, task hold/trigger controls, circuit breaker
+  health, quality review, and the non-production realtime test emitter.
+- `/api/social/*`: manual social post and account CRUD over existing database
+  records.
+- `/api/v1/games/{game_id}/summary`: consumer-safe cached game summary status
+  or recap response.
+- `/health`, `/healthz`, `/ready`, and `/metrics`: unauthenticated health and
+  metrics endpoints.
+
+The catch-up list/detail endpoints are the primary product surface for Scroll
+Down clients. The other mounted routes are supporting admin, observability, or
+legacy-adjacent data access surfaces; they are not Celery schedules by
+themselves.
+
 ## Operations Routes
 
 ### Health
 
 - `GET /health`
-- `GET /healthz`
-- `GET /ready`
+- `GET /healthz` checks API liveness plus database and Redis connectivity, but
+  only database failure changes the status to `503`.
+- `GET /ready` returns `503` when database or Redis connectivity fails.
 - `GET /metrics`
 
 ### Task Control
@@ -80,17 +107,25 @@ The admin task registry exposes only `poll_live_pbp`. The hold endpoints remain 
 - `PUT /api/admin/tasks/hold`
 - `GET /api/admin/tasks/registry`
 - `POST /api/admin/tasks/trigger`
+- `GET /api/admin/social/session-health`
 
 Trigger body:
 
 ```json
 {
   "taskName": "poll_live_pbp",
-  "args": [],
-  "kwargs": {}
+  "args": []
 }
 ```
 
+### Realtime Test Emitter
+
+`POST /api/admin/realtime/test-emit` writes synthetic events to Redis Streams
+for load-test harnesses. The endpoint returns `403` in production and staging.
+Product realtime subscribe/stream routes are not mounted by the current API.
+
 ## Not Supported
 
-The current API does not mount legacy consumer, odds, FairBet, golf, simulator, analytics, social, billing, auth, or realtime product routes.
+The current API does not mount FairBet, odds/model-odds, golf, simulator,
+analytics experiment, commerce, billing, onboarding, preferences, auth product,
+Stripe webhook, club, or product realtime subscribe/stream routers.

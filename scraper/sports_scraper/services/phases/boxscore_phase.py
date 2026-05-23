@@ -234,7 +234,7 @@ def ingest_boxscores(
                                 record_ingest_error(err_session, game_id, str(exc))
                                 err_session.commit()
                         except Exception:
-                            # See docs/audits/error-handling-report.md §L1. Best-effort
+                            # See docs/audits/error-handling-report.md AH-17/AH-19. Best-effort
                             # error-row recording — the outer scrape failure is already
                             # ERROR-logged above, so this fallback is observability for
                             # the failure-recording path itself, not the scrape.

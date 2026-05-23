@@ -86,7 +86,7 @@ async def start_backtest(
         job.status = "queued"
         await db.flush()
     except Exception:
-        # Mirrors B8 in docs/audits/error-handling-report.md: dispatch failure used
+        # Mirrors Appendix B in docs/audits/error-handling-report.md: dispatch failure used
         # to return 200 + {"status": "submitted"} while job.status="failed", so the
         # admin toast read "submitted" for a broker outage. Surface as 503 instead.
         logger.exception("Failed to dispatch backtest task job_id=%s", job.id)
