@@ -89,15 +89,23 @@ import json
 from app.config import settings
 from main import app
 route_owners = {}
+route_entries = []
 for route in app.routes:
     if route.path in {
         "/api/admin/sports/games",
         "/api/admin/sports/games/{game_id}",
         "/api/admin/sports/games/{game_id}/context",
+        "/api/admin/sports/games/{game_id}/admin-detail",
     }:
         route_owners.setdefault(route.path, f"{route.endpoint.__module__}.{route.endpoint.__name__}")
+        route_entries.append({
+            "path": route.path,
+            "methods": sorted(route.methods or []),
+            "owner": f"{route.endpoint.__module__}.{route.endpoint.__name__}",
+        })
 payload = {
     "routes": sorted(route.path for route in app.routes),
+    "routeEntries": route_entries,
     "routeOwners": route_owners,
     "has_catchup_only_setting": hasattr(settings, "catchup_only"),
 }
@@ -119,12 +127,22 @@ print("APP=" + json.dumps(payload))
     assert "/api/admin/sports/games" in routes
     assert "/api/admin/sports/games/{game_id}" in routes
     assert "/api/admin/sports/games/{game_id}/context" in routes
+    assert "/api/admin/sports/games/{game_id}/admin-detail" in routes
+    assert (
+        sum(
+            1
+            for entry in payload["routeEntries"]
+            if entry["path"] == "/api/admin/sports/games/{game_id}" and "GET" in entry["methods"]
+        )
+        == 1
+    )
     assert payload["routeOwners"] == {
         "/api/admin/sports/games": "app.routers.sports.catchup.list_catchup_games",
         "/api/admin/sports/games/{game_id}": "app.routers.sports.catchup.get_catchup_game",
         "/api/admin/sports/games/{game_id}/context": (
             "app.routers.sports.catchup.get_catchup_game_context"
         ),
+        "/api/admin/sports/games/{game_id}/admin-detail": "app.routers.sports.game_detail.get_game",
     }
     assert "/api/admin/sports/scraper/runs" in routes
     assert "/api/admin/sports/logs" in routes

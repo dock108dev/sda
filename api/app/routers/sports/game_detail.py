@@ -448,7 +448,7 @@ async def get_game_scroll_down_mlb_debug(
     )
 
 
-@router.get("/games/{game_id}", response_model=GameDetailResponse)
+@router.get("/games/{game_id}/admin-detail", response_model=GameDetailResponse)
 async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> GameDetailResponse:
     result = await session.execute(
         select(SportsGame)
