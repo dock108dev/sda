@@ -37,6 +37,10 @@ Admin routes:
 - `PUT /api/admin/tasks/hold`
 - `GET /api/admin/tasks/registry`
 - `POST /api/admin/tasks/trigger`
+- `GET /api/admin/social/session-health`
+
+`/api/admin/social/session-health` reads the most recent Playwright session
+health snapshot from Redis. It does not schedule or run a social scraper.
 
 ## Removed Schedules
 

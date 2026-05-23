@@ -4,7 +4,7 @@
 
 import { SCRAPE_RUN_STATUS_COLORS } from "@/lib/constants/sports";
 
-export type RunStatus = "success" | "pending" | "running" | "error" | "interrupted";
+export type RunStatus = "success" | "pending" | "running" | "error" | "degraded" | "interrupted";
 
 /**
  * Get CSS class name for a run status.
@@ -20,6 +20,8 @@ export function getStatusClass(status: string): string {
       return "runStatusRunning";
     case "error":
       return "runStatusError";
+    case "degraded":
+      return "runStatusDegraded";
     case "interrupted":
       return "runStatusInterrupted";
     default:
@@ -48,10 +50,11 @@ export function getStatusLabel(status: string): string {
       return "Running";
     case "error":
       return "Error";
+    case "degraded":
+      return "Degraded";
     case "interrupted":
       return "Interrupted";
     default:
       return status.charAt(0).toUpperCase() + status.slice(1);
   }
 }
-

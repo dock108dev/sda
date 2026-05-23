@@ -90,7 +90,7 @@ services:
       - internal
       - app
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\""]
       interval: 10s
@@ -210,8 +210,8 @@ services:
       SPORTS_API_INTERNAL_URL: ${SPORTS_API_INTERNAL_URL:-http://api:8000}
       # API authentication key for backend requests
       SPORTS_API_KEY: ${API_KEY:-}
-      # Basic auth for production (uses same password as postgres)
-      ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-}
+      # Basic auth for production admin/proxy paths. Keep this separate from database credentials.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       API_KEY: ${API_KEY:-}
     depends_on:
@@ -220,7 +220,7 @@ services:
     networks:
       - app
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/healthz || exit 1"]
       interval: 10s
@@ -288,9 +288,9 @@ services:
     volumes:
       - ./otel-collector-config.yaml:/etc/otel/config.yaml:ro
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8889:8889"   # Prometheus metrics scrape endpoint
+      - "127.0.0.1:4317:4317"   # OTLP gRPC
+      - "127.0.0.1:4318:4318"   # OTLP HTTP
+      - "127.0.0.1:8889:8889"   # Prometheus metrics scrape endpoint
     networks:
       - internal
     healthcheck:
@@ -308,7 +308,7 @@ services:
     profiles: ["observability"]
     logging: *default-logging
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${POSTGRES_PASSWORD:-sports}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-sports-grafana-dev}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_INSTALL_PLUGINS: ""
       # Pass DB credentials through for datasource provisioning
@@ -323,7 +323,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - ./grafana/alerts:/etc/grafana/provisioning/alerting:ro
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     networks:
       - internal
     depends_on:
@@ -352,7 +352,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     networks:
       - internal
     healthcheck:

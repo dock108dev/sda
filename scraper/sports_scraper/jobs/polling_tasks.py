@@ -82,6 +82,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
             transitions: list[dict] = []
             pbp_updated = 0
             rate_limited = False
+            suppressed_errors: list[dict[str, object]] = []
 
             # Build league lookup and separate NCAAB from NBA/NHL/MLB
             from ..db import db_models
@@ -147,6 +148,9 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                             populate_nba_game_ids(session, start_date=start, end_date=end)
                         except Exception as exc:
                             session.rollback()
+                            suppressed_errors.append(
+                                {"phase": "populate_nba_ids", "error": str(exc)}
+                            )
                             logger.warning(
                                 "poll_populate_nba_ids_error",
                                 error=str(exc),
@@ -158,6 +162,9 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                             populate_nhl_game_ids(session, start_date=start, end_date=end)
                         except Exception as exc:
                             session.rollback()
+                            suppressed_errors.append(
+                                {"phase": "populate_nhl_ids", "error": str(exc)}
+                            )
                             logger.warning(
                                 "poll_populate_nhl_ids_error",
                                 error=str(exc),
@@ -169,6 +176,9 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                             populate_mlb_game_ids(session, start_date=start, end_date=end)
                         except Exception as exc:
                             session.rollback()
+                            suppressed_errors.append(
+                                {"phase": "populate_mlb_ids", "error": str(exc)}
+                            )
                             logger.warning(
                                 "poll_populate_mlb_ids_error",
                                 error=str(exc),
@@ -180,6 +190,9 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                             populate_ncaab_game_ids(session, start_date=start, end_date=end)
                         except Exception as exc:
                             session.rollback()
+                            suppressed_errors.append(
+                                {"phase": "populate_ncaab_ids", "error": str(exc)}
+                            )
                             logger.warning(
                                 "poll_populate_ncaab_ids_error",
                                 error=str(exc),
@@ -234,6 +247,13 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
 
                 except Exception as exc:
                     session.rollback()
+                    suppressed_errors.append(
+                        {
+                            "phase": "pbp",
+                            "game_id": game.id,
+                            "error": str(exc),
+                        }
+                    )
                     logger.warning(
                         "poll_live_pbp_game_error",
                         game_id=game.id,
@@ -306,6 +326,13 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
 
                     except Exception as exc:
                         session.rollback()
+                        suppressed_errors.append(
+                            {
+                                "phase": "boxscore",
+                                "game_id": game.id,
+                                "error": str(exc),
+                            }
+                        )
                         logger.warning(
                             "poll_boxscore_game_error",
                             game_id=game.id,
@@ -329,6 +356,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                     rate_limited = True
                 except Exception as exc:
                     session.rollback()
+                    suppressed_errors.append({"phase": "ncaab_batch", "error": str(exc)})
                     logger.warning(
                         "poll_ncaab_batch_error",
                         error=str(exc),
@@ -346,6 +374,7 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                 boxscores_updated=boxscores_updated,
                 ncaab_games=len(ncaab_pbp_games),
                 rate_limited=rate_limited,
+                suppressed_errors=len(suppressed_errors),
             )
 
             result = {
@@ -355,10 +384,25 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
                 "pbp_updated": pbp_updated,
                 "boxscores_updated": boxscores_updated,
                 "rate_limited": rate_limited,
+                "suppressed_errors": suppressed_errors,
             }
             summary = {k: v for k, v in result.items() if k != "transitions"}
             summary["transitions"] = len(transitions)
-            complete_job_run(job_run_id, status="success", summary_data=summary)
+            summary["suppressed_errors"] = len(suppressed_errors)
+            if suppressed_errors:
+                summary["suppressed_error_samples"] = suppressed_errors[:10]
+            final_status = "degraded" if suppressed_errors else "success"
+            error_summary = (
+                f"Completed with {len(suppressed_errors)} suppressed polling errors"
+                if suppressed_errors
+                else None
+            )
+            complete_job_run(
+                job_run_id,
+                status=final_status,
+                error_summary=error_summary,
+                summary_data=summary,
+            )
             return result
 
     except Exception as exc:

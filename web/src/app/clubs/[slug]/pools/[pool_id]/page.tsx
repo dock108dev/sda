@@ -48,7 +48,7 @@ export default async function PoolPage({ params }: PageProps) {
   // Fetch leaderboard (may be empty before scoring runs).
   // Logged so a persistent leaderboard failure surfaces on the server
   // (no user-visible UI hint — empty leaderboard already reads as
-  // "no scores yet" pre-tournament). See docs/audits/error-handling-report.md §F8.
+  // "no scores yet" pre-tournament). See docs/audits/error-handling-report.md AH-25/AH-26.
   let leaderboard: GolfPoolLeaderboardEntry[] = [];
   try {
     leaderboard = await fetchPoolLeaderboard(poolId);

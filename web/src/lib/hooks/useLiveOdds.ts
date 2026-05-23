@@ -74,7 +74,7 @@ export function useLiveOdds(gameId: string | number): LiveOddsState {
     } catch (err) {
       // Initial-state fetch failed; SSE may still recover on reconnect.
       // Log so persistent failures surface in browser consoles / Sentry.
-      // See docs/audits/error-handling-report.md §F3.
+      // See docs/audits/error-handling-report.md AH-27.
       console.warn(
         `[useLiveOdds] initial state fetch failed for game ${gameId}`,
         err,
@@ -119,7 +119,7 @@ export function useLiveOdds(gameId: string | number): LiveOddsState {
         data = JSON.parse(event.data as string) as FairbetOddsEvent;
       } catch (parseErr) {
         // Malformed SSE message — log and drop; do not close the stream.
-        // See docs/audits/error-handling-report.md §F1.
+        // See docs/audits/error-handling-report.md AH-26/AH-27.
         console.warn(
           `[useLiveOdds] dropped malformed SSE message for game ${gameId}`,
           parseErr,

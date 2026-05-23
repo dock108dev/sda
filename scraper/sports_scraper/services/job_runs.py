@@ -228,7 +228,7 @@ def _get_current_celery_task_id() -> str | None:
         if current_task and current_task.request and current_task.request.id:
             return str(current_task.request.id)
     except (ImportError, AttributeError, RuntimeError):
-        # See docs/audits/error-handling-report.md §L2. Outside a Celery worker
+        # See docs/audits/error-handling-report.md AH-21. Outside a Celery worker
         # `current_task` is None / its `.request` is unbound (AttributeError);
         # in non-Celery contexts the import itself can fail. Narrowed from
         # broad Exception so any other failure (e.g. a programmer bug in this

@@ -25,7 +25,7 @@ function redactSensitive(s: string): string {
  * Typed error carrying the upstream HTTP status. Callers should use
  * `err instanceof HttpError && err.status === 404` rather than
  * string-matching on the message, which is brittle to message-format changes.
- * See docs/audits/error-handling-report.md §F7.
+ * See docs/audits/error-handling-report.md AH-24.
  */
 export class HttpError extends Error {
   readonly status: number;

@@ -19,8 +19,8 @@ export const SCRAPE_RUN_STATUS_COLORS: Record<string, string> = {
   running: "#fbbc04",
   pending: "#5f6368",
   error: "#ea4335",
+  degraded: "#f59e0b",
   interrupted: "#f97316", // Orange color for interrupted runs
   canceled: "#94a3b8",
 } as const;
-
 

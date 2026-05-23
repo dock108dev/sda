@@ -97,9 +97,7 @@ async def get_circuit_breakers(
     ]
 
     result = await db.execute(
-        select(CircuitBreakerTripEvent)
-        .order_by(desc(CircuitBreakerTripEvent.tripped_at))
-        .limit(50)
+        select(CircuitBreakerTripEvent).order_by(desc(CircuitBreakerTripEvent.tripped_at)).limit(50)
     )
     rows = result.scalars().all()
     recent_trips = [
@@ -134,9 +132,13 @@ async def get_playwright_health() -> PlaywrightHealthResponse:
                 last_check = json.loads(raw_health)
     except Exception:
         logger.warning("playwright_health_redis_read_failed", exc_info=True)
-        circuit_open = False
-        consecutive_failures = 0
-        last_check = None
+        circuit_open = True
+        consecutive_failures = _CIRCUIT_BREAKER_THRESHOLD
+        last_check = {
+            "status": "unknown",
+            "error": "redis_read_failed",
+            "reason": "Circuit state could not be read from Redis.",
+        }
 
     return PlaywrightHealthResponse(
         circuit_open=circuit_open,

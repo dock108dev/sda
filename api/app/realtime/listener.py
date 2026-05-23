@@ -201,11 +201,11 @@ class ListenNotifyListener:
         # Broad except is intentional: a per-NOTIFY handler exception must not
         # tear down the listen loop. `logger.exception` captures the traceback
         # and the channel/game_id make persistent failures grep-able. Unlike
-        # streams.py §B2/§B3, no consecutive-failure counter is wired here:
+        # streams.py AH-30 handling, no consecutive-failure counter is wired here:
         # PG NOTIFY throughput is one event per write versus the Redis Streams
         # consumer's per-message rate, so a persistent failure is diagnosable
         # from the existing logs alone. Revisit if NOTIFY volume rises.
-        # See docs/audits/error-handling-report.md §R1.
+        # See docs/audits/error-handling-report.md AH-30.
         try:
             if channel == "game_score_update":
                 await self._handle_game_score_update(data)

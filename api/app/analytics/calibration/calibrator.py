@@ -118,7 +118,7 @@ class SimCalibrator:
             from app.analytics.models.core.artifact_signing import sign_artifact
             sign_artifact(path)
         except (RuntimeError, FileNotFoundError, PermissionError, OSError):
-            # See docs/audits/error-handling-report.md §M3. The original
+            # See docs/audits/error-handling-report.md Appendix B. The original
             # `except (RuntimeError, Exception)` was Exception-equivalent and
             # silently absorbed programmer bugs (renamed import, missing key
             # config) as "signing skipped." Narrowed to the actual signing

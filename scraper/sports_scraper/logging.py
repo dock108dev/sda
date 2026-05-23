@@ -13,11 +13,32 @@ import structlog
 
 from .config import settings
 
+_SENSITIVE_EXTRA_FIELDS = {
+    "email",
+    "password",
+    "token",
+    "access_token",
+    "refresh_token",
+    "api_key",
+    "apikey",
+    "secret",
+    "authorization",
+    "raw_token",
+}
+
 
 def _normalize_log_level(level: str | None, environment: str) -> int:
     env = environment.lower()
     normalized = level.strip().upper() if level else "INFO" if env == "production" else "DEBUG"
     return logging._nameToLevel.get(normalized, logging.INFO)
+
+
+def _redact_sensitive_fields(_, __, event_dict: dict) -> dict:
+    """Redact sensitive structured fields before JSON rendering."""
+    for key in list(event_dict):
+        if key.lower() in _SENSITIVE_EXTRA_FIELDS:
+            event_dict[key] = "[REDACTED]"
+    return event_dict
 
 
 def configure_logging() -> None:
@@ -35,6 +56,7 @@ def configure_logging() -> None:
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.stdlib.add_log_level,
             structlog.stdlib.add_logger_name,
+            _redact_sensitive_fields,
             structlog.processors.EventRenamer("message"),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,

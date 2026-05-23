@@ -3,10 +3,8 @@
 Why:
     FastAPI's ``@router.get(...)`` registers a GET-only route. A HEAD
     request to that path returns 405 before the handler runs, which means
-    cache-diagnostic headers (``Cache-Control``, ``X-Cache``) and any other
-    response metadata are never emitted. ``curl -I``, browser HEAD probes,
-    and uptime checkers all see this as "no cache layer at all" — which is
-    misleading.
+    response metadata is never emitted. ``curl -I``, browser HEAD probes,
+    and uptime checkers all miss the handler-level status and headers.
 
 What this does:
     Rewrites the ASGI scope's method from HEAD to GET before the request

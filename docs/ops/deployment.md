@@ -43,4 +43,7 @@ Run migrations only when the rollback plan accounts for schema compatibility.
 
 - `backend-ci-cd.yml`: runs backend, scraper, API, web, and repository hygiene checks. Manual `full_deploy=true` builds GHCR images and deploys.
 - `deploy-recent-image.yml`: manually deploys an existing image tag, defaulting to `latest`.
-- `realtime-load-test.yml`: manual legacy load harness. It is not part of the active catch-up runtime because realtime product routes are not mounted.
+- `realtime-load-test.yml`: manual load harness for the non-production
+  `/api/admin/realtime/test-emit` endpoint and Redis Streams path. It is not
+  part of the active catch-up runtime because product realtime subscribe/stream
+  routes are not mounted.

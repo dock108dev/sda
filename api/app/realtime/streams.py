@@ -262,7 +262,7 @@ class RedisStreamsBridge:
                 self._consecutive_dispatch_failures += 1
                 # Always log; escalate if dispatch failure is persistent. We
                 # still ack: a poisoned entry would otherwise loop forever
-                # and block fresh events. See docs/audits/error-handling-report.md §B2.
+                # and block fresh events. See docs/audits/error-handling-report.md AH-30.
                 if (
                     self._consecutive_dispatch_failures
                     >= self._ACK_FAILURE_ESCALATE_AT
@@ -294,7 +294,7 @@ class RedisStreamsBridge:
             # on its next read, which means duplicate dispatch. Single failures
             # are usually transient (Redis connection blip); persistent
             # failures need ops attention because backlog grows unbounded.
-            # See docs/audits/error-handling-report.md §B3.
+            # See docs/audits/error-handling-report.md AH-30.
             if self._consecutive_ack_failures >= self._ACK_FAILURE_ESCALATE_AT:
                 logger.error(
                     "streams_ack_error_persistent",

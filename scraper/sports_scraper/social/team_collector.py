@@ -156,7 +156,7 @@ class TeamTweetCollector:
             # Non-critical — scroll won't short-circuit, but the scrape still
             # collects. Log at warning so persistent DB errors surface in ops
             # dashboards instead of dying silently.
-            # See docs/audits/error-handling-report.md §B4.
+            # See docs/audits/error-handling-report.md Appendix B.
             logger.warning(
                 "team_collector_recent_posts_lookup_failed",
                 team_id=team_id,

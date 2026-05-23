@@ -118,7 +118,7 @@ async def create_experiment_suite(
         await db.flush()
         # Surface the failure to the caller instead of returning 200 with a
         # failed suite body — admin clients otherwise treat the response as
-        # success and never retry. See docs/audits/error-handling-report.md §B8.
+        # success and never retry. See docs/audits/error-handling-report.md Appendix B.
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={

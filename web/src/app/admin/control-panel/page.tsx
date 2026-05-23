@@ -490,7 +490,7 @@ export default function ControlPanelPage() {
       .catch((err) => {
         // The UI only renders a generic "unknown" banner, but we want the
         // underlying status / network error in browser logs for triage.
-        // See docs/audits/error-handling-report.md §F6.
+        // See docs/audits/error-handling-report.md AH-15/AH-21.
         console.error("[control-panel] getHoldStatus failed", err);
         setHoldError(true);
       });

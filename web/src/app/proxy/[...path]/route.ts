@@ -47,6 +47,9 @@ async function proxyRequest(
     const lower = key.toLowerCase();
     if (HOP_BY_HOP.has(lower)) return;
     if (lower === "host" || lower === "x-forwarded-origin" || lower === "x-api-key") return;
+    // Browser Basic auth protects the Next.js edge only. Do not forward it to
+    // FastAPI, where bearer credentials have a different meaning.
+    if (lower === "authorization" && value.toLowerCase().startsWith("basic ")) return;
     headers.set(key, value);
   });
   if (API_KEY) headers.set("X-API-Key", API_KEY);

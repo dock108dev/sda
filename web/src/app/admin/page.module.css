@@ -95,6 +95,7 @@
 .runStatusPending { background: #eab308; }
 .runStatusRunning { background: #3b82f6; animation: pulse 1.5s infinite; }
 .runStatusError { background: #ef4444; }
+.runStatusDegraded { background: #f59e0b; }
 .runStatusInterrupted { background: #f97316; }
 
 @keyframes pulse {

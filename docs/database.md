@@ -45,4 +45,7 @@ docker compose --profile dev run --rm migrate
 
 ## Notes
 
-Legacy odds, golf, social, analytics, commerce, and realtime tables may still exist in historical schemas. They are not part of the active catch-up runtime.
+Legacy odds, golf, analytics, commerce, auth, and realtime tables may still
+exist in historical schemas. They are not part of the active scheduled catch-up
+worker. Social tables are still read and written by the mounted `/api/social/*`
+admin routes, but social scraping is not scheduled by the active Celery app.

@@ -77,6 +77,7 @@ describe("status", () => {
     expect(getStatusClass("pending")).toBe("runStatusPending");
     expect(getStatusClass("running")).toBe("runStatusRunning");
     expect(getStatusClass("error")).toBe("runStatusError");
+    expect(getStatusClass("degraded")).toBe("runStatusDegraded");
     expect(getStatusClass("interrupted")).toBe("runStatusInterrupted");
     expect(getStatusClass("unknown")).toBe("runStatusPending");
 
@@ -87,6 +88,7 @@ describe("status", () => {
     expect(getStatusLabel("pending")).toBe("Pending");
     expect(getStatusLabel("running")).toBe("Running");
     expect(getStatusLabel("error")).toBe("Error");
+    expect(getStatusLabel("degraded")).toBe("Degraded");
     expect(getStatusLabel("interrupted")).toBe("Interrupted");
     expect(getStatusLabel("custom")).toBe("Custom");
   });
@@ -154,6 +156,16 @@ describe("deriveDataStatus", () => {
     const staleOdds = deriveDataStatus("odds", true, gameToday, "2026-04-12T12:00:00Z");
     expect(staleOdds.status).toBe("stale");
     expect(staleOdds.reason).toMatch(/\d+d ago/);
+  });
+
+  it("keeps current games present without a timestamp and formats day-old stale data", () => {
+    expect(deriveDataStatus("boxscore", true, "2026-04-15").status).toBe("present");
+
+    const staleOdds = deriveDataStatus("odds", true, "2026-04-15", "2026-04-14T17:00:00Z");
+    expect(staleOdds).toEqual({
+      status: "stale",
+      reason: "Last updated 1d ago",
+    });
   });
 
   it("does not flag stale for completed games", () => {

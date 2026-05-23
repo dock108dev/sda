@@ -152,7 +152,7 @@ class RateLimitMiddleware:
                     # Log at ERROR so a Redis outage pages on-call. Static
                     # fields only: path/request data and exception objects are
                     # treated as potentially credential-bearing by scanners.
-                    # See docs/audits/error-handling-report.md §B6.
+                    # See docs/audits/error-handling-report.md AH-07.
                     logger.error(
                         "rate_limit_redis_auth_fallback",
                         extra={"tier": "auth_strict"},
@@ -194,7 +194,7 @@ class RateLimitMiddleware:
                     # Same risk as auth_strict above: shared Redis quota
                     # degrades into per-replica memory quota during a Redis
                     # outage, enabling abuse of public onboarding forms.
-                    # See docs/audits/error-handling-report.md §B6.
+                    # See docs/audits/error-handling-report.md AH-07.
                     logger.error(
                         "rate_limit_redis_onboarding_fallback",
                         extra={"tier": "onboarding_strict"},

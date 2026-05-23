@@ -90,7 +90,7 @@ export function useLiveGameScore(gameId: string | number): LiveGameScoreState {
         // Malformed SSE message — usually a partial frame on reconnect.
         // Log so persistent server-side encoding bugs are visible; do not
         // close the stream over a single bad frame.
-        // See docs/audits/error-handling-report.md §F1.
+        // See docs/audits/error-handling-report.md AH-26/AH-27.
         console.warn(
           `[useLiveGameScore] dropped malformed SSE message for game ${gameId}`,
           parseErr,

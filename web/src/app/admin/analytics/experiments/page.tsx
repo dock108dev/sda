@@ -137,7 +137,7 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
   // Loadout failures degrade gracefully (the picker just shows nothing),
   // but a feature-list failure leaves the form unusable — surface it so the
   // admin sees the error instead of an infinite "Loading…" state.
-  // See docs/audits/error-handling-report.md §F5.
+  // See docs/audits/error-handling-report.md Appendix B.
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
@@ -541,4 +541,3 @@ function ExperimentBuilder({ sportCode, onSubmitted }: { sportCode: string; onSu
     </AdminCard>
   );
 }
-
