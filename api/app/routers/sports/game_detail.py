@@ -55,7 +55,12 @@ from ...services.derived_metrics import compute_derived_metrics
 from ...services.game_status import compute_status_flags
 from ...services.odds_table import build_odds_table
 from ...services.period_labels import period_label, time_label
-from ...services.play_tiers import classify_all_tiers, group_tier3_plays
+from ...services.play_importance import (
+    DetailContractError,
+    enrich_play_importance,
+    validate_detail_contract,
+)
+from ...services.play_tiers import classify_all_tiers, enrich_play_entries, group_tier3_plays
 from ...services.stat_annotations import compute_team_annotations
 from ...services.team_colors import get_matchup_colors
 from .common import (
@@ -318,7 +323,10 @@ async def get_game_preview_score(
     )
     game = result.scalar_one_or_none()
     if not game:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game Data Not Found",
+        )
     if not game.home_team or not game.away_team:
         logger.error("Preview score missing team data", extra={"game_id": game_id})
         raise HTTPException(
@@ -377,7 +385,10 @@ async def get_game_scroll_down_mlb_debug(
     )
     game = result.scalar_one_or_none()
     if not game:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game Data Not Found",
+        )
 
     league_code = game.league.code if game.league else None
     if (league_code or "").lower() != "mlb":
@@ -571,15 +582,53 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
         serialize_play_entry(play, league_code)
         for play in sorted(game.plays, key=lambda p: p.play_index)
     ]
+    if not plays_entries:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game Detail Not Found",
+        )
+
+    home_abbr_val = game.home_team.abbreviation if game.home_team else None
+    away_abbr_val = game.away_team.abbreviation if game.away_team else None
 
     # Classify play tiers and build grouped plays
-    if plays_entries and league_code:
+    if league_code:
         tiers = classify_all_tiers(plays_entries, league_code)
         for entry, t in zip(plays_entries, tiers, strict=False):
             entry.tier = t
         grouped_plays = group_tier3_plays(plays_entries, tiers)
+        if home_abbr_val and away_abbr_val:
+            try:
+                enrich_play_entries(plays_entries, league_code, home_abbr_val, away_abbr_val)
+                enrich_play_importance(
+                    plays_entries,
+                    league_code=league_code,
+                    home_abbr=home_abbr_val,
+                    away_abbr=away_abbr_val,
+                )
+                validate_detail_contract(plays_entries)
+            except DetailContractError as exc:
+                logger.warning("Incomplete game detail contract for game %s: %s", game_id, exc)
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Game Detail Incomplete",
+                ) from exc
+            except Exception as exc:
+                logger.exception("Detail enrichment failed for game %s", game_id)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Detail Enrichment Failed",
+                ) from exc
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Game Detail Incomplete",
+            )
     else:
-        grouped_plays = None
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Game Detail Incomplete",
+        )
 
     # Check if game has a flow in SportsGameFlow table
     flow_check = await session.execute(
@@ -724,14 +773,6 @@ async def get_game(game_id: int, session: AsyncSession = Depends(get_db)) -> Gam
     nhl_advanced_stats_list, nhl_skater_advanced_stats_list, nhl_goalie_advanced_stats_list = serialize_nhl_advanced(game) if is_nhl else (None, None, None)
     nfl_advanced_stats_list, nfl_player_advanced_stats_list = serialize_nfl_advanced(game) if is_nfl else (None, None)
     ncaab_advanced_stats_list, ncaab_player_advanced_stats_list = serialize_ncaab_advanced(game) if is_ncaab else (None, None)
-
-    from ...services.play_tiers import enrich_play_entries
-
-    if plays_entries and league_code:
-        home_abbr_val = game.home_team.abbreviation if game.home_team else None
-        away_abbr_val = game.away_team.abbreviation if game.away_team else None
-        if home_abbr_val and away_abbr_val:
-            enrich_play_entries(plays_entries, league_code, home_abbr_val, away_abbr_val)
 
     return GameDetailResponse(
         game=meta,

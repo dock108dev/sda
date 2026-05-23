@@ -192,6 +192,7 @@ class GameDetailResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    detail_contract_version: int = Field(2, alias="detailContractVersion")
     game: GameMeta
     team_stats: list[TeamStat] = Field(..., alias="teamStats")
     # Generic player stats (NBA, NCAAB, NFL, etc.)
