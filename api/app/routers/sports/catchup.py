@@ -107,7 +107,12 @@ def _summary(
     latest_clock: str | None = None,
 ) -> CatchupGameSummary:
     period_label_value, live_snapshot = _latest_snapshot(game, latest_period, latest_clock)
-    context = build_catchup_context(game)
+    context = build_catchup_context(
+        game,
+        players=list(game.player_boxscores),
+        team_stats=list(game.team_boxscores),
+        plays=[],
+    )
     return CatchupGameSummary(
         id=game.id,
         league_code=game.league.code if game.league else "UNKNOWN",

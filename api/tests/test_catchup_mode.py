@@ -10,7 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.routers.admin.task_control import TASK_REGISTRY
-from app.routers.sports.catchup import _enrich_detail_plays
+from app.routers.sports.catchup import _enrich_detail_plays, _summary
 from app.routers.sports.schemas.catchup import (
     CatchupGameDetailResponse,
     CatchupGameListResponse,
@@ -83,6 +83,17 @@ def test_catchup_detail_enriches_ios_v2_play_contract() -> None:
 
 def test_catchup_context_builds_spoiler_safe_reasons_from_local_data() -> None:
     team = SimpleNamespace(abbreviation="BOS", short_name="Boston")
+
+    class PlayerWithoutLoadedGame:
+        def __init__(self) -> None:
+            self.player_name = "Jalen Brunson"
+            self.team = team
+            self.stats = {"points": 30, "assists": 8}
+
+        @property
+        def game(self):  # pragma: no cover - only reached on regression
+            raise RuntimeError("context must not lazy-load player.game")
+
     game = SimpleNamespace(
         id=42,
         league=SimpleNamespace(code="NBA"),
@@ -90,14 +101,7 @@ def test_catchup_context_builds_spoiler_safe_reasons_from_local_data() -> None:
         home_team=SimpleNamespace(name="New York Knicks", abbreviation="NYK"),
         status="final",
         game_date=datetime.now(UTC),
-        player_boxscores=[
-            SimpleNamespace(
-                player_name="Jalen Brunson",
-                team=team,
-                stats={"points": 30, "assists": 8},
-                game=SimpleNamespace(league=SimpleNamespace(code="NBA")),
-            )
-        ],
+        player_boxscores=[PlayerWithoutLoadedGame()],
         team_boxscores=[SimpleNamespace(team=team, stats={"rebounds": 44, "turnovers": 11})],
         plays=[],
     )
@@ -108,6 +112,40 @@ def test_catchup_context_builds_spoiler_safe_reasons_from_local_data() -> None:
     assert "Boston Celtics at New York Knicks" in context[0]
     assert "Jalen Brunson" in context[1]
     assert not any("90" in sentence or "88" in sentence for sentence in context)
+
+
+def test_catchup_list_summary_does_not_lazy_load_plays() -> None:
+    class GameWithoutLoadedPlays:
+        id = 42
+        league = SimpleNamespace(code="MLB")
+        away_team = SimpleNamespace(name="Boston Red Sox", abbreviation="BOS")
+        home_team = SimpleNamespace(name="New York Yankees", abbreviation="NYY")
+        status = "final"
+        game_date = datetime.now(UTC)
+        local_game_date = game_date.date()
+        home_score = 3
+        away_score = 2
+        player_boxscores = []
+        team_boxscores = []
+
+        @property
+        def plays(self):  # pragma: no cover - only reached on regression
+            raise RuntimeError("list summaries must not lazy-load game.plays")
+
+    summary = _summary(
+        GameWithoutLoadedPlays(),  # type: ignore[arg-type]
+        has_boxscore=False,
+        has_player_stats=False,
+        play_count=17,
+        latest_period=7,
+        latest_clock="2:30",
+    )
+
+    assert summary.id == 42
+    assert summary.has_pbp is True
+    assert summary.play_count == 17
+    assert summary.current_period == 7
+    assert summary.game_clock == "2:30"
 
 
 def test_admin_surface_keeps_sports_and_system_routes_only() -> None:

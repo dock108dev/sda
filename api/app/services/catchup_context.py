@@ -41,9 +41,13 @@ def _game_time_label(game: SportsGame) -> str:
     return dt.strftime("%a %b %-d at %-I:%M %p UTC")
 
 
-def _player_stat_score(player: SportsPlayerBoxscore) -> tuple[float, str | None]:
+def _player_stat_score(
+    player: SportsPlayerBoxscore,
+    *,
+    league_code: str | None = None,
+) -> tuple[float, str | None]:
     stats = player.stats or {}
-    league = _league_code(player.game) if getattr(player, "game", None) else ""
+    league = league_code or (_league_code(player.game) if getattr(player, "game", None) else "")
 
     candidates: list[tuple[str, float, str]] = []
     if league == "MLB" or stats.get("player_role") == "pitcher":
@@ -86,12 +90,16 @@ def _player_stat_score(player: SportsPlayerBoxscore) -> tuple[float, str | None]
     return score, label
 
 
-def _top_player_note(players: list[SportsPlayerBoxscore]) -> str | None:
+def _top_player_note(
+    players: list[SportsPlayerBoxscore],
+    *,
+    league_code: str | None = None,
+) -> str | None:
     scored: list[tuple[float, str | None, SportsPlayerBoxscore]] = []
     for player in players:
         if not player.player_name:
             continue
-        score, label = _player_stat_score(player)
+        score, label = _player_stat_score(player, league_code=league_code)
         if score > 0:
             scored.append((score, label, player))
     if not scored:
@@ -168,16 +176,23 @@ def build_catchup_context(
     """Build 2-3 spoiler-safe context sentences from local data only."""
     sentences = [_base_sentence(game)]
 
-    player_note = _top_player_note(players or list(getattr(game, "player_boxscores", []) or []))
+    game_players = (
+        players if players is not None else list(getattr(game, "player_boxscores", []) or [])
+    )
+    player_note = _top_player_note(game_players, league_code=_league_code(game))
     if player_note:
         sentences.append(player_note)
 
-    team_note = _team_stat_note(team_stats or list(getattr(game, "team_boxscores", []) or []))
+    game_team_stats = (
+        team_stats if team_stats is not None else list(getattr(game, "team_boxscores", []) or [])
+    )
+    team_note = _team_stat_note(game_team_stats)
     if team_note:
         sentences.append(team_note)
 
     if len(sentences) < 2:
-        play_note = _play_note(plays or list(getattr(game, "plays", []) or []))
+        game_plays = plays if plays is not None else list(getattr(game, "plays", []) or [])
+        play_note = _play_note(game_plays)
         if play_note:
             sentences.append(play_note)
 
