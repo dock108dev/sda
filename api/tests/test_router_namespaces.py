@@ -24,7 +24,7 @@ EXEMPT_PATHS: frozenset[str] = frozenset(
         "/health",
         "/ready",
         "/metrics",
-        # Stripe webhook — URL is configured in the Stripe dashboard.
+        # Deprecated Stripe webhook — kept only while legacy payment code is removed.
         "/api/webhooks/stripe",
         # Prospect-facing onboarding flow — public, rate-limited. Not a
         # consumer (/api/v1/) or admin (/api/admin/) surface; pre-signup

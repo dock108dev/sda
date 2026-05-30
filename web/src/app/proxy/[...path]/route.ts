@@ -94,7 +94,11 @@ async function proxyRequest(
 
   const responseHeaders = new Headers();
   upstream.headers.forEach((value, key) => {
-    if (HOP_BY_HOP.has(key.toLowerCase())) return;
+    const lower = key.toLowerCase();
+    if (HOP_BY_HOP.has(lower)) return;
+    // This proxy may target an internal hostname. Do not expose upstream
+    // redirect targets to the browser.
+    if (lower === "location") return;
     responseHeaders.set(key, value);
   });
 

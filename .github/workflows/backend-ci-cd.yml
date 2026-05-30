@@ -81,8 +81,13 @@ jobs:
           uv venv --python 3.12
           source .venv/bin/activate
           uv pip install -r api/requirements.txt
-          uv pip install pytest pytest-cov pytest-asyncio pytest-timeout
+          uv pip install pytest pytest-cov pytest-asyncio pytest-timeout pip-audit
           python -c "import pytest_cov; print('pytest-cov', pytest_cov.__version__)"
+      - name: Audit API dependencies
+        working-directory: api
+        run: |
+          source ../.venv/bin/activate
+          python -m pip_audit -r requirements.txt --progress-spinner off
       - name: Run API tests with coverage
         working-directory: api
         env:

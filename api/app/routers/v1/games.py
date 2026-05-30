@@ -4,20 +4,25 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import UTC, timedelta
+from datetime import UTC, date, timedelta
 from datetime import datetime as dt
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.db import AsyncSession, get_db
 from app.db.flow import SportsGameFlow
 from app.db.sports import GameStatus, SportsGame
+from app.routers.sports.catchup import get_catchup_game, list_catchup_games
 from app.routers.sports.schemas import (
     FlowStatusResponse,
     GameSummaryResponse,
     SummaryFinalScore,
+)
+from app.routers.sports.schemas.catchup import (
+    CatchupGameDetailResponse,
+    CatchupGameListResponse,
 )
 from app.services.pipeline.stages.finalize_summary import SUMMARY_STORY_VERSION
 
@@ -43,6 +48,47 @@ def _compute_eta_minutes(game: SportsGame) -> int:
         end = end.replace(tzinfo=UTC)
     eta_dt = (end if end else now) + timedelta(minutes=15)
     return max(0, math.ceil((eta_dt - now).total_seconds() / 60))
+
+
+@router.get(
+    "/games",
+    response_model=CatchupGameListResponse,
+    response_model_exclude_none=True,
+    summary="List consumer-safe games",
+)
+async def list_games(
+    session: AsyncSession = Depends(get_db),
+    league: list[str] | None = Query(None),
+    team: str | None = Query(None, min_length=1, max_length=80),
+    startDate: date | None = Query(None, alias="startDate"),
+    endDate: date | None = Query(None, alias="endDate"),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0, le=10_000),
+) -> CatchupGameListResponse:
+    """Return the consumer catch-up list without admin-only fields."""
+    return await list_catchup_games(
+        session=session,
+        league=league,
+        team=team,
+        startDate=startDate,
+        endDate=endDate,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/games/{game_id}",
+    response_model=CatchupGameDetailResponse,
+    response_model_exclude_none=True,
+    summary="Get consumer-safe game detail",
+)
+async def get_game(
+    game_id: int,
+    session: AsyncSession = Depends(get_db),
+) -> CatchupGameDetailResponse:
+    """Return consumer game detail without odds, social, raw payloads, or admin diagnostics."""
+    return await get_catchup_game(game_id=game_id, session=session)
 
 
 @router.get(
