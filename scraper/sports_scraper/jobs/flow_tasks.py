@@ -6,6 +6,9 @@ from celery import shared_task
 
 from ..api_client import get_api_headers
 from ..logging import logger
+from ..operational_metrics import record_flow_generation_transient_error
+
+_TRANSIENT_HTTP_STATUSES = {408, 429, 500, 502, 503, 504}
 
 
 def _run_flow_generation(
@@ -150,9 +153,21 @@ def _run_flow_generation(
             return summary
 
         except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            if status_code in _TRANSIENT_HTTP_STATUSES:
+                record_flow_generation_transient_error(
+                    league=league,
+                    status_code=str(status_code),
+                )
+                logger.warning(
+                    f"scheduled_{league.lower()}_flow_gen_transient_http_error",
+                    status_code=status_code,
+                    error=exc.response.text[:500],
+                )
+                raise
             logger.error(
                 f"scheduled_{league.lower()}_flow_gen_http_error",
-                status_code=exc.response.status_code,
+                status_code=status_code,
                 error=exc.response.text,
             )
             summary = {
@@ -160,7 +175,7 @@ def _run_flow_generation(
                 "start_date": str(start_date),
                 "end_date": str(end_date),
                 "leagues": [league],
-                "error": f"HTTP {exc.response.status_code}: {exc.response.text}",
+                "error": f"HTTP {status_code}: {exc.response.text}",
             }
             tracker.summary_data = summary
             return summary

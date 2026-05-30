@@ -35,6 +35,28 @@ def test_non_admin_jwt_cannot_pass_require_admin_with_proxy_key() -> None:
     assert resp.status_code == 403
 
 
+def test_unknown_jwt_role_cannot_be_promoted_by_proxy_key() -> None:
+    app = FastAPI()
+
+    @app.get(
+        "/gate",
+        dependencies=[Depends(_fake_verify_api_key), Depends(require_admin)],
+    )
+    def _gate() -> dict[str, str]:
+        return {"ok": "true"}
+
+    client = TestClient(app)
+    token = create_access_token(999002, "superadmin", remember_me=False)
+    resp = client.get(
+        "/gate",
+        headers={
+            "X-API-Key": "test-admin-key",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    assert resp.status_code == 403
+
+
 def test_admin_role_without_jwt_still_passes_require_admin() -> None:
     app = FastAPI()
 

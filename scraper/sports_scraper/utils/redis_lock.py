@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 
 from ..logging import logger
+from ..operational_metrics import record_lock_force_release
 
 # Named lock timeout constants — use these instead of bare integers
 LOCK_TIMEOUT_5MIN = 300
@@ -27,8 +28,11 @@ end
 """
 
 
-def acquire_redis_lock(lock_name: str, timeout: int = LOCK_TIMEOUT_5MIN) -> str | None:
-    """Try to acquire a Redis lock. Returns unique token if acquired, None otherwise."""
+def acquire_redis_lock_status(
+    lock_name: str,
+    timeout: int = LOCK_TIMEOUT_5MIN,
+) -> tuple[str | None, str]:
+    """Try to acquire a Redis lock and return ``(token, reason)``."""
     try:
         import redis as redis_lib
 
@@ -37,11 +41,17 @@ def acquire_redis_lock(lock_name: str, timeout: int = LOCK_TIMEOUT_5MIN) -> str 
         token = str(uuid.uuid4())
         r = redis_lib.from_url(settings.redis_url)
         if r.set(lock_name, token, nx=True, ex=timeout):
-            return token
-        return None
+            return token, "acquired"
+        return None, "contended"
     except Exception as exc:
         logger.warning("redis_lock_failed", lock=lock_name, error=str(exc))
-        return None  # Fail-closed: treat Redis failure as lock-not-acquired
+        return None, "redis_error"
+
+
+def acquire_redis_lock(lock_name: str, timeout: int = LOCK_TIMEOUT_5MIN) -> str | None:
+    """Try to acquire a Redis lock. Returns unique token if acquired, None otherwise."""
+    token, _reason = acquire_redis_lock_status(lock_name, timeout=timeout)
+    return token
 
 
 def release_redis_lock(lock_name: str, token: str) -> None:
@@ -70,8 +80,11 @@ def force_release_lock(lock_name: str) -> bool:
 
         r = redis_lib.from_url(settings.redis_url)
         deleted = r.delete(lock_name)
+        record_lock_force_release(operation="force_release", deleted=bool(deleted))
         if deleted:
-            logger.info("force_released_lock", lock=lock_name)
+            logger.info("force_released_lock", lock=lock_name, deleted=deleted)
+        else:
+            logger.info("force_release_lock_noop", lock=lock_name, deleted=deleted)
         return bool(deleted)
     except Exception as exc:
         logger.warning("force_release_lock_failed", lock=lock_name, error=str(exc))
@@ -90,6 +103,7 @@ def clear_all_locks() -> int:
         keys = r.keys("lock:*")
         if keys:
             deleted = r.delete(*keys)
+            record_lock_force_release(operation="clear_all", deleted=bool(deleted))
             logger.info("stale_locks_cleared", count=deleted, keys=[k.decode() for k in keys])
             return deleted
         return 0

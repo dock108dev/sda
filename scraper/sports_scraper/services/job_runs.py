@@ -11,6 +11,7 @@ from sqlalchemy import asc
 
 from ..db import db_models, get_session
 from ..logging import logger
+from ..operational_metrics import record_job_partial_success
 
 
 def start_job_run(
@@ -64,6 +65,8 @@ def complete_job_run(
         if summary_data is not None:
             run.summary_data = summary_data
         session.flush()
+        if status in {"degraded", "partial_success"}:
+            record_job_partial_success(phase=str(run.phase), status=status)
         logger.info("job_run_completed", run_id=run_id, phase=run.phase, status=status)
 
 

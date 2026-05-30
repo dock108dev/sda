@@ -28,7 +28,7 @@ active_pools_total = Gauge(
 
 webhook_queue_depth = Gauge(
     "webhook_queue_depth",
-    "Stripe webhook events pending retry (failed, not yet dead-lettered)",
+    "Deprecated Stripe webhook events pending retry; remove with Stripe cleanup",
 )
 
 unhandled_exceptions_total = Counter(
@@ -49,12 +49,18 @@ circuit_breaker_flush_errors_total = Counter(
 
 stripe_webhook_async_queued_total = Counter(
     "stripe_webhook_async_queued_total",
-    "Stripe webhook handler DB errors that returned 202 and enqueued Celery retry",
+    "Deprecated Stripe webhook handler DB errors that returned 202 and enqueued Celery retry",
 )
 
 stripe_webhook_dead_letter_total = Counter(
     "stripe_webhook_dead_letter_total",
-    "Stripe webhook Celery task moved to dead letter after max retries",
+    "Deprecated Stripe webhook Celery task moved to dead letter after max retries",
+)
+
+audit_write_failed_total = Counter(
+    "audit_write_failed_total",
+    "Audit event writes that failed after being scheduled",
+    ["event_type"],
 )
 
 analytics_batch_sim_serialization_failures_total = Counter(
