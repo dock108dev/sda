@@ -102,7 +102,7 @@ app = Celery(
     "sports-data-scraper",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["sports_scraper.jobs.polling_tasks"],
+    include=["sports_scraper.jobs.polling_tasks", "sports_scraper.jobs.scrape_tasks"],
 )
 # Set the default Task class for ALL tasks including @shared_task.
 # task_cls in the constructor only applies to @app.task, not @shared_task.
@@ -111,8 +111,18 @@ app.conf.update(**celery_config)
 app.conf.task_acks_late = True
 app.conf.task_routes = {
     "poll_live_pbp": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
+    "poll_game_calendars": {"queue": DEFAULT_QUEUE, "routing_key": DEFAULT_QUEUE},
 }
 _beat_schedule = {
+    "calendar-game-stubs-every-15m": {
+        "task": "poll_game_calendars",
+        "schedule": crontab(minute="*/15"),
+        "options": {
+            "queue": DEFAULT_QUEUE,
+            "routing_key": DEFAULT_QUEUE,
+            "expires": 840,
+        },
+    },
     "catchup-pbp-stats-every-5m": {
         "task": "poll_live_pbp",
         "schedule": crontab(minute="*/5"),

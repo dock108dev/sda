@@ -6,6 +6,7 @@ import logging
 import math
 from datetime import UTC, date, timedelta
 from datetime import datetime as dt
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -64,8 +65,9 @@ async def list_games(
     endDate: date | None = Query(None, alias="endDate"),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0, le=10_000),
+    sort: Literal["currentSlate", "chronological"] = Query("currentSlate"),
 ) -> CatchupGameListResponse:
-    """Return the consumer catch-up list without admin-only fields."""
+    """Return the consumer game list without admin-only fields."""
     return await list_catchup_games(
         session=session,
         league=league,
@@ -74,6 +76,7 @@ async def list_games(
         endDate=endDate,
         limit=limit,
         offset=offset,
+        sort=sort,
     )
 
 

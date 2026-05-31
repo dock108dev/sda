@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
+import inspect
 import json
 import os
 import subprocess
@@ -50,6 +52,36 @@ def test_catchup_schemas_keep_list_spoiler_free_and_detail_complete() -> None:
     }
     assert detail_data["detailContractVersion"] == 2
     assert detail_data["game"]["score"] == {"home": 90, "away": 88}
+
+
+def test_consumer_games_defaults_to_current_slate_sort(monkeypatch) -> None:
+    from app.routers.v1 import games as v1_games
+
+    sort_default = inspect.signature(v1_games.list_games).parameters["sort"].default
+    assert sort_default.default == "currentSlate"
+
+    calls = {}
+
+    async def fake_list_catchup_games(**kwargs):
+        calls.update(kwargs)
+        return CatchupGameListResponse(games=[], total=0)
+
+    monkeypatch.setattr(v1_games, "list_catchup_games", fake_list_catchup_games)
+
+    asyncio.run(
+        v1_games.list_games(
+            session=object(),
+            league=None,
+            team=None,
+            startDate=None,
+            endDate=None,
+            limit=100,
+            offset=0,
+            sort="currentSlate",
+        )
+    )
+
+    assert calls["sort"] == "currentSlate"
 
 
 def test_catchup_detail_enriches_ios_v2_play_contract() -> None:

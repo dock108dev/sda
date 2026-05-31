@@ -305,6 +305,19 @@ class TestNBALiveFeedClient:
         assert games[0].game_date.hour == 0
         assert games[0].game_date.minute == 30
 
+    @patch("sports_scraper.utils.datetime_utils.today_et", return_value=date(2024, 1, 15))
+    def test_fetch_scoreboard_future_date_uses_schedule_not_live_scoreboard(self, _mock_today):
+        client = NBALiveFeedClient()
+        scheduled_games = [object()]
+        client._fetch_live_scoreboard = MagicMock(return_value=[object()])
+        client._fetch_games_from_schedule = MagicMock(return_value=scheduled_games)
+
+        games = client.fetch_scoreboard(date(2024, 1, 16))
+
+        assert games == scheduled_games
+        client._fetch_live_scoreboard.assert_not_called()
+        client._fetch_games_from_schedule.assert_called_once_with(date(2024, 1, 16))
+
     def test_fetch_scoreboard_failure(self):
         mock_response = MagicMock()
         mock_response.status_code = 404

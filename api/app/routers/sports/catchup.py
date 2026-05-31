@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, date, datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import desc, exists, func, or_, select
+from sqlalchemy import case, desc, exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from ...db import AsyncSession, get_db
@@ -30,8 +31,16 @@ from ...services.play_importance import (
     validate_detail_contract,
 )
 from ...services.play_tiers import classify_all_tiers, enrich_play_entries
-from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc
-from .common import serialize_play_entry, serialize_player_stat, serialize_team_stat
+from ...utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, today_et
+from .common import (
+    serialize_mlb_batter,
+    serialize_mlb_pitcher,
+    serialize_nhl_goalie,
+    serialize_nhl_skater,
+    serialize_play_entry,
+    serialize_player_stat,
+    serialize_team_stat,
+)
 from .schemas.catchup import (
     CatchupGameContextResponse,
     CatchupGameDetailResponse,
@@ -46,6 +55,7 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_LOOKBACK_HOURS = 72
 _DEFAULT_LOOKAHEAD_HOURS = 48
+GameListSort = Literal["chronological", "currentSlate"]
 
 
 def _game_window(
@@ -135,6 +145,45 @@ def _summary(
     )
 
 
+def _ordered_games_stmt(stmt, sort: GameListSort):
+    """Apply feed ordering before pagination."""
+    if sort == "chronological":
+        return stmt.order_by(SportsGame.game_date.asc(), SportsGame.id.asc())
+
+    now = datetime.now(UTC)
+    today = today_et()
+
+    slate_rank = case(
+        (SportsGame.status == GameStatus.live.value, 0),
+        (
+            SportsGame.status.in_((GameStatus.scheduled.value, GameStatus.pregame.value))
+            & (SportsGame.local_game_date == today),
+            1,
+        ),
+        (
+            SportsGame.status.in_((GameStatus.scheduled.value, GameStatus.pregame.value))
+            & (SportsGame.game_date >= now),
+            2,
+        ),
+        (SportsGame.status.in_(GameStatus.final_or_post_final_values()), 3),
+        else_=4,
+    )
+    ascending_time = case(
+        (slate_rank.in_((0, 1, 2)), SportsGame.game_date),
+        else_=None,
+    )
+    descending_time = case(
+        (slate_rank.in_((3, 4)), SportsGame.game_date),
+        else_=None,
+    )
+    return stmt.order_by(
+        slate_rank.asc(),
+        ascending_time.asc().nullslast(),
+        descending_time.desc().nullslast(),
+        SportsGame.id.asc(),
+    )
+
+
 def _enrich_detail_plays(
     *,
     game_id: int,
@@ -190,6 +239,7 @@ async def list_catchup_games(
     endDate: date | None = Query(None, alias="endDate"),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    sort: GameListSort = Query("chronological"),
 ) -> CatchupGameListResponse:
     """Return the catch-up list: games from -72h to +48h by default."""
     window_start, window_end = _game_window(startDate, endDate)
@@ -241,7 +291,7 @@ async def list_catchup_games(
     rows = (
         (
             await session.execute(
-                stmt.order_by(SportsGame.game_date.asc()).offset(offset).limit(limit)
+                _ordered_games_stmt(stmt, sort).offset(offset).limit(limit)
             )
         )
         .unique()
@@ -336,6 +386,31 @@ async def get_catchup_game(
     period_label_value, live_snapshot = _latest_snapshot(game, latest_period, latest_clock)
     context = build_catchup_context(game, plays=list(game.plays))
 
+    player_stats = [
+        serialize_player_stat(player, league_code=league_code)
+        for player in game.player_boxscores
+    ]
+    nhl_skaters = None
+    nhl_goalies = None
+    mlb_batters = None
+    mlb_pitchers = None
+    if league_code == "NHL":
+        nhl_skaters = []
+        nhl_goalies = []
+        for player in game.player_boxscores:
+            if (player.stats or {}).get("player_role") == "goalie":
+                nhl_goalies.append(serialize_nhl_goalie(player))
+            else:
+                nhl_skaters.append(serialize_nhl_skater(player))
+    elif league_code == "MLB":
+        mlb_batters = []
+        mlb_pitchers = []
+        for player in game.player_boxscores:
+            if (player.stats or {}).get("player_role") == "pitcher":
+                mlb_pitchers.append(serialize_mlb_pitcher(player))
+            else:
+                mlb_batters.append(serialize_mlb_batter(player))
+
     meta = CatchupGameMeta(
         id=game.id,
         league_code=game.league.code if game.league else "UNKNOWN",
@@ -369,10 +444,11 @@ async def get_catchup_game(
     return CatchupGameDetailResponse(
         game=meta,
         plays=plays,
-        player_stats=[
-            serialize_player_stat(player, league_code=league_code)
-            for player in game.player_boxscores
-        ],
+        player_stats=player_stats,
+        nhl_skaters=nhl_skaters,
+        nhl_goalies=nhl_goalies,
+        mlb_batters=mlb_batters,
+        mlb_pitchers=mlb_pitchers,
         team_stats=[
             serialize_team_stat(box, league_code=league_code) for box in game.team_boxscores
         ],

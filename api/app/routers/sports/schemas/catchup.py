@@ -7,7 +7,17 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from ....services.game_status import compute_status_flags
-from .common import LiveSnapshot, PlayEntry, PlayerStat, ScoreObject, TeamStat
+from .common import (
+    LiveSnapshot,
+    MLBBatterStat,
+    MLBPitcherStat,
+    NHLGoalieStat,
+    NHLSkaterStat,
+    PlayEntry,
+    PlayerStat,
+    ScoreObject,
+    TeamStat,
+)
 
 
 class CatchupGameSummary(BaseModel):
@@ -87,6 +97,10 @@ class CatchupGameDetailResponse(BaseModel):
     game: CatchupGameMeta
     plays: list[PlayEntry]
     player_stats: list[PlayerStat] = Field(default_factory=list, alias="playerStats")
+    nhl_skaters: list[NHLSkaterStat] | None = Field(None, alias="nhlSkaters")
+    nhl_goalies: list[NHLGoalieStat] | None = Field(None, alias="nhlGoalies")
+    mlb_batters: list[MLBBatterStat] | None = Field(None, alias="mlbBatters")
+    mlb_pitchers: list[MLBPitcherStat] | None = Field(None, alias="mlbPitchers")
     team_stats: list[TeamStat] = Field(default_factory=list, alias="teamStats")
 
 

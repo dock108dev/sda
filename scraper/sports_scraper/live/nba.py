@@ -80,13 +80,14 @@ class NBALiveFeedClient:
         """
         from ..utils.datetime_utils import today_et
 
-        # Live scoreboard only has today's games; use schedule API for past dates
-        if day >= today_et():
+        # Live scoreboard only has the current NBA-day games. Future dates must
+        # use the season schedule or they can be polluted by today's slate.
+        if day == today_et():
             live_games = self._fetch_live_scoreboard(day)
             if live_games:
                 return live_games
 
-        # Schedule API for past dates (live scoreboard only has today's games)
+        # Schedule API for non-current dates (live scoreboard only has today)
         logger.info(
             "nba_scoreboard_using_schedule",
             date=str(day),
@@ -356,4 +357,3 @@ def _parse_nba_clock(value: str | None) -> str | None:
             seconds = float(match.group(2) or 0)
             return f"{minutes}:{int(seconds):02d}"
     return value
-
