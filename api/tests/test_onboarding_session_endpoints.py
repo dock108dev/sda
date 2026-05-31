@@ -4,16 +4,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.db import get_db
 from app.db.onboarding import OnboardingSession
 from app.routers.onboarding import router
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -34,7 +32,6 @@ def _make_session(
         session_token=session_token,
         claim_token=claim_token,
         claim_id="claim_001",
-        stripe_checkout_session_id="cs_test_001",
         plan_id="price_pro",
         status=status,
         expires_at=expires_at if expires_at is not None else _FUTURE,
@@ -103,7 +100,6 @@ def _make_app(sessions: list[OnboardingSession] | None = None) -> tuple[TestClie
 
 
 class TestGetSessionStatus:
-
     def test_200_returns_status_for_pending_session(self) -> None:
         sess = _make_session(status="pending")
         client, _ = _make_app([sess])
@@ -151,7 +147,6 @@ class TestGetSessionStatus:
 
 
 class TestClaimSession:
-
     def test_200_transitions_paid_to_claimed(self) -> None:
         sess = _make_session(status="paid")
         client, db = _make_app([sess])

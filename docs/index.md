@@ -28,17 +28,11 @@ Code, compose, and tests are the source of truth when docs drift.
 | --- | --- |
 | [Deployment](ops/deployment.md) | Production deployment and rollback basics |
 | [Runbook](ops/runbook.md) | Common operator checks |
+| [Security and runtime boundaries](ops/security.md) | Current auth, proxy, health, and disabled-surface boundaries |
 | [Known limitations](known-limitations.md) | Intentional constraints |
-
-## Audits
-
-| Guide | Purpose |
-| --- | --- |
-| [Abend handling](audits/error-handling-report.md) | Error suppression, fallback, retry, and prod strictness audit |
-| [Security review](audits/security-report.md) | Auth, proxy, deployment, data exposure, and hardening audit |
 
 ## Maintenance
 
 | Guide | Purpose |
 | --- | --- |
-| [Oversized file follow-up](maintenance/oversized-files.md) | Files still above the cleanup size target |
+| [Oversized source inventory](maintenance/oversized-files.md) | Files still above the cleanup size target |

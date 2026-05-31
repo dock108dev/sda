@@ -24,8 +24,6 @@ EXEMPT_PATHS: frozenset[str] = frozenset(
         "/health",
         "/ready",
         "/metrics",
-        # Deprecated Stripe webhook — kept only while legacy payment code is removed.
-        "/api/webhooks/stripe",
         # Prospect-facing onboarding flow — public, rate-limited. Not a
         # consumer (/api/v1/) or admin (/api/admin/) surface; pre-signup
         # endpoints.
@@ -84,17 +82,11 @@ def test_no_router_mixes_consumer_and_admin() -> None:
         if not isinstance(path, str):
             continue
         if "v1" in tags and "admin" in tags:
-            raise AssertionError(
-                f"Route {path} mixes v1 (consumer) and admin tags"
-            )
+            raise AssertionError(f"Route {path} mixes v1 (consumer) and admin tags")
         if path.startswith("/api/v1/") and "admin" in tags:
-            raise AssertionError(
-                f"Consumer route {path} is tagged as admin"
-            )
+            raise AssertionError(f"Consumer route {path} is tagged as admin")
         if path.startswith("/api/admin/") and "v1" in tags:
-            raise AssertionError(
-                f"Admin route {path} is tagged as v1 consumer"
-            )
+            raise AssertionError(f"Admin route {path} is tagged as v1 consumer")
 
 
 def test_legacy_exempt_list_is_frozen() -> None:

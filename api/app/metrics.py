@@ -26,11 +26,6 @@ active_pools_total = Gauge(
     "Golf pools with status open, locked, or live",
 )
 
-webhook_queue_depth = Gauge(
-    "webhook_queue_depth",
-    "Deprecated Stripe webhook events pending retry; remove with Stripe cleanup",
-)
-
 unhandled_exceptions_total = Counter(
     "unhandled_exceptions_total",
     "Requests that hit the global Exception handler (after other handlers)",
@@ -45,16 +40,6 @@ rate_limit_redis_fallback_total = Counter(
 circuit_breaker_flush_errors_total = Counter(
     "circuit_breaker_flush_errors_total",
     "Failed attempts to persist buffered circuit-breaker trips to the database",
-)
-
-stripe_webhook_async_queued_total = Counter(
-    "stripe_webhook_async_queued_total",
-    "Deprecated Stripe webhook handler DB errors that returned 202 and enqueued Celery retry",
-)
-
-stripe_webhook_dead_letter_total = Counter(
-    "stripe_webhook_dead_letter_total",
-    "Deprecated Stripe webhook Celery task moved to dead letter after max retries",
 )
 
 audit_write_failed_total = Counter(

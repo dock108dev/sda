@@ -7,14 +7,12 @@ from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.db import get_db
 from app.db.audit import AuditEvent
 from app.routers.admin.audit import router
-
 
 # ---------------------------------------------------------------------------
 # Shared stubs
@@ -111,7 +109,6 @@ class TestAuditEventModel:
 
 
 class TestAuditService:
-
     def test_emit_schedules_task(self) -> None:
         """emit() calls asyncio.create_task with the write coroutine."""
         import app.services.audit as svc
@@ -185,7 +182,6 @@ class TestAuditService:
 
 
 class TestAuditEndpoint:
-
     def test_200_returns_events(self) -> None:
         ev = _make_event()
         client = _make_app(_FakeDB([ev]))
@@ -267,19 +263,17 @@ class TestAuditEndpoint:
 
 
 class TestInstrumentationHooks:
-
     def test_provisioning_emits_club_provisioned(self) -> None:
         """ClubProvisioningService.provision calls audit.emit on new club."""
-        from unittest.mock import call
 
         import app.services.audit as svc
         from app.db.club import Club
-        from app.db.golf_pools import GolfPool
         from app.db.onboarding import ClubClaim, OnboardingSession
-        from app.db.users import User
         from app.services.provisioning import ClubProvisioningService
 
-        def _r(scalar: Any = None, scalar_one: Any = None, rowcount: int | None = None) -> MagicMock:
+        def _r(
+            scalar: Any = None, scalar_one: Any = None, rowcount: int | None = None
+        ) -> MagicMock:
             r = MagicMock()
             r.scalar_one_or_none.return_value = scalar
             r.scalar_one.return_value = scalar_one if scalar_one is not None else scalar
@@ -287,17 +281,30 @@ class TestInstrumentationHooks:
                 r.rowcount = rowcount
             return r
 
-        club = Club(club_id="uuid-1", slug="my-club", name="My Club", plan_id="price_pro", status="active")
+        club = Club(
+            club_id="uuid-1", slug="my-club", name="My Club", plan_id="price_pro", status="active"
+        )
         club.id = 7
 
         class _DB:
             def __init__(self) -> None:
                 self._q = [
-                    _r(scalar=OnboardingSession(claim_id="c1", session_token="t", plan_id="price_pro", status="claimed")),
-                    _r(scalar=ClubClaim(claim_id="c1", club_name="My Club", contact_email="a@b.com", status="new")),
-                    _r(scalar=None),       # owner not found
-                    _r(rowcount=1),        # insert wins
-                    _r(scalar_one=club),   # select club
+                    _r(
+                        scalar=OnboardingSession(
+                            claim_id="c1", session_token="t", plan_id="price_pro", status="claimed"
+                        )
+                    ),
+                    _r(
+                        scalar=ClubClaim(
+                            claim_id="c1",
+                            club_name="My Club",
+                            contact_email="a@b.com",
+                            status="new",
+                        )
+                    ),
+                    _r(scalar=None),  # owner not found
+                    _r(rowcount=1),  # insert wins
+                    _r(scalar_one=club),  # select club
                 ]
                 self.added: list[Any] = []
                 self.flushed = False
@@ -371,35 +378,3 @@ class TestInstrumentationHooks:
 
         assert mock_emit.call_args[1]["actor_type"] == "system"
         assert mock_emit.call_args[1]["actor_id"] is None
-
-    def test_webhook_checkout_completed_emits_subscription_activated(self) -> None:
-        """_handle_checkout_completed calls audit.emit."""
-        import app.services.audit as svc
-        from app.routers.webhooks import _handle_checkout_completed
-
-        fake_db = MagicMock()
-        fake_db.execute = AsyncMock()
-        event = MagicMock()
-        event.data.object.id = "cs_test_123"
-
-        with patch.object(svc, "emit") as mock_emit:
-            asyncio.run(_handle_checkout_completed(fake_db, event))
-
-        mock_emit.assert_called_once()
-        assert mock_emit.call_args[0][0] == "subscription_activated"
-
-    def test_webhook_subscription_deleted_emits_subscription_cancelled(self) -> None:
-        """_handle_subscription_deleted calls audit.emit."""
-        import app.services.audit as svc
-        from app.routers.webhooks import _handle_subscription_deleted
-
-        fake_db = MagicMock()
-        fake_db.execute = AsyncMock()
-        event = MagicMock()
-        event.data.object.id = "sub_test_456"
-
-        with patch.object(svc, "emit") as mock_emit:
-            asyncio.run(_handle_subscription_deleted(fake_db, event))
-
-        mock_emit.assert_called_once()
-        assert mock_emit.call_args[0][0] == "subscription_cancelled"

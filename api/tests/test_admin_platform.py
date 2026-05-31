@@ -24,10 +24,10 @@ from app.routers.admin.platform import (
     router,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fake Redis
 # ---------------------------------------------------------------------------
+
 
 class _FakeRedis:
     """Minimal in-memory Redis stand-in for unit tests."""
@@ -51,6 +51,7 @@ class _FakeRedis:
 # App factory
 # ---------------------------------------------------------------------------
 
+
 def _make_app(
     *,
     stats_scalars: list[Any] | None = None,
@@ -65,8 +66,8 @@ def _make_app(
     - ``stats_scalars``: queue of return values for the /stats route's four
       ``db.scalar(...)`` calls: total_pools, total_entries, active_clubs,
       pending_claims.
-    - ``sub_plans``: list of plan_id strings for active subscriptions returned
-      by the /stats execute call.
+    - ``sub_plans``: legacy argument retained for existing test factories;
+      billing has been removed and stats no longer query subscriptions.
     - ``pool_rows``: rows returned by the /poll-health route's pool query.
     - ``poll_scalars``: one scalar result per pool row for last_polled_at.
     - ``redis_preload``: if set, the fake Redis starts with a pre-cached JSON
@@ -126,8 +127,8 @@ def _make_app(
 # /api/admin/stats — basic responses
 # ---------------------------------------------------------------------------
 
-class TestAdminStats:
 
+class TestAdminStats:
     def test_empty_db_returns_zeros(self) -> None:
         client = _make_app(stats_scalars=[0, 0, 0, 0], sub_plans=[])
         resp = client.get("/api/admin/stats")
@@ -215,63 +216,17 @@ class TestAdminStats:
 
 
 # ---------------------------------------------------------------------------
-# /api/admin/stats — MRR computation
-# ---------------------------------------------------------------------------
-
-class TestAdminStatsMrr:
-
-    def test_two_active_subscriptions_sum_correctly(self) -> None:
-        """Two active subs (starter + pro) should produce 2900 + 9900 = 12800."""
-        client = _make_app(
-            stats_scalars=[0, 0, 0, 0],
-            sub_plans=["price_starter", "price_pro"],
-        )
-        resp = client.get("/api/admin/stats")
-        assert resp.status_code == 200
-        assert resp.json()["mrr_cents"] == 12800
-
-    def test_enterprise_subscription(self) -> None:
-        client = _make_app(
-            stats_scalars=[0, 0, 0, 0],
-            sub_plans=["price_enterprise"],
-        )
-        resp = client.get("/api/admin/stats")
-        assert resp.status_code == 200
-        assert resp.json()["mrr_cents"] == 29900
-
-    def test_unknown_plan_id_contributes_zero(self) -> None:
-        """Unknown plan_id not in PLAN_PRICES must not crash and contributes 0."""
-        client = _make_app(
-            stats_scalars=[0, 0, 0, 0],
-            sub_plans=["price_unknown_future_plan", "price_pro"],
-        )
-        resp = client.get("/api/admin/stats")
-        assert resp.status_code == 200
-        assert resp.json()["mrr_cents"] == 9900
-
-    def test_no_active_subscriptions(self) -> None:
-        client = _make_app(stats_scalars=[0, 0, 0, 0], sub_plans=[])
-        resp = client.get("/api/admin/stats")
-        assert resp.status_code == 200
-        assert resp.json()["mrr_cents"] == 0
-
-
-# ---------------------------------------------------------------------------
 # /api/admin/stats — Redis caching
 # ---------------------------------------------------------------------------
 
-class TestAdminStatsCache:
 
+class TestAdminStatsCache:
     def test_cache_miss_populates_cache(self) -> None:
         """First call (no cache) computes stats and writes to Redis."""
         fake_redis = _FakeRedis()
 
         db = AsyncMock()
         db.scalar.side_effect = [10, 50, 3, 1]
-        sub_exec = MagicMock()
-        sub_exec.all.return_value = [("price_pro",)]
-        db.execute.return_value = sub_exec
-
         app = FastAPI()
 
         async def _get_db_override():
@@ -288,23 +243,25 @@ class TestAdminStatsCache:
         resp = client.get("/api/admin/stats")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["mrr_cents"] == 9900
+        assert body["mrr_cents"] == 0
         assert body["pending_claims"] == 1
 
         # Cache should now be populated.
         assert _STATS_CACHE_KEY in fake_redis._store
         cached = json.loads(fake_redis._store[_STATS_CACHE_KEY])
-        assert cached["mrr_cents"] == 9900
+        assert cached["mrr_cents"] == 0
 
     def test_cache_hit_skips_db(self) -> None:
         """Second call within 60s must serve from cache without hitting the DB."""
-        preloaded = json.dumps({
-            "total_pools": 7,
-            "total_entries": 99,
-            "active_clubs": 4,
-            "mrr_cents": 29900,
-            "pending_claims": 3,
-        })
+        preloaded = json.dumps(
+            {
+                "total_pools": 7,
+                "total_entries": 99,
+                "active_clubs": 4,
+                "mrr_cents": 29900,
+                "pending_claims": 3,
+            }
+        )
         db = AsyncMock()
         # If DB is called, the test fails via unexpected call assertion.
         db.scalar.side_effect = AssertionError("DB should not be queried on cache hit")
@@ -350,7 +307,7 @@ _TOURNEY_ID = 10
 _POOL_NAME = "RVCC Masters Pool 2026"
 _EVENT_NAME = "The Masters 2026"
 
-_IN_WINDOW_DAY = date(2026, 4, 10)   # Friday of Masters week
+_IN_WINDOW_DAY = date(2026, 4, 10)  # Friday of Masters week
 _OUT_WINDOW_DAY = date(2025, 4, 10)  # prior year → off window
 _NOW_IN_WINDOW = datetime(2026, 4, 10, 18, 0, tzinfo=UTC)  # ~14:00 ET
 _NOW_OUT_WINDOW = datetime(2026, 5, 1, 18, 0, tzinfo=UTC)
@@ -361,12 +318,9 @@ def _pool_row(start: date, end: date) -> tuple:
 
 
 class TestPollHealth:
-
     def test_no_live_pools_returns_empty_list(self) -> None:
         client = _make_app(pool_rows=[])
-        with patch(
-            "app.routers.admin.platform.datetime"
-        ) as dt:
+        with patch("app.routers.admin.platform.datetime") as dt:
             dt.now.return_value = _NOW_IN_WINDOW
             dt.combine.side_effect = datetime.combine
             resp = client.get("/api/admin/poll-health")
@@ -457,9 +411,7 @@ class TestPollHealth:
         client = _make_app(pool_rows=[])
         resp = client.get("/api/admin/poll-health")
         assert resp.status_code == 200
-        checked_at = datetime.fromisoformat(
-            resp.json()["checked_at"].replace("Z", "+00:00")
-        )
+        checked_at = datetime.fromisoformat(resp.json()["checked_at"].replace("Z", "+00:00"))
         drift = abs((datetime.now(UTC) - checked_at).total_seconds())
         assert drift < 5.0
 
@@ -492,8 +444,8 @@ class TestPollHealth:
 # _tournament_window_bounds helper
 # ---------------------------------------------------------------------------
 
-class TestTournamentWindowBounds:
 
+class TestTournamentWindowBounds:
     def test_end_date_defaults_to_start_plus_three_days(self) -> None:
         start = date(2026, 4, 9)
         ws, we = _tournament_window_bounds(start, None)

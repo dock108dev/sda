@@ -42,6 +42,15 @@ Admin routes:
 `/api/admin/social/session-health` reads the most recent Playwright session
 health snapshot from Redis. It does not schedule or run a social scraper.
 
+Manual trigger request bodies use snake_case:
+
+```json
+{
+  "task_name": "poll_live_pbp",
+  "args": []
+}
+```
+
 ## Removed Schedules
 
 The legacy full scheduler is not supported. There are no active beat entries for ingestion sweeps, odds sync, golf, social scraping, analytics, realtime orchestration, training, or 5-second live polling.

@@ -21,15 +21,13 @@ from app.db import get_db
 from app.db.club import Club
 from app.db.golf_pools import GolfPool
 from app.services.entitlement import (
+    _DEFAULT_PLAN,
+    _FEATURES,
     PLAN_LIMITS,
     AppError,
     EntitlementError,
     EntitlementService,
-    PlanLimits,
-    _DEFAULT_PLAN,
-    _FEATURES,
 )
-
 
 # ---------------------------------------------------------------------------
 # Stubs / helpers
@@ -176,37 +174,35 @@ class TestCheckPoolLimit:
     def test_unlimited_plan_skips_count_query(self) -> None:
         """Enterprise plan (max_pools_active=None) returns early without a DB count."""
         club = _make_club("price_enterprise")
-        # check_subscription_active consumes first result; _get_limits consumes second
-        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=club))
+        db = _QueueDB(_make_result(scalar=club))
         _run(EntitlementService().check_pool_limit(1, db))
         assert len(db._queue) == 0  # count query was never issued
 
     def test_under_limit_does_not_raise(self) -> None:
         club = _make_club("price_pro")  # limit = 5
-        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=club), _make_result(scalar=4))
+        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=4))
         _run(EntitlementService().check_pool_limit(1, db))  # 4 < 5, no error
 
     def test_at_limit_raises(self) -> None:
         club = _make_club("price_pro")  # limit = 5
-        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=club), _make_result(scalar=5))
+        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=5))
         with pytest.raises(EntitlementError, match="5 active pools"):
             _run(EntitlementService().check_pool_limit(1, db))
 
     def test_zero_count_does_not_raise(self) -> None:
         club = _make_club("price_starter")  # limit = 1
-        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=club), _make_result(scalar=0))
+        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=0))
         _run(EntitlementService().check_pool_limit(1, db))
 
     def test_club_not_found_raises(self) -> None:
-        # check_subscription_active gets None → early return; _get_limits gets None → raises
-        db = _QueueDB(_make_result(scalar=None), _make_result(scalar=None))
+        db = _QueueDB(_make_result(scalar=None))
         with pytest.raises(EntitlementError, match="not found"):
             _run(EntitlementService().check_pool_limit(99, db))
 
     def test_null_scalar_treated_as_zero(self) -> None:
         """Handles NULL from COUNT when no rows exist."""
         club = _make_club("price_starter")  # limit = 1
-        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=club), _make_result(scalar=None))
+        db = _QueueDB(_make_result(scalar=club), _make_result(scalar=None))
         _run(EntitlementService().check_pool_limit(1, db))  # None → 0, no error
 
 
@@ -391,11 +387,10 @@ class TestPoolCreationEntitlementWiring:
     def test_403_when_pool_limit_exceeded(self) -> None:
         club = _make_club("price_pro")  # limit = 5 active pools
         db = _QueueDB(
-            _make_result(scalar=42),     # tournament exists
-            _make_result(scalar=club),   # club found by slug
-            _make_result(scalar=club),   # check_subscription_active: club by id
-            _make_result(scalar=club),   # _get_limits: club by id
-            _make_result(scalar=5),      # pool count = 5, at limit
+            _make_result(scalar=42),  # tournament exists
+            _make_result(scalar=club),  # club found by slug
+            _make_result(scalar=club),  # _get_limits: club by id
+            _make_result(scalar=5),  # pool count = 5, at limit
         )
         client = _make_pool_admin_app(db)
 
@@ -419,7 +414,7 @@ class TestPoolCreationEntitlementWiring:
         from app.routers.golf import router as golf_router
 
         db = _QueueDB(
-            _make_result(scalar=42),    # tournament exists
+            _make_result(scalar=42),  # tournament exists
             _make_result(scalar=None),  # club not found by slug → skip entitlement
         )
 
@@ -430,7 +425,9 @@ class TestPoolCreationEntitlementWiring:
 
         @app.exception_handler(EntitlementError)
         async def _handler(request: Request, exc: EntitlementError) -> JSONResponse:
-            return JSONResponse(status_code=403, content={"code": "ENTITLEMENT_EXCEEDED", "detail": str(exc)})
+            return JSONResponse(
+                status_code=403, content={"code": "ENTITLEMENT_EXCEEDED", "detail": str(exc)}
+            )
 
         app.dependency_overrides[get_db] = _patched_db
         app.include_router(golf_router)
@@ -479,10 +476,10 @@ class TestEntrySubmissionEntitlementWiring:
 
         async def _override() -> Any:
             db = _QueueDB(
-                pool,                       # db.get(GolfPool, pool_id)
-                _make_result(scalar=0),     # count_entries_for_email (honeypot/limit)
+                pool,  # db.get(GolfPool, pool_id)
+                _make_result(scalar=0),  # count_entries_for_email (honeypot/limit)
                 _make_result(scalar=club),  # _get_limits: club by id
-                _make_result(scalar=200),   # entry count = 200, at limit
+                _make_result(scalar=200),  # entry count = 200, at limit
             )
             yield db
 
@@ -518,7 +515,7 @@ class TestEntrySubmissionEntitlementWiring:
 
         async def _override() -> Any:
             db = _QueueDB(
-                pool,                    # db.get(GolfPool, pool_id)
+                pool,  # db.get(GolfPool, pool_id)
                 _make_result(scalar=0),  # count_entries_for_email
             )
             yield db

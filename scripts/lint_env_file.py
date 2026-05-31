@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lint deploy env files for unknown and deprecated application variables."""
+"""Lint deploy env files for unknown application variables."""
 
 from __future__ import annotations
 
@@ -66,13 +66,6 @@ KNOWN_ENV_VARS = {
     "TRUST_FORWARDED_ORIGIN",
 }
 
-DEPRECATED_ENV_VARS = {
-    "STRIPE_CHECKOUT_CANCEL_URL",
-    "STRIPE_CHECKOUT_SUCCESS_URL",
-    "STRIPE_SECRET_KEY",
-    "STRIPE_WEBHOOK_SECRET",
-}
-
 REQUIRED_PRODUCTION_ENV_VARS = {
     "ALLOWED_CORS_ORIGINS",
     "API_KEY",
@@ -102,7 +95,9 @@ def parse_env_keys(path: Path) -> set[str]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("env_file", type=Path)
-    parser.add_argument("--profile", choices=("development", "staging", "production"), default="production")
+    parser.add_argument(
+        "--profile", choices=("development", "staging", "production"), default="production"
+    )
     args = parser.parse_args()
 
     if not args.env_file.exists():
@@ -110,12 +105,9 @@ def main() -> int:
         return 2
 
     keys = parse_env_keys(args.env_file)
-    unknown = sorted(keys - KNOWN_ENV_VARS - DEPRECATED_ENV_VARS)
-    deprecated = sorted(keys & DEPRECATED_ENV_VARS)
+    unknown = sorted(keys - KNOWN_ENV_VARS)
     missing = sorted(REQUIRED_PRODUCTION_ENV_VARS - keys) if args.profile == "production" else []
 
-    for key in deprecated:
-        print(f"DEPRECATED: {key} is Stripe-related and should be removed", file=sys.stderr)
     for key in unknown:
         print(f"UNKNOWN: {key} is not a recognized sports-data-admin env var", file=sys.stderr)
     for key in missing:

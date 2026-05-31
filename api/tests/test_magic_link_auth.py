@@ -14,7 +14,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -161,7 +160,6 @@ def _make_auth_app(
 
 
 class TestRequestMagicLink:
-
     def test_200_for_known_active_user(self) -> None:
         user = _make_user()
         client, db = _make_auth_app(users=[user])
@@ -247,7 +245,6 @@ class TestRequestMagicLink:
 
 
 class TestVerifyMagicLinkGet:
-
     def test_200_valid_token_returns_jwt(self) -> None:
         user = _make_user()
         ml = _make_ml_token(email=user.email, raw_token="good_token")
@@ -260,6 +257,7 @@ class TestVerifyMagicLinkGet:
 
     def test_jwt_contains_correct_user_id_and_role(self) -> None:
         import jwt as pyjwt
+
         from app.config import settings
 
         user = _make_user(role="club_admin")
@@ -332,7 +330,6 @@ class TestVerifyMagicLinkGet:
 
 
 class TestVerifyMagicLinkPost:
-
     def test_200_valid_token_returns_jwt(self) -> None:
         user = _make_user()
         ml = _make_ml_token(email=user.email, raw_token="post_tok")
@@ -366,9 +363,7 @@ class _ClaimFakeDB:
         self._sessions: dict[str, OnboardingSession] = {
             s.claim_token: s for s in (sessions or []) if s.claim_token
         }
-        self._claims: dict[str, ClubClaim] = {
-            c.claim_id: c for c in (claims or [])
-        }
+        self._claims: dict[str, ClubClaim] = {c.claim_id: c for c in (claims or [])}
         self._users: dict[str, User] = {u.email: u for u in (users or [])}
         self.added: list[Any] = []
         self.flushed: bool = False
@@ -418,7 +413,6 @@ def _make_paid_session(claim_id: str = "claim_001") -> OnboardingSession:
         session_token="sess_paid",
         claim_token="clm_paid",
         claim_id=claim_id,
-        stripe_checkout_session_id="cs_test_paid",
         plan_id="price_pro",
         status="paid",
         expires_at=_FUTURE,
@@ -434,7 +428,6 @@ def _make_club_claim(claim_id: str = "claim_001", email: str = "pro@club.example
 
 
 class TestClaimCreatesUser:
-
     def test_claim_creates_club_admin_user(self) -> None:
         session = _make_paid_session()
         claim = _make_club_claim()

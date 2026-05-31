@@ -42,7 +42,7 @@ Run migrations only when the rollback plan accounts for schema compatibility.
 ## CI Workflows
 
 - `backend-ci-cd.yml`: runs backend, scraper, API, web, and repository hygiene checks. Manual `full_deploy=true` builds GHCR images and deploys.
-- `deploy-recent-image.yml`: manually deploys an existing image tag, defaulting to `latest`.
+- `deploy-recent-image.yml`: manually deploys an existing image tag, defaulting to `latest`, and always syncs the active Caddy site block from `infra/Caddyfile`.
 - `realtime-load-test.yml`: manual load harness for the non-production
   `/api/admin/realtime/test-emit` endpoint and Redis Streams path. It is not
   part of the active catch-up runtime because product realtime subscribe/stream

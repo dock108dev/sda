@@ -47,10 +47,6 @@ def _counter(name: str, description: str) -> object:
                     name="scraper.job.partial_success",
                     description="Worker jobs completed in a degraded or partial-success state",
                 ),
-                "flow_generation_transient_error": meter.create_counter(
-                    name="scraper.flow_generation.transient_error",
-                    description="Scheduled flow-generation transient upstream failures handed to Celery retry",
-                ),
                 "lock_force_release": meter.create_counter(
                     name="scraper.lock.force_release",
                     description="Manual or startup force-release operations against Redis lock keys",
@@ -88,13 +84,6 @@ def record_boxscore_soft_failure(*, league: str, error_type: str) -> None:
 
 def record_job_partial_success(*, phase: str, status: str) -> None:
     _counter("job_partial_success", "").add(1, attributes={"phase": phase, "status": status})
-
-
-def record_flow_generation_transient_error(*, league: str, status_code: str) -> None:
-    _counter("flow_generation_transient_error", "").add(
-        1,
-        attributes={"league": league, "status_code": status_code},
-    )
 
 
 def record_lock_force_release(*, operation: str, deleted: bool) -> None:

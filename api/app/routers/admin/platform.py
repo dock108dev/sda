@@ -34,12 +34,11 @@ from pydantic.alias_generators import to_camel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import PLAN_PRICES, settings
+from app.config import settings
 from app.db import get_db
 from app.db.golf import GolfTournament
 from app.db.golf_pools import GolfPool, GolfPoolEntry, GolfPoolScoreRun
 from app.db.onboarding import ClubClaim
-from app.db.stripe import StripeSubscription
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +52,7 @@ _STATS_CACHE_TTL = 60  # seconds
 
 async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
     """Yield an async Redis client; close on teardown."""
-    client: aioredis.Redis = aioredis.from_url(
-        settings.redis_url, decode_responses=True
-    )
+    client: aioredis.Redis = aioredis.from_url(settings.redis_url, decode_responses=True)
     try:
         yield client
     finally:
@@ -104,9 +101,7 @@ class AdminPollHealthResponse(BaseModel):
     checked_at: datetime
 
 
-def _tournament_window_bounds(
-    start_date: date, end_date: date | None
-) -> tuple[datetime, datetime]:
+def _tournament_window_bounds(start_date: date, end_date: date | None) -> tuple[datetime, datetime]:
     """Return UTC (start, end) datetimes for a tournament's play window.
 
     Uses 07:00 ET on start_date → 20:00 ET on end_date (or start_date + 3
@@ -145,9 +140,7 @@ async def get_admin_stats(
         return AdminStatsResponse(**json.loads(cached))
 
     total_pools = await db.scalar(
-        select(func.count(GolfPool.id)).where(
-            GolfPool.status.in_(_POOL_STATUSES_COUNTED)
-        )
+        select(func.count(GolfPool.id)).where(GolfPool.status.in_(_POOL_STATUSES_COUNTED))
     )
     total_entries = await db.scalar(select(func.count(GolfPoolEntry.id)))
     active_clubs = await db.scalar(
@@ -159,16 +152,11 @@ async def get_admin_stats(
         select(func.count(ClubClaim.id)).where(ClubClaim.status == "new")
     )
 
-    sub_result = await db.execute(
-        select(StripeSubscription.plan_id).where(StripeSubscription.status == "active")
-    )
-    mrr_cents = sum(PLAN_PRICES.get(plan_id, 0) for (plan_id,) in sub_result.all())
-
     stats = AdminStatsResponse(
         total_pools=int(total_pools or 0),
         total_entries=int(total_entries or 0),
         active_clubs=int(active_clubs or 0),
-        mrr_cents=mrr_cents,
+        mrr_cents=0,
         pending_claims=int(pending_claims or 0),
     )
     await redis.setex(_STATS_CACHE_KEY, _STATS_CACHE_TTL, json.dumps(stats.model_dump()))

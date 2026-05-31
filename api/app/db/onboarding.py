@@ -26,9 +26,7 @@ class ClubClaim(Base):
     contact_email: Mapped[str] = mapped_column(String(320), index=True)
     expected_entries: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="", server_default="")
-    status: Mapped[str] = mapped_column(
-        String(20), default="new", server_default="new"
-    )
+    status: Mapped[str] = mapped_column(String(20), default="new", server_default="new")
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
@@ -37,13 +35,10 @@ class ClubClaim(Base):
 
 
 class OnboardingSession(Base):
-    """Pending checkout session linking a club claim to a Stripe Checkout Session.
+    """Prospect onboarding session.
 
-    Created by `POST /api/v1/commerce/checkout` before redirecting the prospect to
-    Stripe. Status transitions:
-      pending → paid (webhook handler)
-      paid    → claimed (POST /api/onboarding/claim with valid claim_token)
-      any     → expired (TTL job after 24 h)
+    Billing checkout/webhook transitions are no longer supported. Current code
+    only consumes existing claimed/expired session state.
     """
 
     __tablename__ = "onboarding_sessions"
@@ -54,16 +49,9 @@ class OnboardingSession(Base):
         String(64), unique=True, index=True, nullable=True
     )
     claim_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    stripe_checkout_session_id: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False
-    )
     plan_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(20), default="pending", server_default="pending"
-    )
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    status: Mapped[str] = mapped_column(String(20), default="pending", server_default="pending")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

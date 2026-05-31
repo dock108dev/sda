@@ -47,3 +47,5 @@ Useful references:
 - [`docs/env-and-config.md`](docs/env-and-config.md)
 - [`docs/scheduler-and-jobs.md`](docs/scheduler-and-jobs.md)
 - [`docs/ops/infra.md`](docs/ops/infra.md)
+- [`docs/ops/security.md`](docs/ops/security.md)
+- [`docs/maintenance/oversized-files.md`](docs/maintenance/oversized-files.md)

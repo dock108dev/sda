@@ -28,10 +28,6 @@ class SeatLimitError(AppError):
     """Raised when a club's admin seat limit is exceeded; maps to HTTP 402."""
 
 
-class SubscriptionPastDueError(AppError):
-    """Raised when a club's subscription is past_due; maps to HTTP 402."""
-
-
 @dataclass(frozen=True)
 class PlanLimits:
     max_pools_active: int | None  # None = unlimited
@@ -89,29 +85,6 @@ _FEATURES = frozenset({"scoring_enabled", "branding_enabled", "custom_branding"}
 class EntitlementService:
     """Enforces per-plan limits. All check methods raise EntitlementError on violation."""
 
-    async def check_subscription_active(self, club_id: int, db: AsyncSession) -> None:
-        """Raise SubscriptionPastDueError if the club's subscription is past_due.
-
-        Clubs without a Stripe customer record are treated as free-tier (no block).
-        """
-        from app.db.stripe import StripeSubscription
-
-        result = await db.execute(select(Club).where(Club.id == club_id))
-        club = result.scalar_one_or_none()
-        if club is None or not club.stripe_customer_id:
-            return
-        sub_result = await db.execute(
-            select(StripeSubscription)
-            .where(StripeSubscription.stripe_customer_id == club.stripe_customer_id)
-            .order_by(StripeSubscription.id.desc())
-            .limit(1)
-        )
-        sub = sub_result.scalar_one_or_none()
-        if sub and sub.status == "past_due":
-            raise SubscriptionPastDueError(
-                "Payment past due — update your payment method to create new pools"
-            )
-
     async def _get_limits(self, club_id: int, db: AsyncSession) -> PlanLimits:
         result = await db.execute(select(Club).where(Club.id == club_id))
         club = result.scalar_one_or_none()
@@ -120,8 +93,7 @@ class EntitlementService:
         return PLAN_LIMITS.get(club.plan_id, _DEFAULT_PLAN)
 
     async def check_pool_limit(self, club_id: int, db: AsyncSession) -> None:
-        """Raise SubscriptionPastDueError (402) or EntitlementError (403) on pool creation block."""
-        await self.check_subscription_active(club_id, db)
+        """Raise EntitlementError if the club has reached its active-pool limit."""
         limits = await self._get_limits(club_id, db)
         if limits.max_pools_active is None:
             return
@@ -137,9 +109,7 @@ class EntitlementService:
                 f"Plan limit reached: maximum {limits.max_pools_active} active pools allowed"
             )
 
-    async def check_entry_limit(
-        self, club_id: int, pool_id: int, db: AsyncSession
-    ) -> None:
+    async def check_entry_limit(self, club_id: int, pool_id: int, db: AsyncSession) -> None:
         """Raise EntitlementError if the pool has reached its per-pool entry limit."""
         limits = await self._get_limits(club_id, db)
         if limits.max_entries_per_pool is None:
@@ -177,9 +147,7 @@ class EntitlementService:
                 f"Plan limit reached: maximum {limits.max_admins_per_club} admin seats allowed"
             )
 
-    async def assert_feature(
-        self, club_id: int, feature: str, db: AsyncSession
-    ) -> None:
+    async def assert_feature(self, club_id: int, feature: str, db: AsyncSession) -> None:
         """Raise EntitlementError if the club's plan does not include the named feature.
 
         Valid features: scoring_enabled, branding_enabled, custom_branding.
@@ -188,12 +156,8 @@ class EntitlementService:
             raise EntitlementError(f"Unknown feature: {feature!r}")
         limits = await self._get_limits(club_id, db)
         if not getattr(limits, feature):
-            raise EntitlementError(
-                f"Feature {feature!r} is not available on your current plan"
-            )
+            raise EntitlementError(f"Feature {feature!r} is not available on your current plan")
 
-    async def check_feature(
-        self, club_id: int, feature: str, db: AsyncSession
-    ) -> None:
+    async def check_feature(self, club_id: int, feature: str, db: AsyncSession) -> None:
         """Alias for assert_feature — raises EntitlementError on plan violation."""
         await self.assert_feature(club_id, feature, db)
