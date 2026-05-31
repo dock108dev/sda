@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.context import request_id_var
+from app.metrics import audit_write_failed_total
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ async def _write(
                 )
             )
     except Exception:
+        audit_write_failed_total.labels(event_type=event_type).inc()
         logger.error(
             "audit_write_failed",
             exc_info=True,

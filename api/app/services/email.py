@@ -129,9 +129,7 @@ async def send_email(
 # ---------------------------------------------------------------------------
 
 
-async def send_magic_link_email(
-    *, to: str, token: str, base_url: str | None = None
-) -> None:
+async def send_magic_link_email(*, to: str, token: str, base_url: str | None = None) -> None:
     """Send a magic-link login email. Token link expires in 15 minutes."""
     base = (base_url or settings.frontend_url).rstrip("/")
     login_url = f"{base}/auth/magic-link?token={token}"
@@ -144,9 +142,7 @@ async def send_magic_link_email(
     )
 
 
-async def send_password_reset_email(
-    *, to: str, token: str, base_url: str | None = None
-) -> None:
+async def send_password_reset_email(*, to: str, token: str, base_url: str | None = None) -> None:
     """Send a password-reset email with a link containing *token*."""
     base = (base_url or settings.frontend_url).rstrip("/")
     reset_url = f"{base}/auth/reset-password?token={token}"
@@ -161,17 +157,6 @@ async def send_password_reset_email(
         subject="Reset your password",
         html=html,
         template_name="password_reset",
-    )
-
-
-async def send_payment_confirmation_email(*, to: str, plan_id: str = "") -> None:
-    """Send a payment confirmation email after a successful Stripe checkout."""
-    html = _render("payment_confirmation.html", {"plan_id": plan_id})
-    await send_email(
-        to=to,
-        subject="Payment confirmed",
-        html=html,
-        template_name="payment_confirmation",
     )
 
 
@@ -201,17 +186,6 @@ async def send_club_invite_email(
         subject=f"You've been invited to join {club_name}",
         html=html,
         template_name="club_invite",
-    )
-
-
-async def send_dunning_email(*, to: str) -> None:
-    """Send a dunning email after an invoice payment failure."""
-    html = _render("dunning.html", {})
-    await send_email(
-        to=to,
-        subject="Action required: payment failed for your subscription",
-        html=html,
-        template_name="dunning",
     )
 
 

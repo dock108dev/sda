@@ -40,9 +40,6 @@ EXEMPT_PATHS: frozenset[str] = frozenset(
         "/health",
         "/ready",
         "/metrics",
-        # Stripe webhook — URL is configured in the Stripe dashboard and
-        # signed by Stripe; it's not a consumer or admin surface.
-        "/api/webhooks/stripe",
         # Prospect-facing onboarding flow — public (no API key), rate-limited
         # per-IP. Pre-signup endpoints, not a consumer (/api/v1/) or admin
         # (/api/admin/) surface. See onboarding router for details.
@@ -55,25 +52,23 @@ EXEMPT_PATHS: frozenset[str] = frozenset(
 # Legacy prefixes pending migration to /api/v1/ in follow-up issues.
 # These must not grow. Any new route outside ALLOWED_PREFIXES fails lint.
 LEGACY_EXEMPT_PREFIXES: tuple[str, ...] = (
-    "/auth",             # pending: migrate to /api/v1/auth
-    "/api/analytics/",   # pending: split consumer reads vs admin mutations
-    "/api/fairbet/",     # pending: migrate to /api/v1/fairbet
-    "/api/golf/",        # pending: migrate to /api/v1/golf
+    "/auth",  # pending: migrate to /api/v1/auth
+    "/api/analytics/",  # pending: split consumer reads vs admin mutations
+    "/api/fairbet/",  # pending: migrate to /api/v1/fairbet
+    "/api/golf/",  # pending: migrate to /api/v1/golf
     "/api/model-odds/",  # pending: migrate to /api/v1/model-odds
-    "/api/simulator/",   # pending: migrate to /api/v1/simulator
-    "/api/social/",      # pending: migrate to /api/v1/social
-    "/v1/ws",            # pending: migrate to /api/v1/ws
-    "/v1/sse",           # pending: migrate to /api/v1/sse
-    "/v1/realtime/",     # pending: migrate to /api/v1/realtime/
+    "/api/simulator/",  # pending: migrate to /api/v1/simulator
+    "/api/social/",  # pending: migrate to /api/v1/social
+    "/v1/ws",  # pending: migrate to /api/v1/ws
+    "/v1/sse",  # pending: migrate to /api/v1/sse
+    "/v1/realtime/",  # pending: migrate to /api/v1/realtime/
 )
 
 
 def _is_allowed(path: str) -> bool:
     if path in EXEMPT_PATHS:
         return True
-    if any(path.startswith(p) for p in ALLOWED_PREFIXES):
-        return True
-    return False
+    return any(path.startswith(p) for p in ALLOWED_PREFIXES)
 
 
 def _is_legacy(path: str) -> bool:
@@ -82,9 +77,7 @@ def _is_legacy(path: str) -> bool:
 
 def _load_app():
     os.environ.setdefault("ENVIRONMENT", "development")
-    os.environ.setdefault(
-        "DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test"
-    )
+    os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
     os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
     from main import app  # type: ignore
 

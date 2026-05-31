@@ -6,12 +6,10 @@ All tests use mock transports — no live SMTP or SES connections are made.
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -84,7 +82,6 @@ class TestEmailBackendValidation:
 
 
 class TestSMTPBackend:
-
     def test_send_smtp_invokes_aiosmtplib(self) -> None:
         from app.services import email as email_mod
 
@@ -151,7 +148,6 @@ class TestSMTPBackend:
 
 
 class TestSESBackend:
-
     def test_send_ses_calls_boto3(self) -> None:
         from app.services import email as email_mod
 
@@ -159,9 +155,7 @@ class TestSESBackend:
         ses_calls: list[dict] = []
 
         mock_client = MagicMock()
-        mock_client.send_email = MagicMock(
-            side_effect=lambda **kw: ses_calls.append(kw)
-        )
+        mock_client.send_email = MagicMock(side_effect=lambda **kw: ses_calls.append(kw))
 
         with (
             patch.object(email_mod, "settings", mock_settings),
@@ -197,11 +191,7 @@ class TestSESBackend:
             patch("boto3.client", side_effect=_fake_client),
             patch.object(email_mod.audit, "emit"),
         ):
-            _run(
-                email_mod.send_email(
-                    to="x@y.com", subject="s", html="<p>h</p>"
-                )
-            )
+            _run(email_mod.send_email(to="x@y.com", subject="s", html="<p>h</p>"))
 
         assert client_calls[0] == ("ses", "eu-west-1")
 
@@ -212,7 +202,6 @@ class TestSESBackend:
 
 
 class TestMagicLinkEmail:
-
     def test_magic_link_contains_token_url(self) -> None:
         from app.services import email as email_mod
 
@@ -283,61 +272,11 @@ class TestMagicLinkEmail:
 
 
 # ---------------------------------------------------------------------------
-# Payment confirmation template
-# ---------------------------------------------------------------------------
-
-
-class TestPaymentConfirmationEmail:
-
-    def test_payment_confirmation_contains_plan_id(self) -> None:
-        from app.services import email as email_mod
-
-        mock_settings = _settings()
-        captured: list[str] = []
-
-        async def _fake_send(msg, **kw):
-            captured.append(msg.get_content())
-
-        with (
-            patch.object(email_mod, "settings", mock_settings),
-            patch("aiosmtplib.send", side_effect=_fake_send),
-            patch.object(email_mod.audit, "emit"),
-        ):
-            _run(
-                email_mod.send_payment_confirmation_email(
-                    to="buyer@example.com",
-                    plan_id="price_pro",
-                )
-            )
-
-        assert "price_pro" in captured[0]
-
-    def test_payment_confirmation_subject(self) -> None:
-        from app.services import email as email_mod
-
-        mock_settings = _settings()
-        subjects: list[str] = []
-
-        async def _fake_send(msg, **kw):
-            subjects.append(msg["Subject"])
-
-        with (
-            patch.object(email_mod, "settings", mock_settings),
-            patch("aiosmtplib.send", side_effect=_fake_send),
-            patch.object(email_mod.audit, "emit"),
-        ):
-            _run(email_mod.send_payment_confirmation_email(to="b@e.com"))
-
-        assert subjects[0] == "Payment confirmed"
-
-
-# ---------------------------------------------------------------------------
 # Welcome template
 # ---------------------------------------------------------------------------
 
 
 class TestWelcomeEmail:
-
     def test_welcome_contains_club_name_and_url(self) -> None:
         from app.services import email as email_mod
 
@@ -395,7 +334,6 @@ class TestWelcomeEmail:
 
 
 class TestAuditLogging:
-
     def test_send_email_emits_audit_event(self) -> None:
         from app.services import email as email_mod
 
@@ -441,16 +379,18 @@ class TestAuditLogging:
         with (
             patch.object(email_mod, "settings", mock_settings),
             patch("aiosmtplib.send", side_effect=_fail_send),
-            patch.object(email_mod.audit, "emit", side_effect=lambda *a, **k: emit_calls.append(a[0])),
+            patch.object(
+                email_mod.audit, "emit", side_effect=lambda *a, **k: emit_calls.append(a[0])
+            ),
+            pytest.raises(OSError),
         ):
-            with pytest.raises(OSError):
-                _run(
-                    email_mod.send_email(
-                        to="x@y.com",
-                        subject="s",
-                        html="<p>h</p>",
-                    )
+            _run(
+                email_mod.send_email(
+                    to="x@y.com",
+                    subject="s",
+                    html="<p>h</p>",
                 )
+            )
 
         assert emit_calls == []
 
@@ -475,27 +415,6 @@ class TestAuditLogging:
 
         assert emit_calls[0]["event_type"] == "email_sent"
         assert emit_calls[0]["payload"]["template_name"] == "magic_link"
-
-    def test_payment_confirmation_audit_uses_correct_template_name(self) -> None:
-        from app.services import email as email_mod
-
-        mock_settings = _settings()
-        emit_calls: list[dict] = []
-
-        def _fake_emit(event_type, **kw):
-            emit_calls.append({"event_type": event_type, **kw})
-
-        async def _fake_send(msg, **kw):
-            pass
-
-        with (
-            patch.object(email_mod, "settings", mock_settings),
-            patch("aiosmtplib.send", side_effect=_fake_send),
-            patch.object(email_mod.audit, "emit", side_effect=_fake_emit),
-        ):
-            _run(email_mod.send_payment_confirmation_email(to="p@e.com"))
-
-        assert emit_calls[0]["payload"]["template_name"] == "payment_confirmation"
 
     def test_welcome_audit_uses_correct_template_name(self) -> None:
         from app.services import email as email_mod
@@ -523,116 +442,6 @@ class TestAuditLogging:
             )
 
         assert emit_calls[0]["payload"]["template_name"] == "welcome"
-
-
-# ---------------------------------------------------------------------------
-# Integration points: webhook dispatches payment email
-# ---------------------------------------------------------------------------
-
-
-class TestWebhookEmailDispatch:
-    """Verify the webhook handler schedules a payment confirmation email."""
-
-    def _make_checkout_event(
-        self,
-        checkout_id: str = "cs_test",
-        customer_email: str | None = "buyer@example.com",
-    ) -> SimpleNamespace:
-        obj = SimpleNamespace(id=checkout_id, customer_email=customer_email)
-        event = SimpleNamespace()
-        event.type = "checkout.session.completed"
-        event.id = "evt_test"
-        event.data = SimpleNamespace(object=obj)
-        return event
-
-    def test_checkout_completed_dispatches_email_when_customer_email_present(
-        self,
-    ) -> None:
-        from unittest.mock import AsyncMock, patch
-
-        from app.routers import webhooks
-
-        db = AsyncMock()
-        db.execute = AsyncMock(return_value=MagicMock(rowcount=1))
-
-        dispatched: list[str] = []
-
-        async def _fake_payment_email(*, to: str, plan_id: str = "") -> None:
-            dispatched.append(to)
-
-        event = self._make_checkout_event(customer_email="buyer@example.com")
-
-        async def _run_handler() -> None:
-            with patch.object(
-                webhooks, "send_payment_confirmation_email", side_effect=_fake_payment_email
-            ):
-                await webhooks._handle_checkout_completed(db, event)
-                # Allow tasks to run
-                await asyncio.sleep(0)
-
-        asyncio.run(_run_handler())
-        assert "buyer@example.com" in dispatched
-
-    def test_checkout_completed_skips_email_when_no_customer_email(self) -> None:
-        from unittest.mock import AsyncMock, patch
-
-        from app.routers import webhooks
-
-        db = AsyncMock()
-        db.execute = AsyncMock(return_value=MagicMock(rowcount=1))
-
-        dispatched: list[str] = []
-
-        async def _fake_payment_email(*, to: str, plan_id: str = "") -> None:
-            dispatched.append(to)
-
-        event = self._make_checkout_event(customer_email=None)
-
-        async def _run_handler() -> None:
-            with patch.object(
-                webhooks, "send_payment_confirmation_email", side_effect=_fake_payment_email
-            ):
-                await webhooks._handle_checkout_completed(db, event)
-                await asyncio.sleep(0)
-
-        asyncio.run(_run_handler())
-        assert dispatched == []
-
-    def test_checkout_completed_uses_customer_details_email_as_fallback(
-        self,
-    ) -> None:
-        from unittest.mock import AsyncMock, patch
-
-        from app.routers import webhooks
-
-        db = AsyncMock()
-        db.execute = AsyncMock(return_value=MagicMock(rowcount=1))
-
-        dispatched: list[str] = []
-
-        async def _fake_payment_email(*, to: str, plan_id: str = "") -> None:
-            dispatched.append(to)
-
-        obj = SimpleNamespace(
-            id="cs_fallback",
-            customer_email=None,
-            customer_details=SimpleNamespace(email="fallback@example.com"),
-        )
-        event = SimpleNamespace(
-            type="checkout.session.completed",
-            id="evt_fallback",
-            data=SimpleNamespace(object=obj),
-        )
-
-        async def _run_handler() -> None:
-            with patch.object(
-                webhooks, "send_payment_confirmation_email", side_effect=_fake_payment_email
-            ):
-                await webhooks._handle_checkout_completed(db, event)
-                await asyncio.sleep(0)
-
-        asyncio.run(_run_handler())
-        assert "fallback@example.com" in dispatched
 
 
 # ---------------------------------------------------------------------------
@@ -679,7 +488,6 @@ class TestProvisioningWelcomeEmail:
 
     def test_welcome_email_dispatched_on_new_club(self) -> None:
         from app.db.club import Club
-        from app.db.golf_pools import GolfPool
         from app.db.onboarding import ClubClaim, OnboardingSession
         from app.db.users import User
         from app.services import provisioning as prov_mod
@@ -687,7 +495,6 @@ class TestProvisioningWelcomeEmail:
         session = OnboardingSession(
             claim_id="claim_abc",
             session_token="sess_xyz",
-            stripe_checkout_session_id="cs_001",
             plan_id="price_pro",
             status="claimed",
         )
@@ -714,7 +521,7 @@ class TestProvisioningWelcomeEmail:
             self._make_result(scalar=session),
             self._make_result(scalar=claim),
             self._make_result(scalar=user),
-            self._make_result(rowcount=1),   # new club
+            self._make_result(rowcount=1),  # new club
             self._make_result(scalar_one=club),
         )
 
@@ -743,7 +550,6 @@ class TestProvisioningWelcomeEmail:
         session = OnboardingSession(
             claim_id="claim_abc",
             session_token="sess_xyz",
-            stripe_checkout_session_id="cs_001",
             plan_id="price_pro",
             status="claimed",
         )
@@ -769,7 +575,7 @@ class TestProvisioningWelcomeEmail:
             self._make_result(scalar=session),
             self._make_result(scalar=claim),
             self._make_result(scalar=user),
-            self._make_result(rowcount=0),   # existing club — no new insert
+            self._make_result(rowcount=0),  # existing club — no new insert
             self._make_result(scalar_one=club),
         )
 

@@ -38,6 +38,9 @@ Local URLs:
 | `backup` | none | PostgreSQL backup service |
 | `log-relay` | internal `9999` | Docker log relay sidecar |
 
+The host-mapped API, web, Postgres, and observability ports are bound to
+`127.0.0.1` in compose. Caddy is the intended public edge in production.
+
 Observability services are only created with the `observability` profile:
 
 - `otel-collector`: OTLP receiver on `4317` and `4318`, Prometheus scrape
@@ -54,6 +57,14 @@ docker compose logs -f api
 docker compose logs -f scraper
 docker compose --profile dev run --rm migrate
 ```
+
+Health endpoint meanings:
+
+- `/health`: API process liveness only.
+- `/healthz`: API liveness plus database and Redis component checks; database
+  failure returns `503`, Redis failure is reported in the payload while the
+  endpoint can still return `200`.
+- `/ready`: strict database and Redis readiness; either failure returns `503`.
 
 ## Migrations
 

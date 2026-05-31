@@ -8,7 +8,12 @@ curl http://localhost:8000/ready
 docker compose --profile dev ps
 ```
 
-`/healthz` only verifies API liveness. `/ready` checks database connectivity.
+Health endpoint meanings:
+
+- `/health`: process liveness only.
+- `/healthz`: checks database and Redis; database failure returns `503`, Redis
+  failure is reported in the payload while the endpoint can still return `200`.
+- `/ready`: strict readiness; database or Redis failure returns `503`.
 
 ## Logs
 
@@ -37,7 +42,7 @@ Release it with `{"held": false}`.
 curl -X POST http://localhost:8000/api/admin/tasks/trigger \
   -H "X-API-Key: $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"taskName": "poll_live_pbp"}'
+  -d '{"task_name": "poll_live_pbp", "args": []}'
 ```
 
 Confirm the worker registered the active task:

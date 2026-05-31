@@ -11,6 +11,7 @@ import asyncio
 from typing import Any
 from unittest.mock import MagicMock
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -25,7 +26,6 @@ from app.services.provisioning import (
     ProvisioningError,
     _derive_slug,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -49,7 +49,6 @@ def _make_session(status: str = "claimed", plan_id: str = "price_pro") -> Onboar
     return OnboardingSession(
         claim_id="claim_abc",
         session_token="sess_xyz",
-        stripe_checkout_session_id="cs_test_001",
         plan_id=plan_id,
         status=status,
     )
@@ -151,15 +150,14 @@ def _run(coro: Any) -> Any:
 
 
 class TestClubProvisioningService:
-
     def test_provision_creates_club_and_draft_pool(self) -> None:
         club = _make_club()
         db = _QueueDB(
-            _make_result(scalar=_make_session()),       # _load_session
-            _make_result(scalar=_make_claim()),         # _load_claim
-            _make_result(scalar=_make_user()),          # _load_owner
-            _make_result(rowcount=1),                   # pg_insert(Club) — new row
-            _make_result(scalar_one=club),              # select(Club) by slug
+            _make_result(scalar=_make_session()),  # _load_session
+            _make_result(scalar=_make_claim()),  # _load_claim
+            _make_result(scalar=_make_user()),  # _load_owner
+            _make_result(rowcount=1),  # pg_insert(Club) — new row
+            _make_result(scalar_one=club),  # select(Club) by slug
         )
 
         result = _run(ClubProvisioningService().provision(db, "claim_abc"))
@@ -179,7 +177,7 @@ class TestClubProvisioningService:
             _make_result(scalar=_make_session()),
             _make_result(scalar=_make_claim()),
             _make_result(scalar=_make_user()),
-            _make_result(rowcount=0),                   # conflict — no insert
+            _make_result(rowcount=0),  # conflict — no insert
             _make_result(scalar_one=club),
         )
 
@@ -195,7 +193,7 @@ class TestClubProvisioningService:
         db = _QueueDB(
             _make_result(scalar=_make_session()),
             _make_result(scalar=_make_claim()),
-            _make_result(scalar=None),                  # user not found
+            _make_result(scalar=None),  # user not found
             _make_result(rowcount=1),
             _make_result(scalar_one=club),
         )
@@ -205,46 +203,36 @@ class TestClubProvisioningService:
 
     def test_provision_raises_when_no_session(self) -> None:
         db = _QueueDB(_make_result(scalar=None))
-        try:
+        with pytest.raises(ProvisioningError) as exc_info:
             _run(ClubProvisioningService().provision(db, "claim_abc"))
-            assert False, "expected ProvisioningError"
-        except ProvisioningError as exc:
-            assert "No onboarding session" in str(exc)
+        assert "No onboarding session" in str(exc_info.value)
 
     def test_provision_raises_when_session_not_claimed_pending(self) -> None:
         db = _QueueDB(_make_result(scalar=_make_session(status="pending")))
-        try:
+        with pytest.raises(ProvisioningError) as exc_info:
             _run(ClubProvisioningService().provision(db, "claim_abc"))
-            assert False, "expected ProvisioningError"
-        except ProvisioningError as exc:
-            assert "not in claimed status" in str(exc)
+        assert "not in claimed status" in str(exc_info.value)
 
     def test_provision_raises_when_session_not_claimed_paid(self) -> None:
         db = _QueueDB(_make_result(scalar=_make_session(status="paid")))
-        try:
+        with pytest.raises(ProvisioningError) as exc_info:
             _run(ClubProvisioningService().provision(db, "claim_abc"))
-            assert False, "expected ProvisioningError"
-        except ProvisioningError as exc:
-            assert "not in claimed status" in str(exc)
+        assert "not in claimed status" in str(exc_info.value)
 
     def test_provision_raises_when_session_expired(self) -> None:
         db = _QueueDB(_make_result(scalar=_make_session(status="expired")))
-        try:
+        with pytest.raises(ProvisioningError) as exc_info:
             _run(ClubProvisioningService().provision(db, "claim_abc"))
-            assert False, "expected ProvisioningError"
-        except ProvisioningError as exc:
-            assert "not in claimed status" in str(exc)
+        assert "not in claimed status" in str(exc_info.value)
 
     def test_provision_raises_when_claim_missing(self) -> None:
         db = _QueueDB(
             _make_result(scalar=_make_session()),
-            _make_result(scalar=None),                  # claim not found
+            _make_result(scalar=None),  # claim not found
         )
-        try:
+        with pytest.raises(ProvisioningError) as exc_info:
             _run(ClubProvisioningService().provision(db, "claim_abc"))
-            assert False, "expected ProvisioningError"
-        except ProvisioningError as exc:
-            assert "No club claim" in str(exc)
+        assert "No club claim" in str(exc_info.value)
 
     def test_concurrent_provisioning_one_pool_created(self) -> None:
         """Simulate two concurrent callers via asyncio.gather: exactly one pool created.
@@ -260,14 +248,14 @@ class TestClubProvisioningService:
             _make_result(scalar=_make_session()),
             _make_result(scalar=_make_claim()),
             _make_result(scalar=_make_user()),
-            _make_result(rowcount=1),                   # insert wins
+            _make_result(rowcount=1),  # insert wins
             _make_result(scalar_one=club),
         )
         db2 = _QueueDB(
             _make_result(scalar=_make_session()),
             _make_result(scalar=_make_claim()),
             _make_result(scalar=_make_user()),
-            _make_result(rowcount=0),                   # conflict — no-op
+            _make_result(rowcount=0),  # conflict — no-op
             _make_result(scalar_one=club),
         )
 
@@ -302,7 +290,6 @@ def _make_app(db: _QueueDB) -> TestClient:
 
 
 class TestProvisionEndpoint:
-
     def test_200_provisions_new_club(self) -> None:
         club = _make_club()
         db = _QueueDB(
@@ -329,7 +316,7 @@ class TestProvisionEndpoint:
             _make_result(scalar=_make_session()),
             _make_result(scalar=_make_claim()),
             _make_result(scalar=_make_user()),
-            _make_result(rowcount=0),                   # already provisioned
+            _make_result(rowcount=0),  # already provisioned
             _make_result(scalar_one=club),
         )
         client = _make_app(db)

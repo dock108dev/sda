@@ -28,7 +28,6 @@ opentelemetry-exporter-otlp-proto-grpc==1.42.1
 opentelemetry-instrumentation-fastapi==0.63b1
 opentelemetry-instrumentation-sqlalchemy==0.63b1
 opentelemetry-instrumentation-celery==0.63b1
-stripe==15.1.0
 prometheus_client>=0.25.0
 # HTML sanitization for free-text user fields (ISSUE-025)
 bleach>=6.3.0

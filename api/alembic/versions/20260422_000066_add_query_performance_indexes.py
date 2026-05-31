@@ -1,4 +1,4 @@
-"""Add covering indexes for the five hottest query paths (ISSUE-021).
+"""Add covering indexes for the active hot query paths (ISSUE-021).
 
 EXPLAIN ANALYZE results on a 10k-entry dataset (before → after each index):
 
@@ -33,25 +33,15 @@ EXPLAIN ANALYZE results on a 10k-entry dataset (before → after each index):
    No new index needed. Verified: actual time=0.3..1.2 ms on 10k rows.
 
 4. Admin stats aggregate
-   Tables: golf_pools, club_claims, stripe_subscriptions
+   Tables: golf_pools, club_claims
    Queries:
      SELECT COUNT(*) FROM golf_pools WHERE status IN ('open','locked','live','final')
      SELECT COUNT(*) FROM club_claims WHERE status = 'new'
-     SELECT plan_id FROM stripe_subscriptions WHERE status = 'active'
 
    Before (golf_pools):  Seq Scan (actual time=42.1 ms on 10k rows; no status index)
    After (golf_pools):   Bitmap Index Scan on ix_golf_pools_status (actual time=3.8 ms)
    Before (club_claims): Seq Scan (actual time=8.2 ms; no status index)
    After (club_claims):  Index Scan on ix_club_claims_status (actual time=0.4 ms)
-   Before (stripe_subs): Seq Scan (actual time=1.1 ms; small table but unindexed status)
-   After (stripe_subs):  Index Scan on ix_stripe_subscriptions_status (actual time=0.1 ms)
-
-5. Webhook idempotency key lookup
-   Table: processed_stripe_events
-   Query: INSERT INTO processed_stripe_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING
-   Status: ALREADY COVERED — ON CONFLICT resolution uses the PRIMARY KEY constraint's
-   implicit B-tree index on event_id. A secondary named index would be redundant.
-   Verified: actual time=0.08 ms per insert on 10k-event table.
 
 Index rationale summary:
   ix_pool_entries_pool_id_score     — extends (pool_id,rank) to include aggregate_score,
@@ -61,7 +51,6 @@ Index rationale summary:
   ix_golf_pools_status              — low-selectivity but necessary for admin stats COUNT on
                                        the full golf_pools table without a club_id predicate
   ix_club_claims_status             — admin stats pending-claims count by status='new'
-  ix_stripe_subscriptions_status    — admin stats MRR: WHERE status='active' on subscriptions
 
 Reference: docs/ops/runbook.md, ISSUE-021.
 
@@ -117,17 +106,8 @@ def upgrade() -> None:
         unique=False,
     )
 
-    # Path 4c: admin stats MRR query (WHERE status = 'active').
-    op.create_index(
-        "ix_stripe_subscriptions_status",
-        "stripe_subscriptions",
-        ["status"],
-        unique=False,
-    )
-
 
 def downgrade() -> None:
-    op.drop_index("ix_stripe_subscriptions_status", table_name="stripe_subscriptions")
     op.drop_index("ix_club_claims_status", table_name="club_claims")
     op.drop_index("ix_golf_pools_status", table_name="golf_pools")
     op.drop_index("ix_golf_pools_club_id_status_created_at", table_name="golf_pools")

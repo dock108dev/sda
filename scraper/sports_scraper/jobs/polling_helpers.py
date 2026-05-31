@@ -16,6 +16,7 @@ import time
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..logging import logger
+from ..operational_metrics import record_boxscore_soft_failure, record_missing_external_id
 
 # Shared constants (also defined in polling_tasks.py for task-level use)
 _JITTER_MIN = 1.0
@@ -64,6 +65,20 @@ def _is_transient_db_error(exc: Exception) -> bool:
         "deadlock detected" in message
         or "could not serialize access" in message
         or "lock not available" in message
+    )
+
+
+def _record_missing_external_id(game, *, league: str, field: str, phase: str) -> None:
+    game_id = getattr(game, "id", None)
+    status = getattr(game, "status", None)
+    record_missing_external_id(league=league, field=field, phase=phase)
+    logger.warning(
+        "poll_missing_external_id",
+        game_id=game_id,
+        league=league,
+        field=field,
+        phase=phase,
+        status=status,
     )
 
 
@@ -143,7 +158,7 @@ def _poll_nba_game(session, game, *, live_poll: bool = False) -> dict:
 
     nba_game_id = (game.external_ids or {}).get("nba_game_id")
     if not nba_game_id:
-        logger.debug("poll_nba_skip_no_game_id", game_id=game.id)
+        _record_missing_external_id(game, league="NBA", field="nba_game_id", phase="pbp")
         return {"api_calls": 0}
 
     client = NBALiveFeedClient()
@@ -192,7 +207,7 @@ def _poll_nhl_game(session, game, *, live_poll: bool = False) -> dict:
 
     nhl_game_pk = (game.external_ids or {}).get("nhl_game_pk")
     if not nhl_game_pk:
-        logger.debug("poll_nhl_skip_no_game_pk", game_id=game.id)
+        _record_missing_external_id(game, league="NHL", field="nhl_game_pk", phase="pbp")
         return {"api_calls": 0}
 
     try:
@@ -247,7 +262,7 @@ def _poll_mlb_game(session, game, *, live_poll: bool = False) -> dict:
 
     mlb_game_pk = (game.external_ids or {}).get("mlb_game_pk")
     if not mlb_game_pk:
-        logger.debug("poll_mlb_skip_no_game_pk", game_id=game.id)
+        _record_missing_external_id(game, league="MLB", field="mlb_game_pk", phase="pbp")
         return {"api_calls": 0}
 
     try:
@@ -302,7 +317,7 @@ def _poll_nfl_game(session, game, *, live_poll: bool = False) -> dict:
 
     espn_game_id = (game.external_ids or {}).get("espn_game_id")
     if not espn_game_id:
-        logger.debug("poll_nfl_skip_no_game_id", game_id=game.id)
+        _record_missing_external_id(game, league="NFL", field="espn_game_id", phase="pbp")
         return {"api_calls": 0}
 
     try:
@@ -389,6 +404,11 @@ def _poll_boxscore_with_db_recovery(session, game, processor, event: str) -> dic
                 time.sleep(_BOXSCORE_DB_RETRY_DELAY_SECONDS * attempt)
                 continue
 
+            league = event.split("_")[1].upper() if "_" in event else "UNKNOWN"
+            record_boxscore_soft_failure(
+                league=league,
+                error_type=exc.__class__.__name__,
+            )
             return {"api_calls": 0, "boxscore_updated": False}
 
     return {"api_calls": 0, "boxscore_updated": False}
@@ -400,6 +420,7 @@ def _poll_nba_game_boxscore(session, game) -> dict:
 
     nba_game_id = (game.external_ids or {}).get("nba_game_id")
     if not nba_game_id:
+        _record_missing_external_id(game, league="NBA", field="nba_game_id", phase="boxscore")
         return {"api_calls": 0}
 
     return _poll_boxscore_with_db_recovery(
@@ -416,6 +437,7 @@ def _poll_nhl_game_boxscore(session, game) -> dict:
 
     nhl_game_pk = (game.external_ids or {}).get("nhl_game_pk")
     if not nhl_game_pk:
+        _record_missing_external_id(game, league="NHL", field="nhl_game_pk", phase="boxscore")
         return {"api_calls": 0}
 
     try:
@@ -437,6 +459,7 @@ def _poll_mlb_game_boxscore(session, game) -> dict:
 
     mlb_game_pk = (game.external_ids or {}).get("mlb_game_pk")
     if not mlb_game_pk:
+        _record_missing_external_id(game, league="MLB", field="mlb_game_pk", phase="boxscore")
         return {"api_calls": 0}
 
     try:

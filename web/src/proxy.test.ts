@@ -20,14 +20,13 @@ afterEach(() => {
 });
 
 describe("admin proxy gate", () => {
-  it("allows unprotected proxy paths through", () => {
+  it("requires basic auth on every proxy path in production", () => {
     vi.stubEnv("ENVIRONMENT", "production");
     vi.stubEnv("ADMIN_PASSWORD", "correct-password");
 
     const response = proxy(request("/proxy/api/v1/games/123"));
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.status).toBe(401);
   });
 
   it("requires basic auth on admin pages in production", () => {

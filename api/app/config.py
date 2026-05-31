@@ -114,19 +114,6 @@ class Settings(BaseSettings):
         default=None, alias="ONBOARDING_NOTIFICATION_EMAIL"
     )
 
-    # Stripe — payment processing for club subscriptions.
-    # STRIPE_SECRET_KEY is required for the /api/v1/commerce/checkout endpoint.
-    stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
-    stripe_checkout_success_url: str = Field(
-        default="http://localhost:3000/onboarding/success?session={CHECKOUT_SESSION_ID}",
-        alias="STRIPE_CHECKOUT_SUCCESS_URL",
-    )
-    stripe_checkout_cancel_url: str = Field(
-        default="http://localhost:3000/onboarding/cancel",
-        alias="STRIPE_CHECKOUT_CANCEL_URL",
-    )
-    stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
-
     # OpenAI Configuration (SSOT for model defaults — docker-compose defers to these)
     # AI is used for interpretation/narration only, never for ordering/filtering
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
@@ -248,11 +235,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-
-# Source of truth for Stripe plan monthly pricing in cents.
-# Keep in sync with the Stripe product catalog — update here first, then Stripe.
-PLAN_PRICES: dict[str, int] = {
-    "price_starter": 2900,
-    "price_pro": 9900,
-    "price_enterprise": 29900,
-}

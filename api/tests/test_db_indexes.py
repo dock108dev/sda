@@ -5,7 +5,7 @@ Unit tests (always run):
 - Validate upgrade/downgrade symmetry
 
 Integration benchmarks (require BENCHMARK_DB=1 env var + live PostgreSQL):
-- Seed 10k pool entries and assert all five query paths execute in <50ms
+- Seed 10k pool entries and assert active query paths execute in <50ms
 - Verify pg_indexes has no duplicate or conflicting indexes on affected tables
 """
 
@@ -26,10 +26,7 @@ import pytest
 
 _MIGRATION_FILENAME = "20260422_000066_add_query_performance_indexes.py"
 _MIGRATION_PATH = (
-    pathlib.Path(__file__).parent.parent
-    / "alembic"
-    / "versions"
-    / _MIGRATION_FILENAME
+    pathlib.Path(__file__).parent.parent / "alembic" / "versions" / _MIGRATION_FILENAME
 )
 
 _EXPECTED_INDEXES = {
@@ -37,7 +34,6 @@ _EXPECTED_INDEXES = {
     "ix_golf_pools_club_id_status_created_at",
     "ix_golf_pools_status",
     "ix_club_claims_status",
-    "ix_stripe_subscriptions_status",
 }
 
 # Mapping of index name → expected table
@@ -46,16 +42,15 @@ _INDEX_TABLES = {
     "ix_golf_pools_club_id_status_created_at": "golf_pools",
     "ix_golf_pools_status": "golf_pools",
     "ix_club_claims_status": "club_claims",
-    "ix_stripe_subscriptions_status": "stripe_subscriptions",
 }
 
 
 def _load_migration() -> types.ModuleType:
     """Load the migration module from its file path."""
     spec = importlib.util.spec_from_file_location("migration_000066", _MIGRATION_PATH)
-    assert spec is not None and spec.loader is not None, (
-        f"Could not load migration from {_MIGRATION_PATH}"
-    )
+    assert (
+        spec is not None and spec.loader is not None
+    ), f"Could not load migration from {_MIGRATION_PATH}"
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)  # type: ignore[union-attr]
     return mod
@@ -89,9 +84,9 @@ class TestMigrationStructure:
         with patch.object(mod, "op", mock_op):
             mod.upgrade()
 
-        assert set(created) == _EXPECTED_INDEXES, (
-            f"upgrade() creates {set(created)} but expected {_EXPECTED_INDEXES}"
-        )
+        assert (
+            set(created) == _EXPECTED_INDEXES
+        ), f"upgrade() creates {set(created)} but expected {_EXPECTED_INDEXES}"
 
     def test_upgrade_targets_correct_tables(self) -> None:
         mod = _load_migration()
@@ -108,9 +103,9 @@ class TestMigrationStructure:
             mod.upgrade()
 
         for idx, expected_table in _INDEX_TABLES.items():
-            assert calls_by_name.get(idx) == expected_table, (
-                f"{idx} should target {expected_table!r}, got {calls_by_name.get(idx)!r}"
-            )
+            assert (
+                calls_by_name.get(idx) == expected_table
+            ), f"{idx} should target {expected_table!r}, got {calls_by_name.get(idx)!r}"
 
     def test_downgrade_drops_all_indexes(self) -> None:
         mod = _load_migration()
@@ -122,9 +117,9 @@ class TestMigrationStructure:
         with patch.object(mod, "op", mock_op):
             mod.downgrade()
 
-        assert set(dropped) == _EXPECTED_INDEXES, (
-            f"downgrade() drops {set(dropped)} but expected {_EXPECTED_INDEXES}"
-        )
+        assert (
+            set(dropped) == _EXPECTED_INDEXES
+        ), f"downgrade() drops {set(dropped)} but expected {_EXPECTED_INDEXES}"
 
     def test_downgrade_is_inverse_of_upgrade(self) -> None:
         """Every index created in upgrade must be dropped in downgrade and vice versa."""
@@ -140,9 +135,9 @@ class TestMigrationStructure:
             mod.upgrade()
             mod.downgrade()
 
-        assert set(created) == set(dropped), (
-            "Indexes created by upgrade() do not match indexes dropped by downgrade()"
-        )
+        assert set(created) == set(
+            dropped
+        ), "Indexes created by upgrade() do not match indexes dropped by downgrade()"
 
     def test_no_unique_indexes(self) -> None:
         """Performance indexes should not be declared unique (would add write overhead)."""
@@ -202,8 +197,8 @@ class TestMigrationStructure:
         assert "status" in dashboard_cols
         assert "created_at" in dashboard_cols
 
-    def test_migration_docstring_documents_all_five_paths(self) -> None:
-        """Migration docstring must reference each of the five query-path labels."""
+    def test_migration_docstring_documents_active_paths(self) -> None:
+        """Migration docstring must reference each active query-path label."""
         mod = _load_migration()
         doc = mod.__doc__ or ""
         for path_label in [
@@ -211,11 +206,10 @@ class TestMigrationStructure:
             "dashboard",
             "submission",
             "stats",
-            "idempotency",
         ]:
-            assert path_label in doc.lower(), (
-                f"Migration docstring missing documentation for '{path_label}' query path"
-            )
+            assert (
+                path_label in doc.lower()
+            ), f"Migration docstring missing documentation for '{path_label}' query path"
 
 
 # ---------------------------------------------------------------------------
@@ -358,8 +352,12 @@ class TestQueryBenchmarks:
         yield
 
         # Cleanup
-        session.execute(text("DELETE FROM golf_pool_entry_scores WHERE pool_id = :pid"), {"pid": pool_id})
-        session.execute(text("DELETE FROM golf_pool_entries WHERE pool_id = :pid"), {"pid": pool_id})
+        session.execute(
+            text("DELETE FROM golf_pool_entry_scores WHERE pool_id = :pid"), {"pid": pool_id}
+        )
+        session.execute(
+            text("DELETE FROM golf_pool_entries WHERE pool_id = :pid"), {"pid": pool_id}
+        )
         session.execute(text("DELETE FROM golf_pools WHERE id = :pid"), {"pid": pool_id})
         session.execute(text("DELETE FROM clubs WHERE id = :cid"), {"cid": club_pk})
         session.commit()
@@ -427,25 +425,6 @@ class TestQueryBenchmarks:
             label="admin stats pool count",
         )
         assert elapsed < 50, f"Admin stats pool count took {elapsed:.1f}ms (limit 50ms)"
-
-    def test_path5_webhook_idempotency_under_50ms(self, db_session) -> None:
-        from sqlalchemy import text
-
-        # Warm up the PK index then measure a no-op idempotency insert
-        start = time.perf_counter()
-        db_session.execute(
-            text(
-                """
-                INSERT INTO processed_stripe_events (event_id, processed_at)
-                VALUES ('bench-evt-001', now())
-                ON CONFLICT DO NOTHING
-                """
-            )
-        )
-        db_session.rollback()
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        print(f"\n[benchmark] webhook idempotency insert: {elapsed_ms:.1f}ms")
-        assert elapsed_ms < 50, f"Webhook idempotency insert took {elapsed_ms:.1f}ms (limit 50ms)"
 
     def test_no_duplicate_indexes_on_golf_pool_entry_scores(self, db_session) -> None:
         """Verify no two indexes on golf_pool_entry_scores share identical key columns."""

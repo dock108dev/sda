@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PREFIXES = [
   "/admin",
-  "/proxy/api/admin",
-  "/proxy/api/sports",
-  "/proxy/api/social",
-  "/proxy/api/fairbet",
-  "/proxy/api/analytics",
-  "/proxy/api/golf",
-  "/proxy/v1/sse",
+  "/proxy",
 ];
 
 const AUTH_REALM = "sports-data-admin";

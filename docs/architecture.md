@@ -1,8 +1,14 @@
 # Architecture
 
-Sports Data Admin is now a catch-up data service for Scroll Down Sports. It has
-one scheduled background refresh path and one primary catch-up product API
-surface, with additional mounted admin and inspection routes for operators.
+Sports Data Admin is the backend and admin control plane for Scroll Down Sports
+catch-up data. Current production relevance is defined by:
+
+- `api/main.py` for mounted API routes,
+- `scraper/sports_scraper/celery_app.py` for scheduled worker behavior,
+- `infra/docker-compose.yml` for running services.
+
+Files outside those boundaries can be importable for tests, migrations, or
+future work without being part of the active runtime.
 
 ## Runtime Shape
 
@@ -10,56 +16,71 @@ surface, with additional mounted admin and inspection routes for operators.
 External league feeds
         |
         v
-scraper Celery worker: poll_live_pbp
+scraper Celery beat/worker: poll_live_pbp
         |
         v
 PostgreSQL: games, plays, player stats, team stats
         |
         v
-FastAPI: catch-up routes plus admin/ops support
+FastAPI: consumer catch-up API plus admin/operator routes
         |
         v
-Scroll Down clients
+Next.js admin UI and Scroll Down clients
 ```
 
-Redis is used for Celery broker/backend and the global task hold flag. The API reads PostgreSQL directly and uses OpenAI only for optional homepage game context copy.
+Redis is used for Celery broker/backend, task locks, the global task hold flag,
+rate-limit/cache paths, and the non-production realtime test emitter. The API
+reads PostgreSQL directly. OpenAI is optional and is used only to polish catch-up
+context copy when explicitly requested.
 
-The repository still contains historical modules and migrations. Active production behavior is defined by what is imported by `api/main.py`, scheduled by `scraper/sports_scraper/celery_app.py`, and run by `infra/docker-compose.yml`.
-
-## Components
-
-### API
+## API
 
 Authoritative entrypoint: `api/main.py`.
 
-Primary catch-up routes:
+Active mounted route families:
 
-- `GET /api/admin/sports/games`
-- `GET /api/admin/sports/games/{game_id}`
-- `GET /api/admin/sports/games/{game_id}/context`
+- `/api/v1/*`: consumer-safe game list/detail/summary routes.
+- `/api/admin/sports/*`: catch-up admin routes plus diagnostics, jobs, teams,
+  logs, scraper runs, timeline, pipeline, play-by-play, resolution, coverage,
+  and season-audit endpoints.
+- `/api/admin/*`: platform stats, task hold/trigger controls, circuit breaker
+  status, quality review/summary, and non-production realtime test emission.
+- `/api/social/*`: manual social post and account CRUD over existing database
+  records.
+- `/health`, `/healthz`, `/ready`, and `/metrics`: operational endpoints.
 
-The list endpoint is spoiler-light and omits the detail payload's top-level
-score. Game detail includes score, play-by-play, player stats, team stats, and
-final box score data for the scroll-down experience.
+Consumer and admin catch-up list/detail routes share the same implementation.
+The difference is the key dependency: `/api/v1/*` uses consumer scope and
+`/api/admin/sports/*` uses admin scope.
 
-Supporting mounted routes include `/api/v1/games/{game_id}/summary`,
-`/api/social/*`, `/api/admin/tasks/*`, health and metrics endpoints, and admin
-diagnostics for pipeline, play-by-play, coverage, quality, realtime test
-emission, and platform status. These support operators and compatibility
-surfaces; they are not independent scheduled product runtimes.
-
-### Scraper
+## Scraper
 
 Authoritative Celery app: `scraper/sports_scraper/celery_app.py`.
 
-Only one task is routed and scheduled:
+One task is routed and beat-scheduled:
 
-- `poll_live_pbp`, every 5 minutes
+- `poll_live_pbp`, every 5 minutes, queue `sports-scraper`
 
-The task refreshes play-by-play, team stats, player stats, and box score data
-for games around the active catch-up window.
+The task refreshes play-by-play, player box scores, team box scores, status,
+and score fields for games near the active catch-up window. It uses Redis locks
+to avoid overlapping runs. Worker startup clears stale locks and marks
+interrupted scrape/job runs so previous crashes do not permanently block new
+work.
 
-### Infrastructure
+Other `@shared_task` definitions exist in historical modules, but they are not
+included, routed, or beat-scheduled by the active Celery app.
+
+## Web
+
+The web app is a Next.js admin UI. Browser API calls go through `/proxy/*`; the
+proxy injects `SPORTS_API_KEY` server-side and protects `/admin/*` and
+`/proxy/*` with Basic auth in production/staging or whenever `ADMIN_PASSWORD` is
+set.
+
+The web directory still contains pages for dormant product areas. Those pages
+do not make the corresponding backend routers active.
+
+## Infrastructure
 
 Authoritative compose file: `infra/docker-compose.yml`.
 
@@ -75,12 +96,27 @@ Application services:
 - `backup`
 - `log-relay`
 
-The removed full-stack services are not supported: separate API workers,
-training workers, odds workers, social workers, golf jobs, product realtime
-streams, and simulator/analytics route stacks. Historical modules may still be
-present in the repository, but they are outside the compose service boundary
-unless imported by `api/main.py` or scheduled by `celery_app.py`.
+Optional observability services are available only with the `observability`
+profile:
+
+- `otel-collector`
+- `prometheus`
+- `grafana`
+
+## Not Active
+
+The current runtime does not mount or schedule separate product runtimes for
+auth, onboarding, club management, FairBet, odds/model-odds, golf, simulator,
+analytics experiments, product realtime streams, social scraping, training, or
+payment/commerce/billing/webhooks.
+
+Commerce, billing, and payment webhook runtime code has been removed. Historical
+migrations remain as database history.
 
 ## CI Boundary
 
-GitHub Actions still runs broad historical checks and tests. Passing CI does not mean every historical module is part of the active runtime; the runtime boundary is the mounted API, scheduled Celery task, and compose service set above.
+GitHub Actions still runs broad tests, lint, build, dependency audit, secret
+scan, SQL interpolation checks, and schema/type synchronization checks. Passing
+CI does not mean every historical module is active production runtime; the
+runtime boundary is the mounted API, scheduled Celery task, and compose service
+set above.

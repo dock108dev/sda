@@ -40,12 +40,6 @@ from .onboarding import (  # noqa: F401 — register ORM models for Alembic auto
     ClubClaim,
     OnboardingSession,
 )
-from .stripe import (  # noqa: F401
-    ProcessedStripeEvent,
-    StripeCustomer,
-    StripeSubscription,
-    WebhookDeliveryAttempt,
-)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
@@ -135,10 +129,6 @@ __all__ = [
     "MagicLinkToken",
     "OnboardingSession",
     "PoolLifecycleEvent",
-    "ProcessedStripeEvent",
-    "StripeCustomer",
-    "StripeSubscription",
-    "WebhookDeliveryAttempt",
     "get_db",
     "get_async_session",
     "close_db",

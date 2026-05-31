@@ -25,6 +25,7 @@ from celery import shared_task
 
 from ..db import get_session
 from ..logging import logger
+from ..operational_metrics import record_polling_degraded, record_polling_lock_skipped
 from .error_samples import suppressed_error_sample
 from .polling_helpers import (
     _poll_mlb_game_boxscore,
@@ -49,7 +50,7 @@ _SUPPRESSED_ERROR_SAMPLE_LIMIT = 10
 
 
 from ..utils.redis_lock import LOCK_TIMEOUT_5MIN  # noqa: E402
-from ..utils.redis_lock import acquire_redis_lock as _acquire_redis_lock  # noqa: E402
+from ..utils.redis_lock import acquire_redis_lock_status as _acquire_redis_lock_status  # noqa: E402
 from ..utils.redis_lock import release_redis_lock as _release_redis_lock  # noqa: E402
 
 
@@ -66,10 +67,12 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
     from ..services.job_runs import complete_job_run, start_job_run
 
     lock_key = "lock:poll_live_pbp"
-    lock_token = _acquire_redis_lock(lock_key, timeout=LOCK_TIMEOUT_5MIN)
+    lock_token, lock_reason = _acquire_redis_lock_status(lock_key, timeout=LOCK_TIMEOUT_5MIN)
     if not lock_token:
-        logger.debug("poll_live_pbp_skipped_locked")
-        return {"skipped": True, "reason": "locked"}
+        record_polling_lock_skipped(task="poll_live_pbp", reason=lock_reason)
+        log = logger.warning if lock_reason == "redis_error" else logger.debug
+        log("poll_live_pbp_skipped_locked", reason=lock_reason)
+        return {"skipped": True, "reason": lock_reason}
 
     job_run_id = start_job_run("poll_live_pbp", [])
     try:
@@ -385,6 +388,11 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
             summary = {k: v for k, v in result.items() if k != "transitions"}
             summary["transitions"] = len(transitions)
             final_status = "degraded" if suppressed_error_count else "success"
+            if final_status == "degraded":
+                record_polling_degraded(
+                    task="poll_live_pbp",
+                    suppressed_errors=suppressed_error_count,
+                )
             error_summary = (
                 f"Completed with {suppressed_error_count} suppressed polling errors"
                 if suppressed_error_count

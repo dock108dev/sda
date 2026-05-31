@@ -7,11 +7,13 @@
   compatibility. Production relevance is defined by mounted API routers,
   scheduled Celery tasks, and compose services, not by file presence.
 - CI still runs broad historical checks; CI coverage is larger than the active catch-up runtime boundary.
-- Odds, golf, social scraping, analytics, simulator, billing, auth product
-  routes, and product realtime streams are not supported by the current
-  scheduled runtime.
+- Odds, golf, social scraping, analytics, simulator, auth product,
+  onboarding, club-management, and product realtime streams are not supported
+  by the current mounted/scheduled runtime.
 - `/api/social/*` is mounted for manual social post/account data access, but no
   social collection worker is scheduled.
 - `/api/admin/realtime/test-emit` is available only outside production/staging
   for load-test event injection; realtime subscribe/stream product routes are
   not mounted.
+- Transactional email supports SMTP and SES. `RESEND_API_KEY` is not consumed by
+  the current API service.

@@ -74,11 +74,7 @@ async def _notify_claim(claim: ClubClaim) -> None:
         )
         return
 
-    expected = (
-        escape(str(claim.expected_entries))
-        if claim.expected_entries is not None
-        else "—"
-    )
+    expected = escape(str(claim.expected_entries)) if claim.expected_entries is not None else "—"
     notes_html = escape(claim.notes or "") or "—"
     html = f"""\
 <h2>New club claim</h2>
@@ -142,9 +138,7 @@ async def submit_club_claim(
             extra={"claim_id": claim.claim_id},
         )
 
-    return ClubClaimResponse(
-        claim_id=claim.claim_id, received_at=claim.received_at
-    )
+    return ClubClaimResponse(claim_id=claim.claim_id, received_at=claim.received_at)
 
 
 # ---------------------------------------------------------------------------
@@ -196,14 +190,10 @@ async def get_session_status(
 ) -> SessionStatusResponse:
     """Return the current status of an onboarding session.
 
-    Used by the frontend to poll until status transitions to 'paid'
-    after the Stripe webhook fires. Returns 410 for expired sessions,
-    404 for unknown tokens.
+    Returns 410 for expired sessions and 404 for unknown tokens.
     """
     result = await db.execute(
-        select(OnboardingSession).where(
-            OnboardingSession.session_token == session_token
-        )
+        select(OnboardingSession).where(OnboardingSession.session_token == session_token)
     )
     session: OnboardingSession | None = result.scalar_one_or_none()
 
@@ -231,8 +221,7 @@ async def claim_session(
 ) -> ClaimResponse:
     """Transition a paid onboarding session to claimed, creating the account context.
 
-    Accepts the claim_token (delivered via the Stripe success_url). Uses a
-    row-level lock to prevent concurrent double-claims — exactly one request
+    Accepts the claim_token. Uses a row-level lock to prevent concurrent double-claims; exactly one request
     succeeds; duplicates receive 409.
     """
     result = await db.execute(
@@ -266,9 +255,7 @@ async def claim_session(
     await db.flush()
 
     # Create the club_admin user account from the associated club claim.
-    claim_result = await db.execute(
-        select(ClubClaim).where(ClubClaim.claim_id == session.claim_id)
-    )
+    claim_result = await db.execute(select(ClubClaim).where(ClubClaim.claim_id == session.claim_id))
     club_claim = claim_result.scalar_one_or_none()
     if club_claim is not None:
         existing_user = await db.execute(

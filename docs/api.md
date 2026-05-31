@@ -1,31 +1,51 @@
 # API
 
-The API is a FastAPI service centered on Scroll Down catch-up data plus the
-operator routes needed to inspect and control that data. Runtime OpenAPI is
-available locally at `GET /docs` and `GET /openapi.json`; those docs are
-disabled in production and staging.
+The API is a FastAPI service with two active product-facing route families:
 
-Authoritative route wiring lives in `api/main.py`. Catch-up list/detail
-ownership lives in `api/app/routers/sports/catchup.py`, mounted under
-`/api/admin/sports`.
+- `/api/v1/*`: consumer-safe read routes.
+- `/api/admin/*`, `/api/admin/sports/*`, and `/api/social/*`: admin and
+  operator routes.
+
+Authoritative route wiring lives in `api/main.py`. Runtime OpenAPI is available
+locally at `GET /docs` and `GET /openapi.json`; those docs are disabled in
+production and staging.
 
 ## Authentication
 
-All catch-up routes require `X-API-Key` when `API_KEY` is configured. Development environments without `API_KEY` allow requests and log a warning. Production and staging should always configure `API_KEY`.
+| Route family | Key dependency | Scope |
+| --- | --- | --- |
+| `/api/v1/*` | `verify_consumer_api_key` | Read-only consumer scope. Uses `CONSUMER_API_KEY` when set, otherwise falls back to `API_KEY`. |
+| `/api/admin/*` | `verify_api_key` | Admin scope. Rejects `CONSUMER_API_KEY` when consumer and admin keys differ. |
+| `/api/admin/sports/*` | `verify_api_key` | Admin sports and operator scope. |
+| `/api/social/*` | `verify_api_key` | Manual social record access. |
+| `/health`, `/healthz`, `/ready`, `/metrics` | none | Operational endpoints; protect by network/proxy if public exposure is possible. |
+
+Development without configured keys is permissive and logs warnings. Production
+and staging require `API_KEY`; deploy env lint also requires `CONSUMER_API_KEY`
+for production env files.
+
+```http
+GET /api/v1/games HTTP/1.1
+Host: localhost:8000
+X-API-Key: consumer-or-local-key
+```
 
 ```http
 GET /api/admin/sports/games HTTP/1.1
 Host: localhost:8000
-X-API-Key: local-key
+X-API-Key: admin-key
 ```
 
-Health endpoints do not require auth.
+## Consumer Catch-Up Routes
 
-## Catch-Up Routes
+`/api/v1/games` and `/api/v1/games/{game_id}` delegate to the same catch-up
+implementation as the admin sports list/detail routes, but through the consumer
+key dependency.
 
-### `GET /api/admin/sports/games`
+### `GET /api/v1/games`
 
-Returns games from the catch-up window, defaulting to `-72h` through `+48h` from the current time.
+Returns games from the catch-up window, defaulting to `-72h` through `+48h`
+from the current time.
 
 Common query parameters:
 
@@ -36,7 +56,11 @@ Common query parameters:
 - `limit`: page size from 1 to 200, default `100`
 - `offset`: zero-based page offset
 
-The response is spoiler-light by design. It includes game identity, teams, date, league, status, capability flags, and short context copy. It does not expose the detail payload's top-level final/current `score`; live games may include `liveSnapshot.score` when play-by-play has already established period and clock state.
+The response is spoiler-light by design. It includes game identity, teams,
+date, league, status, capability flags, and short context copy. It does not
+expose the detail payload's top-level final/current `score`; live games may
+include `liveSnapshot.score` when play-by-play has established period and clock
+state.
 
 Response envelope fields:
 
@@ -47,61 +71,60 @@ Response envelope fields:
 - `withPlayerStatsCount`
 - `withPbpCount`
 
-### `GET /api/admin/sports/games/{game_id}`
+### `GET /api/v1/games/{game_id}`
 
-Returns the full scroll-down detail payload for one game:
+Returns the full catch-up detail payload for one game:
 
 - game metadata and score
 - ordered play-by-play
 - player stats
 - team stats
 
-Clients should reveal this data by scrolling through the game detail, not from the homepage list.
+### `GET /api/v1/games/{game_id}/summary`
 
-### `GET /api/admin/sports/games/{game_id}/context`
+Returns the cached generated summary for a completed game when available.
+Otherwise it returns a status object such as `RECAP_PENDING`, `PREGAME`,
+`IN_PROGRESS`, `POSTPONED`, or `CANCELED`.
 
-Returns two to three short context sentences explaining why a user might want to catch up on the game. The service uses deterministic local data first.
+## Admin Sports Routes
 
-Optional query parameters:
+The admin sports catch-up routes are mounted under `/api/admin/sports`:
 
-- `enhance`: when `true`, the service attempts OpenAI polishing and falls back to deterministic copy on any issue.
+- `GET /api/admin/sports/games`
+- `GET /api/admin/sports/games/{game_id}`
+- `GET /api/admin/sports/games/{game_id}/context`
 
-The response includes `source`, currently `template` or `openai`.
+`/context` returns two to three short context sentences. It uses deterministic
+local data by default. When `enhance=true`, it attempts OpenAI polishing and
+falls back to deterministic copy on any issue.
 
-## Mounted Route Boundary
+Additional `/api/admin/sports/*` routes support operators and the admin UI:
 
-`api/main.py` currently mounts these route families:
+- scrape run creation, cancellation, cache clearing, and bulk preview/backfill
+- game resync and job cancellation
+- teams, team colors, and team social metadata
+- timeline generation and inspection
+- pipeline run/stage/bulk controls
+- play-by-play inspection and resolution diagnostics
+- missing-PBP, conflict, season-audit, and Docker log inspection
 
-- `/api/admin/sports/*`: catch-up list/detail routes plus sports admin
-  diagnostics, runs, jobs, timeline, pipeline, play-by-play, resolution,
-  coverage, and quality endpoints.
-- `/api/admin/*`: platform stats, task hold/trigger controls, circuit breaker
-  health, quality review, and the non-production realtime test emitter.
-- `/api/social/*`: manual social post and account CRUD over existing database
-  records.
-- `/api/v1/games/{game_id}/summary`: consumer-safe cached game summary status
-  or recap response.
-- `/health`, `/healthz`, `/ready`, and `/metrics`: unauthenticated health and
-  metrics endpoints.
+These routes are admin surfaces. They are not separate scheduled product
+runtimes.
 
-The catch-up list/detail endpoints are the primary product surface for Scroll
-Down clients. The other mounted routes are supporting admin, observability, or
-legacy-adjacent data access surfaces; they are not Celery schedules by
-themselves.
+## Admin Operations Routes
 
-## Operations Routes
+### Health And Metrics
 
-### Health
-
-- `GET /health`
-- `GET /healthz` checks API liveness plus database and Redis connectivity, but
-  only database failure changes the status to `503`.
-- `GET /ready` returns `503` when database or Redis connectivity fails.
-- `GET /metrics`
+- `GET /health`: process liveness only.
+- `GET /healthz`: checks database and Redis; database failure returns `503`,
+  Redis failure is reported in the payload while the endpoint can still return
+  `200`.
+- `GET /ready`: strict readiness; database or Redis failure returns `503`.
+- `GET /metrics`: Prometheus exposition format, unauthenticated at FastAPI.
 
 ### Task Control
 
-The admin task registry exposes only `poll_live_pbp`. The hold endpoints remain available for migrations and operator safety:
+The admin task registry exposes only `poll_live_pbp`.
 
 - `GET /api/admin/tasks/hold`
 - `PUT /api/admin/tasks/hold`
@@ -113,10 +136,13 @@ Trigger body:
 
 ```json
 {
-  "taskName": "poll_live_pbp",
+  "task_name": "poll_live_pbp",
   "args": []
 }
 ```
+
+`/api/admin/social/session-health` reads the latest Playwright session health
+snapshot from Redis. It does not schedule social collection.
 
 ### Realtime Test Emitter
 
@@ -124,8 +150,9 @@ Trigger body:
 for load-test harnesses. The endpoint returns `403` in production and staging.
 Product realtime subscribe/stream routes are not mounted by the current API.
 
-## Not Supported
+## Not Mounted
 
-The current API does not mount FairBet, odds/model-odds, golf, simulator,
-analytics experiment, commerce, billing, onboarding, preferences, auth product,
-Stripe webhook, club, or product realtime subscribe/stream routers.
+The current API does not mount auth product routes, onboarding, preferences,
+club-management routes, FairBet, odds/model-odds, golf, simulator, analytics
+experiment routes, commerce, billing, payment webhooks, or product realtime
+subscribe/stream routers.
