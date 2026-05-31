@@ -11,6 +11,147 @@ import type { ScoreObject } from "../types";
 export type { ScoreObject };
 
 // ---------------------------------------------------------------------------
+// Catch-up list/detail types (mirror /api/v1/games and /api/v1/games/{gameId})
+// ---------------------------------------------------------------------------
+
+export type LiveSnapshot = {
+  periodLabel?: string | null;
+  timeLabel?: string | null;
+  score?: ScoreObject | null;
+  currentPeriod?: number | null;
+  gameClock?: string | null;
+};
+
+export type NormalizedStat = {
+  key: string;
+  displayLabel: string;
+  group: string;
+  value?: number | string | null;
+  formatType: string;
+};
+
+export type TeamStat = {
+  team: string;
+  isHome: boolean;
+  stats: Record<string, unknown>;
+  source?: string | null;
+  updatedAt?: string | null;
+  normalizedStats?: NormalizedStat[] | null;
+};
+
+export type PlayerStat = {
+  team: string;
+  playerName: string;
+  minutes?: number | null;
+  points?: number | null;
+  rebounds?: number | null;
+  assists?: number | null;
+  rawStats: Record<string, unknown>;
+  source?: string | null;
+  updatedAt?: string | null;
+  normalizedStats?: NormalizedStat[] | null;
+};
+
+export type PlayModeEligibility = {
+  important: boolean;
+  standard: boolean;
+  all: boolean;
+};
+
+export type PlayImportance = {
+  level: "primary" | "secondary" | "tertiary";
+  rank?: number | null;
+  reasons: string[];
+  isKeyMoment: boolean;
+  isScoringPlay: boolean;
+  isLeadChange: boolean;
+  isTyingPlay: boolean;
+  isLateGame: boolean;
+  isFinalPlay: boolean;
+  isRunEnding: boolean;
+};
+
+export type PlayEntry = {
+  playIndex: number;
+  quarter?: number | null;
+  gameClock?: string | null;
+  periodLabel?: string | null;
+  timeLabel?: string | null;
+  periodType?: string | null;
+  playType?: string | null;
+  teamAbbreviation?: string | null;
+  playerName?: string | null;
+  description?: string | null;
+  score?: ScoreObject | null;
+  tier?: number | null;
+  displayType?: string | null;
+  clockLabel?: string | null;
+  importance?: PlayImportance | null;
+  modeEligibility?: PlayModeEligibility | null;
+  scoreChanged?: boolean | null;
+  scoringTeamAbbr?: string | null;
+  pointsScored?: number | null;
+  scoreBefore?: ScoreObject | null;
+  scoreAfter?: ScoreObject | null;
+  scoreDisplay?: string | null;
+  phase?: string | null;
+};
+
+export type CatchupGameSummary = {
+  id: number;
+  leagueCode: string;
+  gameDate: string;
+  localGameDate?: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  homeTeamAbbr?: string | null;
+  awayTeamAbbr?: string | null;
+  status?: string | null;
+  currentPeriod?: number | null;
+  gameClock?: string | null;
+  currentPeriodLabel?: string | null;
+  liveSnapshot?: LiveSnapshot | null;
+  hasBoxscore: boolean;
+  hasPlayerStats: boolean;
+  hasPbp: boolean;
+  playCount: number;
+  context: string[];
+  contextSource: string;
+  isLive: boolean;
+  isFinal: boolean;
+  isPregame: boolean;
+};
+
+export type CatchupGameListResponse = {
+  games: CatchupGameSummary[];
+  total: number;
+  nextOffset?: number | null;
+  withBoxscoreCount: number;
+  withPlayerStatsCount: number;
+  withPbpCount: number;
+};
+
+export type CatchupGameMeta = CatchupGameSummary & {
+  season: number;
+  seasonType?: string | null;
+  homeTeamId?: number | null;
+  awayTeamId?: number | null;
+  score?: ScoreObject | null;
+  lastScrapedAt?: string | null;
+  lastIngestedAt?: string | null;
+  lastPbpAt?: string | null;
+  lastBoxscoreAt?: string | null;
+};
+
+export type CatchupGameDetailResponse = {
+  detailContractVersion: number;
+  game: CatchupGameMeta;
+  plays: PlayEntry[];
+  playerStats: PlayerStat[];
+  teamStats: TeamStat[];
+};
+
+// ---------------------------------------------------------------------------
 // Game summary types (mirror GameSummaryResponse on the backend, v3-summary)
 // ---------------------------------------------------------------------------
 

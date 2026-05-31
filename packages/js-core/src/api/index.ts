@@ -8,10 +8,21 @@ export { HighlightsAPI } from "./highlights";
 export { StrategyAPI } from "./strategy";
 export {
   fetchGameSummary,
+  type CatchupGameDetailResponse,
+  type CatchupGameListResponse,
+  type CatchupGameMeta,
+  type CatchupGameSummary,
   type FlowStatusResponse,
   type GameSummaryResponse,
+  type LiveSnapshot,
+  type NormalizedStat,
+  type PlayerStat,
+  type PlayEntry,
+  type PlayImportance,
+  type PlayModeEligibility,
   type ScoreObject,
   type SummaryFinalScore,
+  type TeamStat,
 } from "./games";
 export type {
   ActivePool,
