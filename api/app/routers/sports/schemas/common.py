@@ -281,6 +281,12 @@ class PlayEntry(BaseModel):
     score_before: ScoreObject | None = Field(None, alias="scoreBefore")
     score_after: ScoreObject | None = Field(None, alias="scoreAfter")
     score_display: str | None = Field(None, alias="scoreDisplay")
+    situation_before: dict[str, Any] | None = Field(None, alias="situationBefore")
+    situation_after: dict[str, Any] | None = Field(None, alias="situationAfter")
+    sport_metadata: dict[str, Any] | None = Field(None, alias="sportMetadata")
+    metadata: dict[str, Any] | None = None
+    raw_feed_text: str | None = Field(None, alias="rawFeedText")
+    raw_feed_source: str | None = Field(None, alias="rawFeedSource")
     phase: str | None = None
 
 
