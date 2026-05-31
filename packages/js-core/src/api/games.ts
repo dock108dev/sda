@@ -140,6 +140,12 @@ export type PlayImportance = {
   isRunEnding: boolean;
 };
 
+export type PlaySituation = {
+  display?: Record<string, unknown> | null;
+  sportState?: Record<string, unknown> | null;
+  [key: string]: unknown;
+};
+
 export type PlayEntry = {
   playIndex: number;
   quarter?: number | null;
@@ -164,6 +170,12 @@ export type PlayEntry = {
   scoreAfter?: ScoreObject | null;
   scoreDisplay?: string | null;
   phase?: string | null;
+  situationBefore?: PlaySituation | null;
+  situationAfter?: PlaySituation | null;
+  sportMetadata?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  rawFeedText?: string | null;
+  rawFeedSource?: string | null;
 };
 
 export type CatchupGameSummary = {
