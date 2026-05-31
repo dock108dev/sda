@@ -11,7 +11,7 @@ import type { ScoreObject } from "../types";
 export type { ScoreObject };
 
 // ---------------------------------------------------------------------------
-// Catch-up list/detail types (mirror /api/v1/games and /api/v1/games/{gameId})
+// Catch-up list/detail types (mirror /api/v1/games and /api/v1/games/{game_id})
 // ---------------------------------------------------------------------------
 
 export type LiveSnapshot = {
