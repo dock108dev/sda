@@ -52,6 +52,75 @@ export type PlayerStat = {
   normalizedStats?: NormalizedStat[] | null;
 };
 
+export type NHLSkaterStat = {
+  team: string;
+  playerName: string;
+  toi?: string | null;
+  goals?: number | null;
+  assists?: number | null;
+  points?: number | null;
+  shotsOnGoal?: number | null;
+  plusMinus?: number | null;
+  penaltyMinutes?: number | null;
+  hits?: number | null;
+  blockedShots?: number | null;
+  rawStats: Record<string, unknown>;
+  source?: string | null;
+  updatedAt?: string | null;
+};
+
+export type NHLGoalieStat = {
+  team: string;
+  playerName: string;
+  toi?: string | null;
+  shotsAgainst?: number | null;
+  saves?: number | null;
+  goalsAgainst?: number | null;
+  savePercentage?: number | null;
+  rawStats: Record<string, unknown>;
+  source?: string | null;
+  updatedAt?: string | null;
+};
+
+export type MLBBatterStat = {
+  team: string;
+  playerName: string;
+  position?: string | null;
+  atBats?: number | null;
+  hits?: number | null;
+  runs?: number | null;
+  rbi?: number | null;
+  homeRuns?: number | null;
+  baseOnBalls?: number | null;
+  strikeOuts?: number | null;
+  stolenBases?: number | null;
+  avg?: string | null;
+  obp?: string | null;
+  slg?: string | null;
+  ops?: string | null;
+  rawStats: Record<string, unknown>;
+  source?: string | null;
+  updatedAt?: string | null;
+};
+
+export type MLBPitcherStat = {
+  team: string;
+  playerName: string;
+  inningsPitched?: string | null;
+  hits?: number | null;
+  runs?: number | null;
+  earnedRuns?: number | null;
+  baseOnBalls?: number | null;
+  strikeOuts?: number | null;
+  homeRuns?: number | null;
+  era?: string | null;
+  pitchCount?: number | null;
+  strikes?: number | null;
+  rawStats: Record<string, unknown>;
+  source?: string | null;
+  updatedAt?: string | null;
+};
+
 export type PlayModeEligibility = {
   important: boolean;
   standard: boolean;
@@ -148,6 +217,10 @@ export type CatchupGameDetailResponse = {
   game: CatchupGameMeta;
   plays: PlayEntry[];
   playerStats: PlayerStat[];
+  nhlSkaters?: NHLSkaterStat[] | null;
+  nhlGoalies?: NHLGoalieStat[] | null;
+  mlbBatters?: MLBBatterStat[] | null;
+  mlbPitchers?: MLBPitcherStat[] | null;
   teamStats: TeamStat[];
 };
 

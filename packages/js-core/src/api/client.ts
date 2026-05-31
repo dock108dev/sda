@@ -11,6 +11,12 @@ export interface ClientConfig {
   retryDelay?: number;
 }
 
+declare const process: {
+  env: {
+    NEXT_PUBLIC_SPORTS_API_URL?: string;
+  };
+};
+
 export class APIClient {
   private baseURL: string;
   private timeout: number;
@@ -174,4 +180,3 @@ export function createClient(baseURL?: string): APIClient {
     retryDelay: 1000,
   });
 }
-
