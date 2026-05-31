@@ -64,7 +64,7 @@ SMTP and SES.
 | Variable | Active use |
 | --- | --- |
 | `DATABASE_URL` | Celery worker database access; asyncpg URLs are converted to psycopg. |
-| `REDIS_URL`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB` | Celery broker/backend, task locks, and hold state. |
+| `REDIS_URL`, `REDIS_HOST`, `REDIS_PASSWORD`, `REDIS_DB` | Celery broker/backend, task locks, and hold state. |
 | `CBB_STATS_API_KEY` | NCAAB game and stats ingestion. |
 | `SCRAPER_HTML_CACHE_DIR` | Optional scraper cache path. |
 | `SCRAPER_FORCE_CACHE_REFRESH` | Optional cache bypass. |
