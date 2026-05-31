@@ -104,7 +104,12 @@ def main() -> int:
         print(f"ERROR: env file not found: {args.env_file}", file=sys.stderr)
         return 2
 
-    keys = parse_env_keys(args.env_file)
+    try:
+        keys = parse_env_keys(args.env_file)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
     unknown = sorted(keys - KNOWN_ENV_VARS)
     missing = sorted(REQUIRED_PRODUCTION_ENV_VARS - keys) if args.profile == "production" else []
 
