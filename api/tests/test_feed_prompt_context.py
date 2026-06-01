@@ -49,6 +49,7 @@ def _card(
             isKeyMoment=True,
             isScoringPlay=True,
         ),
+        renderType="important_narrative",
         visualImportance="high",
         period=CardPeriod(ordinal=1, label="P1", type="REG"),
         displayTime="P1 10:00",

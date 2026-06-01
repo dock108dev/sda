@@ -385,6 +385,8 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
             }
             if suppressed_error_samples:
                 result["suppressed_error_samples"] = suppressed_error_samples
+            if pbp_updated > 0:
+                _enqueue_card_feed_refresh()
             summary = {k: v for k, v in result.items() if k != "transitions"}
             summary["transitions"] = len(transitions)
             final_status = "degraded" if suppressed_error_count else "success"
@@ -411,3 +413,23 @@ def poll_live_pbp_task(live_only: bool = False) -> dict:
         raise
     finally:
         _release_redis_lock(lock_key, lock_token)
+
+
+def _enqueue_card_feed_refresh() -> None:
+    """Refresh materialized card feeds after PBP changes."""
+    try:
+        from ..celery_app import DEFAULT_QUEUE
+        from ..celery_app import app as celery_app
+
+        celery_app.send_task(
+            "refresh_card_feeds",
+            kwargs={"lookback_hours": 96, "lookahead_hours": 48, "force": False},
+            queue=DEFAULT_QUEUE,
+            routing_key=DEFAULT_QUEUE,
+        )
+    except Exception as exc:
+        logger.warning(
+            "card_feed_refresh_enqueue_failed",
+            error=str(exc),
+            exc_info=True,
+        )

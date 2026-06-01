@@ -140,7 +140,14 @@ async def get_game_card_feed(
     spoiler_policy: SpoilerPolicy,
     through_play_index: int | None = None,
 ) -> CardFeedResponse:
-    """Load one game and return its normalized narrative-card feed."""
+    """Return the persisted normalized narrative-card feed for one game."""
+    if through_play_index is None:
+        from .materialization import get_materialized_card_feed
+
+        return await get_materialized_card_feed(session, game_id, spoiler_policy)
+
+    # Partial feed windows are debug/admin-only; keep them generated directly
+    # rather than creating separate persisted artifacts for each boundary.
     result = await session.execute(
         select(SportsGame)
         .options(

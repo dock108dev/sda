@@ -321,6 +321,16 @@ def run_scheduled_ingestion() -> dict:
             "total_runs_created": nba_result["runs_created"] + nhl_result["runs_created"] + ncaab_result["runs_created"] + mlb_result["runs_created"] + nfl_result["runs_created"],
             "total_pbp_games": nba_pbp_result["pbp_games"] + nhl_pbp_result["pbp_games"] + ncaab_pbp_result["pbp_games"] + mlb_pbp_result["pbp_games"] + nfl_pbp_result["pbp_games"],
         }
+        if summary["total_pbp_games"] > 0:
+            from ..celery_app import DEFAULT_QUEUE
+            from ..celery_app import app as celery_app
+
+            celery_app.send_task(
+                "refresh_card_feeds",
+                kwargs={"lookback_hours": 96, "lookahead_hours": 48, "force": False},
+                queue=DEFAULT_QUEUE,
+                routing_key=DEFAULT_QUEUE,
+            )
         tracker.summary_data = summary
 
     return summary
@@ -584,4 +594,3 @@ def ingest_nba_historical(start_date: str, end_date: str, boxscores: bool = True
         release_redis_lock(lock_name, lock_token)
 
     return results
-

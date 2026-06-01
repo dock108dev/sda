@@ -119,6 +119,7 @@ def test_card_feed_has_required_json_contract_for_supported_sports(
     body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)
 
     assert CardFeedResponse.model_validate(body)
+    assert body["contractVersion"] == 2
     assert body["game"]["sport"] == sport
     assert body["game"]["league"] == league
     assert body["game"]["homeTeamId"] == 1

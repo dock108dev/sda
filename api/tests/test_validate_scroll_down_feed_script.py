@@ -7,7 +7,6 @@ from types import SimpleNamespace
 
 import pytest
 
-
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "validate_scroll_down_feed.py"
 SPEC = importlib.util.spec_from_file_location("validate_scroll_down_feed", SCRIPT_PATH)
 assert SPEC and SPEC.loader
@@ -66,7 +65,7 @@ def _card(**overrides):
 
 def _feed(card):
     return {
-        "contractVersion": 1,
+        "contractVersion": 2,
         "game": {"gameId": 42, "sport": "baseball", "league": "MLB"},
         "generation": {"status": "ready", "cardCount": 1},
         "reveal": {"available": True},
@@ -79,6 +78,14 @@ def test_validator_accepts_frontend_ready_card_feed() -> None:
 
     assert card_count == 1
     assert status == "ready"
+
+
+def test_validator_rejects_old_card_feed_contract() -> None:
+    feed = _feed(_card())
+    feed["contractVersion"] = 1
+
+    with pytest.raises(validator.ValidationError, match="contractVersion must be >= 2"):
+        validator._validate_feed(feed, game_id=42, min_cards=1)
 
 
 def test_validator_rejects_important_card_without_real_stage_setting() -> None:

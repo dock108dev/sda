@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from . import (
+    card_feeds,
     catchup,
     diagnostics,
     docker_logs,
@@ -15,6 +16,7 @@ from . import (
 )
 
 router = APIRouter(prefix="/api/admin/sports", tags=["sports-data"])
+router.include_router(card_feeds.router)
 router.include_router(catchup.router)
 router.include_router(scraper_runs.router)
 router.include_router(games.router)

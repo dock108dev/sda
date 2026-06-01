@@ -34,6 +34,7 @@ try:
         GameReadingPosition,
     )
     from app.db.flow import (  # type: ignore
+        SportsGameCardFeedArtifact,
         SportsGameFlow,
         SportsGameTimelineArtifact,
     )
@@ -129,6 +130,7 @@ try:
         SocialAccountPoll=SocialAccountPoll,
         # Flow models
         SportsGameTimelineArtifact=SportsGameTimelineArtifact,
+        SportsGameCardFeedArtifact=SportsGameCardFeedArtifact,
         SportsGameFlow=SportsGameFlow,
         QualityReviewQueue=QualityReviewQueue,
         # Scraper models
