@@ -7,21 +7,20 @@ modules to keep this file focused on the async router entrypoints:
   * `_pipeline` — `build_deck_from_upstream` (full builder pipeline) +
                   policy splitter + `_source_hash` for live/official
                   deck-version stamping
-  * `service`   — async router entrypoints (`get_recent_games`,
-                  `get_game_deck`, `get_game_reveal`); re-exports the
-                  pipeline/DTO callables consumed by tests
+  * `precompute` — explicit persisted-artifact generation and fallbacks
+  * `service`    — async router entrypoints (`get_recent_games`,
+                   `get_game_deck`, `get_game_reveal`); re-exports the
+                   pipeline/DTO callables consumed by tests
 
 Pipeline order is documented in `_pipeline.build_deck_from_upstream`.
 
-`get_game_deck` / `get_game_reveal` / `get_recent_games` return None when
-the upstream payload is missing; the router maps that to 404/409 per its
-contract.
+`get_game_deck` returns a persisted deck or deterministic pending fallback
+for started games; scheduled, missing, or non-MLB games return None.
 """
 
 from __future__ import annotations
 
 import logging
-import time
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, desc, func, select
@@ -29,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.scroll_down_mlb import ScrollDownMlbDeck
-from app.db.sports import GameStatus, SportsGame, SportsGamePlay, SportsLeague
+from app.db.sports import GameStatus, SportsGame, SportsLeague
 
 from . import persistence
 from ._dto import built_deck_to_dto, scan_response_for_final_score_leaks
@@ -40,13 +39,17 @@ from ._pipeline import (
     generate_final_deck,
     generate_live_deck,
 )
-from .data_source import load_game_payload
+from .precompute import (
+    DeckPrecomputeResult,
+    fallback_deck,
+    load_game_deck_metadata,
+    precompute_game_deck,
+)
 from .schemas import (
-    GenerationPolicy,
+    DeckGenerationStatus,
     ScrollDownMlbDeckResponse,
     ScrollDownMlbRecentGame,
     ScrollDownMlbRevealResponse,
-    SpoilerPolicy,
     TeamSummary,
 )
 
@@ -56,11 +59,14 @@ __all__ = [
     "apply_validation_policy",
     "build_deck_from_upstream",
     "built_deck_to_dto",
+    "compute_deck_version_from_components",
     "compute_deck_etag",
+    "DeckPrecomputeResult",
     "generate_final_deck",
     "generate_live_deck",
     "get_game_deck",
     "get_game_reveal",
+    "precompute_game_deck",
     "get_recent_games",
     "scan_response_for_final_score_leaks",
 ]
@@ -170,195 +176,65 @@ async def get_recent_games(
 async def compute_deck_etag(
     session: AsyncSession, game_id: str
 ) -> str | None:
-    """Compute the `deck_version` `get_game_deck` would return, cheaply.
-
-    Powers the `If-None-Match` short-circuit on the /deck endpoint: the
-    router calls this first, and if the value matches what the client
-    last received, it serves a 304 without invoking the full builder.
-
-    Avoids `load_game_payload` and `build_deck_from_upstream`. For live
-    games it issues a small metadata query (game row + a COUNT/MAX
-    aggregate on plays) and reproduces the `deck_version` stamp via
-    `compute_deck_version_from_components`. For final games it reads the
-    persisted deck's version directly. Returns None when no deck is
-    available (unknown game, non-MLB, pregame).
-    """
+    """Return the persisted deck version used for conditional GETs."""
     try:
         gid = int(game_id)
     except (TypeError, ValueError):
         return None
 
-    game_stmt = (
-        select(
-            SportsGame.id,
-            SportsGame.status,
-            SportsGame.home_score,
-            SportsGame.away_score,
-            SportsGame.last_pbp_at,
-            SportsGame.last_ingested_at,
-            SportsLeague.code.label("league_code"),
-        )
-        .join(SportsLeague, SportsLeague.id == SportsGame.league_id)
-        .where(SportsGame.id == gid)
-    )
-    row = (await session.execute(game_stmt)).one_or_none()
-    if row is None:
-        return None
-    if (row.league_code or "").lower() != "mlb":
-        return None
-
-    status_str = row.status
-    is_final = GameStatus.is_final_or_post_final_status(status_str)
-    is_pregame = (status_str or "").lower() in ("scheduled", "pregame")
-    if is_pregame:
-        return None
-
-    if is_final:
-        persisted_stmt = (
-            select(ScrollDownMlbDeck.deck_version)
-            .where(
-                ScrollDownMlbDeck.game_id == gid,
-                ScrollDownMlbDeck.spoiler_policy == SpoilerPolicy.pre_reveal.value,
-                ScrollDownMlbDeck.is_final.is_(True),
-            )
-            .order_by(ScrollDownMlbDeck.generated_at.desc())
-            .limit(1)
-        )
-        persisted_version = (
-            await session.execute(persisted_stmt)
-        ).scalar_one_or_none()
-        if persisted_version:
-            return persisted_version
-
-    play_agg_stmt = select(
-        func.count(SportsGamePlay.id),
-        func.max(SportsGamePlay.play_index),
-    ).where(SportsGamePlay.game_id == gid)
-    play_count_raw, last_play_index_raw = (
-        await session.execute(play_agg_stmt)
-    ).one()
-    play_count = int(play_count_raw or 0)
-    last_play_index = (
-        int(last_play_index_raw) if last_play_index_raw is not None else None
-    )
-
-    policy = GenerationPolicy.official if is_final else GenerationPolicy.live
-    return compute_deck_version_from_components(
-        policy=policy,
-        game_id=gid,
-        status=status_str,
-        play_count=play_count,
-        last_play_index=last_play_index,
-        home_score=row.home_score,
-        away_score=row.away_score,
-        last_play_at=row.last_pbp_at.isoformat() if row.last_pbp_at else None,
-        last_ingested_at=(
-            row.last_ingested_at.isoformat() if row.last_ingested_at else None
-        ),
-    )
+    row = await persistence.fetch_latest_deck_row(session, gid)
+    return row.deck_version if row is not None else None
 
 
 async def get_game_deck(
     session: AsyncSession, game_id: str
 ) -> ScrollDownMlbDeckResponse | None:
-    """Return the (live or official) deck for `game_id`.
+    """Return the latest persisted deck artifact for `game_id`.
 
-    Behavior:
-
-      - Game not found / not MLB                  → None (router → 404)
-      - Game scheduled / pregame                  → None (router → 404 or
-        409 depending on the route's contract; current router → 404)
-      - Game live: build fresh from current data, return live deck
-      - Game final: serve persisted official deck if present; otherwise
-        build, validate, persist (freeze), return.
+    Request-time reads do not run the builder. Background or explicit
+    precompute callers own generation; this function serves the cached
+    artifact or a deterministic pending fallback.
     """
     try:
         gid = int(game_id)
     except (TypeError, ValueError):
         return None
 
-    payload = await load_game_payload(session, gid)
-    if payload is None:
+    metadata = await load_game_deck_metadata(session, gid)
+    if metadata is None:
         logger.info(
             "scroll_down_mlb.deck.not_found", extra={"game_id": gid}
         )
         return None
 
-    game = payload.get("game") or {}
-    is_final = bool(game.get("isFinal"))
-    is_pregame = bool(game.get("isPregame"))
-
-    if is_pregame:
+    if metadata.is_pregame:
         logger.info(
             "scroll_down_mlb.deck.pregame", extra={"game_id": gid}
         )
         return None
 
-    if is_final:
-        existing = await persistence.fetch_official_deck(session, gid)
-        if existing is not None:
-            logger.info(
-                "scroll_down_mlb.deck.served_official",
-                extra={
-                    "game_id": gid,
-                    "deck_version": existing.deck_version,
-                },
-            )
-            return existing
-
-    started = time.monotonic()
-    policy = GenerationPolicy.official if is_final else GenerationPolicy.live
-    outcome = build_deck_from_upstream(payload, policy=policy)
-    duration_ms = int((time.monotonic() - started) * 1000)
-
-    if outcome.blocked:
-        logger.warning(
-            "scroll_down_mlb.deck.validation_blocked",
-            extra={
-                "game_id": gid,
-                "policy": policy.value,
-                "errors": [e.code for e in outcome.errors],
-                "duration_ms": duration_ms,
-            },
-        )
-        # Fail closed on official; fail-open on live (live decks already
-        # have errors downgraded to warnings by apply_validation_policy).
-        return None
-
-    deck = outcome.deck
-    if deck is None:
-        return None
-
-    if is_final:
-        await persistence.upsert_deck(
-            session,
-            game_id=gid,
-            deck=deck,
-            warnings=outcome.warnings,
-            errors=outcome.errors,
-            generator_label="phase5-py-v1",
-        )
-        await session.commit()
+    deck = (
+        await persistence.fetch_official_deck(session, gid)
+        if metadata.is_final
+        else await persistence.fetch_latest_deck(session, gid)
+    )
+    if deck is not None:
         logger.info(
-            "scroll_down_mlb.deck.frozen_official",
+            "scroll_down_mlb.deck.served_persisted",
             extra={
                 "game_id": gid,
                 "deck_version": deck.deck_version,
-                "card_count": len(deck.cards),
-                "duration_ms": duration_ms,
+                "generation_status": deck.generation_status.value,
             },
         )
-    else:
-        logger.info(
-            "scroll_down_mlb.deck.built_live",
-            extra={
-                "game_id": gid,
-                "deck_version": deck.deck_version,
-                "card_count": len(deck.cards),
-                "duration_ms": duration_ms,
-            },
-        )
-    return deck
+        return deck
+
+    logger.info("scroll_down_mlb.deck.pending", extra={"game_id": gid})
+    return fallback_deck(
+        metadata,
+        status=DeckGenerationStatus.pending,
+        message="Deck generation has not completed yet.",
+    )
 
 
 async def get_game_reveal(

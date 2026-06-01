@@ -26,12 +26,12 @@ from .schemas import (
 )
 
 
-async def fetch_latest_deck(
+async def fetch_latest_deck_row(
     session: AsyncSession,
     game_id: int,
     spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
-) -> ScrollDownMlbDeckResponse | None:
-    """Return the most recently generated deck for `game_id`, or None."""
+) -> ScrollDownMlbDeck | None:
+    """Return the latest persisted deck row for `game_id`, or None."""
     stmt = (
         select(ScrollDownMlbDeck)
         .where(
@@ -42,7 +42,16 @@ async def fetch_latest_deck(
         .limit(1)
     )
     result = await session.execute(stmt)
-    row = result.scalar_one_or_none()
+    return result.scalar_one_or_none()
+
+
+async def fetch_latest_deck(
+    session: AsyncSession,
+    game_id: int,
+    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
+) -> ScrollDownMlbDeckResponse | None:
+    """Return the most recently generated deck for `game_id`, or None."""
+    row = await fetch_latest_deck_row(session, game_id, spoiler_policy)
     if row is None:
         return None
     return ScrollDownMlbDeckResponse.model_validate(row.payload_json)

@@ -18,6 +18,7 @@ from ...db.sports import (
     SportsPlayerBoxscore,
     SportsTeamBoxscore,
 )
+from ...services.nhl_context import build_nhl_play_situation, nhl_consumer_play_metadata
 from .schemas import (
     MLBBatterStat,
     MLBPitcherStat,
@@ -96,7 +97,23 @@ def _play_situations(
     period_label: str | None,
     time_label_value: str | None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    if (league_code or "").upper() != "MLB" or not raw_data:
+    code = (league_code or "").upper()
+    if not raw_data:
+        return None, None
+
+    if code == "NHL":
+        before = build_nhl_play_situation(
+            raw_data=raw_data,
+            period_ordinal=play.quarter,
+            period_label=period_label,
+            clock_label=time_label_value or play.game_clock,
+            team_abbr=team_abbr,
+            player_name=play.player_name,
+            play_type=play.play_type,
+        )
+        return before, None
+
+    if code != "MLB":
         return None, None
 
     before = _mlb_situation(
@@ -313,6 +330,8 @@ def _consumer_play_metadata(raw_data: dict[str, Any]) -> dict[str, Any] | None:
         "winProbabilityDelta",
     ]
     values = {key: raw_data[key] for key in allowed_keys if key in raw_data}
+    if "situation_code" in raw_data or "type_desc_key" in raw_data:
+        values.update(nhl_consumer_play_metadata(raw_data) or {})
     return values or None
 
 

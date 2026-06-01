@@ -13,6 +13,9 @@ When DataGolf later publishes their field via sync_field, their entries
 upsert by (tournament_id, dg_id). Players we created with synthetic IDs
 stay alongside; players DataGolf knows get real leaderboard data.
 
+Kept as one setup script because the embedded field list and one-off DB writes
+are operated together; see docs/audits/cleanup-report.md for the size rationale.
+
 Usage:
     python scripts/setup_masters_pool.py              # full setup (draft)
     python scripts/setup_masters_pool.py --open       # setup + open for entries
@@ -639,8 +642,8 @@ def main():
     print(f"  Field size:       {len(full_field)} players")
     print(f"    DataGolf-matched: {dg_count}")
     print(f"    Synthetic IDs:    {syn_count} (amateurs / --other)")
-    print(f"  Entry opens:      April 1, 2026")
-    print(f"  Entry deadline:   April 9, 2026 at 8:00 AM ET")
+    print("  Entry opens:      April 1, 2026")
+    print("  Entry deadline:   April 9, 2026 at 8:00 AM ET")
     print(f"  Status:           {initial_status}")
     print()
     print("  RVCC Rules:")
@@ -651,10 +654,10 @@ def main():
     print("    - Lowest aggregate score wins")
     print()
     print("  Lifecycle (auto-managed):")
-    print(f"    Now         -> status='open', entries accepted")
-    print(f"    Apr 9 8a ET -> auto-locked (entry_deadline passed)")
-    print(f"    Apr 9 2p ET -> auto-activated (scoring_starts_at in rules_json)")
-    print(f"                   status='live', scoring_enabled=true")
+    print("    Now         -> status='open', entries accepted")
+    print("    Apr 9 8a ET -> auto-locked (entry_deadline passed)")
+    print("    Apr 9 2p ET -> auto-activated (scoring_starts_at in rules_json)")
+    print("                   status='live', scoring_enabled=true")
     print(f"    Apr 12      -> PATCH /api/golf/pools/{pool_id} {{status: 'final'}}")
     print()
     print("  Frontend endpoints:")

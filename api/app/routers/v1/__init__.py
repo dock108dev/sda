@@ -6,6 +6,7 @@ All routes under /api/v1/ are consumer-facing with read-only auth scope.
 from fastapi import APIRouter, Depends
 
 from app.dependencies.consumer_auth import verify_consumer_api_key
+from app.feed import router as feed_router
 
 from . import games
 
@@ -15,5 +16,6 @@ router = APIRouter(
     dependencies=[Depends(verify_consumer_api_key)],
 )
 router.include_router(games.router)
+router.include_router(feed_router)
 
 __all__ = ["router"]

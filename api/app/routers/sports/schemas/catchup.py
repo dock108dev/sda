@@ -31,6 +31,8 @@ class CatchupGameSummary(BaseModel):
     local_game_date: date | None = Field(None, alias="localGameDate")
     home_team: str = Field(..., alias="homeTeam")
     away_team: str = Field(..., alias="awayTeam")
+    home_team_id: int | None = Field(None, alias="homeTeamId")
+    away_team_id: int | None = Field(None, alias="awayTeamId")
     home_team_abbr: str | None = Field(None, alias="homeTeamAbbr")
     away_team_abbr: str | None = Field(None, alias="awayTeamAbbr")
     status: str | None = None
@@ -42,6 +44,7 @@ class CatchupGameSummary(BaseModel):
     has_player_stats: bool = Field(False, alias="hasPlayerStats")
     has_pbp: bool = Field(False, alias="hasPbp")
     play_count: int = Field(0, alias="playCount")
+    estimated_reading_minutes: int | None = Field(None, alias="estimatedReadingMinutes")
     context: list[str] = Field(default_factory=list)
     context_source: str = Field("template", alias="contextSource")
 
@@ -79,8 +82,6 @@ class CatchupGameMeta(CatchupGameSummary):
 
     season: int
     season_type: str | None = Field(None, alias="seasonType")
-    home_team_id: int | None = Field(None, alias="homeTeamId")
-    away_team_id: int | None = Field(None, alias="awayTeamId")
     score: ScoreObject | None = None
     last_scraped_at: datetime | None = Field(None, alias="lastScrapedAt")
     last_ingested_at: datetime | None = Field(None, alias="lastIngestedAt")

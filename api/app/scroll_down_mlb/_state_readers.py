@@ -110,6 +110,12 @@ _BASE_KEYS: dict[str, str] = {
 }
 
 
+def _base_slot(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    return _BASE_KEYS.get(str(raw).strip().lower())
+
+
 def _read_base_state(raw: Any) -> dict[str, bool] | None:
     if raw is None:
         return None
@@ -141,6 +147,30 @@ def _read_base_state(raw: Any) -> dict[str, bool] | None:
     return None
 
 
+def _read_mlb_runner_base_state(raw: Any, *, after: bool) -> dict[str, bool] | None:
+    if not isinstance(raw, list):
+        return None
+    occupied: dict[str, bool] = {"first": False, "second": False, "third": False}
+    found = False
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        movement = entry.get("movement")
+        if not isinstance(movement, dict):
+            continue
+        base = movement.get("end") if after else movement.get("originBase")
+        if base is None and not after:
+            base = movement.get("start")
+        slot = _base_slot(base)
+        if not slot:
+            continue
+        found = True
+        if after and movement.get("isOut") is True:
+            continue
+        occupied[slot] = True
+    return occupied if found else None
+
+
 def read_base_state_before(play: dict[str, Any]) -> dict[str, bool] | None:
     """Read "bases before this play" — *Before-keyed fields only.
 
@@ -154,6 +184,7 @@ def read_base_state_before(play: dict[str, Any]) -> dict[str, bool] | None:
         or _read_base_state(play.get("runnersBefore"))
         or _read_base_state(play.get("baseRunnersBefore"))
         or _read_base_state(play.get("basesBefore"))
+        or _read_mlb_runner_base_state(play.get("runners"), after=False)
     )
 
 
@@ -164,6 +195,7 @@ def read_base_state_after(play: dict[str, Any]) -> dict[str, bool] | None:
         or _read_base_state(play.get("runnersAfter"))
         or _read_base_state(play.get("baseRunnersAfter"))
         or _read_base_state(play.get("basesAfter"))
+        or _read_mlb_runner_base_state(play.get("runners"), after=True)
     )
 
 
@@ -177,6 +209,7 @@ def read_upstream_runner_names_before(play: dict[str, Any]) -> dict[str, str] | 
     return (
         read_upstream_runner_names(play.get("runnersBefore"))
         or read_upstream_runner_names(play.get("baseRunnersBefore"))
+        or _read_mlb_runner_names(play.get("runners"), after=False)
     )
 
 
@@ -282,7 +315,40 @@ def read_upstream_runner_names(raw: Any) -> dict[str, str] | None:
                     names[slot] = label
         if names:
             return names
+        mlb_names = _read_mlb_runner_names(raw, after=True)
+        if mlb_names:
+            return mlb_names
     return None
+
+
+def _read_mlb_runner_names(raw: Any, *, after: bool) -> dict[str, str] | None:
+    if not isinstance(raw, list):
+        return None
+    names: dict[str, str] = {}
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        movement = entry.get("movement")
+        if not isinstance(movement, dict):
+            continue
+        base = movement.get("end") if after else movement.get("originBase")
+        if base is None and not after:
+            base = movement.get("start")
+        slot = _base_slot(base)
+        if not slot:
+            continue
+        if after and movement.get("isOut") is True:
+            continue
+        details = entry.get("details")
+        runner = details.get("runner") if isinstance(details, dict) else None
+        name = runner.get("fullName") if isinstance(runner, dict) else None
+        if not isinstance(name, str) or not name.strip():
+            name = entry.get("name") or entry.get("runnerName") or entry.get("playerName")
+        if isinstance(name, str) and name.strip():
+            label = normalize_runner_label(name)
+            if label:
+                names[slot] = label
+    return names or None
 
 
 # ---------------------------------------------------------------------------
@@ -299,7 +365,14 @@ def inning_half_from_upstream(
     inferring from `teamAbbreviation` vs `home_team_abbr` (home batting
     means bottom-half).
     """
-    phase = (play.get("phase") or "").strip().lower()
+    explicit_half = read_str(
+        play.get("phase"),
+        play.get("halfInning"),
+        play.get("half_inning"),
+        play.get("inningHalf"),
+        play.get("half"),
+    )
+    phase = (explicit_half or "").strip().lower()
     if phase:
         if re.match(r"^(t|top|t1|0)$", phase):
             return "top"
@@ -309,6 +382,11 @@ def inning_half_from_upstream(
             return "top"
         if "bot" in phase:
             return "bottom"
+    is_top = play.get("isTopInning")
+    if is_top is None:
+        is_top = play.get("is_top_inning")
+    if isinstance(is_top, bool):
+        return "top" if is_top else "bottom"
     label = (play.get("periodLabel") or "").strip().upper()
     if label:
         if label.startswith("TOP") or label.startswith("T ") or label == "T":

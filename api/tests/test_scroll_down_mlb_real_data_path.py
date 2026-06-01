@@ -1,15 +1,16 @@
 """Phase 5 integration tests — service flow against mocked DB sessions.
 
 These tests prove the real-data path behaves correctly without requiring
-a live Postgres. They cover the five branches the service has to handle:
+a live Postgres. They cover the read branches the service has to handle:
 
   1. Game not found → None
   2. Game pregame   → None
-  3. Game live      → fresh build, no persistence
-  4. Game final     + no persisted deck → build + freeze
+  3. Game live      → serve persisted artifact
+  4. Game final     + no persisted deck → pending fallback
   5. Game final     + persisted deck    → serve persisted, no rebuild
 
-Plus the recap-fallback shape for `get_game_reveal`.
+Plus the explicit precompute branches and recap-fallback shape for
+`get_game_reveal`.
 """
 
 from __future__ import annotations
@@ -27,10 +28,13 @@ from app.scroll_down_mlb._pipeline import (
     _source_hash,
     compute_deck_version_from_components,
 )
+from app.scroll_down_mlb.precompute import GameDeckMetadata
 from app.scroll_down_mlb.schemas import (
+    DeckGenerationStatus,
     GenerationPolicy,
     PlannerReport,
     ScrollDownMlbDeckResponse,
+    TeamSummary,
 )
 
 _FIXTURES_DIR = (
@@ -62,6 +66,32 @@ def _load_fixture_payload(
     return payload
 
 
+def _metadata(
+    game_id: int = 190121,
+    *,
+    is_final: bool = False,
+    is_pregame: bool = False,
+):
+    return GameDeckMetadata(
+        game_id=game_id,
+        status="final" if is_final else "scheduled" if is_pregame else "live",
+        is_final=is_final,
+        is_pregame=is_pregame,
+        home_team=TeamSummary(
+            id="home",
+            abbreviation="HME",
+            display_name="Home",
+        ),
+        away_team=TeamSummary(
+            id="away",
+            abbreviation="AWY",
+            display_name="Away",
+        ),
+        first_pitch=datetime.now(UTC),
+        venue="Test Park",
+    )
+
+
 # ---------------------------------------------------------------------------
 # get_game_deck — five branches
 # ---------------------------------------------------------------------------
@@ -70,7 +100,11 @@ def _load_fixture_payload(
 @pytest.mark.asyncio
 async def test_get_game_deck_returns_none_when_game_missing() -> None:
     session = AsyncMock()
-    with patch.object(service, "load_game_payload", AsyncMock(return_value=None)):
+    with patch.object(
+        service,
+        "load_game_deck_metadata",
+        AsyncMock(return_value=None),
+    ):
         result = await service.get_game_deck(session, "190203")
     assert result is None
 
@@ -85,18 +119,11 @@ async def test_get_game_deck_returns_none_for_invalid_id() -> None:
 @pytest.mark.asyncio
 async def test_get_game_deck_returns_none_for_pregame() -> None:
     session = AsyncMock()
-    pregame = {
-        "game": {
-            "id": 190203,
-            "isPregame": True,
-            "isFinal": False,
-            "isLive": False,
-            "status": "scheduled",
-        },
-        "plays": [],
-        "mlbPitchers": [],
-    }
-    with patch.object(service, "load_game_payload", AsyncMock(return_value=pregame)):
+    with patch.object(
+        service,
+        "load_game_deck_metadata",
+        AsyncMock(return_value=_metadata(190203, is_pregame=True)),
+    ):
         result = await service.get_game_deck(session, "190203")
     assert result is None
 
@@ -107,118 +134,88 @@ async def test_get_game_deck_serves_persisted_official_when_present() -> None:
     the builder must not run a second time, and the wire shape comes
     straight from the stored payload."""
     session = AsyncMock()
-    final_payload = _load_fixture_payload("190121")
 
     persisted = ScrollDownMlbDeckResponse(
         game_id="190121",
         deck_version="frozen-v1",
         generated_at=datetime.now(UTC),
         is_final=True,
+        generation_status=DeckGenerationStatus.ready,
         cards=[],
         planner_report=PlannerReport(),
         validation_warnings=[],
     )
 
     with (
-        patch.object(service, "load_game_payload", AsyncMock(return_value=final_payload)),
+        patch.object(
+            service,
+            "load_game_deck_metadata",
+            AsyncMock(return_value=_metadata(is_final=True)),
+        ),
         patch.object(persistence, "fetch_official_deck", AsyncMock(return_value=persisted)),
         patch.object(persistence, "upsert_deck", AsyncMock()) as upsert,
+        patch.object(service, "build_deck_from_upstream") as builder,
     ):
         result = await service.get_game_deck(session, "190121")
 
     assert result is not None
     assert result.deck_version == "frozen-v1"
+    builder.assert_not_called()
     upsert.assert_not_awaited()  # No regeneration on a hit.
 
 
 @pytest.mark.asyncio
-async def test_get_game_deck_builds_and_freezes_final_without_persisted() -> None:
-    """A final game with no persisted deck must build, validate, and call
-    `upsert_deck`. Subsequent fetches would then hit the persisted path."""
+async def test_get_game_deck_returns_pending_fallback_without_persisted() -> None:
+    """A read with no persisted artifact reports pending without building."""
     session = AsyncMock()
-    final_payload = _load_fixture_payload("190121")
 
-    upsert = AsyncMock()
     with (
-        patch.object(service, "load_game_payload", AsyncMock(return_value=final_payload)),
+        patch.object(
+            service,
+            "load_game_deck_metadata",
+            AsyncMock(return_value=_metadata(is_final=True)),
+        ),
         patch.object(persistence, "fetch_official_deck", AsyncMock(return_value=None)),
-        patch.object(persistence, "upsert_deck", upsert),
+        patch.object(service, "build_deck_from_upstream") as builder,
+        patch.object(persistence, "upsert_deck", AsyncMock()) as upsert,
     ):
         result = await service.get_game_deck(session, "190121")
 
     assert result is not None
     assert result.is_final
-    assert result.deck_version.startswith("official-")
-    upsert.assert_awaited_once()
-    # Must commit so the freeze is durable on the same request.
-    session.commit.assert_awaited()
+    assert result.generation_status is DeckGenerationStatus.pending
+    builder.assert_not_called()
+    upsert.assert_not_awaited()
+    session.commit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_get_game_deck_live_builds_without_persisting() -> None:
-    """Live games must NOT freeze a deck. Each poll runs the builder,
-    deckVersion shifts when source data shifts."""
+async def test_get_game_deck_live_serves_persisted_latest() -> None:
+    """Live reads return the latest precomputed artifact."""
     session = AsyncMock()
-    live_payload = _load_fixture_payload("190121", is_final=False)
+    persisted = ScrollDownMlbDeckResponse(
+        game_id="190121",
+        deck_version="live-v1",
+        generated_at=datetime.now(UTC),
+        is_final=False,
+        generation_status=DeckGenerationStatus.ready,
+    )
 
-    upsert = AsyncMock()
     with (
-        patch.object(service, "load_game_payload", AsyncMock(return_value=live_payload)),
-        patch.object(persistence, "fetch_official_deck", AsyncMock(return_value=None)),
-        patch.object(persistence, "upsert_deck", upsert),
+        patch.object(
+            service,
+            "load_game_deck_metadata",
+            AsyncMock(return_value=_metadata(is_final=False)),
+        ),
+        patch.object(persistence, "fetch_latest_deck", AsyncMock(return_value=persisted)),
+        patch.object(service, "build_deck_from_upstream") as builder,
     ):
         result = await service.get_game_deck(session, "190121")
 
     assert result is not None
     assert not result.is_final
-    assert result.deck_version.startswith("live-")
-    upsert.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_get_game_deck_live_deck_version_stable_when_source_unchanged() -> None:
-    """Polling the same upstream payload twice must produce the same
-    `deckVersion`. This is the load-bearing invariant for the
-    'New moments available' banner."""
-    session = AsyncMock()
-    live_payload = _load_fixture_payload("190121")
-    live_payload["game"]["isFinal"] = False
-    live_payload["game"]["isLive"] = True
-    live_payload["game"]["status"] = "live"
-
-    with (
-        patch.object(service, "load_game_payload", AsyncMock(return_value=live_payload)),
-        patch.object(persistence, "fetch_official_deck", AsyncMock(return_value=None)),
-        patch.object(persistence, "upsert_deck", AsyncMock()),
-    ):
-        first = await service.get_game_deck(session, "190121")
-        second = await service.get_game_deck(session, "190121")
-
-    assert first is not None and second is not None
-    assert first.deck_version == second.deck_version
-
-
-@pytest.mark.asyncio
-async def test_get_game_deck_live_deck_version_changes_on_new_play() -> None:
-    """Adding a play to the upstream payload must produce a new
-    `deckVersion` so the frontend banner triggers."""
-    session = AsyncMock()
-    payload_a = _load_fixture_payload("190121", is_final=False)
-    payload_b = _load_fixture_payload("190121", is_final=False)
-    # Truncate one play in payload A so payload B has one extra.
-    payload_a["plays"] = payload_a["plays"][:-1]
-
-    with (
-        patch.object(persistence, "fetch_official_deck", AsyncMock(return_value=None)),
-        patch.object(persistence, "upsert_deck", AsyncMock()),
-    ):
-        with patch.object(service, "load_game_payload", AsyncMock(return_value=payload_a)):
-            first = await service.get_game_deck(session, "190121")
-        with patch.object(service, "load_game_payload", AsyncMock(return_value=payload_b)):
-            second = await service.get_game_deck(session, "190121")
-
-    assert first is not None and second is not None
-    assert first.deck_version != second.deck_version
+    assert result.deck_version == "live-v1"
+    builder.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

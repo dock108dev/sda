@@ -5,10 +5,6 @@ Revises: nhl_toi_001
 Create Date: 2026-03-27
 """
 
-from __future__ import annotations
-
-import sqlalchemy as sa
-
 from alembic import op
 
 revision = "game_ingest_errors_001"
