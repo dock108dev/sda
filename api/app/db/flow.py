@@ -82,6 +82,80 @@ class SportsGameTimelineArtifact(Base):
     )
 
 
+class SportsGameCardFeedArtifact(Base):
+    """Materialized normalized card feed for the Scroll Down app."""
+
+    __tablename__ = "sports_game_card_feed_artifacts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("sports_games.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    contract_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    spoiler_policy: Mapped[str] = mapped_column(String(32), nullable=False)
+    generation_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    card_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_play_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    game_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        server_default=text("'{}'::jsonb"),
+        nullable=False,
+    )
+    reveal_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        server_default=text("'{}'::jsonb"),
+        nullable=False,
+    )
+    sections_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        server_default=text("'[]'::jsonb"),
+        nullable=False,
+    )
+    cards_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        server_default=text("'[]'::jsonb"),
+        nullable=False,
+    )
+    validation_issues_json: Mapped[list[str]] = mapped_column(
+        JSONB,
+        server_default=text("'[]'::jsonb"),
+        nullable=False,
+    )
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    generator_label: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    game: Mapped[SportsGame] = relationship("SportsGame")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "game_id",
+            "contract_version",
+            "spoiler_policy",
+            name="uq_sports_game_card_feed_artifacts_game_contract_policy",
+        ),
+        Index("idx_sports_game_card_feed_artifacts_game", "game_id"),
+        Index(
+            "idx_sports_game_card_feed_artifacts_generated_at",
+            "generated_at",
+        ),
+    )
+
+
 class SportsGameFlow(Base):
     """AI-generated game flows as condensed moments."""
 
@@ -153,5 +227,3 @@ class SportsGameFlow(Base):
         Index("idx_game_stories_sport", "sport"),
         Index("idx_game_stories_generated_at", "generated_at"),
     )
-
-

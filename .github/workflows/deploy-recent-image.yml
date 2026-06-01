@@ -137,6 +137,13 @@ jobs:
               exit 1
             fi
 
+            echo "Refreshing Scroll Down card feeds for deploy window..."
+            python3 ../scripts/refresh_card_feeds.py \
+              --base-url http://localhost:8000 \
+              --env-file .env \
+              --lookback-hours 72 \
+              --lookahead-hours 72
+
             echo "Verifying Scroll Down normalized card feed..."
             python3 ../scripts/validate_scroll_down_feed.py \
               --base-url http://localhost:8000 \

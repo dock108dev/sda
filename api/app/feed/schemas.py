@@ -10,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.routers.sports.schemas.common import PlayImportance, PlayModeEligibility, ScoreObject
 
+CARD_FEED_CONTRACT_VERSION = 2
+
 
 class SpoilerPolicy(str, Enum):
     """Score disclosure policy for feed card responses."""
@@ -241,7 +243,7 @@ class CardFeedResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    contract_version: int = Field(1, alias="contractVersion")
+    contract_version: int = Field(CARD_FEED_CONTRACT_VERSION, alias="contractVersion")
     game: CardGameMetadata
     spoiler_policy: SpoilerPolicy = Field(..., alias="spoilerPolicy")
     generation: FeedGenerationStatus

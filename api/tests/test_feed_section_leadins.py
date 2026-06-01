@@ -17,6 +17,7 @@ def _card(play_index: int, raw: dict) -> NarrativeCard:
         contentDepth="standard",
         modeEligibility=PlayModeEligibility(important=False, standard=True, all=True),
         importance=PlayImportance(level="secondary", reasons=[], isKeyMoment=False),
+        renderType="standard_pbp",
         visualImportance="medium",
         period=CardPeriod(ordinal=1, label="Q1", type="REG"),
         displayTime="Q1 08:00",

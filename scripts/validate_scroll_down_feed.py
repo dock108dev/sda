@@ -244,8 +244,8 @@ def _validate_feed(
     min_cards: int,
 ) -> tuple[int, str]:
     _require_keys(payload, {"contractVersion", "game", "generation", "reveal", "cards"}, scope="feed")
-    if int(payload["contractVersion"]) < 1:
-        raise ValidationError(f"game {game_id} contractVersion must be >= 1")
+    if int(payload["contractVersion"]) < 2:
+        raise ValidationError(f"game {game_id} contractVersion must be >= 2")
     game = payload["game"]
     if not isinstance(game, dict) or game.get("gameId") != game_id:
         raise ValidationError(f"game {game_id} feed game identity mismatch")

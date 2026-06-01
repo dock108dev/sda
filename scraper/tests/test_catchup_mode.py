@@ -46,6 +46,6 @@ print("CELERY=" + json.dumps(payload))
         "task": "poll_live_pbp",
         "calendar_task": "poll_game_calendars",
         "schedule_args": None,
-        "routes": ["poll_game_calendars", "poll_live_pbp"],
+        "routes": ["poll_game_calendars", "poll_live_pbp", "refresh_card_feeds"],
         "has_catchup_only_setting": False,
     }
