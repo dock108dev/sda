@@ -291,7 +291,8 @@ print("APP=" + json.dumps(payload))
     assert "/api/admin/sports/games/{game_id}/context" in routes
     assert "/api/admin/sports/games/{game_id}/admin-detail" in routes
     assert "/api/v1/games" in routes
-    assert "/api/v1/games/{game_id}" in routes
+    assert "/api/v1/feed/games/{game_id}/cards" in routes
+    assert "/api/v1/games/{game_id}" not in routes
     assert (
         sum(
             1
@@ -316,7 +317,8 @@ print("APP=" + json.dumps(payload))
     assert "/api/admin/coverage-report" in routes
     assert "/api/admin/tasks/registry" in routes
     assert "/api/v1/games" in routes
-    assert "/api/v1/games/{game_id}" in routes
+    assert "/api/v1/feed/games/{game_id}/cards" in routes
+    assert "/api/v1/games/{game_id}" not in routes
     assert "/api/v1/games/{game_id}/summary" in routes
     assert not any(route.startswith("/api/admin/golf") for route in routes)
     assert not any(route.startswith("/api/golf") for route in routes)
