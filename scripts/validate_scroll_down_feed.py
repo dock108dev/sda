@@ -10,6 +10,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -89,32 +90,60 @@ def _request_json(base_url: str, path: str, api_key: str | None) -> dict[str, An
     return data
 
 
-def _select_game_ids(
+def _select_game_targets(
     *,
     base_url: str,
     api_key: str | None,
     explicit_ids: list[int],
     limit: int,
+    lookback_days: int,
+    lookahead_days: int,
+    max_pages: int,
 ) -> list[int]:
     if explicit_ids:
         return explicit_ids
-    payload = _request_json(base_url, f"/api/v1/games?limit={limit}", api_key)
-    games = payload.get("games")
-    if not isinstance(games, list):
-        raise ValidationError("/api/v1/games payload missing games[]")
-    selected = [
-        int(game["id"])
-        for game in games
-        if isinstance(game, dict)
-        and isinstance(game.get("id"), int)
-        and bool(game.get("hasPbp"))
-        and int(game.get("playCount") or 0) > 0
-    ]
-    if not selected:
-        raise ValidationError(
-            f"/api/v1/games?limit={limit} returned no games with hasPbp=true and playCount>0"
+    today = datetime.now(UTC).date()
+    start_date = today - timedelta(days=max(0, lookback_days))
+    end_date = today + timedelta(days=max(0, lookahead_days))
+    all_games: list[dict[str, Any]] = []
+    pbp_ids: list[int] = []
+    pages_scanned = 0
+    for page in range(max(1, max_pages)):
+        offset = page * limit
+        query = urllib.parse.urlencode(
+            {
+                "limit": limit,
+                "offset": offset,
+                "startDate": start_date.isoformat(),
+                "endDate": end_date.isoformat(),
+                "sort": "chronological",
+            }
         )
-    return selected
+        payload = _request_json(base_url, f"/api/v1/games?{query}", api_key)
+        games = payload.get("games")
+        if not isinstance(games, list):
+            raise ValidationError("/api/v1/games payload missing games[]")
+        pages_scanned += 1
+        all_games.extend(game for game in games if isinstance(game, dict))
+        pbp_ids.extend(
+            int(game["id"])
+            for game in games
+            if isinstance(game, dict)
+            and isinstance(game.get("id"), int)
+            and bool(game.get("hasPbp"))
+            and int(game.get("playCount") or 0) > 0
+        )
+        next_offset = payload.get("nextOffset")
+        if not next_offset or not games:
+            break
+    if pbp_ids:
+        return pbp_ids
+    raise ValidationError(
+        "no games with hasPbp=true and playCount>0 found "
+        f"from {start_date.isoformat()} through {end_date.isoformat()} "
+        f"after scanning {len(all_games)} games across {pages_scanned} page(s). "
+        "Run poll_live_pbp/backfill or widen --lookback-days and retry."
+    )
 
 
 def _require_keys(source: dict[str, Any], keys: set[str], *, scope: str) -> None:
@@ -258,14 +287,17 @@ def _validate_summary(
 
 def validate(args: argparse.Namespace) -> list[str]:
     api_key = _resolve_api_key(args)
-    game_ids = _select_game_ids(
+    targets = _select_game_targets(
         base_url=args.base_url,
         api_key=api_key,
         explicit_ids=args.game_id,
         limit=args.limit,
+        lookback_days=args.lookback_days,
+        lookahead_days=args.lookahead_days,
+        max_pages=args.max_pages,
     )
     lines: list[str] = []
-    for game_id in game_ids[: args.max_games]:
+    for game_id in targets[: args.max_games]:
         feed = _request_json(
             args.base_url,
             f"/api/v1/feed/games/{game_id}/cards?spoilerPolicy=pre_reveal",
@@ -287,9 +319,7 @@ def validate(args: argparse.Namespace) -> list[str]:
                 game_id=game_id,
                 require_summary=args.require_summary,
             )
-        lines.append(
-            f"OK game={game_id} cards={card_count} generation={status}{summary_note}"
-        )
+        lines.append(f"OK game={game_id} cards={card_count} generation={status}{summary_note}")
     return lines
 
 
@@ -299,7 +329,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--env-file", default=os.getenv("DEPLOY_ENV_FILE", "infra/.env"))
     parser.add_argument("--game-id", type=int, action="append", default=[])
-    parser.add_argument("--limit", type=int, default=25)
+    parser.add_argument("--limit", type=int, default=200)
+    parser.add_argument("--lookback-days", type=int, default=30)
+    parser.add_argument("--lookahead-days", type=int, default=2)
+    parser.add_argument("--max-pages", type=int, default=5)
     parser.add_argument("--max-games", type=int, default=2)
     parser.add_argument("--min-cards", type=int, default=1)
     parser.add_argument("--no-debug", dest="debug", action="store_false", default=True)

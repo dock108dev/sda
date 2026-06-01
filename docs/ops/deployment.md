@@ -18,10 +18,25 @@ docker compose --profile prod up -d --remove-orphans
 The full CI/CD workflow in `.github/workflows/backend-ci-cd.yml` can also build, push, and deploy when manually dispatched with `full_deploy=true`.
 
 Both deploy workflows run the Scroll Down card-feed smoke check after the API
-container is healthy. The check calls `/api/v1/games`, selects games with
-play-by-play, then validates `/api/v1/feed/games/{game_id}/cards` for the
-frontend contract: cards, `importance`, `modeEligibility`, `visualImportance`,
-`leadIn`, and non-duplicated important-card `stageSetting`.
+container is healthy. The check scans a dated `/api/v1/games` window with
+pagination, selects games with play-by-play, then validates
+`/api/v1/feed/games/{game_id}/cards` for the frontend contract: cards,
+`importance`, `modeEligibility`, `visualImportance`, `leadIn`, and
+non-duplicated important-card `stageSetting`.
+
+The smoke check intentionally fails when the scanned window has no games with
+`hasPbp=true` and `playCount>0`. That is a data-ingestion problem, not a valid
+consumer route contract. Run `poll_live_pbp`, backfill the relevant window, or
+widen `--lookback-days` for manual diagnosis.
+
+Manual PBP refresh:
+
+```bash
+curl -X POST http://localhost:8000/api/admin/tasks/trigger \
+  -H "X-API-Key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"task_name": "poll_live_pbp", "args": []}'
+```
 
 Equivalent manual verification:
 

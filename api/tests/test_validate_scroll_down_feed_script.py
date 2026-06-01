@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import urllib.parse
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -104,3 +105,79 @@ def test_validator_prefers_env_file_consumer_key_over_process_admin_key(
     monkeypatch.setenv("API_KEY", "process-admin-key")
 
     assert validator._resolve_api_key(args) == "consumer-key"
+
+
+def test_selector_scans_dated_pages_for_pbp_games(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen_paths: list[str] = []
+
+    def fake_request_json(base_url: str, path: str, api_key: str | None):
+        seen_paths.append(path)
+        parsed = urllib.parse.urlparse(path)
+        assert parsed.path == "/api/v1/games"
+        query = urllib.parse.parse_qs(parsed.query)
+        assert query["limit"] == ["200"]
+        assert query["sort"] == ["chronological"]
+        assert "startDate" in query
+        assert "endDate" in query
+        if query["offset"] == ["0"]:
+            return {
+                "games": [{"id": 99, "hasPbp": False, "playCount": 0}],
+                "nextOffset": 200,
+            }
+        if query["offset"] == ["200"]:
+            return {
+                "games": [{"id": 100, "hasPbp": True, "playCount": 18}],
+                "nextOffset": None,
+            }
+        raise AssertionError(f"unexpected path: {path}")
+
+    monkeypatch.setattr(validator, "_request_json", fake_request_json)
+
+    assert validator._select_game_targets(
+        base_url="http://example.test",
+        api_key="key",
+        explicit_ids=[],
+        limit=200,
+        lookback_days=30,
+        lookahead_days=2,
+        max_pages=5,
+    ) == [100]
+    assert len(seen_paths) == 2
+
+
+def test_selector_fails_when_dated_window_has_no_pbp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        validator,
+        "_request_json",
+        lambda base_url, path, api_key: {
+            "games": [{"id": 99, "hasPbp": False, "playCount": 0}],
+            "nextOffset": None,
+        },
+    )
+
+    with pytest.raises(validator.ValidationError, match="Run poll_live_pbp/backfill"):
+        validator._select_game_targets(
+            base_url="http://example.test",
+            api_key="key",
+            explicit_ids=[],
+            limit=200,
+            lookback_days=30,
+            lookahead_days=2,
+            max_pages=5,
+        )
+
+
+def test_selector_keeps_explicit_game_ids_strict() -> None:
+    assert validator._select_game_targets(
+        base_url="http://example.test",
+        api_key="key",
+        explicit_ids=[190584, 190552],
+        limit=200,
+        lookback_days=30,
+        lookahead_days=2,
+        max_pages=5,
+    ) == [190584, 190552]
