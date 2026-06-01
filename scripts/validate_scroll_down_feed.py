@@ -27,6 +27,7 @@ ALLOWED_IMPORTANCE_LEVELS = {"primary", "secondary", "tertiary"}
 ALLOWED_VISUAL_IMPORTANCE = {"critical", "high", "medium", "low"}
 IMPORTANT_LEVELS = {"primary"}
 IMPORTANT_VISUALS = {"critical", "high"}
+REQUEST_TIMEOUT_SECONDS = 60
 
 
 class ValidationError(RuntimeError):
@@ -77,7 +78,7 @@ def _request_json(base_url: str, path: str, api_key: str | None) -> dict[str, An
     if api_key:
         request.add_header("X-API-Key", api_key)
     try:
-        with urllib.request.urlopen(request, timeout=15) as response:
+        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             status = response.status
             payload = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
@@ -85,6 +86,10 @@ def _request_json(base_url: str, path: str, api_key: str | None) -> dict[str, An
         raise ValidationError(f"{path} returned HTTP {exc.code}: {detail[:300]}") from exc
     except urllib.error.URLError as exc:
         raise ValidationError(f"{path} request failed: {exc}") from exc
+    except TimeoutError as exc:
+        raise ValidationError(
+            f"{path} request timed out after {REQUEST_TIMEOUT_SECONDS}s"
+        ) from exc
     if status != 200:
         raise ValidationError(f"{path} returned HTTP {status}")
     try:
