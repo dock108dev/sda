@@ -140,6 +140,11 @@ def test_basketball_card_context_promotes_scoring_run_from_configured_threshold(
     assert context["flags"]["isRunEnding"] is True
     assert "9-0 home run" in card["situation"]["summary"]
 
+    pre_reveal_card = _cards(game, SpoilerPolicy.pre_reveal)[-1]
+    assert pre_reveal_card["stageSetting"] != pre_reveal_card["leadIn"]
+    assert pre_reveal_card["stageSetting"].startswith("Q2 07:05")
+    assert "run" not in pre_reveal_card["stageSetting"].lower()
+
 
 def test_basketball_card_context_flags_lead_change_and_tying_play() -> None:
     lead_change_game = _game("NBA")

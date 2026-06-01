@@ -301,3 +301,34 @@ def test_nhl_card_context_flags_goalie_pulled_and_empty_net() -> None:
     assert context["event"]["emptyNet"] is True
     assert context["flags"]["isGoaliePulled"] is True
     assert context["flags"]["isEmptyNet"] is True
+
+
+def test_nhl_pre_reveal_empty_net_goal_keeps_neutral_stage_setting() -> None:
+    game = _game()
+    game.plays = [
+        _play(
+            game_id=game.id,
+            play_index=601,
+            period=3,
+            clock="03:41",
+            play_type="goal",
+            team=game.home_team,
+            player_name="Seth Jarvis",
+            description="Goal by Seth Jarvis (snap)",
+            home_score=6,
+            away_score=1,
+            situation_code="0651",
+            details={
+                "shotType": "snap",
+                "homeScore": 6,
+                "awayScore": 1,
+            },
+        )
+    ]
+
+    card = _cards(game, SpoilerPolicy.pre_reveal)[0]
+
+    assert card["stageSetting"] != card["leadIn"]
+    assert card["stageSetting"] == "P3 03:41, penalty kill, goal"
+    assert "empty net" not in card["stageSetting"].lower()
+    assert "late close" not in card["stageSetting"].lower()

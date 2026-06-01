@@ -129,8 +129,7 @@ def validate_card_text(
     if not text.strip():
         return findings
 
-    lowered = text.lower()
-    has_future_phrase = any(phrase in lowered for phrase in _FUTURE_PHRASES)
+    has_future_phrase = _has_future_phrase(text)
     if has_future_phrase:
         findings.append(_finding("narrative_future_spoiler_phrase", "warning", "serve", field))
 
@@ -250,8 +249,16 @@ def _player_findings(
 
 
 def _has_outcome_language(text: str) -> bool:
-    lowered = text.lower()
-    return _WINNER_RE.search(text) is not None or any(phrase in lowered for phrase in _FUTURE_PHRASES)
+    return _WINNER_RE.search(text) is not None or _has_future_phrase(text)
+
+
+def _has_future_phrase(text: str) -> bool:
+    return any(_contains_phrase(text, phrase) for phrase in _FUTURE_PHRASES)
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    pattern = r"\s+".join(re.escape(part) for part in phrase.split())
+    return bool(re.search(rf"(?<!\w){pattern}(?!\w)", text, flags=re.IGNORECASE))
 
 
 def _team_order_mismatch(

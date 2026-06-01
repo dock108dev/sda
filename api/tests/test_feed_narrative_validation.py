@@ -51,6 +51,13 @@ def test_pre_reveal_winner_final_score_and_future_language_fall_back() -> None:
     assert {finding.action for finding in findings} == {"fallback_text"}
 
 
+def test_future_phrase_matching_does_not_trigger_inside_player_names() -> None:
+    assert "narrative_future_spoiler_phrase" not in _codes(
+        "Austin Slater doubles on a line drive to left fielder Josh Lowe.",
+        _context(future_player_names=frozenset()),
+    )
+
+
 def test_score_claims_require_allowed_pairs_and_team_order() -> None:
     revealed_context = _context(
         allow_final_score=True,

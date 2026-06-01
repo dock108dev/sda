@@ -67,7 +67,13 @@ def _resolve_api_key(args: argparse.Namespace) -> str | None:
 
 def _request_json(base_url: str, path: str, api_key: str | None) -> dict[str, Any]:
     url = urllib.parse.urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "ScrollDownDeployValidator/1.0",
+        },
+    )
     if api_key:
         request.add_header("X-API-Key", api_key)
     try:

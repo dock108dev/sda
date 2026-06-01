@@ -238,12 +238,16 @@ def _player_ledger(ordered_plays: list[SportsGamePlay]) -> dict[str, int]:
 
 
 def _description_has_future_hint(value: str) -> bool:
-    lowered = value.lower()
-    return any(hint in lowered for hint in _DESCRIPTION_FUTURE_HINTS)
+    return any(_contains_phrase(value, hint) for hint in _DESCRIPTION_FUTURE_HINTS)
 
 
 def _mentions_name(text: str, name: str) -> bool:
     return bool(re.search(rf"(?<!\w){re.escape(name)}(?!\w)", text, flags=re.IGNORECASE))
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    pattern = r"\s+".join(re.escape(part) for part in phrase.split())
+    return bool(re.search(rf"(?<!\w){pattern}(?!\w)", text, flags=re.IGNORECASE))
 
 
 def _names_from_play(play: SportsGamePlay) -> set[str]:

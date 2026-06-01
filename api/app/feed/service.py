@@ -883,9 +883,44 @@ def _stage_setting(
         )
         if label:
             return label
+    if isinstance(context, NhlCardContext):
+        label = _nhl_stage_setting(context)
+        if label:
+            return label
+    if isinstance(context, BasketballCardContext):
+        label = _basketball_stage_setting(context)
+        if label:
+            return label
     if context and context.summary and not _contains_reveal_only_pressure(context.summary):
         return context.summary
     return _lead_in(play)
+
+
+def _nhl_stage_setting(context: NhlCardContext) -> str | None:
+    raw = context.raw if isinstance(context.raw, dict) else {}
+    clock = raw.get("clock") if isinstance(raw.get("clock"), dict) else {}
+    strength = raw.get("strength") if isinstance(raw.get("strength"), dict) else {}
+    event = raw.get("event") if isinstance(raw.get("event"), dict) else {}
+    pieces = [
+        clock.get("label") or clock.get("gameClock"),
+        str(strength.get("state")).replace("_", " ") if strength.get("state") else None,
+        str(event.get("type")).replace("_", " ") if event.get("type") else None,
+    ]
+    label = ", ".join(piece for piece in pieces if piece)
+    return label or None
+
+
+def _basketball_stage_setting(context: BasketballCardContext) -> str | None:
+    raw = context.raw if isinstance(context.raw, dict) else {}
+    clock = raw.get("clock") if isinstance(raw.get("clock"), dict) else {}
+    result = raw.get("result") if isinstance(raw.get("result"), dict) else {}
+    result_label = result.get("displayType") or result.get("type") or result.get("family")
+    pieces = [
+        clock.get("label") or clock.get("gameClock"),
+        str(result_label).replace("_", " ") if result_label else None,
+    ]
+    label = ", ".join(piece for piece in pieces if piece)
+    return label or None
 
 
 def _headline(play: PlayEntry) -> str:
