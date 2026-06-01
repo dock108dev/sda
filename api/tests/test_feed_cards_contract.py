@@ -433,6 +433,50 @@ def test_card_feed_falls_back_when_text_mentions_future_spoilers() -> None:
     assert body["cards"][0]["description"] == "Verified play detail is available after reveal."
 
 
+def test_card_feed_allows_current_official_description_player_mentions() -> None:
+    game = _game(
+        league="MLB",
+        play_type="double_play",
+        description=(
+            "Alex Morgan lines into a double play, center fielder Dax Moreno "
+            "to catcher Blake Rivers. The runner is retired."
+        ),
+        home_score=0,
+        away_score=0,
+        quarter=2,
+        play_index=15005,
+    )
+    later_fielder_play = _play(
+        game_id=game.id,
+        quarter=3,
+        play_index=20008,
+        play_type="single",
+        team=game.home_team,
+        description="Dax Moreno singles.",
+        home_score=0,
+        away_score=0,
+    )
+    later_fielder_play.player_name = "Dax Moreno"
+    later_catcher_play = _play(
+        game_id=game.id,
+        quarter=3,
+        play_index=20009,
+        play_type="single",
+        team=game.home_team,
+        description="Blake Rivers singles.",
+        home_score=0,
+        away_score=0,
+    )
+    later_catcher_play.player_name = "Blake Rivers"
+    game.plays.extend([later_fielder_play, later_catcher_play])
+
+    feed = build_card_feed_from_game(game, SpoilerPolicy.pre_reveal)
+    body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+    assert "narrative_future_player_mention" not in body["generation"]["validationIssues"]
+    assert body["cards"][0]["description"] == game.plays[0].description
+
+
 def test_important_card_carries_stream_importance_density_and_narrative_fields() -> None:
     feed = build_card_feed_from_game(
         _game(

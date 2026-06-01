@@ -19,6 +19,19 @@ from .prompt_context import PromptContextWindow, build_prompt_window
 from .schemas import NarrativeCard, SpoilerPolicy
 
 _TEXT_FIELDS = ("lead_in", "stage_setting", "headline", "description", "impact")
+_DESCRIPTION_FUTURE_HINTS = (
+    "would go on",
+    "eventually",
+    "later",
+    "by the end",
+    "in the end",
+    "final score",
+    "final result",
+    "eventual outcome",
+    "sealed the win",
+    "seal the win",
+    "for good",
+)
 
 
 @dataclass(frozen=True)
@@ -209,13 +222,38 @@ def _final_score(game: SportsGame, ordered_plays: list[SportsGamePlay]) -> tuple
 
 def _player_ledger(ordered_plays: list[SportsGamePlay]) -> dict[str, int]:
     ledger: dict[str, int] = {}
+    known_names: set[str] = set()
     for play in ordered_plays:
-        raw_data = play.raw_data if isinstance(play.raw_data, dict) else {}
-        for name in {play.player_name or "", *_extract_names_from_mapping(raw_data)}:
-            normalized = _clean_name(name)
+        known_names.update(_names_from_play(play))
+
+    for play in ordered_plays:
+        play_names = _names_from_play(play)
+        description = play.description or ""
+        if description and not _description_has_future_hint(description):
+            play_names.update(name for name in known_names if _mentions_name(description, name))
+        for normalized in play_names:
             if normalized:
                 ledger[normalized] = min(play.play_index, ledger.get(normalized, play.play_index))
     return ledger
+
+
+def _description_has_future_hint(value: str) -> bool:
+    lowered = value.lower()
+    return any(hint in lowered for hint in _DESCRIPTION_FUTURE_HINTS)
+
+
+def _mentions_name(text: str, name: str) -> bool:
+    return bool(re.search(rf"(?<!\w){re.escape(name)}(?!\w)", text, flags=re.IGNORECASE))
+
+
+def _names_from_play(play: SportsGamePlay) -> set[str]:
+    raw_data = play.raw_data if isinstance(play.raw_data, dict) else {}
+    names: set[str] = set()
+    for name in {play.player_name or "", *_extract_names_from_mapping(raw_data)}:
+        normalized = _clean_name(name)
+        if normalized:
+            names.add(normalized)
+    return names
 
 
 def _extract_names_from_mapping(value: Any) -> set[str]:
