@@ -196,6 +196,7 @@ export type CatchupGameSummary = {
   hasPlayerStats: boolean;
   hasPbp: boolean;
   playCount: number;
+  estimatedReadingMinutes?: number | null;
   context: string[];
   contextSource: string;
   isLive: boolean;
@@ -271,6 +272,168 @@ export type FlowStatusResponse = {
   gameId: number;
   status: "RECAP_PENDING" | "IN_PROGRESS" | "PREGAME" | "SCHEDULED" | "POSTPONED" | "CANCELED";
   etaMinutes?: number | null;
+};
+
+// ---------------------------------------------------------------------------
+// Normalized card-feed types (mirror /api/v1/feed/games/{gameId}/cards)
+// ---------------------------------------------------------------------------
+
+export type CardFeedStatus =
+  | "ready"
+  | "no_pbp_yet"
+  | "unsupported_sport"
+  | "generation_pending"
+  | "validation_blocked"
+  | "stale_regenerating";
+
+export type CardFieldSpoilerLevel = "none" | "earnedAtPlay" | "revealOnly";
+
+export type ScoreRevealBoundary = "allowed" | "hidden_until_reveal" | "unavailable";
+
+export type CompletedGameRevealBoundary = {
+  finalScore: ScoreRevealBoundary;
+  winner: ScoreRevealBoundary;
+  stats: ScoreRevealBoundary;
+  payoffCopy: ScoreRevealBoundary;
+};
+
+export type RevealAvailability = {
+  available: boolean;
+  status: "ready" | "unavailable" | "not_final";
+  scoresInCards: boolean;
+  revealRequiredForScores: boolean;
+  completedGameBoundary?: CompletedGameRevealBoundary | null;
+};
+
+export type CardFeedGeneration = {
+  status: CardFeedStatus;
+  cardCount: number;
+  lastPlayIndex?: number | null;
+  generatedAt?: string | null;
+  isStale: boolean;
+  validationIssues: string[];
+};
+
+export type CardFeedGameMetadata = {
+  gameId: number;
+  sport: string;
+  league: string;
+  status?: string | null;
+  homeTeam?: string | null;
+  awayTeam?: string | null;
+  homeTeamId?: number | null;
+  awayTeamId?: number | null;
+  homeTeamAbbr?: string | null;
+  awayTeamAbbr?: string | null;
+};
+
+export type CardPeriod = {
+  ordinal?: number | null;
+  label?: string | null;
+  type?: string | null;
+};
+
+export type CardTeam = {
+  abbreviation?: string | null;
+  name?: string | null;
+  side: "home" | "away" | "neutral" | "unknown" | string;
+};
+
+export type ScoreChange = {
+  home: number;
+  away: number;
+};
+
+export type CardSituation = {
+  summary?: string | null;
+  raw?: Record<string, unknown> | null;
+};
+
+export type CardTextSpoilerLevels = {
+  leadIn: CardFieldSpoilerLevel;
+  stageSetting: CardFieldSpoilerLevel;
+  headline: CardFieldSpoilerLevel;
+  description: CardFieldSpoilerLevel;
+  impact?: CardFieldSpoilerLevel | null;
+  situationSummary?: CardFieldSpoilerLevel | null;
+  tags: CardFieldSpoilerLevel;
+};
+
+export type NarrativeCard = {
+  id: string;
+  gameId: number;
+  sourcePlayId: string;
+  playIndex: number;
+  sport: string;
+  league: string;
+  tier: number;
+  contentDepth: "extended" | "standard" | "brief" | string;
+  modeEligibility: PlayModeEligibility;
+  importance: PlayImportance;
+  visualImportance: "critical" | "high" | "medium" | "low";
+  period: CardPeriod;
+  displayTime?: string | null;
+  clock?: string | null;
+  team: CardTeam;
+  scoreBefore?: ScoreObject | null;
+  scoreChange?: ScoreChange | null;
+  scoreAfter?: ScoreObject | null;
+  situation: CardSituation;
+  leadIn: string;
+  stageSetting: string;
+  headline: string;
+  description: string;
+  impact?: string | null;
+  tags: string[];
+  spoilerLevel: "none" | "score_revealed" | string;
+  textFieldSpoilerLevels: CardTextSpoilerLevels;
+};
+
+export type CardSectionLeadIn = {
+  id: string;
+  kind: "period" | string;
+  ordinal?: number | null;
+  period: CardPeriod;
+  label: string;
+  title: string;
+  leadIn: string;
+  startPlayIndex: number;
+  endPlayIndex: number;
+  textFieldSpoilerLevel: CardFieldSpoilerLevel;
+  source: "deterministic" | string;
+};
+
+export type CardFeedResponse = {
+  contractVersion: number;
+  game: CardFeedGameMetadata;
+  spoilerPolicy: "pre_reveal" | "revealed" | string;
+  generation: CardFeedGeneration;
+  reveal: RevealAvailability;
+  sections: CardSectionLeadIn[];
+  cards: NarrativeCard[];
+};
+
+export type CardGenerationDebugFinding = {
+  code: string;
+  severity: "info" | "warning" | "error";
+  message: string;
+  playId?: string | null;
+  scope?: string | null;
+};
+
+export type CardGenerationDebugResponse = {
+  available: boolean;
+  status: "available" | "not_available" | "blocked";
+  reason?: string | null;
+  policy?: "live" | "official" | null;
+  cardCount: number;
+  lastPlayIndex?: number | null;
+  generationVersion?: string | null;
+  sourceHash?: string | null;
+  cacheState: string;
+  warnings: CardGenerationDebugFinding[];
+  errors: CardGenerationDebugFinding[];
+  feed?: CardFeedResponse | Record<string, unknown> | null;
 };
 
 // ---------------------------------------------------------------------------
