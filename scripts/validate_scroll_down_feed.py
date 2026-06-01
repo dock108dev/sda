@@ -34,6 +34,15 @@ class ValidationError(RuntimeError):
     """Raised when the API data does not satisfy the frontend contract."""
 
 
+class HTTPValidationError(ValidationError):
+    """Validation failure with an HTTP status from the API."""
+
+    def __init__(self, message: str, *, status_code: int, detail: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.detail = detail
+
+
 def _env_file_values(path: Path) -> dict[str, str]:
     if not path.exists():
         return {}
@@ -83,7 +92,11 @@ def _request_json(base_url: str, path: str, api_key: str | None) -> dict[str, An
             payload = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        raise ValidationError(f"{path} returned HTTP {exc.code}: {detail[:300]}") from exc
+        raise HTTPValidationError(
+            f"{path} returned HTTP {exc.code}: {detail[:300]}",
+            status_code=exc.code,
+            detail=detail,
+        ) from exc
     except urllib.error.URLError as exc:
         raise ValidationError(f"{path} request failed: {exc}") from exc
     except TimeoutError as exc:
@@ -320,12 +333,21 @@ def validate(args: argparse.Namespace) -> list[str]:
         max_pages=args.max_pages,
     )
     lines: list[str] = []
-    for game_id in targets[: args.max_games]:
-        feed = _request_json(
-            args.base_url,
-            f"/api/v1/feed/games/{game_id}/cards?spoilerPolicy=pre_reveal",
-            api_key,
-        )
+    skipped_unmaterialized: list[int] = []
+    for game_id in targets:
+        if len(lines) >= args.max_games:
+            break
+        try:
+            feed = _request_json(
+                args.base_url,
+                f"/api/v1/feed/games/{game_id}/cards?spoilerPolicy=pre_reveal",
+                api_key,
+            )
+        except HTTPValidationError as exc:
+            if exc.status_code == 404 and "not been materialized" in exc.detail:
+                skipped_unmaterialized.append(game_id)
+                continue
+            raise
         card_count, status = _validate_feed(feed, game_id=game_id, min_cards=args.min_cards)
         if args.debug:
             debug = _request_json(
@@ -343,6 +365,18 @@ def validate(args: argparse.Namespace) -> list[str]:
                 require_summary=args.require_summary,
             )
         lines.append(f"OK game={game_id} cards={card_count} generation={status}{summary_note}")
+    if not lines:
+        skipped_note = ""
+        if skipped_unmaterialized:
+            skipped_note = (
+                f"; skipped {len(skipped_unmaterialized)} unmaterialized candidate(s), "
+                f"first={skipped_unmaterialized[0]}"
+            )
+        raise ValidationError(
+            "no materialized card feeds validated in the scanned game window"
+            f"{skipped_note}. Run refresh_card_feeds for this window or narrow the "
+            "validator window to the deploy refresh window."
+        )
     return lines
 
 

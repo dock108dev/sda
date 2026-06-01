@@ -24,6 +24,12 @@ pagination, selects games with play-by-play, then validates
 `importance`, `modeEligibility`, `visualImportance`, `leadIn`, and
 non-duplicated important-card `stageSetting`.
 
+Deploy first refreshes materialized card feeds for the 72-hour lookback and
+72-hour lookahead window, then validates the matching three-day dated window.
+The validator skips older PBP candidates whose card feed has not been
+materialized and fails only if no materialized feed in the scanned window
+passes the frontend contract.
+
 The smoke check intentionally fails when the scanned window has no games with
 `hasPbp=true` and `playCount>0`. That is a data-ingestion problem, not a valid
 consumer route contract. Run `poll_live_pbp`, backfill the relevant window, or
@@ -43,7 +49,9 @@ Equivalent manual verification:
 ```bash
 python3 scripts/validate_scroll_down_feed.py \
   --base-url http://localhost:8000 \
-  --env-file infra/.env
+  --env-file infra/.env \
+  --lookback-days 3 \
+  --lookahead-days 3
 ```
 
 To also require finalized LLM recap output for selected completed games:

@@ -192,3 +192,106 @@ def test_selector_keeps_explicit_game_ids_strict() -> None:
         lookahead_days=2,
         max_pages=5,
     ) == [190584, 190552]
+
+
+def test_validate_skips_unmaterialized_candidates_until_feed_is_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested_paths: list[str] = []
+
+    monkeypatch.setattr(
+        validator,
+        "_select_game_targets",
+        lambda **kwargs: [190094, 190584],
+    )
+
+    def fake_request_json(base_url: str, path: str, api_key: str | None):
+        requested_paths.append(path)
+        if path.startswith("/api/v1/feed/games/190094/cards?"):
+            raise validator.HTTPValidationError(
+                (
+                    f"{path} returned HTTP 404: "
+                    '{"detail":"Card feed has not been materialized for this game."}'
+                ),
+                status_code=404,
+                detail='{"detail":"Card feed has not been materialized for this game."}',
+            )
+        if path.startswith("/api/v1/feed/games/190584/cards?"):
+            feed = _feed(_card())
+            feed["game"]["gameId"] = 190584
+            feed["cards"][0]["gameId"] = 190584
+            return feed
+        if path.startswith("/api/v1/feed/games/190584/cards/debug?"):
+            return {
+                "available": True,
+                "status": "available",
+                "cardCount": 1,
+                "cacheState": "current",
+                "warnings": [],
+                "errors": [],
+            }
+        raise AssertionError(f"unexpected path: {path}")
+
+    monkeypatch.setattr(validator, "_request_json", fake_request_json)
+
+    lines = validator.validate(
+        SimpleNamespace(
+            base_url="http://example.test",
+            api_key=None,
+            env_file="/missing/.env",
+            game_id=[],
+            limit=200,
+            lookback_days=3,
+            lookahead_days=3,
+            max_pages=5,
+            max_games=1,
+            min_cards=1,
+            debug=True,
+            check_summary=False,
+            require_summary=False,
+        )
+    )
+
+    assert lines == ["OK game=190584 cards=1 generation=ready"]
+    assert requested_paths[0].startswith("/api/v1/feed/games/190094/cards?")
+
+
+def test_validate_fails_when_window_has_no_materialized_feeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        validator,
+        "_select_game_targets",
+        lambda **kwargs: [190094],
+    )
+
+    def fake_request_json(base_url: str, path: str, api_key: str | None):
+        raise validator.HTTPValidationError(
+            (
+                f"{path} returned HTTP 404: "
+                '{"detail":"Card feed has not been materialized for this game."}'
+            ),
+            status_code=404,
+            detail='{"detail":"Card feed has not been materialized for this game."}',
+        )
+
+    monkeypatch.setattr(validator, "_request_json", fake_request_json)
+
+    with pytest.raises(validator.ValidationError, match="no materialized card feeds"):
+        validator.validate(
+            SimpleNamespace(
+                base_url="http://example.test",
+                api_key=None,
+                env_file="/missing/.env",
+                game_id=[],
+                limit=200,
+                lookback_days=3,
+                lookahead_days=3,
+                max_pages=5,
+                max_games=1,
+                min_cards=1,
+                debug=True,
+                check_summary=False,
+                require_summary=False,
+            )
+        )
