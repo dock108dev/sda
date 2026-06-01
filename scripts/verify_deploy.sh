@@ -84,4 +84,9 @@ log "Checking API endpoints..."
 check_endpoint "/healthz"
 check_endpoint "/api/admin/sports/games?limit=1"
 
+log "Checking Scroll Down normalized card feed..."
+python3 scripts/validate_scroll_down_feed.py \
+  --base-url "$API_BASE_URL" \
+  --env-file "${DEPLOY_ENV_FILE:-infra/.env}"
+
 log "All checks passed."

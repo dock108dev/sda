@@ -617,7 +617,8 @@ def _card_from_play(
     score_change = score_change_for(play, context)
     description = _play_detail(play)
     content_depth = _content_depth(play)
-    stage_setting = _stage_setting(play)
+    lead_in = _lead_in(play)
+    stage_setting = _stage_setting(play, context)
     tags = _tags(play, content_depth)
     if play.mode_eligibility is None:
         raise DetailContractError("modeEligibility missing")
@@ -650,7 +651,7 @@ def _card_from_play(
             basketball_context,
             football_context,
         ),
-        leadIn=stage_setting,
+        leadIn=lead_in,
         stageSetting=stage_setting,
         headline=_headline(play),
         description=description,
@@ -854,13 +855,37 @@ def _provider_source_play_id(play: SportsGamePlay) -> str | None:
     return None
 
 
-def _stage_setting(play: PlayEntry) -> str:
+def _lead_in(play: PlayEntry) -> str:
     parts = [
         (play.time_label or play.period_label or play.clock_label or "").strip(),
         (play.team_abbreviation or "").strip(),
     ]
     label = " - ".join(part for part in parts if part)
     return label or "Game event"
+
+
+def _stage_setting(
+    play: PlayEntry,
+    context: MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext | None,
+) -> str:
+    if isinstance(context, MlbCardContext):
+        base_out = context.raw.get("baseOut") if isinstance(context.raw, dict) else {}
+        period = context.raw.get("period") if isinstance(context.raw, dict) else {}
+        pieces = [
+            period.get("label") if isinstance(period, dict) else None,
+            base_out.get("baseStateBefore") if isinstance(base_out, dict) else None,
+            base_out.get("outsBefore") if isinstance(base_out, dict) else None,
+        ]
+        label = ", ".join(
+            f"{piece} outs" if isinstance(piece, int) else piece
+            for piece in pieces
+            if piece is not None and piece != ""
+        )
+        if label:
+            return label
+    if context and context.summary and not _contains_reveal_only_pressure(context.summary):
+        return context.summary
+    return _lead_in(play)
 
 
 def _headline(play: PlayEntry) -> str:

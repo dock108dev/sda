@@ -450,8 +450,9 @@ def test_important_card_carries_stream_importance_density_and_narrative_fields()
     assert card["importance"]["level"] == "primary"
     assert card["contentDepth"] == "extended"
     assert card["visualImportance"] == "high"
-    assert card["stageSetting"] == card["leadIn"]
+    assert card["stageSetting"] != card["leadIn"]
     assert card["stageSetting"]
+    assert "bases empty" in card["stageSetting"].lower()
     assert card["headline"] == "Alex Morgan - Home run"
     assert card["description"] == "Alex Morgan homers to center field."
     assert card["impact"] == "HOM scores 2"

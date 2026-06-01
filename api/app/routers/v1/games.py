@@ -15,14 +15,13 @@ from sqlalchemy.orm import selectinload
 from app.db import AsyncSession, get_db
 from app.db.flow import SportsGameFlow
 from app.db.sports import GameStatus, SportsGame
-from app.routers.sports.catchup import get_catchup_game, list_catchup_games
+from app.routers.sports.catchup import list_catchup_games
 from app.routers.sports.schemas import (
     FlowStatusResponse,
     GameSummaryResponse,
     SummaryFinalScore,
 )
 from app.routers.sports.schemas.catchup import (
-    CatchupGameDetailResponse,
     CatchupGameListResponse,
 )
 from app.services.pipeline.stages.finalize_summary import SUMMARY_STORY_VERSION
@@ -78,20 +77,6 @@ async def list_games(
         offset=offset,
         sort=sort,
     )
-
-
-@router.get(
-    "/games/{game_id}",
-    response_model=CatchupGameDetailResponse,
-    response_model_exclude_none=True,
-    summary="Get consumer-safe game detail",
-)
-async def get_game(
-    game_id: int,
-    session: AsyncSession = Depends(get_db),
-) -> CatchupGameDetailResponse:
-    """Return consumer game detail without odds, social, raw payloads, or admin diagnostics."""
-    return await get_catchup_game(game_id=game_id, session=session)
 
 
 @router.get(
