@@ -38,9 +38,10 @@ X-API-Key: admin-key
 
 ## Consumer Catch-Up Routes
 
-`/api/v1/games` and `/api/v1/games/{game_id}` delegate to the same catch-up
-implementation as the admin sports list/detail routes, but through the consumer
-key dependency.
+`/api/v1/games` delegates to the same catch-up list implementation as the admin
+sports list route, but through the consumer key dependency. Consumer game detail
+is only supported through the normalized card feed:
+`/api/v1/feed/games/{game_id}/cards`.
 
 ### `GET /api/v1/games`
 
@@ -71,14 +72,11 @@ Response envelope fields:
 - `withPlayerStatsCount`
 - `withPbpCount`
 
-### `GET /api/v1/games/{game_id}`
+### `GET /api/v1/feed/games/{game_id}/cards`
 
-Returns the full catch-up detail payload for one game:
-
-- game metadata and score
-- ordered play-by-play
-- player stats
-- team stats
+Returns the SSOT detail payload for one game as normalized narrative cards. The
+legacy consumer detail payload at `/api/v1/games/{game_id}` is no longer
+supported; admin-only detail remains under `/api/admin/sports/*`.
 
 ### `GET /api/v1/games/{game_id}/summary`
 

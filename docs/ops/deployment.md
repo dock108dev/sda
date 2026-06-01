@@ -17,6 +17,31 @@ docker compose --profile prod up -d --remove-orphans
 
 The full CI/CD workflow in `.github/workflows/backend-ci-cd.yml` can also build, push, and deploy when manually dispatched with `full_deploy=true`.
 
+Both deploy workflows run the Scroll Down card-feed smoke check after the API
+container is healthy. The check calls `/api/v1/games`, selects games with
+play-by-play, then validates `/api/v1/feed/games/{game_id}/cards` for the
+frontend contract: cards, `importance`, `modeEligibility`, `visualImportance`,
+`leadIn`, and non-duplicated important-card `stageSetting`.
+
+Equivalent manual verification:
+
+```bash
+python3 scripts/validate_scroll_down_feed.py \
+  --base-url http://localhost:8000 \
+  --env-file infra/.env
+```
+
+To also require finalized LLM recap output for selected completed games:
+
+```bash
+python3 scripts/validate_scroll_down_feed.py \
+  --base-url http://localhost:8000 \
+  --env-file infra/.env \
+  --game-id 190584 \
+  --check-summary \
+  --require-summary
+```
+
 ## Required Secrets
 
 Set these in `infra/.env` or your deployment secret manager:
@@ -24,6 +49,7 @@ Set these in `infra/.env` or your deployment secret manager:
 - `POSTGRES_PASSWORD`
 - `REDIS_PASSWORD`
 - `API_KEY`
+- `CONSUMER_API_KEY`
 - `JWT_SECRET`
 - `ALLOWED_CORS_ORIGINS`
 - `OPENAI_API_KEY` when AI context copy is desired

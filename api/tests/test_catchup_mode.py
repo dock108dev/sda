@@ -34,6 +34,7 @@ def test_catchup_schemas_keep_list_spoiler_free_and_detail_complete() -> None:
 
     assert "score" not in list_data["games"][0]
     assert list_data["games"][0]["hasPbp"] is False
+    assert "estimatedReadingMinutes" not in list_data["games"][0]
 
     detail_payload = CatchupGameDetailResponse(
         game={**game, "season": 2026, "score": {"home": 90, "away": 88}},
@@ -150,8 +151,8 @@ def test_catchup_list_summary_does_not_lazy_load_plays() -> None:
     class GameWithoutLoadedPlays:
         id = 42
         league = SimpleNamespace(code="MLB")
-        away_team = SimpleNamespace(name="Boston Red Sox", abbreviation="BOS")
-        home_team = SimpleNamespace(name="New York Yankees", abbreviation="NYY")
+        away_team = SimpleNamespace(id=12, name="Boston Red Sox", abbreviation="BOS")
+        home_team = SimpleNamespace(id=34, name="New York Yankees", abbreviation="NYY")
         status = "final"
         game_date = datetime.now(UTC)
         local_game_date = game_date.date()
@@ -176,8 +177,62 @@ def test_catchup_list_summary_does_not_lazy_load_plays() -> None:
     assert summary.id == 42
     assert summary.has_pbp is True
     assert summary.play_count == 17
+    assert summary.estimated_reading_minutes == 2
+    assert summary.away_team_id == 12
+    assert summary.home_team_id == 34
     assert summary.current_period == 7
     assert summary.game_clock == "2:30"
+    assert summary.live_snapshot is not None
+    assert summary.live_snapshot.score is None
+
+
+def test_catchup_list_summary_context_excludes_pre_open_stat_and_outcome_copy() -> None:
+    team = SimpleNamespace(abbreviation="BOS", short_name="Boston")
+
+    class PlayerBoxscore:
+        def __init__(self) -> None:
+            self.player_name = "Dax Moreno"
+            self.team = team
+            self.stats = {"points": 44, "assists": 12}
+
+    game = SimpleNamespace(
+        id=43,
+        league=SimpleNamespace(code="NBA"),
+        away_team=SimpleNamespace(id=13, name="Boston Celtics", abbreviation="BOS"),
+        home_team=SimpleNamespace(id=35, name="New York Knicks", abbreviation="NYK"),
+        status="final",
+        game_date=datetime.now(UTC),
+        local_game_date=datetime.now(UTC).date(),
+        home_score=118,
+        away_score=112,
+        player_boxscores=[PlayerBoxscore()],
+        team_boxscores=[SimpleNamespace(team=team, stats={"rebounds": 52, "turnovers": 8})],
+    )
+
+    summary = _summary(
+        game,  # type: ignore[arg-type]
+        has_boxscore=True,
+        has_player_stats=True,
+        play_count=36,
+        latest_period=None,
+        latest_clock=None,
+    )
+    payload = summary.model_dump(by_alias=True, mode="json", exclude_none=True)
+    metadata_text = " ".join(payload.get("context", [])).lower()
+
+    assert payload["estimatedReadingMinutes"] == 3
+    assert payload["awayTeamId"] == 13
+    assert payload["homeTeamId"] == 35
+    assert "score" not in payload
+    assert "liveSnapshot" not in payload
+    assert "dax moreno" not in metadata_text
+    assert "44" not in metadata_text
+    assert "52" not in metadata_text
+    assert "118" not in metadata_text
+    assert "112" not in metadata_text
+    assert "winner" not in metadata_text
+    assert "lead change" not in metadata_text
+    assert "scoring" not in metadata_text
 
 
 def test_admin_surface_keeps_sports_and_system_routes_only() -> None:
@@ -236,7 +291,8 @@ print("APP=" + json.dumps(payload))
     assert "/api/admin/sports/games/{game_id}/context" in routes
     assert "/api/admin/sports/games/{game_id}/admin-detail" in routes
     assert "/api/v1/games" in routes
-    assert "/api/v1/games/{game_id}" in routes
+    assert "/api/v1/feed/games/{game_id}/cards" in routes
+    assert "/api/v1/games/{game_id}" not in routes
     assert (
         sum(
             1
@@ -261,7 +317,8 @@ print("APP=" + json.dumps(payload))
     assert "/api/admin/coverage-report" in routes
     assert "/api/admin/tasks/registry" in routes
     assert "/api/v1/games" in routes
-    assert "/api/v1/games/{game_id}" in routes
+    assert "/api/v1/feed/games/{game_id}/cards" in routes
+    assert "/api/v1/games/{game_id}" not in routes
     assert "/api/v1/games/{game_id}/summary" in routes
     assert not any(route.startswith("/api/admin/golf") for route in routes)
     assert not any(route.startswith("/api/golf") for route in routes)

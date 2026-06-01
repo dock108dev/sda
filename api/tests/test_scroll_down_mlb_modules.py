@@ -8,8 +8,14 @@ regression in one module surfaces with a tight, named failure rather than
 
 from __future__ import annotations
 
-import pytest
-
+from app.scroll_down_mlb._advances import build_base_movements
+from app.scroll_down_mlb._classify import build_event_result, classify_reveal_type
+from app.scroll_down_mlb._state_readers import (
+    normalize_runner_label,
+    read_base_state_after,
+    read_base_state_before,
+    read_upstream_runner_names,
+)
 from app.scroll_down_mlb.deck_builder import (
     _name_from_description,
     _name_from_player_dict,
@@ -20,7 +26,6 @@ from app.scroll_down_mlb.deck_builder import (
     sample_tier_2,
     to_play_card,
 )
-from app.scroll_down_mlb._classify import build_event_result, classify_reveal_type
 from app.scroll_down_mlb.game_state import (
     _group_into_containers,
     compute_timeline,
@@ -31,11 +36,6 @@ from app.scroll_down_mlb.game_state import (
 from app.scroll_down_mlb.internal_types import BuiltPlayCard, RunnerAdvance, TimelineEntry
 from app.scroll_down_mlb.narrative import narrative_for_card
 from app.scroll_down_mlb.result_labels import result_chip_label, result_chip_tier
-from app.scroll_down_mlb._advances import build_base_movements
-from app.scroll_down_mlb._state_readers import (
-    normalize_runner_label,
-    read_upstream_runner_names,
-)
 from app.scroll_down_mlb.schemas import (
     BaseMovement,
     BasesSituation,
@@ -434,6 +434,32 @@ def test_read_upstream_runner_names_applies_normalization_to_nested_dict_form() 
     assert names == {"first": "C CARROLL", "third": "G MORENO"}
 
 
+def test_raw_mlb_runner_movements_provide_base_snapshots() -> None:
+    play = {
+        "runners": [
+            {
+                "movement": {"originBase": "1B", "end": "home", "isOut": False},
+                "details": {"runner": {"fullName": "Corbin Carroll"}},
+            },
+            {
+                "movement": {"originBase": None, "end": "2B", "isOut": False},
+                "details": {"runner": {"fullName": "Gabriel Moreno"}},
+            },
+        ]
+    }
+
+    assert read_base_state_before(play) == {
+        "first": True,
+        "second": False,
+        "third": False,
+    }
+    assert read_base_state_after(play) == {
+        "first": False,
+        "second": True,
+        "third": False,
+    }
+
+
 # ---------------------------------------------------------------------------
 # game_state
 # ---------------------------------------------------------------------------
@@ -447,6 +473,11 @@ def test_inning_half_from_upstream_phase_signal() -> None:
 def test_inning_half_from_upstream_period_label() -> None:
     assert inning_half_from_upstream({"periodLabel": "TOP 3"}, None) == "top"
     assert inning_half_from_upstream({"periodLabel": "B 5"}, None) == "bottom"
+
+
+def test_inning_half_from_upstream_accepts_scraper_half_fields() -> None:
+    assert inning_half_from_upstream({"half_inning": "Top"}, None) == "top"
+    assert inning_half_from_upstream({"is_top_inning": False}, None) == "bottom"
 
 
 def test_inning_half_from_upstream_team_fallback() -> None:

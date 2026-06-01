@@ -539,6 +539,15 @@ class SpoilerPolicy(str, Enum):
     post_reveal = "post_reveal"
 
 
+class DeckGenerationStatus(str, Enum):
+    """Lifecycle status for the deck artifact returned by `/deck`."""
+
+    ready = "ready"
+    pending = "pending"
+    degraded = "degraded"
+    blocked = "blocked"
+
+
 class ScrollDownMlbDeckResponse(BaseModel):
     """Deck endpoint payload. Spoiler-safe by construction.
 
@@ -558,6 +567,8 @@ class ScrollDownMlbDeckResponse(BaseModel):
     generated_at: datetime
     is_final: bool
     spoiler_policy: Literal[SpoilerPolicy.pre_reveal] = SpoilerPolicy.pre_reveal
+    generation_status: DeckGenerationStatus = DeckGenerationStatus.ready
+    generation_message: str | None = None
     home_team: TeamSummary | None = None
     away_team: TeamSummary | None = None
     last_play_index: int | None = None

@@ -205,7 +205,7 @@ def build_catchup_context(
             )
         else:
             sentences.append(
-                "The value is the ordered catch-up path: plays first, then player and team stats."
+                "The value is the ordered catch-up path: the game opens from setup to payoff."
             )
 
     return sentences[:_MAX_CONTEXT_SENTENCES]

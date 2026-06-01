@@ -11,6 +11,7 @@ from app.routers.sports.schemas.common import (
     PlayModeEligibility,
     ScoreObject,
 )
+from app.services.pipeline.stages.league_config import get_flow_thresholds
 
 
 class DetailContractError(ValueError):
@@ -135,8 +136,8 @@ def enrich_play_importance(
         return
 
     final_index = max((play.play_index for play in plays), default=plays[-1].play_index)
-    run_enders = _detect_run_ending_plays(plays)
     code = league_code.upper()
+    run_enders = _detect_run_ending_plays(plays, code)
 
     for index, play in enumerate(plays):
         context = _PlayContext(
@@ -304,11 +305,19 @@ def _is_primary_play(
     return is_scoring or (is_late and is_close and tier <= 2)
 
 
-def _detect_run_ending_plays(plays: list[PlayEntry]) -> set[int]:
+def _detect_run_ending_plays(plays: list[PlayEntry], league_code: str) -> set[int]:
+    thresholds = get_flow_thresholds(league_code)
+    min_points = int(thresholds.get("scoring_run_pts", 6))
+    max_against = int(thresholds.get("scoring_run_opp_pts", 0))
     run_enders: set[int] = set()
     scorer: str | None = None
     run_total = 0
+    opponent_total = 0
     last_play: int | None = None
+
+    def finalize() -> None:
+        if run_total >= min_points and opponent_total <= max_against and last_play is not None:
+            run_enders.add(last_play)
 
     for play in plays:
         before = play.score_before
@@ -326,20 +335,25 @@ def _detect_run_ending_plays(plays: list[PlayEntry]) -> set[int]:
             current_scorer = "away"
             points = away_delta
         else:
+            if home_delta < 0 or away_delta < 0 or (home_delta > 0 and away_delta > 0):
+                finalize()
+                scorer = None
+                run_total = 0
+                opponent_total = 0
+                last_play = None
             continue
 
         if current_scorer == scorer:
             run_total += points
             last_play = play.play_index
         else:
-            if run_total >= 6 and last_play is not None:
-                run_enders.add(last_play)
+            finalize()
             scorer = current_scorer
             run_total = points
+            opponent_total = 0
             last_play = play.play_index
 
-    if run_total >= 6 and last_play is not None:
-        run_enders.add(last_play)
+    finalize()
     return run_enders
 
 

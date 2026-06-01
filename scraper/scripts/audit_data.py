@@ -19,7 +19,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import and_, delete, exists, func, not_, text
+from sqlalchemy import delete, exists, func, not_, text
 
 script_dir = Path(__file__).resolve().parent
 scraper_dir = script_dir.parent

@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_LOOKBACK_HOURS = 72
 _DEFAULT_LOOKAHEAD_HOURS = 48
+_PLAYS_PER_READING_MINUTE = 12
 GameListSort = Literal["chronological", "currentSlate"]
 
 
@@ -100,11 +101,16 @@ def _latest_snapshot(
         LiveSnapshot(
             period_label=label,
             time_label=time_label(latest_period, latest_clock, league_code),
-            score=_score_obj(game.home_score, game.away_score),
             current_period=latest_period,
             game_clock=latest_clock,
         ),
     )
+
+
+def _estimated_reading_minutes(play_count: int) -> int | None:
+    if play_count <= 0:
+        return None
+    return max(1, (play_count + _PLAYS_PER_READING_MINUTE - 1) // _PLAYS_PER_READING_MINUTE)
 
 
 def _summary(
@@ -119,8 +125,8 @@ def _summary(
     period_label_value, live_snapshot = _latest_snapshot(game, latest_period, latest_clock)
     context = build_catchup_context(
         game,
-        players=list(game.player_boxscores),
-        team_stats=list(game.team_boxscores),
+        players=[],
+        team_stats=[],
         plays=[],
     )
     return CatchupGameSummary(
@@ -130,6 +136,8 @@ def _summary(
         local_game_date=getattr(game, "local_game_date", None),
         home_team=game.home_team.name if game.home_team else "Unknown",
         away_team=game.away_team.name if game.away_team else "Unknown",
+        home_team_id=game.home_team.id if game.home_team else None,
+        away_team_id=game.away_team.id if game.away_team else None,
         home_team_abbr=game.home_team.abbreviation if game.home_team else None,
         away_team_abbr=game.away_team.abbreviation if game.away_team else None,
         status=game.status,
@@ -141,6 +149,7 @@ def _summary(
         has_player_stats=has_player_stats,
         has_pbp=play_count > 0,
         play_count=play_count,
+        estimated_reading_minutes=_estimated_reading_minutes(play_count),
         context=context,
     )
 

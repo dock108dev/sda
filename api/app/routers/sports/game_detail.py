@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -41,6 +42,7 @@ from ...db.sports import (
     SportsPlayerBoxscore,
     SportsTeamBoxscore,
 )
+from ...feed.debug_schemas import CardGenerationDebugResponse
 from ...game_metadata.nuggets import generate_nugget
 from ...game_metadata.scoring import excitement_score, quality_score
 from ...game_metadata.services import RatingsService, StandingsService
@@ -369,6 +371,49 @@ async def get_game_preview_score(
 
 
 @router.get(
+    "/games/{game_id}/card-generation-debug",
+    response_model=CardGenerationDebugResponse,
+    response_model_by_alias=True,
+)
+async def get_game_card_generation_debug(
+    game_id: int,
+    spoiler_policy: Literal["pre_reveal", "revealed"] = Query(
+        "pre_reveal",
+        alias="spoilerPolicy",
+    ),
+    through_play_index: int | None = Query(None, ge=0, alias="throughPlayIndex"),
+    include_feed: bool = Query(True, alias="includeFeed"),
+    session: AsyncSession = Depends(get_db),
+) -> CardGenerationDebugResponse:
+    """Admin-only view of cross-sport narrative card generation state."""
+    from ...feed.schemas import SpoilerPolicy
+    from ...feed.service import build_card_generation_debug_from_game
+
+    result = await session.execute(
+        select(SportsGame)
+        .options(
+            selectinload(SportsGame.league),
+            selectinload(SportsGame.home_team),
+            selectinload(SportsGame.away_team),
+            selectinload(SportsGame.plays).selectinload(SportsGamePlay.team),
+        )
+        .where(SportsGame.id == game_id)
+    )
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game Data Not Found",
+        )
+    return build_card_generation_debug_from_game(
+        game,
+        SpoilerPolicy(spoiler_policy),
+        through_play_index=through_play_index,
+        include_feed=include_feed,
+    )
+
+
+@router.get(
     "/games/{game_id}/scroll-down-mlb-debug",
     response_model=ScrollDownMlbAdminDebugResponse,
     response_model_by_alias=True,
@@ -446,6 +491,27 @@ async def get_game_scroll_down_mlb_debug(
         warnings=[_builder_finding_to_admin(w) for w in outcome.warnings],
         errors=[_builder_finding_to_admin(e) for e in outcome.errors],
     )
+
+
+@router.post("/games/{game_id}/scroll-down-mlb-precompute")
+async def precompute_scroll_down_mlb_deck(
+    game_id: int,
+    force: bool = False,
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Admin trigger for persisted Scroll Down MLB deck generation."""
+    result = await scroll_down_mlb_service.precompute_game_deck(
+        session,
+        game_id,
+        force=force,
+    )
+    return {
+        "gameId": str(result.game_id),
+        "status": result.status,
+        "deckVersion": result.deck_version,
+        "sourceHash": result.source_hash,
+        "error": result.error,
+    }
 
 
 @router.get("/games/{game_id}/admin-detail", response_model=GameDetailResponse)

@@ -1,6 +1,6 @@
 # Oversized Source File Inventory
 
-Refreshed on 2026-05-30 after the SSOT cleanup pass.
+Refreshed on 2026-06-01 during documentation consolidation.
 
 This list tracks source files over 500 lines. Test files, fixtures, lockfiles,
 migrations, generated data, docs, and config files are excluded from the cleanup
@@ -9,16 +9,19 @@ do not split them mechanically just to reduce line count.
 
 | Lines | File |
 | ---: | --- |
-| 807 | `api/app/routers/sports/game_detail.py` |
+| 1034 | `api/app/feed/service.py` |
+| 873 | `api/app/routers/sports/game_detail.py` |
 | 784 | `scraper/sports_scraper/normalization/ncaab_teams.py` |
 | 731 | `api/app/tasks/_training_data.py` |
 | 717 | `api/app/routers/golf/pools_admin.py` |
+| 708 | `api/app/scroll_down_mlb/schemas.py` |
 | 697 | `web/src/lib/api/analyticsTypes.ts` |
-| 697 | `api/app/scroll_down_mlb/schemas.py` |
 | 693 | `scraper/sports_scraper/pipeline/grader.py` |
 | 686 | `scraper/sports_scraper/golf/pool_scoring.py` |
+| 683 | `scraper/scripts/setup_masters_pool.py` |
 | 674 | `scraper/sports_scraper/persistence/games.py` |
 | 651 | `api/app/scroll_down_mlb/visual_mapper.py` |
+| 650 | `api/app/routers/sports/common.py` |
 | 650 | `scraper/sports_scraper/golf/client.py` |
 | 645 | `web/src/lib/api/sportsAdmin/types.ts` |
 | 637 | `api/app/scroll_down_mlb/game_state.py` |
