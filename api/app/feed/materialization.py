@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
@@ -89,10 +89,9 @@ async def get_materialized_card_feed(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Card feed has not been materialized for this game.",
         )
-    game = await _load_game_async(session, game_id)
     return artifact_to_response(
         artifact,
-        is_stale=artifact.source_hash != _source_hash(game),
+        is_stale=await _artifact_is_stale_async(session, artifact),
     )
 
 
@@ -298,6 +297,36 @@ async def _load_artifact_async(
     return result.scalar_one_or_none()
 
 
+async def _artifact_is_stale_async(
+    session: AsyncSession,
+    artifact: SportsGameCardFeedArtifact,
+) -> bool:
+    result = await session.execute(
+        select(
+            SportsGame.last_pbp_at,
+            SportsGame.last_ingested_at,
+            func.count(SportsGamePlay.id),
+            func.max(SportsGamePlay.play_index),
+        )
+        .outerjoin(SportsGamePlay, SportsGamePlay.game_id == SportsGame.id)
+        .where(SportsGame.id == artifact.game_id)
+        .group_by(SportsGame.id)
+    )
+    row = result.one_or_none()
+    if row is None:
+        return True
+    last_pbp_at, last_ingested_at, play_count, last_play_index = row
+    changed_after_generation = any(
+        timestamp is not None and timestamp > artifact.generated_at
+        for timestamp in (last_pbp_at, last_ingested_at)
+    )
+    return (
+        changed_after_generation
+        or int(play_count or 0) != artifact.card_count
+        or last_play_index != artifact.last_play_index
+    )
+
+
 def _load_artifact_sync(
     session: Session,
     game_id: int,
@@ -382,6 +411,7 @@ def _apply_response_to_artifact(
 ) -> None:
     payload = response.model_dump(by_alias=True, mode="json", exclude_none=True)
     generation = payload["generation"]
+    now = datetime.now(UTC)
     artifact.contract_version = CARD_FEED_CONTRACT_VERSION
     artifact.spoiler_policy = payload["spoilerPolicy"]
     artifact.generation_status = generation["status"]
@@ -393,8 +423,9 @@ def _apply_response_to_artifact(
     artifact.sections_json = payload.get("sections", [])
     artifact.cards_json = payload.get("cards", [])
     artifact.validation_issues_json = generation.get("validationIssues", [])
-    artifact.generated_at = datetime.now(UTC)
+    artifact.generated_at = now
     artifact.generator_label = CARD_FEED_GENERATOR_LABEL
+    artifact.updated_at = now
 
 
 def _result_from_artifact(

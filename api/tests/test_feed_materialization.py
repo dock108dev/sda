@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -61,16 +61,56 @@ def test_artifact_to_response_hydrates_current_contract() -> None:
 
 
 @pytest.mark.asyncio
+async def test_artifact_stale_check_uses_lightweight_source_metadata() -> None:
+    artifact = _artifact()
+    session = AsyncMock()
+    result = MagicMock()
+    result.one_or_none.return_value = (
+        artifact.generated_at - timedelta(minutes=1),
+        artifact.generated_at - timedelta(minutes=1),
+        artifact.card_count,
+        artifact.last_play_index,
+    )
+    session.execute.return_value = result
+
+    is_stale = await materialization._artifact_is_stale_async(session, artifact)
+
+    assert is_stale is False
+
+
+@pytest.mark.asyncio
+async def test_artifact_stale_check_detects_new_pbp() -> None:
+    artifact = _artifact()
+    session = AsyncMock()
+    result = MagicMock()
+    result.one_or_none.return_value = (
+        artifact.generated_at + timedelta(minutes=1),
+        artifact.generated_at,
+        artifact.card_count,
+        artifact.last_play_index,
+    )
+    session.execute.return_value = result
+
+    is_stale = await materialization._artifact_is_stale_async(session, artifact)
+
+    assert is_stale is True
+
+
+@pytest.mark.asyncio
 async def test_public_card_feed_reads_materialized_artifact_without_generating(
     monkeypatch,
 ) -> None:
-    game = SimpleNamespace(id=42)
-    monkeypatch.setattr(materialization, "_load_game_async", AsyncMock(return_value=game))
-    monkeypatch.setattr(materialization, "_source_hash", lambda loaded_game: "current")
+    load_game = AsyncMock()
+    monkeypatch.setattr(materialization, "_load_game_async", load_game)
     monkeypatch.setattr(
         materialization,
         "_load_artifact_async",
         AsyncMock(return_value=_artifact(source_hash="current")),
+    )
+    monkeypatch.setattr(
+        materialization,
+        "_artifact_is_stale_async",
+        AsyncMock(return_value=False),
     )
     regenerate = AsyncMock()
     monkeypatch.setattr(materialization, "_materialize_loaded_game_async", regenerate)
@@ -83,6 +123,7 @@ async def test_public_card_feed_reads_materialized_artifact_without_generating(
 
     assert response.generation.card_count == 1
     assert response.generation.is_stale is False
+    load_game.assert_not_called()
     regenerate.assert_not_called()
 
 
@@ -90,13 +131,17 @@ async def test_public_card_feed_reads_materialized_artifact_without_generating(
 async def test_public_card_feed_marks_stale_artifact_without_regenerating(
     monkeypatch,
 ) -> None:
-    game = SimpleNamespace(id=42)
-    monkeypatch.setattr(materialization, "_load_game_async", AsyncMock(return_value=game))
-    monkeypatch.setattr(materialization, "_source_hash", lambda loaded_game: "new")
+    load_game = AsyncMock()
+    monkeypatch.setattr(materialization, "_load_game_async", load_game)
     monkeypatch.setattr(
         materialization,
         "_load_artifact_async",
         AsyncMock(return_value=_artifact(source_hash="old")),
+    )
+    monkeypatch.setattr(
+        materialization,
+        "_artifact_is_stale_async",
+        AsyncMock(return_value=True),
     )
     regenerate = AsyncMock()
     monkeypatch.setattr(materialization, "_materialize_loaded_game_async", regenerate)
@@ -109,6 +154,7 @@ async def test_public_card_feed_marks_stale_artifact_without_regenerating(
 
     assert response.generation.card_count == 1
     assert response.generation.is_stale is True
+    load_game.assert_not_called()
     regenerate.assert_not_called()
 
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
@@ -37,7 +39,10 @@ class CardFeedRefreshResponse(BaseModel):
 async def materialize_game_card_feed(
     game_id: int,
     force: bool = Query(False),
-    spoiler_policy: str = Query("pre_reveal", alias="spoilerPolicy"),
+    spoiler_policy: Literal["pre_reveal", "revealed"] = Query(
+        "pre_reveal",
+        alias="spoilerPolicy",
+    ),
     session: AsyncSession = Depends(get_db),
 ) -> CardFeedMaterializationResponse:
     """Materialize one game's current card-feed contract."""
@@ -70,7 +75,10 @@ async def refresh_recent_card_feeds(
     lookback_hours: int = Query(72, ge=1, le=720, alias="lookbackHours"),
     lookahead_hours: int = Query(72, ge=0, le=720, alias="lookaheadHours"),
     force: bool = Query(False),
-    spoiler_policy: str = Query("pre_reveal", alias="spoilerPolicy"),
+    spoiler_policy: Literal["pre_reveal", "revealed"] = Query(
+        "pre_reveal",
+        alias="spoilerPolicy",
+    ),
     session: AsyncSession = Depends(get_db),
 ) -> CardFeedRefreshResponse:
     """Refresh card feeds for the deploy/scheduler data window."""

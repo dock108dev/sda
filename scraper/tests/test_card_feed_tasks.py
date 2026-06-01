@@ -7,7 +7,8 @@ import pytest
 
 from sports_scraper import celery_app as celery_module
 from sports_scraper.jobs.card_feed_tasks import refresh_card_feeds
-from sports_scraper.jobs.polling_tasks import _enqueue_card_feed_refresh
+from sports_scraper.jobs.polling_tasks import _enqueue_card_feed_refresh as enqueue_polling_refresh
+from sports_scraper.jobs.scrape_tasks import _enqueue_card_feed_refresh as enqueue_scheduled_refresh
 
 
 def test_refresh_card_feeds_calls_admin_refresh_endpoint(monkeypatch) -> None:
@@ -73,7 +74,23 @@ def test_pbp_update_enqueues_card_feed_refresh(monkeypatch) -> None:
     monkeypatch.setattr(celery_module, "app", celery_app)
     monkeypatch.setattr(celery_module, "DEFAULT_QUEUE", "sports-scraper")
 
-    _enqueue_card_feed_refresh()
+    enqueue_polling_refresh()
+
+    celery_app.send_task.assert_called_once_with(
+        "refresh_card_feeds",
+        kwargs={"lookback_hours": 96, "lookahead_hours": 48, "force": False},
+        queue="sports-scraper",
+        routing_key="sports-scraper",
+    )
+
+
+def test_scheduled_ingestion_refresh_enqueue_is_best_effort(monkeypatch) -> None:
+    celery_app = MagicMock()
+    celery_app.send_task.side_effect = RuntimeError("redis unavailable")
+    monkeypatch.setattr(celery_module, "app", celery_app)
+    monkeypatch.setattr(celery_module, "DEFAULT_QUEUE", "sports-scraper")
+
+    enqueue_scheduled_refresh()
 
     celery_app.send_task.assert_called_once_with(
         "refresh_card_feeds",

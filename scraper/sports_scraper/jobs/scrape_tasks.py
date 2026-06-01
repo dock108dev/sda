@@ -322,18 +322,30 @@ def run_scheduled_ingestion() -> dict:
             "total_pbp_games": nba_pbp_result["pbp_games"] + nhl_pbp_result["pbp_games"] + ncaab_pbp_result["pbp_games"] + mlb_pbp_result["pbp_games"] + nfl_pbp_result["pbp_games"],
         }
         if summary["total_pbp_games"] > 0:
-            from ..celery_app import DEFAULT_QUEUE
-            from ..celery_app import app as celery_app
-
-            celery_app.send_task(
-                "refresh_card_feeds",
-                kwargs={"lookback_hours": 96, "lookahead_hours": 48, "force": False},
-                queue=DEFAULT_QUEUE,
-                routing_key=DEFAULT_QUEUE,
-            )
+            _enqueue_card_feed_refresh()
         tracker.summary_data = summary
 
     return summary
+
+
+def _enqueue_card_feed_refresh() -> None:
+    """Best-effort refresh of materialized card feeds after scheduled PBP ingestion."""
+    try:
+        from ..celery_app import DEFAULT_QUEUE
+        from ..celery_app import app as celery_app
+
+        celery_app.send_task(
+            "refresh_card_feeds",
+            kwargs={"lookback_hours": 96, "lookahead_hours": 48, "force": False},
+            queue=DEFAULT_QUEUE,
+            routing_key=DEFAULT_QUEUE,
+        )
+    except Exception as exc:
+        logger.warning(
+            "card_feed_refresh_enqueue_failed",
+            error=str(exc),
+            exc_info=True,
+        )
 
 
 _CALENDAR_LOOKAHEAD_DAYS = 7
