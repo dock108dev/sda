@@ -40,6 +40,7 @@ def _card(**overrides):
             "isFinalPlay": False,
             "isRunEnding": False,
         },
+        "renderType": "important_narrative",
         "visualImportance": "high",
         "period": {"ordinal": 8, "label": "8th", "type": "inning"},
         "team": {"abbreviation": "ARI", "name": "Arizona", "side": "away"},
@@ -48,6 +49,9 @@ def _card(**overrides):
         "stageSetting": "Top 8, runner on 2nd, 1 out",
         "headline": "RBI double",
         "description": "Arizona doubles into the gap.",
+        "setupLine": "Arizona down 3-2, runner on 2nd, 1 out.",
+        "playLine": "Arizona doubles into the gap.",
+        "updateLine": "Arizona scores 1 run.",
         "spoilerLevel": "none",
         "textFieldSpoilerLevels": {
             "leadIn": "earnedAtPlay",

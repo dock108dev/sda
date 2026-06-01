@@ -129,21 +129,37 @@ class NarrativeCard(BaseModel):
     )
     mode_eligibility: PlayModeEligibility = Field(..., alias="modeEligibility")
     importance: PlayImportance
+    render_type: Literal[
+        "important_narrative", "standard_pbp", "full_pbp", "play_unavailable"
+    ] = Field(..., alias="renderType")
     visual_importance: Literal["critical", "high", "medium", "low"] = Field(
         ..., alias="visualImportance"
     )
+    period_label: str | None = Field(None, alias="periodLabel")
     period: CardPeriod
     display_time: str | None = Field(None, alias="displayTime")
     clock: str | None = None
     team: CardTeam
+    team_display: str | None = Field(None, alias="teamDisplay")
+    team_context: str | None = Field(None, alias="teamContext")
     score_before: ScoreObject | None = Field(None, alias="scoreBefore")
     score_change: ScoreChange | None = Field(None, alias="scoreChange")
     score_after: ScoreObject | None = Field(None, alias="scoreAfter")
+    score_before_display: str | None = Field(None, alias="scoreBeforeDisplay")
+    score_after_display: str | None = Field(None, alias="scoreAfterDisplay")
+    situation_before_display: str | None = Field(None, alias="situationBeforeDisplay")
+    situation_after_display: str | None = Field(None, alias="situationAfterDisplay")
     situation: CardSituation
     lead_in: str = Field(..., alias="leadIn")
     stage_setting: str = Field(..., alias="stageSetting")
     headline: str
     description: str
+    setup_line: str | None = Field(None, alias="setupLine")
+    play_line: str | None = Field(None, alias="playLine")
+    update_line: str | None = Field(None, alias="updateLine")
+    raw_play_text: str | None = Field(None, alias="rawPlayText")
+    event_type: str | None = Field(None, alias="eventType")
+    full_details: dict[str, Any] | None = Field(None, alias="fullDetails")
     impact: str | None = None
     tags: list[str] = Field(default_factory=list)
     spoiler_level: Literal["none", "score_change", "score_revealed"] = Field(

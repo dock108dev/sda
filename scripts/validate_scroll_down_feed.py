@@ -182,6 +182,7 @@ def _validate_card(card: dict[str, Any], *, game_id: int, index: int) -> None:
             "contentDepth",
             "modeEligibility",
             "importance",
+            "renderType",
             "visualImportance",
             "period",
             "team",
@@ -223,6 +224,17 @@ def _validate_card(card: dict[str, Any], *, game_id: int, index: int) -> None:
     if level in IMPORTANT_LEVELS or visual in IMPORTANT_VISUALS:
         if card["stageSetting"].strip() == card["leadIn"].strip():
             raise ValidationError(f"{scope} important card duplicates leadIn as stageSetting")
+    if mode.get("important") is True:
+        if card.get("renderType") != "important_narrative":
+            raise ValidationError(f"{scope} important card renderType must be important_narrative")
+        for field in ("setupLine", "playLine", "updateLine"):
+            if not _non_empty_string(card.get(field)):
+                raise ValidationError(f"{scope} {field} is empty")
+        generic_text = " ".join(str(card.get(field) or "") for field in ("headline", "setupLine", "playLine", "updateLine"))
+        if any(phrase in generic_text.lower() for phrase in ("scoring chance", "key spot", "important play", "no-out spot")):
+            raise ValidationError(f"{scope} important narrative uses generic copy")
+    elif any(card.get(field) for field in ("setupLine", "playLine", "updateLine")):
+        raise ValidationError(f"{scope} non-important card includes important narrative fields")
 
 
 def _validate_feed(

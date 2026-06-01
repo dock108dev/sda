@@ -127,6 +127,13 @@ class _CardFeedBuildResult:
     generation_error_type: str | None = None
 
 
+@dataclass(frozen=True)
+class _ImportantNarrative:
+    setup_line: str
+    play_line: str
+    update_line: str
+
+
 async def get_game_card_feed(
     session: AsyncSession,
     game_id: int,
@@ -625,6 +632,25 @@ def _card_from_play(
     if play.importance is None:
         raise DetailContractError("importance missing")
     impact = impact_for(play, score_change, impact_context)
+    team = _team_for_play(game, play.team_abbreviation)
+    render_type = _render_type(play)
+    narrative = (
+        _important_narrative(
+            game=game,
+            play=play,
+            team=team,
+            context=context,
+            score_change=score_change,
+            description=description,
+            impact=impact,
+        )
+        if render_type == "important_narrative"
+        else None
+    )
+    if render_type == "important_narrative" and narrative is None:
+        raise DetailContractError(
+            f"important narrative fields missing for play {play.play_index}"
+        )
     card = NarrativeCard(
         id=f"{game.id}:{play.play_index}",
         gameId=game.id,
@@ -636,14 +662,30 @@ def _card_from_play(
         contentDepth=content_depth,
         modeEligibility=play.mode_eligibility,
         importance=play.importance,
+        renderType=render_type,
         visualImportance=_visual_importance(play),
+        periodLabel=play.period_label,
         period=CardPeriod(ordinal=play.quarter, label=play.period_label, type=play.period_type),
         displayTime=play.time_label or play.clock_label or play.period_label,
         clock=play.game_clock,
-        team=_team_for_play(game, play.team_abbreviation),
+        team=team,
+        teamDisplay=team.name or team.abbreviation,
+        teamContext=_team_context(league, play, team, context),
         scoreBefore=score_before_for(play, context),
         scoreChange=score_change,
         scoreAfter=score_after_for(play, spoiler_policy, context),
+        scoreBeforeDisplay=_score_display(
+            game=game,
+            team=team,
+            score=score_before_for(play, context),
+        ),
+        scoreAfterDisplay=_score_display(
+            game=game,
+            team=team,
+            score=score_after_for(play, SpoilerPolicy.revealed, context),
+        ),
+        situationBeforeDisplay=_situation_display(context, before=True),
+        situationAfterDisplay=_situation_display(context, before=False),
         situation=_situation(
             play,
             mlb_context,
@@ -655,6 +697,12 @@ def _card_from_play(
         stageSetting=stage_setting,
         headline=_headline(play),
         description=description,
+        setupLine=narrative.setup_line if narrative else None,
+        playLine=narrative.play_line if narrative else None,
+        updateLine=narrative.update_line if narrative else None,
+        rawPlayText=description,
+        eventType=play.display_type or play.play_type,
+        fullDetails=None,
         impact=impact,
         tags=tags,
         spoilerLevel=_spoiler_level(spoiler_policy, score_change),
@@ -856,11 +904,7 @@ def _provider_source_play_id(play: SportsGamePlay) -> str | None:
 
 
 def _lead_in(play: PlayEntry) -> str:
-    parts = [
-        (play.time_label or play.period_label or play.clock_label or "").strip(),
-        (play.team_abbreviation or "").strip(),
-    ]
-    label = " - ".join(part for part in parts if part)
+    label = (play.time_label or play.period_label or play.clock_label or "").strip()
     return label or "Game event"
 
 
@@ -894,6 +938,221 @@ def _stage_setting(
     if context and context.summary and not _contains_reveal_only_pressure(context.summary):
         return context.summary
     return _lead_in(play)
+
+
+def _render_type(
+    play: PlayEntry,
+) -> Literal["important_narrative", "standard_pbp", "full_pbp"]:
+    if play.mode_eligibility and play.mode_eligibility.important:
+        return "important_narrative"
+    if play.mode_eligibility and play.mode_eligibility.standard:
+        return "standard_pbp"
+    return "full_pbp"
+
+
+def _important_narrative(
+    *,
+    game: SportsGame,
+    play: PlayEntry,
+    team: CardTeam,
+    context: MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext | None,
+    score_change: ScoreChange,
+    description: str,
+    impact: str | None,
+) -> _ImportantNarrative | None:
+    setup = _important_setup_line(game=game, play=play, team=team, context=context)
+    play_line = _sentence(description)
+    update = _important_update_line(
+        game=game,
+        play=play,
+        team=team,
+        context=context,
+        score_change=score_change,
+        impact=impact,
+    )
+    if not setup or not play_line or not update:
+        return None
+    return _ImportantNarrative(
+        setup_line=setup,
+        play_line=play_line,
+        update_line=update,
+    )
+
+
+def _important_setup_line(
+    *,
+    game: SportsGame,
+    play: PlayEntry,
+    team: CardTeam,
+    context: MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext | None,
+) -> str | None:
+    score = _score_display(game=game, team=team, score=score_before_for(play, context))
+    situation = _situation_display(context, before=True)
+    if isinstance(context, NhlCardContext):
+        strength = _nhl_strength_text(context)
+        pieces = [score, strength, situation]
+        return _sentence(", ".join(piece for piece in pieces if piece))
+    if isinstance(context, BasketballCardContext):
+        pieces = [score, situation]
+        return _sentence(", ".join(piece for piece in pieces if piece))
+    if isinstance(context, FootballCardContext):
+        pieces = [score, situation]
+        return _sentence(", ".join(piece for piece in pieces if piece))
+    pieces = [score, situation]
+    return _sentence(", ".join(piece for piece in pieces if piece))
+
+
+def _important_update_line(
+    *,
+    game: SportsGame,
+    play: PlayEntry,
+    team: CardTeam,
+    context: MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext | None,
+    score_change: ScoreChange,
+    impact: str | None,
+) -> str | None:
+    scoring = _score_change_text(team=team, score_change=score_change)
+    score_after = _score_display(
+        game=game,
+        team=team,
+        score=score_after_for(play, SpoilerPolicy.revealed, context),
+    )
+    situation_after = _situation_display(context, before=False)
+    if scoring:
+        return _sentence(
+            ". ".join(
+                piece for piece in [scoring, score_after, situation_after] if piece
+            )
+        )
+    if impact and impact != "none":
+        return _sentence(_tag_label(impact))
+    return _sentence(situation_after or "Play complete")
+
+
+def _sentence(value: str | None) -> str | None:
+    text = _clean_text(value)
+    if not text:
+        return None
+    return text if text.endswith((".", "!", "?")) else f"{text}."
+
+
+def _team_context(
+    league: str,
+    play: PlayEntry,
+    team: CardTeam,
+    context: MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext | None,
+) -> str | None:
+    abbr = team.abbreviation or play.team_abbreviation
+    if not abbr:
+        return None
+    if league == "MLB":
+        return f"{abbr} batting"
+    if isinstance(context, NhlCardContext):
+        strength = _nhl_strength_text(context)
+        return f"{abbr} {strength}" if strength else abbr
+    return abbr
+
+
+def _score_display(
+    *,
+    game: SportsGame,
+    team: CardTeam,
+    score: Any,
+) -> str | None:
+    if score is None:
+        return None
+    home = getattr(score, "home", None)
+    away = getattr(score, "away", None)
+    if not isinstance(home, int) or not isinstance(away, int):
+        return None
+    team_label = team.abbreviation or team.name or "Team"
+    if team.side == "home":
+        own, opp = home, away
+    elif team.side == "away":
+        own, opp = away, home
+    else:
+        away_abbr = game.away_team.abbreviation if game.away_team else "Away"
+        home_abbr = game.home_team.abbreviation if game.home_team else "Home"
+        return f"{away_abbr} {away}, {home_abbr} {home}"
+    if own > opp:
+        return f"{team_label} up {own}-{opp}"
+    if own < opp:
+        return f"{team_label} down {opp}-{own}"
+    return f"{team_label} tied {own}-{opp}"
+
+
+def _score_change_text(*, team: CardTeam, score_change: ScoreChange) -> str | None:
+    runs = 0
+    if team.side == "home":
+        runs = score_change.home
+    elif team.side == "away":
+        runs = score_change.away
+    else:
+        runs = max(score_change.home, score_change.away)
+    if runs <= 0:
+        return None
+    label = team.abbreviation or team.name or "Team"
+    unit = "run" if runs == 1 else "runs"
+    return f"{label} scores {runs} {unit}"
+
+
+def _situation_display(
+    context: MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext | None,
+    *,
+    before: bool,
+) -> str | None:
+    if isinstance(context, MlbCardContext):
+        base_out = context.raw.get("baseOut") if isinstance(context.raw, dict) else {}
+        if isinstance(base_out, dict):
+            base_state = base_out.get("baseStateBefore" if before else "baseStateAfter")
+            outs = base_out.get("outsBefore" if before else "outsAfter")
+            pieces = [
+                _lower_initial(str(base_state)) if base_state else None,
+                _outs_display(outs) if isinstance(outs, int) and outs < 3 else None,
+            ]
+            return ", ".join(piece for piece in pieces if piece) or None
+    if isinstance(context, NhlCardContext):
+        raw = context.raw if isinstance(context.raw, dict) else {}
+        clock = raw.get("clock") if isinstance(raw.get("clock"), dict) else {}
+        label = clock.get("label") or clock.get("gameClock")
+        return str(label) if label else None
+    if isinstance(context, BasketballCardContext):
+        raw = context.raw if isinstance(context.raw, dict) else {}
+        clock = raw.get("clock") if isinstance(raw.get("clock"), dict) else {}
+        label = clock.get("label") or clock.get("gameClock")
+        return str(label) if label else None
+    if isinstance(context, FootballCardContext):
+        return context.summary
+    return context.summary if context else None
+
+
+def _outs_display(outs: int) -> str:
+    if outs == 0:
+        return "nobody out"
+    if outs == 1:
+        return "1 out"
+    return f"{outs} outs"
+
+
+def _lower_initial(value: str) -> str:
+    return value[:1].lower() + value[1:] if value else value
+
+
+def _nhl_strength_text(context: NhlCardContext) -> str | None:
+    raw = context.raw if isinstance(context.raw, dict) else {}
+    strength = raw.get("strength") if isinstance(raw.get("strength"), dict) else {}
+    state = strength.get("state")
+    if not state:
+        return None
+    return str(state).replace("_", " ")
+
+
+def _full_details(
+    context: MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext | None,
+) -> dict[str, Any] | None:
+    if context is None:
+        return None
+    return context.raw if isinstance(context.raw, dict) else None
 
 
 def _nhl_stage_setting(context: NhlCardContext) -> str | None:

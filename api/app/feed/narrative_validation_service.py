@@ -18,7 +18,20 @@ from .narrative_validation import (
 from .prompt_context import PromptContextWindow, build_prompt_window
 from .schemas import NarrativeCard, SpoilerPolicy
 
-_TEXT_FIELDS = ("lead_in", "stage_setting", "headline", "description", "impact")
+_TEXT_FIELDS = (
+    "lead_in",
+    "stage_setting",
+    "headline",
+    "description",
+    "setup_line",
+    "play_line",
+    "update_line",
+    "impact",
+)
+_GENERIC_IMPORTANT_COPY_RE = re.compile(
+    r"\b(?:scoring chance|key spot|important play|no-out spot)\b",
+    re.IGNORECASE,
+)
 _DESCRIPTION_FUTURE_HINTS = (
     "would go on",
     "eventually",
@@ -74,6 +87,7 @@ def validate_feed_cards(
         )
         findings: list[NarrativeFinding] = []
         replacement: dict[str, Any] = {}
+        findings.extend(_validate_render_contract(card))
         for field in _TEXT_FIELDS:
             value = getattr(card, field)
             if not isinstance(value, str) or not value:
@@ -110,6 +124,46 @@ def validate_feed_cards(
             )
         )
     return outcomes
+
+
+def _validate_render_contract(card: NarrativeCard) -> list[NarrativeFinding]:
+    findings: list[NarrativeFinding] = []
+    if card.render_type == "important_narrative":
+        for field in ("setup_line", "play_line", "update_line"):
+            value = getattr(card, field)
+            if not isinstance(value, str) or not value.strip():
+                findings.append(
+                    NarrativeFinding(
+                        code="important_narrative_field_missing",
+                        severity="error",
+                        action="block_card",
+                        message="Important narrative cards must include setup, play, and update lines.",
+                        field=field,
+                    )
+                )
+        for field in ("headline", "setup_line", "play_line", "update_line"):
+            value = getattr(card, field)
+            if isinstance(value, str) and _GENERIC_IMPORTANT_COPY_RE.search(value):
+                findings.append(
+                    NarrativeFinding(
+                        code="important_narrative_generic_copy",
+                        severity="error",
+                        action="fallback_text",
+                        message="Important narrative cards must not use generic setup titles.",
+                        field=field,
+                    )
+                )
+    elif any(getattr(card, field) for field in ("setup_line", "play_line", "update_line")):
+        findings.append(
+            NarrativeFinding(
+                code="pbp_card_has_important_narrative_fields",
+                severity="error",
+                action="block_card",
+                message="Standard and full PBP cards must not carry important narrative fields.",
+                field="render_type",
+            )
+        )
+    return findings
 
 
 def _context_for_card(
@@ -324,4 +378,10 @@ def _fallback_text(field: str, card: NarrativeCard) -> str | None:
         return "Verified play detail is available after reveal."
     if field == "impact":
         return None
+    if field == "setup_line":
+        return card.stage_setting
+    if field == "play_line":
+        return card.description
+    if field == "update_line":
+        return card.impact or "Play complete."
     return "Verified game context"
