@@ -48,13 +48,19 @@ def _env_file_values(path: Path) -> dict[str, str]:
 def _resolve_api_key(args: argparse.Namespace) -> str | None:
     if args.api_key:
         return args.api_key
-    for key in ("CONSUMER_API_KEY", "SDA_CONSUMER_API_KEY", "API_KEY", "SPORTS_API_KEY"):
-        if os.getenv(key):
-            return os.environ[key]
     env_values = _env_file_values(Path(args.env_file))
-    for key in ("CONSUMER_API_KEY", "API_KEY", "SPORTS_API_KEY"):
+    for key in ("CONSUMER_API_KEY", "SDA_CONSUMER_API_KEY"):
         if env_values.get(key):
             return env_values[key]
+    for key in ("CONSUMER_API_KEY", "SDA_CONSUMER_API_KEY"):
+        if os.getenv(key):
+            return os.environ[key]
+    for key in ("API_KEY", "SPORTS_API_KEY"):
+        if env_values.get(key):
+            return env_values[key]
+    for key in ("API_KEY", "SPORTS_API_KEY"):
+        if os.getenv(key):
+            return os.environ[key]
     return None
 
 

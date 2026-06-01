@@ -94,9 +94,13 @@ def test_validator_rejects_missing_mode_eligibility_all() -> None:
         )
 
 
-def test_validator_loads_consumer_key_from_deploy_env_file(tmp_path: Path) -> None:
+def test_validator_prefers_env_file_consumer_key_over_process_admin_key(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     env_file = tmp_path / ".env"
     env_file.write_text("API_KEY=admin-key\nCONSUMER_API_KEY=consumer-key\n", encoding="utf-8")
     args = SimpleNamespace(api_key=None, env_file=str(env_file))
+    monkeypatch.setenv("API_KEY", "process-admin-key")
 
     assert validator._resolve_api_key(args) == "consumer-key"

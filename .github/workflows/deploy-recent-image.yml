@@ -138,9 +138,9 @@ jobs:
             fi
 
             echo "Verifying Scroll Down normalized card feed..."
-            python3 scripts/validate_scroll_down_feed.py \
+            python3 ../scripts/validate_scroll_down_feed.py \
               --base-url http://localhost:8000 \
-              --env-file infra/.env
+              --env-file .env
 
             echo "Post-deploy cleanup..."
             docker image prune -af
