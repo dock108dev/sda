@@ -54,6 +54,7 @@ class TeamStat(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     team: str
+    team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     is_home: bool = Field(..., alias="isHome")
     stats: dict[str, Any]
     source: str | None = None
@@ -67,6 +68,7 @@ class PlayerStat(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     team: str
+    team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     player_name: str = Field(..., alias="playerName")
     minutes: float | None = None
     points: int | None = None
@@ -84,6 +86,7 @@ class NHLSkaterStat(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     team: str
+    team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     player_name: str = Field(..., alias="playerName")
     # Time on ice in MM:SS format
     toi: str | None = None
@@ -106,6 +109,7 @@ class NHLGoalieStat(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     team: str
+    team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     player_name: str = Field(..., alias="playerName")
     # Time on ice in MM:SS format
     toi: str | None = None
@@ -124,6 +128,7 @@ class MLBBatterStat(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     team: str
+    team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     player_name: str = Field(..., alias="playerName")
     position: str | None = None
     at_bats: int | None = Field(None, alias="atBats")
@@ -149,6 +154,7 @@ class MLBPitcherStat(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     team: str
+    team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
     player_name: str = Field(..., alias="playerName")
     innings_pitched: str | None = Field(None, alias="inningsPitched")
     hits: int | None = None

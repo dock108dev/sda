@@ -7,8 +7,29 @@ from datetime import UTC
 from celery import shared_task
 
 from ..logging import logger
+from ..models import TeamIdentity
 
 _CALENDAR_LOOKAHEAD_DAYS = 7
+
+
+def _calendar_days(today):
+    """Return every ET schedule day polled by per-day scoreboard providers."""
+    from datetime import timedelta
+
+    return [today + timedelta(days=i) for i in range(_CALENDAR_LOOKAHEAD_DAYS + 1)]
+
+
+def _nba_team_identity(abbreviation: str) -> TeamIdentity:
+    """Build a canonical NBA team identity from a provider abbreviation."""
+    from ..normalization import normalize_team_name
+
+    name, normalized_abbreviation = normalize_team_name("NBA", abbreviation)
+    return TeamIdentity(
+        league_code="NBA",
+        name=name,
+        short_name=name,
+        abbreviation=normalized_abbreviation or abbreviation,
+    )
 
 
 @shared_task(name="poll_game_calendars")
@@ -23,13 +44,12 @@ def poll_game_calendars() -> dict:
     from datetime import datetime, timedelta
 
     from ..db import get_session
-    from ..models import TeamIdentity
     from ..persistence.games import upsert_game_stub
     from ..utils.datetime_utils import sports_today_et
 
     today = sports_today_et()
     end_day = today + timedelta(days=_CALENDAR_LOOKAHEAD_DAYS)
-    days = [today + timedelta(days=i) for i in range(_CALENDAR_LOOKAHEAD_DAYS)]
+    days = _calendar_days(today)
 
     results: dict[str, dict] = {}
 
@@ -47,11 +67,12 @@ def poll_game_calendars() -> dict:
                             session,
                             league_code="NBA",
                             game_date=game.game_date,
-                            home_team=TeamIdentity(name="", abbreviation=game.home_abbr),
-                            away_team=TeamIdentity(name="", abbreviation=game.away_abbr),
+                            home_team=_nba_team_identity(game.home_abbr),
+                            away_team=_nba_team_identity(game.away_abbr),
                             status=game.status,
                             home_score=game.home_score,
                             away_score=game.away_score,
+                            external_ids={"nba_game_id": game.game_id},
                         )
                         if was_created:
                             created += 1
@@ -142,10 +163,14 @@ def poll_game_calendars() -> dict:
                             league_code="NCAAB",
                             game_date=game_date,
                             home_team=TeamIdentity(
-                                name=game.home_team_short, abbreviation="",
+                                league_code="NCAAB",
+                                name=game.home_team_short,
+                                abbreviation="",
                             ),
                             away_team=TeamIdentity(
-                                name=game.away_team_short, abbreviation="",
+                                league_code="NCAAB",
+                                name=game.away_team_short,
+                                abbreviation="",
                             ),
                             status=game.game_state,
                             home_score=game.home_score,
@@ -203,4 +228,3 @@ def poll_game_calendars() -> dict:
     )
 
     return {"total_created": total_created, "leagues": results}
-

@@ -32,6 +32,7 @@ def serialize_team_stat(
 
     return TeamStat(
         team=box.team.name if box.team else "Unknown",
+        team_abbreviation=box.team.abbreviation if box.team else None,
         is_home=box.is_home,
         stats=box.stats or {},
         source=box.source,
@@ -111,6 +112,7 @@ def serialize_player_stat(
 
     return PlayerStat(
         team=player.team.name if player.team else "Unknown",
+        team_abbreviation=player.team.abbreviation if player.team else None,
         player_name=player.player_name,
         minutes=round(minutes_val, 1) if minutes_val is not None else None,
         points=_get_int_stat(stats, "points") or _get_nested_int(stats, "points"),
@@ -156,6 +158,7 @@ def serialize_nhl_skater(player: SportsPlayerBoxscore) -> NHLSkaterStat:
     stats = player.stats or {}
     return NHLSkaterStat(
         team=player.team.name if player.team else "Unknown",
+        team_abbreviation=player.team.abbreviation if player.team else None,
         player_name=player.player_name,
         toi=_extract_toi(stats),
         goals=_get_int_stat(stats, "goals"),
@@ -195,6 +198,7 @@ def serialize_nhl_goalie(player: SportsPlayerBoxscore) -> NHLGoalieStat:
     stats = player.stats or {}
     return NHLGoalieStat(
         team=player.team.name if player.team else "Unknown",
+        team_abbreviation=player.team.abbreviation if player.team else None,
         player_name=player.player_name,
         toi=_extract_toi(stats),
         shots_against=_get_int_stat(stats, "shots_against"),
@@ -212,6 +216,7 @@ def serialize_mlb_batter(player: SportsPlayerBoxscore) -> MLBBatterStat:
     stats = player.stats or {}
     return MLBBatterStat(
         team=player.team.name if player.team else "Unknown",
+        team_abbreviation=player.team.abbreviation if player.team else None,
         player_name=player.player_name,
         position=stats.get("position") or getattr(player, "position", None),
         at_bats=_get_int_stat(stats, "atBats"),
@@ -237,6 +242,7 @@ def serialize_mlb_pitcher(player: SportsPlayerBoxscore) -> MLBPitcherStat:
     stats = player.stats or {}
     return MLBPitcherStat(
         team=player.team.name if player.team else "Unknown",
+        team_abbreviation=player.team.abbreviation if player.team else None,
         player_name=player.player_name,
         innings_pitched=stats.get("inningsPitched"),
         hits=_get_int_stat(stats, "hits"),

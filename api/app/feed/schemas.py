@@ -150,6 +150,52 @@ class FeedGenerationStatus(BaseModel):
     validation_issues: list[str] = Field(default_factory=list, alias="validationIssues")
 
 
+class CardScoreboardCompetitor(BaseModel):
+    """Team row for the normalized feed line score."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    side: Literal["away", "home"]
+    team_name: str | None = Field(None, alias="teamName")
+    team_abbreviation: str | None = Field(None, alias="teamAbbreviation")
+    score: int | None = None
+    score_text: str | None = Field(None, alias="scoreText")
+    is_winner: bool | None = Field(None, alias="isWinner")
+
+
+class CardScoreboardSegment(BaseModel):
+    """One period/inning/quarter score column."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    label: str
+    away: str | None = None
+    home: str | None = None
+
+
+class CardScoreboardTotals(BaseModel):
+    """Final/current totals keyed by home/away side."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    away: str | None = None
+    home: str | None = None
+
+
+class CardScoreboard(BaseModel):
+    """Compact scoreboard payload clients can render without recomputing line score."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    schema_version: int = Field(1, alias="schemaVersion")
+    layout: Literal["period_table", "inning_table", "quarter_table"] = "period_table"
+    status_label: str | None = Field(None, alias="statusLabel")
+    scoreline: str | None = None
+    competitors: list[CardScoreboardCompetitor] = Field(default_factory=list)
+    segments: list[CardScoreboardSegment] = Field(default_factory=list)
+    totals: CardScoreboardTotals | None = None
+
+
 class CardGameMetadata(BaseModel):
     """Game metadata for the feed envelope."""
 
@@ -166,6 +212,7 @@ class CardGameMetadata(BaseModel):
     home_team_abbr: str | None = Field(None, alias="homeTeamAbbr")
     away_team_abbr: str | None = Field(None, alias="awayTeamAbbr")
     score: ScoreObject | None = None
+    scoreboard: CardScoreboard | None = None
 
 
 class CardFeedResponse(BaseModel):

@@ -127,6 +127,10 @@ def test_card_feed_has_required_json_contract_for_supported_sports(
     assert body["game"]["league"] == league
     assert body["game"]["homeTeamId"] == 1
     assert body["game"]["awayTeamId"] == 2
+    assert body["game"]["scoreboard"]["competitors"][0]["teamAbbreviation"] == "AWY"
+    assert body["game"]["scoreboard"]["competitors"][1]["teamAbbreviation"] == "HOM"
+    assert body["game"]["scoreboard"]["segments"][0]["home"] == "2"
+    assert body["game"]["scoreboard"]["totals"] == {"away": "0", "home": "2"}
     assert body["generation"] == {
         "status": "ready",
         "cardCount": 1,
@@ -252,7 +256,9 @@ def test_card_feed_includes_current_score_and_stats() -> None:
 
     assert body["game"]["score"] == {"home": 52, "away": 50}
     assert [stat["team"] for stat in body["teamStats"]] == ["NBA Away", "NBA Home"]
+    assert [stat["teamAbbreviation"] for stat in body["teamStats"]] == ["AWY", "HOM"]
     assert body["playerStats"][0]["playerName"] == "Alex Morgan"
+    assert body["playerStats"][0]["teamAbbreviation"] == "HOM"
     assert body["playerStats"][0]["points"] == 14
 
 

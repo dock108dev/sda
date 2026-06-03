@@ -18,6 +18,10 @@ from .schemas import (
     CardFeedResponse,
     CardFeedStatus,
     CardGameMetadata,
+    CardScoreboard,
+    CardScoreboardCompetitor,
+    CardScoreboardSegment,
+    CardScoreboardTotals,
     CardSectionLeadIn,
     CardSituation,
     CardTeam,
@@ -95,6 +99,7 @@ def _response(
             homeTeamAbbr=game.home_team.abbreviation if game.home_team else None,
             awayTeamAbbr=game.away_team.abbreviation if game.away_team else None,
             score=payoff["score"],
+            scoreboard=_scoreboard(game, league),
         ),
         generation=FeedGenerationStatus(
             status=feed_status,
@@ -129,6 +134,123 @@ def _payoff_data(game: SportsGame) -> dict[str, object]:
             for boxscore in getattr(game, "player_boxscores", [])
         ],
     }
+
+
+def _scoreboard(game: SportsGame, league: str) -> CardScoreboard | None:
+    """Build a deterministic line score from canonical play score snapshots."""
+    home_abbr = game.home_team.abbreviation if game.home_team else None
+    away_abbr = game.away_team.abbreviation if game.away_team else None
+    home_total = getattr(game, "home_score", None)
+    away_total = getattr(game, "away_score", None)
+    sorted_plays = sorted(list(getattr(game, "plays", []) or []), key=lambda play: play.play_index)
+    if home_total is None or away_total is None:
+        for play in reversed(sorted_plays):
+            if play.home_score is not None and play.away_score is not None:
+                home_total = play.home_score
+                away_total = play.away_score
+                break
+    if home_total is None and away_total is None and not sorted_plays:
+        return None
+
+    segments = _scoreboard_segments(sorted_plays, league)
+    layout = {
+        "MLB": "inning_table",
+        "NBA": "quarter_table",
+        "NCAAB": "quarter_table",
+        "NHL": "period_table",
+        "NFL": "quarter_table",
+        "NCAAF": "quarter_table",
+    }.get(league, "period_table")
+    status_label = _scoreboard_status_label(game.status)
+    winner_side = None
+    if home_total is not None and away_total is not None and home_total != away_total:
+        winner_side = "home" if home_total > away_total else "away"
+
+    return CardScoreboard(
+        layout=layout,
+        statusLabel=status_label,
+        scoreline=_scoreline(game, home_total, away_total),
+        competitors=[
+            CardScoreboardCompetitor(
+                side="away",
+                teamName=game.away_team.name if game.away_team else None,
+                teamAbbreviation=away_abbr,
+                score=away_total,
+                scoreText=str(away_total) if away_total is not None else None,
+                isWinner=winner_side == "away" if winner_side else None,
+            ),
+            CardScoreboardCompetitor(
+                side="home",
+                teamName=game.home_team.name if game.home_team else None,
+                teamAbbreviation=home_abbr,
+                score=home_total,
+                scoreText=str(home_total) if home_total is not None else None,
+                isWinner=winner_side == "home" if winner_side else None,
+            ),
+        ],
+        segments=segments,
+        totals=CardScoreboardTotals(
+            away=str(away_total) if away_total is not None else None,
+            home=str(home_total) if home_total is not None else None,
+        ),
+    )
+
+
+def _scoreboard_segments(
+    sorted_plays: list[SportsGamePlay],
+    league: str,
+) -> list[CardScoreboardSegment]:
+    previous_home = 0
+    previous_away = 0
+    period_totals: dict[int, tuple[int, int]] = {}
+    for play in sorted_plays:
+        if play.quarter is None or play.home_score is None or play.away_score is None:
+            continue
+        period_totals[play.quarter] = (play.home_score, play.away_score)
+
+    segments: list[CardScoreboardSegment] = []
+    for period in sorted(period_totals):
+        home_score, away_score = period_totals[period]
+        segments.append(
+            CardScoreboardSegment(
+                label=_scoreboard_period_label(period, league),
+                away=str(max(0, away_score - previous_away)),
+                home=str(max(0, home_score - previous_home)),
+            )
+        )
+        previous_home = home_score
+        previous_away = away_score
+    return segments
+
+
+def _scoreboard_period_label(period: int, league: str) -> str:
+    if league == "NBA" or league == "NCAAB" or league == "NFL" or league == "NCAAF":
+        return f"Q{period}" if period <= 4 else "OT" if period == 5 else f"{period - 4}OT"
+    if league == "NHL":
+        return str(period) if period <= 3 else "OT" if period == 4 else "SO"
+    return str(period)
+
+
+def _scoreboard_status_label(status: str | None) -> str | None:
+    if status == GameStatus.live.value:
+        return "In progress"
+    if GameStatus.is_final_or_post_final_status(status):
+        return "Final"
+    if status in {GameStatus.scheduled.value, GameStatus.pregame.value}:
+        return "Scheduled"
+    return status.title() if status else None
+
+
+def _scoreline(game: SportsGame, home_total: int | None, away_total: int | None) -> str | None:
+    if home_total is None or away_total is None:
+        return None
+    home = game.home_team.name if game.home_team else "Home"
+    away = game.away_team.name if game.away_team else "Away"
+    if home_total > away_total:
+        return f"{home} {home_total}, {away} {away_total}"
+    if away_total > home_total:
+        return f"{away} {away_total}, {home} {home_total}"
+    return f"{away} {away_total}, {home} {home_total}"
 
 def _initial_status(
     game: SportsGame,
@@ -224,4 +346,3 @@ def _provider_source_play_id(play: SportsGamePlay) -> str | None:
             if source_id:
                 return source_id
     return None
-
