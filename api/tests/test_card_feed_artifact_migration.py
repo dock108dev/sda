@@ -11,6 +11,12 @@ _MIGRATION_PATH = (
     / "versions"
     / "20260603_000077_repair_card_feed_artifacts_payload_columns.py"
 )
+_SPOILER_POLICY_MIGRATION_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "alembic"
+    / "versions"
+    / "20260603_000078_remove_card_feed_artifact_spoiler_policy.py"
+)
 
 
 class _Inspector:
@@ -40,6 +46,18 @@ class _Inspector:
 
 def _load_migration() -> ModuleType:
     spec = importlib.util.spec_from_file_location("migration_20260603_000077", _MIGRATION_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_spoiler_policy_migration() -> ModuleType:
+    spec = importlib.util.spec_from_file_location(
+        "migration_20260603_000078",
+        _SPOILER_POLICY_MIGRATION_PATH,
+    )
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -100,3 +118,38 @@ def test_repair_migration_downgrade_is_not_destructive() -> None:
     mock_op.drop_column.assert_not_called()
     mock_op.drop_constraint.assert_not_called()
     mock_op.drop_index.assert_not_called()
+
+
+def test_spoiler_policy_migration_drops_legacy_card_feed_artifact_column() -> None:
+    migration = _load_spoiler_policy_migration()
+    mock_op = MagicMock()
+    mock_op.get_bind.return_value = object()
+
+    with (
+        patch.object(migration, "op", mock_op),
+        patch.object(
+            migration.sa,
+            "inspect",
+            return_value=_Inspector({"id", "game_id", "spoiler_policy"}),
+        ),
+    ):
+        migration.upgrade()
+
+    mock_op.drop_column.assert_called_once_with(
+        "sports_game_card_feed_artifacts",
+        "spoiler_policy",
+    )
+
+
+def test_spoiler_policy_migration_noops_when_column_is_absent() -> None:
+    migration = _load_spoiler_policy_migration()
+    mock_op = MagicMock()
+    mock_op.get_bind.return_value = object()
+
+    with (
+        patch.object(migration, "op", mock_op),
+        patch.object(migration.sa, "inspect", return_value=_Inspector({"id", "game_id"})),
+    ):
+        migration.upgrade()
+
+    mock_op.drop_column.assert_not_called()
