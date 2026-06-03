@@ -65,7 +65,6 @@ def _card(
         description=description,
         impact="scoring",
         tags=["Scoring"],
-        spoilerLevel="score_change",
     )
 
 

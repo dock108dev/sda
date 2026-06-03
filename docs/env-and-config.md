@@ -56,8 +56,8 @@ The current runtime reads configuration from:
 | `OPENAI_MODEL_CLASSIFICATION`, `OPENAI_MODEL_SUMMARY` | Optional OpenAI model overrides; empty strings fall back to code defaults. |
 
 `RESEND_API_KEY` appears in compose/env examples from an older mail plan, but
-the current API email service does not read it. Current supported backends are
-SMTP and SES.
+the current API settings and email service do not read it. Current supported
+email backends are SMTP and SES through `EMAIL_BACKEND`.
 
 ## Scraper Settings
 
@@ -103,8 +103,10 @@ route path:
 - `SCRAPER_ROLE`
 - `STRIPE_*`
 
-Payment provider configuration is no longer accepted; `STRIPE_*` keys fail
-deploy env lint as unknown variables.
+Payment provider configuration is no longer accepted by deploy env lint;
+`STRIPE_*` keys fail as unknown variables. `ODDS_API_*` and `DATAGOLF_API_KEY`
+are still accepted by env lint because importable dormant modules can read
+them, but they do not activate beat-scheduled odds or golf jobs.
 
 ## Validation
 

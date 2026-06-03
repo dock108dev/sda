@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from app.db.sports import GameStatus, SportsGamePlay, SportsTeam
-from app.feed.schemas import SpoilerPolicy
 from app.feed.service import build_card_feed_from_game
 
 
@@ -68,7 +67,7 @@ def _play(
 
 def _cards(game: SimpleNamespace) -> list[dict]:
     return build_card_feed_from_game(
-        game, SpoilerPolicy.pre_reveal
+        game
     ).model_dump(by_alias=True, mode="json", exclude_none=True)["cards"]
 
 

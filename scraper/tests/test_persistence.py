@@ -123,7 +123,7 @@ class TestMergeExternalIds:
 # Tests for persistence/teams.py
 # ============================================================================
 
-from sports_scraper.persistence.teams import (
+from sports_scraper.persistence.team_name_normalization import (
     _derive_abbreviation,
     _normalize_ncaab_name_for_matching,
 )
@@ -551,5 +551,3 @@ class TestCanonicalizeTeamNames:
         home_name, away_name = canonicalize_team_names(snapshot)
         assert isinstance(home_name, str)
         assert isinstance(away_name, str)
-
-

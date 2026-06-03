@@ -1,6 +1,6 @@
 # Sports Data Admin
 
-Sports Data Admin is the backend service for Scroll Down Sports catch-up data. It serves spoiler-light game lists and game detail data built from play-by-play, player stats, team stats, and box scores.
+Sports Data Admin is the backend service for Scroll Down Sports catch-up data. It serves compact game lists and normalized game detail feeds built from play-by-play, player stats, team stats, and box scores.
 
 The current runtime is intentionally small:
 

@@ -19,11 +19,13 @@ os.environ.setdefault("ENVIRONMENT", "development")
 
 
 from sports_scraper.models import TeamIdentity
-from sports_scraper.persistence.teams import (
+from sports_scraper.persistence.team_name_normalization import (
     _NCAAB_ABBREV_EXPANSIONS,
     _NCAAB_STOPWORDS,
     _derive_abbreviation,
     _normalize_ncaab_name_for_matching,
+)
+from sports_scraper.persistence.teams import (
     _upsert_team,
 )
 
@@ -41,6 +43,25 @@ class TestNcaabStopwords:
     def test_is_set(self):
         """Is a set for fast lookups."""
         assert isinstance(_NCAAB_STOPWORDS, (set, frozenset))
+
+
+class TestTeamNormalizationSsot:
+    """Team-name normalization internals live only in their SSOT module."""
+
+    def test_teams_module_does_not_reexport_normalization_internals(self):
+        import sports_scraper.persistence.teams as teams
+
+        removed_symbols = {
+            "_ABBR_STOPWORDS",
+            "_NCAAB_ABBREV_EXPANSIONS",
+            "_NCAAB_OVERRIDES",
+            "_NCAAB_STOPWORDS",
+            "_derive_abbreviation",
+            "_normalize_ncaab_name_for_matching",
+        }
+
+        for symbol in removed_symbols:
+            assert not hasattr(teams, symbol), f"{symbol} belongs in team_name_normalization.py"
 
 
 class TestNormalizeNcaabNameForMatching:
@@ -280,7 +301,7 @@ class TestFindTeamByName:
 
     def test_handles_ncaab_override(self):
         """Uses NCAAB override mappings."""
-        from sports_scraper.persistence.teams import _NCAAB_OVERRIDES
+        from sports_scraper.persistence.team_name_normalization import _NCAAB_OVERRIDES
 
         # Verify overrides exist
         assert "george washington colonials" in _NCAAB_OVERRIDES
@@ -372,14 +393,14 @@ class TestNcaabOverrides:
 
     def test_has_common_overrides(self):
         """Has common NCAAB overrides."""
-        from sports_scraper.persistence.teams import _NCAAB_OVERRIDES
+        from sports_scraper.persistence.team_name_normalization import _NCAAB_OVERRIDES
 
         assert isinstance(_NCAAB_OVERRIDES, dict)
         assert len(_NCAAB_OVERRIDES) > 0
 
     def test_override_keys_are_lowercase(self):
         """Override keys are lowercase."""
-        from sports_scraper.persistence.teams import _NCAAB_OVERRIDES
+        from sports_scraper.persistence.team_name_normalization import _NCAAB_OVERRIDES
 
         for key in _NCAAB_OVERRIDES.keys():
             assert key == key.lower()
@@ -390,7 +411,7 @@ class TestAbbrStopwords:
 
     def test_has_common_stopwords(self):
         """Has common stopwords for abbreviation derivation."""
-        from sports_scraper.persistence.teams import _ABBR_STOPWORDS
+        from sports_scraper.persistence.team_name_normalization import _ABBR_STOPWORDS
 
         assert "of" in _ABBR_STOPWORDS
         assert "the" in _ABBR_STOPWORDS
@@ -399,7 +420,7 @@ class TestAbbrStopwords:
 
     def test_is_set(self):
         """Is a set for fast lookups."""
-        from sports_scraper.persistence.teams import _ABBR_STOPWORDS
+        from sports_scraper.persistence.team_name_normalization import _ABBR_STOPWORDS
 
         assert isinstance(_ABBR_STOPWORDS, (set, frozenset))
 
@@ -943,4 +964,3 @@ class TestNcaabNormalizedMatchingAdvanced:
         )
 
         mock_session.execute.assert_called()
-

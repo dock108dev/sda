@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.db.flow import SportsGameCardFeedArtifact
 from app.db.sports import SportsGame, SportsGamePlay, SportsPlayerBoxscore, SportsTeamBoxscore
 
-from .schemas import CARD_FEED_CONTRACT_VERSION, CardFeedResponse, SpoilerPolicy
+from .schemas import CARD_FEED_CONTRACT_VERSION, CardFeedResponse
 from .service import (
     _build_card_feed_result,
     _league_code,
@@ -27,13 +27,14 @@ from .service import (
 )
 
 CARD_FEED_GENERATOR_LABEL = f"card-feed-v{CARD_FEED_CONTRACT_VERSION}"
+CARD_FEED_ARTIFACT_KEY = "default"
 
 
 @dataclass(frozen=True)
 class CardFeedMaterializationResult:
     game_id: int
     contract_version: int
-    spoiler_policy: str
+    feed_key: str
     status: str
     card_count: int
     generated: bool
@@ -59,7 +60,6 @@ def artifact_to_response(
     payload: dict[str, Any] = {
         "contractVersion": artifact.contract_version,
         "game": artifact.game_json,
-        "spoilerPolicy": artifact.spoiler_policy,
         "generation": {
             "status": artifact.generation_status,
             "cardCount": artifact.card_count,
@@ -68,8 +68,9 @@ def artifact_to_response(
             "isStale": is_stale,
             "validationIssues": artifact.validation_issues_json,
         },
-        "reveal": artifact.reveal_json,
         "sections": artifact.sections_json,
+        "teamStats": artifact.team_stats_json,
+        "playerStats": artifact.player_stats_json,
         "cards": artifact.cards_json,
     }
     return CardFeedResponse.model_validate(payload)
@@ -78,10 +79,9 @@ def artifact_to_response(
 async def get_materialized_card_feed(
     session: AsyncSession,
     game_id: int,
-    spoiler_policy: SpoilerPolicy,
 ) -> CardFeedResponse:
     """Return the persisted card feed without generating on the request path."""
-    artifact = await _load_artifact_async(session, game_id, spoiler_policy)
+    artifact = await _load_artifact_async(session, game_id)
     if artifact is None:
         from fastapi import HTTPException, status
 
@@ -98,20 +98,18 @@ async def get_materialized_card_feed(
 async def get_or_materialize_card_feed(
     session: AsyncSession,
     game_id: int,
-    spoiler_policy: SpoilerPolicy,
     *,
     force: bool = False,
 ) -> CardFeedResponse:
     """Return current materialized feed, generating it only when stale/missing."""
     game = await _load_game_async(session, game_id)
     source_hash = _source_hash(game)
-    artifact = await _load_artifact_async(session, game_id, spoiler_policy)
+    artifact = await _load_artifact_async(session, game_id)
     if artifact and not force and artifact.source_hash == source_hash:
         return artifact_to_response(artifact)
     artifact = await _materialize_loaded_game_async(
         session,
         game,
-        spoiler_policy,
         source_hash=source_hash,
     )
     return artifact_to_response(artifact)
@@ -120,20 +118,18 @@ async def get_or_materialize_card_feed(
 async def materialize_card_feed(
     session: AsyncSession,
     game_id: int,
-    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
     *,
     force: bool = False,
 ) -> CardFeedMaterializationResult:
     """Materialize one game's current card feed."""
     game = await _load_game_async(session, game_id)
     source_hash = _source_hash(game)
-    artifact = await _load_artifact_async(session, game_id, spoiler_policy)
+    artifact = await _load_artifact_async(session, game_id)
     if artifact and not force and artifact.source_hash == source_hash:
         return _result_from_artifact(artifact, generated=False, source_hash=source_hash)
     artifact = await _materialize_loaded_game_async(
         session,
         game,
-        spoiler_policy,
         source_hash=source_hash,
     )
     return _result_from_artifact(artifact, generated=True, source_hash=source_hash)
@@ -144,7 +140,6 @@ async def refresh_card_feeds_for_window(
     *,
     lookback_hours: int = 72,
     lookahead_hours: int = 72,
-    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
     force: bool = False,
     now: datetime | None = None,
 ) -> CardFeedRefreshSummary:
@@ -171,7 +166,6 @@ async def refresh_card_feeds_for_window(
             item = await materialize_card_feed(
                 session,
                 game_id,
-                spoiler_policy,
                 force=force,
             )
             generated += int(item.generated)
@@ -194,7 +188,6 @@ def materialize_recent_card_feeds_sync(
     *,
     lookback_hours: int = 96,
     lookahead_hours: int = 48,
-    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
     force: bool = False,
     now: datetime | None = None,
 ) -> CardFeedRefreshSummary:
@@ -222,7 +215,6 @@ def materialize_recent_card_feeds_sync(
             item = materialize_card_feed_sync(
                 session,
                 game_id,
-                spoiler_policy,
                 force=force,
             )
             generated += int(item.generated)
@@ -243,20 +235,18 @@ def materialize_recent_card_feeds_sync(
 def materialize_card_feed_sync(
     session: Session,
     game_id: int,
-    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
     *,
     force: bool = False,
 ) -> CardFeedMaterializationResult:
     """Sync materialization for Celery scraper tasks."""
     game = _load_game_sync(session, game_id)
     source_hash = _source_hash(game)
-    artifact = _load_artifact_sync(session, game_id, spoiler_policy)
+    artifact = _load_artifact_sync(session, game_id)
     if artifact and not force and artifact.source_hash == source_hash:
         return _result_from_artifact(artifact, generated=False, source_hash=source_hash)
     artifact = _materialize_loaded_game_sync(
         session,
         game,
-        spoiler_policy,
         source_hash=source_hash,
     )
     return _result_from_artifact(artifact, generated=True, source_hash=source_hash)
@@ -293,9 +283,8 @@ def _game_select():
 async def _load_artifact_async(
     session: AsyncSession,
     game_id: int,
-    spoiler_policy: SpoilerPolicy,
 ) -> SportsGameCardFeedArtifact | None:
-    result = await session.execute(_artifact_select(game_id, spoiler_policy))
+    result = await session.execute(_artifact_select(game_id))
     return result.scalar_one_or_none()
 
 
@@ -332,39 +321,37 @@ async def _artifact_is_stale_async(
 def _load_artifact_sync(
     session: Session,
     game_id: int,
-    spoiler_policy: SpoilerPolicy,
 ) -> SportsGameCardFeedArtifact | None:
-    return session.execute(_artifact_select(game_id, spoiler_policy)).scalar_one_or_none()
+    return session.execute(_artifact_select(game_id)).scalar_one_or_none()
 
 
-def _artifact_select(game_id: int, spoiler_policy: SpoilerPolicy):
+def _artifact_select(game_id: int):
     return select(SportsGameCardFeedArtifact).where(
         SportsGameCardFeedArtifact.game_id == game_id,
         SportsGameCardFeedArtifact.contract_version == CARD_FEED_CONTRACT_VERSION,
-        SportsGameCardFeedArtifact.spoiler_policy == spoiler_policy.value,
+        SportsGameCardFeedArtifact.feed_key == CARD_FEED_ARTIFACT_KEY,
     )
 
 
 async def _materialize_loaded_game_async(
     session: AsyncSession,
     game: SportsGame,
-    spoiler_policy: SpoilerPolicy,
     *,
     source_hash: str,
 ) -> SportsGameCardFeedArtifact:
-    artifact = await _load_artifact_async(session, game.id, spoiler_policy)
+    artifact = await _load_artifact_async(session, game.id)
     if artifact is None:
         artifact = SportsGameCardFeedArtifact(
             game_id=game.id,
             contract_version=CARD_FEED_CONTRACT_VERSION,
-            spoiler_policy=spoiler_policy.value,
+            feed_key=CARD_FEED_ARTIFACT_KEY,
             generation_status="generation_pending",
             source_hash=source_hash,
             generated_at=datetime.now(UTC),
             generator_label=CARD_FEED_GENERATOR_LABEL,
         )
         session.add(artifact)
-    _apply_response_to_artifact(artifact, _build_response(game, spoiler_policy), source_hash)
+    _apply_response_to_artifact(artifact, _build_response(game), source_hash)
     await session.flush()
     return artifact
 
@@ -372,29 +359,28 @@ async def _materialize_loaded_game_async(
 def _materialize_loaded_game_sync(
     session: Session,
     game: SportsGame,
-    spoiler_policy: SpoilerPolicy,
     *,
     source_hash: str,
 ) -> SportsGameCardFeedArtifact:
-    artifact = _load_artifact_sync(session, game.id, spoiler_policy)
+    artifact = _load_artifact_sync(session, game.id)
     if artifact is None:
         artifact = SportsGameCardFeedArtifact(
             game_id=game.id,
             contract_version=CARD_FEED_CONTRACT_VERSION,
-            spoiler_policy=spoiler_policy.value,
+            feed_key=CARD_FEED_ARTIFACT_KEY,
             generation_status="generation_pending",
             source_hash=source_hash,
             generated_at=datetime.now(UTC),
             generator_label=CARD_FEED_GENERATOR_LABEL,
         )
         session.add(artifact)
-    _apply_response_to_artifact(artifact, _build_response(game, spoiler_policy), source_hash)
+    _apply_response_to_artifact(artifact, _build_response(game), source_hash)
     session.flush()
     return artifact
 
 
-def _build_response(game: SportsGame, spoiler_policy: SpoilerPolicy) -> CardFeedResponse:
-    return _build_card_feed_result(game, spoiler_policy).response
+def _build_response(game: SportsGame) -> CardFeedResponse:
+    return _build_card_feed_result(game).response
 
 
 def _source_hash(game: SportsGame) -> str:
@@ -415,14 +401,15 @@ def _apply_response_to_artifact(
     generation = payload["generation"]
     now = datetime.now(UTC)
     artifact.contract_version = CARD_FEED_CONTRACT_VERSION
-    artifact.spoiler_policy = payload["spoilerPolicy"]
+    artifact.feed_key = CARD_FEED_ARTIFACT_KEY
     artifact.generation_status = generation["status"]
     artifact.source_hash = source_hash
     artifact.card_count = int(generation.get("cardCount") or 0)
     artifact.last_play_index = generation.get("lastPlayIndex")
     artifact.game_json = payload["game"]
-    artifact.reveal_json = payload["reveal"]
     artifact.sections_json = payload.get("sections", [])
+    artifact.team_stats_json = payload.get("teamStats", [])
+    artifact.player_stats_json = payload.get("playerStats", [])
     artifact.cards_json = payload.get("cards", [])
     artifact.validation_issues_json = generation.get("validationIssues", [])
     artifact.generated_at = now
@@ -439,7 +426,7 @@ def _result_from_artifact(
     return CardFeedMaterializationResult(
         game_id=artifact.game_id,
         contract_version=artifact.contract_version,
-        spoiler_policy=artifact.spoiler_policy,
+        feed_key=artifact.feed_key,
         status=artifact.generation_status,
         card_count=artifact.card_count,
         generated=generated,

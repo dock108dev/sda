@@ -22,13 +22,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import TypeVar
 
 from sqlalchemy.orm import Session
 
 from ..logging import logger
-
-T = TypeVar("T")
 
 
 @dataclass
@@ -45,7 +42,7 @@ class LoopResult:
         return self.success + self.skipped + self.errors
 
 
-def commit_loop(
+def commit_loop[T](
     session: Session,
     items: Iterable[T],
     process_fn: Callable[[Session, T], str],

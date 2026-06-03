@@ -1,12 +1,7 @@
-"""Internal Python types used by the deck builder pipeline.
+"""Internal Python types used by MLB timeline reconstruction.
 
-These dataclasses carry richer state than the public DTO. They include
-fields like `score_after` and `runner_names_after` that the pipeline uses
-internally but that the spoiler-safe `ScrollDownMlbDeckCard` DTO
-intentionally omits.
-
-Conversion to the DTO happens at the persistence/response boundary in
-`service.py` — that boundary is the spoiler-safety guarantee.
+These dataclasses carry reconstructed game state used by the normalized
+card-feed context builder.
 """
 
 from __future__ import annotations

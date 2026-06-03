@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from app.db import AsyncSession, get_db
 
 from .debug_schemas import CardGenerationDebugResponse
-from .schemas import CardFeedResponse, SpoilerPolicy
+from .schemas import CardFeedResponse
 from .service import get_game_card_feed, get_game_card_generation_debug
 
 router = APIRouter(prefix="/feed", tags=["v1", "feed"])
@@ -22,7 +22,6 @@ router = APIRouter(prefix="/feed", tags=["v1", "feed"])
 )
 async def get_game_cards(
     game_id: int,
-    spoiler_policy: SpoilerPolicy = Query(SpoilerPolicy.revealed, alias="spoilerPolicy"),
     through_play_index: int | None = Query(
         None,
         ge=0,
@@ -35,7 +34,6 @@ async def get_game_cards(
     return await get_game_card_feed(
         session,
         game_id,
-        spoiler_policy,
         through_play_index=through_play_index,
     )
 
@@ -48,7 +46,6 @@ async def get_game_cards(
 )
 async def get_game_cards_debug(
     game_id: int,
-    spoiler_policy: SpoilerPolicy = Query(SpoilerPolicy.revealed, alias="spoilerPolicy"),
     through_play_index: int | None = Query(None, ge=0, alias="throughPlayIndex"),
     include_feed: bool = Query(True, alias="includeFeed"),
     session: AsyncSession = Depends(get_db),
@@ -57,7 +54,6 @@ async def get_game_cards_debug(
     return await get_game_card_generation_debug(
         session,
         game_id,
-        spoiler_policy,
         through_play_index=through_play_index,
         include_feed=include_feed,
     )

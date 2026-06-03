@@ -434,11 +434,6 @@ def check_summary_phases_valid(
     )
 
 
-# =============================================================================
-# MAIN VALIDATION FUNCTION
-# =============================================================================
-
-
 def validate_timeline(
     timeline: Sequence[dict[str, Any]],
     summary: dict[str, Any] | None = None,
@@ -491,7 +486,6 @@ def validate_and_log(
             extra=report.to_dict(),
         )
         raise TimelineValidationError(report)
-
     if report.verdict == "PASS_WITH_WARNINGS":
         logger.warning(
             "timeline_validation_warnings",

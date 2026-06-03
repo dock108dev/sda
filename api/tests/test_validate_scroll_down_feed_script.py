@@ -51,13 +51,6 @@ def _card(**overrides):
         "setupLine": "Arizona down 3-2, runner on 2nd, 1 out.",
         "playLine": "Arizona doubles into the gap.",
         "updateLine": "Arizona scores 1 run.",
-        "spoilerLevel": "none",
-        "textFieldSpoilerLevels": {
-            "leadIn": "earnedAtPlay",
-            "stageSetting": "earnedAtPlay",
-            "headline": "earnedAtPlay",
-            "description": "earnedAtPlay",
-        },
     }
     card.update(overrides)
     return card
@@ -68,7 +61,6 @@ def _feed(card):
         "contractVersion": 2,
         "game": {"gameId": 42, "sport": "baseball", "league": "MLB"},
         "generation": {"status": "ready", "cardCount": 1},
-        "reveal": {"available": True},
         "cards": [card],
     }
 
@@ -207,7 +199,7 @@ def test_validate_skips_unmaterialized_candidates_until_feed_is_available(
 
     def fake_request_json(base_url: str, path: str, api_key: str | None):
         requested_paths.append(path)
-        if path.startswith("/api/v1/feed/games/190094/cards?"):
+        if path == "/api/v1/feed/games/190094/cards":
             raise validator.HTTPValidationError(
                 (
                     f"{path} returned HTTP 404: "
@@ -216,12 +208,12 @@ def test_validate_skips_unmaterialized_candidates_until_feed_is_available(
                 status_code=404,
                 detail='{"detail":"Card feed has not been materialized for this game."}',
             )
-        if path.startswith("/api/v1/feed/games/190584/cards?"):
+        if path == "/api/v1/feed/games/190584/cards":
             feed = _feed(_card())
             feed["game"]["gameId"] = 190584
             feed["cards"][0]["gameId"] = 190584
             return feed
-        if path.startswith("/api/v1/feed/games/190584/cards/debug?"):
+        if path == "/api/v1/feed/games/190584/cards/debug?includeFeed=false":
             return {
                 "available": True,
                 "status": "available",
@@ -253,7 +245,7 @@ def test_validate_skips_unmaterialized_candidates_until_feed_is_available(
     )
 
     assert lines == ["OK game=190584 cards=1 generation=ready"]
-    assert requested_paths[0].startswith("/api/v1/feed/games/190094/cards?")
+    assert requested_paths[0] == "/api/v1/feed/games/190094/cards"
 
 
 def test_validate_fails_when_window_has_no_materialized_feeds(

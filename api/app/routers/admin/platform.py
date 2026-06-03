@@ -50,7 +50,7 @@ _STATS_CACHE_KEY = "admin:stats:v1"
 _STATS_CACHE_TTL = 60  # seconds
 
 
-async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
+async def get_redis() -> AsyncGenerator[aioredis.Redis]:
     """Yield an async Redis client; close on teardown."""
     client: aioredis.Redis = aioredis.from_url(settings.redis_url, decode_responses=True)
     try:

@@ -10,14 +10,14 @@ Rate limit: 45 requests/minute with 5-minute suspension on violation.
 from __future__ import annotations
 
 import time
-from datetime import date
 from typing import Any
 
 import httpx
 
+from . import client_parsing as _parsing
+from .client_historical import DataGolfHistoricalMixin
 from .models import (
     DGDFSProjection,
-    DGEventResult,
     DGFieldEntry,
     DGLeaderboardEntry,
     DGMatchup,
@@ -25,7 +25,6 @@ from .models import (
     DGPlayer,
     DGPreTournamentPred,
     DGRanking,
-    DGRound,
     DGSkillRating,
     DGTournament,
 )
@@ -53,7 +52,7 @@ def _log():
     return _logger
 
 
-class DataGolfClient:
+class DataGolfClient(DataGolfHistoricalMixin):
     """Client for the DataGolf feeds API."""
 
     def __init__(self, api_key: str | None = None) -> None:
@@ -115,8 +114,8 @@ class DataGolfClient:
             try:
                 from datetime import timedelta
 
-                start = _parse_date(evt.get("start_date", evt.get("date", "")))
-                end = _parse_date(evt.get("end_date"))
+                start = _parsing._parse_date(evt.get("start_date", evt.get("date", "")))
+                end = _parsing._parse_date(evt.get("end_date"))
                 # DataGolf doesn't return end_date; estimate as start + 3 days
                 # (standard PGA event: Thu–Sun)
                 if end is None and start is not None:
@@ -124,7 +123,7 @@ class DataGolfClient:
 
                 # Map DataGolf status to our convention
                 dg_status = evt.get("status", "")
-                status = _map_tournament_status(dg_status)
+                status = _parsing._map_tournament_status(dg_status)
 
                 tournaments.append(DGTournament(
                     event_id=str(evt.get("event_id", "")),
@@ -135,9 +134,9 @@ class DataGolfClient:
                     end_date=end,
                     tour=tour,
                     status=status,
-                    purse=_safe_float(evt.get("purse")),
-                    latitude=_safe_float(evt.get("latitude")),
-                    longitude=_safe_float(evt.get("longitude")),
+                    purse=_parsing._safe_float(evt.get("purse")),
+                    latitude=_parsing._safe_float(evt.get("latitude")),
+                    longitude=_parsing._safe_float(evt.get("longitude")),
                     country=evt.get("country"),
                     season=season,
                 ))
@@ -160,9 +159,9 @@ class DataGolfClient:
                     country=p.get("country"),
                     country_code=p.get("country_code"),
                     amateur=bool(p.get("amateur", False)),
-                    dk_id=_safe_int(p.get("dk_id")),
-                    fd_id=_safe_int(p.get("fd_id")),
-                    yahoo_id=_safe_int(p.get("yahoo_id")),
+                    dk_id=_parsing._safe_int(p.get("dk_id")),
+                    fd_id=_parsing._safe_int(p.get("fd_id")),
+                    yahoo_id=_parsing._safe_int(p.get("yahoo_id")),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_player_parse_error", player=p, error=str(exc))
@@ -185,8 +184,8 @@ class DataGolfClient:
                     dg_id=int(f.get("dg_id", 0)),
                     player_name=f.get("player_name", ""),
                     country=f.get("country"),
-                    dk_salary=_safe_int(f.get("dk_salary")),
-                    fd_salary=_safe_int(f.get("fd_salary")),
+                    dk_salary=_parsing._safe_int(f.get("dk_salary")),
+                    fd_salary=_parsing._safe_int(f.get("fd_salary")),
                     early_late=f.get("early_late"),
                     tee_time=f.get("tee_time"),
                     course=f.get("course"),
@@ -217,14 +216,14 @@ class DataGolfClient:
                 ratings.append(DGSkillRating(
                     dg_id=int(p.get("dg_id", 0)),
                     player_name=p.get("player_name", ""),
-                    sg_total=_safe_float(p.get("sg_total")),
-                    sg_ott=_safe_float(p.get("sg_ott")),
-                    sg_app=_safe_float(p.get("sg_app")),
-                    sg_arg=_safe_float(p.get("sg_arg")),
-                    sg_putt=_safe_float(p.get("sg_putt")),
-                    driving_dist=_safe_float(p.get("driving_dist")),
-                    driving_acc=_safe_float(p.get("driving_acc")),
-                    sample_size=_safe_int(p.get("sample_size")),
+                    sg_total=_parsing._safe_float(p.get("sg_total")),
+                    sg_ott=_parsing._safe_float(p.get("sg_ott")),
+                    sg_app=_parsing._safe_float(p.get("sg_app")),
+                    sg_arg=_parsing._safe_float(p.get("sg_arg")),
+                    sg_putt=_parsing._safe_float(p.get("sg_putt")),
+                    driving_dist=_parsing._safe_float(p.get("driving_dist")),
+                    driving_acc=_parsing._safe_float(p.get("driving_acc")),
+                    sample_size=_parsing._safe_int(p.get("sample_size")),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_skill_parse_error", player=p, error=str(exc))
@@ -247,8 +246,8 @@ class DataGolfClient:
                     dg_id=int(r.get("dg_id", 0)),
                     player_name=r.get("player_name", ""),
                     rank=int(r.get("rank", 0)),
-                    datagolf_rank=_safe_int(r.get("datagolf_rank")),
-                    owgr=_safe_int(r.get("owgr")),
+                    datagolf_rank=_parsing._safe_int(r.get("datagolf_rank")),
+                    owgr=_parsing._safe_int(r.get("owgr")),
                     am=bool(r.get("am", False)),
                 ))
             except Exception as exc:
@@ -273,11 +272,11 @@ class DataGolfClient:
                 preds.append(DGPreTournamentPred(
                     dg_id=int(p.get("dg_id", 0)),
                     player_name=p.get("player_name", ""),
-                    win_prob=_safe_float(p.get("win_prob")),
-                    top_5_prob=_safe_float(p.get("top_5")),
-                    top_10_prob=_safe_float(p.get("top_10")),
-                    top_20_prob=_safe_float(p.get("top_20")),
-                    make_cut_prob=_safe_float(p.get("make_cut")),
+                    win_prob=_parsing._safe_float(p.get("win_prob")),
+                    top_5_prob=_parsing._safe_float(p.get("top_5")),
+                    top_10_prob=_parsing._safe_float(p.get("top_10")),
+                    top_20_prob=_parsing._safe_float(p.get("top_20")),
+                    make_cut_prob=_parsing._safe_float(p.get("make_cut")),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_pred_parse_error", player=p, error=str(exc))
@@ -306,7 +305,7 @@ class DataGolfClient:
         if not isinstance(players, list):
             return [], meta
 
-        return [self._parse_leaderboard_entry(p) for p in players if p], meta
+        return [_parsing.parse_leaderboard_entry(p) for p in players if p], meta
 
     def get_live_tournament_stats(self) -> list[DGLeaderboardEntry]:
         """Fetch live tournament stats (SG + traditional stats per player)."""
@@ -318,7 +317,7 @@ class DataGolfClient:
         if not isinstance(live_stats, list):
             return []
 
-        return [self._parse_leaderboard_entry(p) for p in live_stats if p]
+        return [_parsing.parse_leaderboard_entry(p) for p in live_stats if p]
 
     # ------------------------------------------------------------------
     # Odds
@@ -347,7 +346,7 @@ class DataGolfClient:
         for player_odds in odds_data:
             dg_id = int(player_odds.get("dg_id", 0))
             player_name = player_odds.get("player_name", "")
-            dg_prob = _safe_float(player_odds.get("datagolf"))
+            dg_prob = _parsing._safe_float(player_odds.get("datagolf"))
 
             # Each player entry has odds per sportsbook
             for book_key in ("draftkings", "fanduel", "betmgm", "caesars",
@@ -421,230 +420,9 @@ class DataGolfClient:
                     player_name=p.get("player_name", ""),
                     site=site,
                     salary=int(p.get("salary", 0)),
-                    projected_points=_safe_float(p.get("proj_pts", p.get("projected_points"))),
-                    projected_ownership=_safe_float(p.get("proj_own", p.get("projected_ownership"))),
+                    projected_points=_parsing._safe_float(p.get("proj_pts", p.get("projected_points"))),
+                    projected_ownership=_parsing._safe_float(p.get("proj_own", p.get("projected_ownership"))),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_dfs_parse_error", player=p, error=str(exc))
         return projections
-
-    # ------------------------------------------------------------------
-    # Historical
-    # ------------------------------------------------------------------
-
-    def get_historical_rounds(
-        self,
-        tour: str = "pga",
-        event_id: str | None = None,
-        year: int | None = None,
-    ) -> list[DGRound]:
-        """Fetch historical round-level scoring and stats."""
-        params: dict[str, Any] = {"tour": tour}
-        if event_id:
-            params["event_id"] = event_id
-        if year:
-            params["year"] = year
-
-        data = self._get("/historical-raw-data/rounds", params)
-        if not data:
-            return []
-
-        rounds_data = data if isinstance(data, list) else data.get("rounds", [])
-        rounds = []
-        for r in rounds_data:
-            try:
-                rounds.append(DGRound(
-                    dg_id=int(r.get("dg_id", 0)),
-                    player_name=r.get("player_name", ""),
-                    event_id=str(r.get("event_id", "")),
-                    round_num=int(r.get("round_num", r.get("round", 0))),
-                    course=r.get("course_name", r.get("course")),
-                    score=_safe_int(r.get("score")),
-                    strokes=_safe_int(r.get("strokes")),
-                    sg_total=_safe_float(r.get("sg_total")),
-                    sg_ott=_safe_float(r.get("sg_ott")),
-                    sg_app=_safe_float(r.get("sg_app")),
-                    sg_arg=_safe_float(r.get("sg_arg")),
-                    sg_putt=_safe_float(r.get("sg_putt")),
-                    driving_dist=_safe_float(r.get("driving_dist")),
-                    driving_acc=_safe_float(r.get("driving_acc")),
-                    gir=_safe_float(r.get("gir")),
-                    scrambling=_safe_float(r.get("scrambling")),
-                    prox=_safe_float(r.get("prox")),
-                    putts_per_round=_safe_float(r.get("putts_per_round")),
-                ))
-            except Exception as exc:
-                _log().warning("datagolf_round_parse_error", round_data=r, error=str(exc))
-        return rounds
-
-    def get_historical_results(
-        self,
-        tour: str = "pga",
-        event_id: str | None = None,
-        year: int | None = None,
-    ) -> list[DGEventResult]:
-        """Fetch historical event finishes."""
-        params: dict[str, Any] = {"tour": tour}
-        if event_id:
-            params["event_id"] = event_id
-        if year:
-            params["year"] = year
-
-        data = self._get("/historical-event-data/events", params)
-        if not data:
-            return []
-
-        results_data = data if isinstance(data, list) else data.get("results", [])
-        results = []
-        for r in results_data:
-            try:
-                results.append(DGEventResult(
-                    dg_id=int(r.get("dg_id", 0)),
-                    player_name=r.get("player_name", ""),
-                    event_id=str(r.get("event_id", "")),
-                    event_name=r.get("event_name", ""),
-                    finish_position=_safe_int(r.get("fin_pos", r.get("finish_position"))),
-                    score=_safe_int(r.get("score")),
-                    earnings=_safe_float(r.get("earnings")),
-                    fedex_pts=_safe_float(r.get("fedex_pts")),
-                    season=_safe_int(r.get("season", r.get("year"))),
-                ))
-            except Exception as exc:
-                _log().warning("datagolf_result_parse_error", result=r, error=str(exc))
-        return results
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _parse_leaderboard_entry(self, p: dict) -> DGLeaderboardEntry:
-        # Position: in-play uses "current_pos" (e.g. "T4"), stats uses "position"
-        pos_raw = p.get("current_pos") or p.get("position") or p.get("pos")
-        position = _safe_int(str(pos_raw).lstrip("T")) if pos_raw else None
-
-        # Score: in-play uses "current_score", stats uses "total"
-        _cs = _safe_int(p.get("current_score"))
-        total_score = _cs if _cs is not None else _safe_int(p.get("total", p.get("total_score")))
-
-        thru = _safe_int(p.get("thru"))
-
-        # If a player has started (thru > 0) but total_score is still None,
-        # they are at even par — DataGolf sometimes omits the score field.
-        if total_score is None and thru is not None and thru > 0:
-            total_score = 0
-
-        # Determine status: use explicit field, but also detect cut/wd/dq from
-        # the position field (DataGolf sometimes uses "MC", "CUT", "WD", "DQ"
-        # in current_pos without setting the status field).
-        status = _normalize_status(p.get("status", ""), pos_raw)
-
-        return DGLeaderboardEntry(
-            dg_id=int(p.get("dg_id", 0)),
-            player_name=p.get("player_name", ""),
-            position=position,
-            total_score=total_score,
-            today_score=_safe_int(p.get("today", p.get("today_score"))),
-            thru=thru,
-            total_strokes=_safe_int(p.get("total_strokes")),
-            r1=_safe_int(p.get("R1", p.get("r1"))),
-            r2=_safe_int(p.get("R2", p.get("r2"))),
-            r3=_safe_int(p.get("R3", p.get("r3"))),
-            r4=_safe_int(p.get("R4", p.get("r4"))),
-            sg_total=_safe_float(p.get("sg_total")),
-            sg_ott=_safe_float(p.get("sg_ott")),
-            sg_app=_safe_float(p.get("sg_app")),
-            sg_arg=_safe_float(p.get("sg_arg")),
-            sg_putt=_safe_float(p.get("sg_putt")),
-            status=status,
-            win_prob=_safe_float(p.get("win", p.get("win_prob"))),
-            top_5_prob=_safe_float(p.get("top_5")),
-            top_10_prob=_safe_float(p.get("top_10")),
-            make_cut_prob=_safe_float(p.get("make_cut")),
-        )
-
-
-# ---------------------------------------------------------------------------
-# Parsing helpers
-# ---------------------------------------------------------------------------
-
-# Position strings that indicate a missed cut
-_CUT_POSITIONS = frozenset({"mc", "cut"})
-_WD_POSITIONS = frozenset({"wd", "w/d"})
-_DQ_POSITIONS = frozenset({"dq", "dsq"})
-
-
-def _normalize_status(raw_status: str | None, pos_raw: Any) -> str:
-    """Derive a canonical player status from the status field and position.
-
-    DataGolf sometimes encodes cut/wd/dq only in ``current_pos`` (e.g. "MC",
-    "CUT", "WD") without setting the ``status`` field.  This function merges
-    both signals into one of: ``"active"``, ``"cut"``, ``"wd"``, ``"dq"``.
-    """
-    s = (raw_status or "").strip().lower()
-
-    # Normalise known synonyms from the status field itself
-    if s in ("cut", "mc", "missed cut"):
-        return "cut"
-    if s in ("wd", "w/d", "withdrew"):
-        return "wd"
-    if s in ("dq", "dsq", "disqualified"):
-        return "dq"
-    if s == "active":
-        # Explicit "active" — but position may override (API inconsistency)
-        pass
-    elif s:
-        # Unknown non-empty status — treat as active; position may still override
-        pass
-
-    # If the status field was empty/missing/active, check position for signals
-    if pos_raw is not None:
-        pos_str = str(pos_raw).strip().lower()
-        if pos_str in _CUT_POSITIONS:
-            return "cut"
-        if pos_str in _WD_POSITIONS:
-            return "wd"
-        if pos_str in _DQ_POSITIONS:
-            return "dq"
-
-    return "active"
-
-
-def _safe_float(val: Any) -> float | None:
-    if val is None or val == "" or val == "-":
-        return None
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return None
-
-
-def _safe_int(val: Any) -> int | None:
-    if val is None or val == "" or val == "-":
-        return None
-    if isinstance(val, str) and val.upper() == "E":
-        return 0
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return None
-
-
-def _map_tournament_status(dg_status: str) -> str:
-    """Map DataGolf status strings to our convention."""
-    s = (dg_status or "").lower().strip()
-    if s in ("completed", "complete"):
-        return "completed"
-    if s in ("in progress", "in_progress", "live"):
-        return "in_progress"
-    if s in ("canceled", "cancelled"):
-        return "cancelled"
-    return "scheduled"
-
-
-def _parse_date(val: str | None) -> date | None:
-    if not val:
-        return None
-    try:
-        return date.fromisoformat(val[:10])
-    except (ValueError, TypeError):
-        return None

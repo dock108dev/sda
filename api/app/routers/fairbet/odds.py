@@ -11,7 +11,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.params import Param
 from sqlalchemy import func, select, tuple_
-from sqlalchemy.orm import selectinload
 
 from ...db import AsyncSession, get_db
 from ...db.odds import FairbetGameOddsWork
@@ -36,7 +35,9 @@ from .odds_core import (
     sort_order,
 )
 from .odds_enrichment import enrich_and_finalize
+from .odds_meta import router as odds_meta_router
 from .odds_models import BetDefinition, FairbetOddsResponse
+from .odds_options import _safe_game_load_options
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ MIN_BOOKS_FOR_FAIRBET = 3
 _ev_compute_flight = SingleFlight()
 
 router = APIRouter()
+router.include_router(odds_meta_router)
 EV_CONFIG = {
     "min_books_for_display": MIN_BOOKS_FOR_FAIRBET,
     "ev_color_thresholds": {"strong_positive": 5.0, "positive": 0.0},
@@ -65,26 +67,6 @@ def _resolve_query_default(value: Any) -> Any:
     if isinstance(value, Param):
         return value.default
     return value
-
-
-def _safe_game_load_options() -> tuple[Any, ...]:
-    """Return eager-load options, tolerating partially initialized mappers in tests."""
-    try:
-        return (
-            selectinload(FairbetGameOddsWork.game).selectinload(SportsGame.league),
-            selectinload(FairbetGameOddsWork.game).selectinload(SportsGame.home_team),
-            selectinload(FairbetGameOddsWork.game).selectinload(SportsGame.away_team),
-        )
-    except Exception:
-        # See docs/audits/error-handling-report.md Appendix B. SQLAlchemy raises
-        # InvalidRequestError / ArgumentError when mappers leak through in unit
-        # tests; we tolerate that but still log because the same fallback in
-        # prod silently degrades every odds query to N+1 lookups.
-        logger.warning(
-            "fairbet_eager_load_options_unavailable_falling_back_to_lazy",
-            exc_info=True,
-        )
-        return ()
 
 
 @router.get("/odds", response_model=FairbetOddsResponse)
@@ -509,30 +491,3 @@ async def get_fairbet_odds(
         },
     )
     return response
-
-
-@router.get("/odds/meta")
-async def get_fairbet_odds_meta(
-    session: AsyncSession = Depends(get_db),
-    league: str | None = Query(None),
-    market_category: str | None = Query(None),
-    exclude_categories: list[str] | None = Query(None),
-    game_id: int | None = Query(None),
-    book: str | None = Query(None),
-    player_name: str | None = Query(None),
-) -> dict[str, Any]:
-    """Return metadata-only payload for filter dropdowns."""
-    _, conditions = build_base_filters(
-        league=league,
-        market_category=market_category,
-        game_id=game_id,
-        player_name=player_name,
-        included_books=INCLUDED_BOOKS,
-        exclude_categories=exclude_categories,
-    )
-    books, cats, games = await load_metadata(conditions, True, session.execute)
-    return {
-        "books_available": books,
-        "market_categories_available": cats,
-        "games_available": games,
-    }

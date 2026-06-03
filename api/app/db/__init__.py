@@ -79,7 +79,7 @@ def _get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _AsyncSessionLocal
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession]:
     """FastAPI dependency for database sessions with commit/rollback semantics."""
     session_factory = _get_session_factory()
     async with session_factory() as session:

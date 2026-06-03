@@ -23,7 +23,6 @@ import app.db.nhl_advanced  # noqa: F401, E402
 import app.db.odds  # noqa: F401, E402
 import app.db.quality_review  # noqa: F401, E402
 import app.db.scraper  # noqa: F401, E402
-import app.db.scroll_down_mlb  # noqa: F401, E402 — registers ScrollDownMlbDeck
 import app.db.social  # noqa: F401, E402
 import app.db.telemetry  # noqa: F401, E402
 import app.services.pool_lifecycle  # noqa: F401, E402 — registers PoolLifecycleEvent ORM model

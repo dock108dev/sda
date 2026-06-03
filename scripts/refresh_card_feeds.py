@@ -52,7 +52,6 @@ def _request_refresh(args: argparse.Namespace) -> dict[str, Any]:
             "lookbackHours": args.lookback_hours,
             "lookaheadHours": args.lookahead_hours,
             "force": str(args.force).lower(),
-            "spoilerPolicy": args.spoiler_policy,
         }
     )
     path = f"/api/admin/sports/card-feeds/refresh?{query}"
@@ -99,7 +98,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--env-file", default=os.getenv("DEPLOY_ENV_FILE", "infra/.env"))
     parser.add_argument("--lookback-hours", type=int, default=72)
     parser.add_argument("--lookahead-hours", type=int, default=72)
-    parser.add_argument("--spoiler-policy", default="pre_reveal")
     parser.add_argument("--force", action="store_true")
     return parser.parse_args(argv)
 

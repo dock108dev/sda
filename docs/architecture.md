@@ -16,10 +16,10 @@ future work without being part of the active runtime.
 External league feeds
         |
         v
-scraper Celery beat/worker: poll_live_pbp
+scraper Celery beat/worker: calendar stubs + live PBP/stats
         |
         v
-PostgreSQL: games, plays, player stats, team stats
+PostgreSQL: games, plays, player stats, team stats, materialized card feeds
         |
         v
 FastAPI: consumer catch-up API plus admin/operator routes
@@ -31,7 +31,8 @@ Next.js admin UI and Scroll Down clients
 Redis is used for Celery broker/backend, task locks, the global task hold flag,
 rate-limit/cache paths, and the non-production realtime test emitter. The API
 reads PostgreSQL directly. OpenAI is optional and is used only to polish catch-up
-context copy when explicitly requested.
+context copy or generated card-feed narrative where the relevant code path
+explicitly requests it.
 
 ## API
 
@@ -57,18 +58,23 @@ The difference is the key dependency: `/api/v1/*` uses consumer scope and
 
 Authoritative Celery app: `scraper/sports_scraper/celery_app.py`.
 
-One task is routed and beat-scheduled:
+Two tasks are routed and beat-scheduled:
 
+- `poll_game_calendars`, every 15 minutes, queue `sports-scraper`
 - `poll_live_pbp`, every 5 minutes, queue `sports-scraper`
 
-The task refreshes play-by-play, player box scores, team box scores, status,
-and score fields for games near the active catch-up window. It uses Redis locks
-to avoid overlapping runs. Worker startup clears stale locks and marks
-interrupted scrape/job runs so previous crashes do not permanently block new
-work.
+`poll_game_calendars` creates or updates lightweight future game stubs across
+the supported schedule feeds. `poll_live_pbp` refreshes play-by-play, player box
+scores, team box scores, status, and score fields for games near the active
+catch-up window. `poll_live_pbp` uses a Redis lock to avoid overlapping runs.
+Worker startup marks interrupted scrape/job runs so previous crashes do not
+permanently block new work.
 
-Other `@shared_task` definitions exist in historical modules, but they are not
-included, routed, or beat-scheduled by the active Celery app.
+`refresh_card_feeds` is included and routed for explicit dispatch by deploy
+scripts or manual Celery use. It is not beat-scheduled. Other `@shared_task`
+definitions can exist in historical modules without being active unless they
+are included, routed, and scheduled by the current Celery app or dispatched by a
+mounted API route.
 
 ## Web
 
@@ -105,10 +111,11 @@ profile:
 
 ## Not Active
 
-The current runtime does not mount or schedule separate product runtimes for
+The current FastAPI entrypoint does not mount separate product routers for
 auth, onboarding, club management, FairBet, odds/model-odds, golf, simulator,
-analytics experiments, product realtime streams, social scraping, training, or
-payment/commerce/billing/webhooks.
+analytics experiments, or product realtime streams. The current Celery beat app
+does not schedule social scraping, odds, golf, analytics, simulator, training,
+or realtime orchestration jobs.
 
 Commerce, billing, and payment webhook runtime code has been removed. Historical
 migrations remain as database history.

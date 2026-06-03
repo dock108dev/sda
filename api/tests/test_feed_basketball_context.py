@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 from app.db.sports import GameStatus, SportsGamePlay, SportsTeam
 from app.feed.basketball_context import build_basketball_card_contexts
-from app.feed.schemas import SpoilerPolicy
 from app.feed.service import build_card_feed_from_game
 from app.routers.sports.schemas.common import PlayEntry, ScoreObject
 
@@ -71,10 +70,9 @@ def _play(
 
 def _cards(
     game: SimpleNamespace,
-    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
 ) -> list[dict]:
     return build_card_feed_from_game(
-        game, spoiler_policy
+        game
     ).model_dump(by_alias=True, mode="json", exclude_none=True)["cards"]
 
 
@@ -131,7 +129,7 @@ def test_basketball_card_context_promotes_scoring_run_from_configured_threshold(
         ),
     ]
 
-    card = _cards(game, SpoilerPolicy.revealed)[-1]
+    card = _cards(game)[-1]
     context = card["situation"]["raw"]
 
     assert card["impact"] == "scoring_run"
@@ -140,10 +138,8 @@ def test_basketball_card_context_promotes_scoring_run_from_configured_threshold(
     assert context["flags"]["isRunEnding"] is True
     assert "9-0 home run" in card["situation"]["summary"]
 
-    pre_reveal_card = _cards(game, SpoilerPolicy.pre_reveal)[-1]
-    assert pre_reveal_card["stageSetting"] != pre_reveal_card["leadIn"]
-    assert pre_reveal_card["stageSetting"].startswith("Q2 07:05")
-    assert "run" not in pre_reveal_card["stageSetting"].lower()
+    assert card["stageSetting"] != card["leadIn"]
+    assert card["stageSetting"].startswith("Q2 07:05")
 
 
 def test_basketball_card_context_flags_lead_change_and_tying_play() -> None:
@@ -175,7 +171,7 @@ def test_basketball_card_context_flags_lead_change_and_tying_play() -> None:
         ),
     ]
 
-    lead_card = _cards(lead_change_game, SpoilerPolicy.revealed)[1]
+    lead_card = _cards(lead_change_game)[1]
     lead_context = lead_card["situation"]["raw"]
     assert lead_card["impact"] == "lead_change"
     assert lead_context["lead"]["leaderBefore"] == "away"
@@ -210,7 +206,7 @@ def test_basketball_card_context_flags_lead_change_and_tying_play() -> None:
         ),
     ]
 
-    tying_card = _cards(tying_game, SpoilerPolicy.revealed)[1]
+    tying_card = _cards(tying_game)[1]
     tying_context = tying_card["situation"]["raw"]
     assert tying_card["impact"] == "tying"
     assert tying_context["lead"]["isTyingPlay"] is True
@@ -246,7 +242,7 @@ def test_basketball_card_context_flags_clutch_time_score_and_free_throw() -> Non
         ),
     ]
 
-    card = _cards(game, SpoilerPolicy.revealed)[1]
+    card = _cards(game)[1]
     context = card["situation"]["raw"]
 
     assert card["impact"] == "clutch_score"

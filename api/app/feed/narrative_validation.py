@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Literal
-
-from .schemas import SpoilerPolicy
+from typing import Literal
 
 FindingSeverity = Literal["warning", "error"]
 FindingAction = Literal["serve", "fallback_text", "block_card"]
@@ -87,26 +85,10 @@ _SCORING_RE = re.compile(
     r"\b(?:scores?|adds?|puts up|gets|cash(?:es)? in|cuts the gap|ties it|takes? the lead)\b",
     re.IGNORECASE,
 )
-_FORBIDDEN_PRE_REVEAL_KEYS = frozenset(
-    {
-        "finalScore",
-        "winner",
-        "winnerTeamId",
-        "winningTeam",
-        "losingTeam",
-        "finalMargin",
-        "outcome",
-        "gameOutcome",
-        "gameResult",
-        "scoreAfter",
-    }
-)
-_CONTEXT_RESULT_PATH = ("situation", "raw", "result")
-
 _MESSAGES = {
-    "narrative_future_spoiler_phrase": "Narrative text uses future-outcome language before reveal.",
-    "narrative_final_score_leak": "Narrative text contains the final score before reveal.",
-    "narrative_winner_leak": "Narrative text names a winner before reveal.",
+    "narrative_future_outcome_phrase": "Narrative text uses future-outcome language before the current play.",
+    "narrative_final_score_leak": "Narrative text contains the final score before the current play.",
+    "narrative_winner_leak": "Narrative text names a winner before the current play.",
     "narrative_score_not_allowed": "Narrative text contains a score outside the allowed card state.",
     "narrative_score_team_order_mismatch": "Narrative text attributes score values to the wrong teams.",
     "narrative_margin_mismatch": "Narrative text describes a margin inconsistent with the card score.",
@@ -114,7 +96,6 @@ _MESSAGES = {
     "narrative_winner_team_mismatch": "Narrative winner language conflicts with the game score.",
     "narrative_team_score_mismatch": "Narrative scoring language conflicts with the scoring team.",
     "narrative_future_player_mention": "Narrative text mentions a player outside the allowed play window.",
-    "public_card_forbidden_key": "Public pre-reveal card DTO contains a reveal-only key.",
 }
 
 
@@ -131,7 +112,7 @@ def validate_card_text(
 
     has_future_phrase = _has_future_phrase(text)
     if has_future_phrase:
-        findings.append(_finding("narrative_future_spoiler_phrase", "warning", "serve", field))
+        findings.append(_finding("narrative_future_outcome_phrase", "warning", "serve", field))
 
     findings.extend(_score_findings(text, field, context))
     findings.extend(_team_findings(text, field, context))
@@ -144,29 +125,11 @@ def validate_card_text(
 
     if has_future_phrase and any(f.severity == "error" for f in findings):
         findings = [
-            _finding("narrative_future_spoiler_phrase", "error", "fallback_text", field)
-            if f.code == "narrative_future_spoiler_phrase"
+            _finding("narrative_future_outcome_phrase", "error", "fallback_text", field)
+            if f.code == "narrative_future_outcome_phrase"
             else f
             for f in findings
         ]
-    return findings
-
-
-def validate_public_card_dto(
-    *,
-    payload: Mapping[str, Any],
-    spoiler_policy: SpoilerPolicy,
-) -> list[NarrativeFinding]:
-    """Validate serialized public card keys for pre-reveal score or outcome leaks."""
-    if spoiler_policy is SpoilerPolicy.revealed:
-        return []
-
-    findings: list[NarrativeFinding] = []
-    for path, key in _walk_keys(payload):
-        if key == "result" and tuple(path[-3:]) == _CONTEXT_RESULT_PATH:
-            continue
-        if key == "result" or key in _FORBIDDEN_PRE_REVEAL_KEYS:
-            findings.append(_finding("public_card_forbidden_key", "error", "block_card", ".".join(path)))
     return findings
 
 
@@ -333,17 +296,6 @@ def _first_alias_position(text: str, aliases: Iterable[str]) -> int | None:
         if match
     ]
     return min(positions) if positions else None
-
-
-def _walk_keys(value: Any, path: tuple[str, ...] = ()) -> Iterable[tuple[tuple[str, ...], str]]:
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            key_path = (*path, str(key))
-            yield key_path, str(key)
-            yield from _walk_keys(item, key_path)
-    elif isinstance(value, list):
-        for index, item in enumerate(value):
-            yield from _walk_keys(item, (*path, str(index)))
 
 
 def _finding(

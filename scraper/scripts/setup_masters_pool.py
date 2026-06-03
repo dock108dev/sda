@@ -13,9 +13,6 @@ When DataGolf later publishes their field via sync_field, their entries
 upsert by (tournament_id, dg_id). Players we created with synthetic IDs
 stay alongside; players DataGolf knows get real leaderboard data.
 
-Kept as one setup script because the embedded field list and one-off DB writes
-are operated together; see docs/audits/cleanup-report.md for the size rationale.
-
 Usage:
     python scripts/setup_masters_pool.py              # full setup (draft)
     python scripts/setup_masters_pool.py --open       # setup + open for entries
@@ -28,10 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
-import unicodedata
-from datetime import date
 from pathlib import Path
 
 from sqlalchemy import text
@@ -44,325 +38,28 @@ api_dir = scraper_dir.parent / "api"
 if str(api_dir) not in sys.path:
     sys.path.append(str(api_dir))
 
+from setup_masters_data import (
+    _SYNTHETIC_DG_ID_START,
+    CLUB_CODE,
+    ENTRY_DEADLINE,
+    ENTRY_OPEN_AT,
+    MASTERS_AMATEURS_2026,
+    MASTERS_COURSE,
+    MASTERS_END,
+    MASTERS_EVENT_NAME,
+    MASTERS_FIELD_2026,
+    MASTERS_START,
+    POOL_CODE,
+    POOL_NAME,
+    RVCC_RULES_JSON,
+)
+from setup_masters_matching import (
+    create_unmatched_players,
+    load_all_players,
+    match_field_to_players,
+)
+
 from sports_scraper.db import get_session  # noqa: E402
-
-# ---------------------------------------------------------------------------
-# 2026 Masters Official Field
-# ---------------------------------------------------------------------------
-
-MASTERS_FIELD_2026 = [
-    "Ludvig Aberg",
-    "Daniel Berger",
-    "Akshay Bhatia",
-    "Keegan Bradley",
-    "Michael Brennan",
-    "Jacob Bridgeman",
-    "Sam Burns",
-    "Angel Cabrera",
-    "Brian Campbell",
-    "Patrick Cantlay",
-    "Wyndham Clark",
-    "Corey Conners",
-    "Fred Couples",
-    "Jason Day",
-    "Bryson DeChambeau",
-    "Nicolas Echavarria",
-    "Harris English",
-    "Matt Fitzpatrick",
-    "Tommy Fleetwood",
-    "Ryan Fox",
-    "Sergio Garcia",
-    "Ryan Gerard",
-    "Chris Gotterup",
-    "Max Greyserman",
-    "Ben Griffin",
-    "Harry Hall",
-    "Brian Harman",
-    "Tyrrell Hatton",
-    "Russell Henley",
-    "Nicolai Hojgaard",
-    "Rasmus Hojgaard",
-    "Max Homa",
-    "Viktor Hovland",
-    "Sungjae Im",
-    "Casey Jarvis",
-    "Dustin Johnson",
-    "Zach Johnson",
-    "Si Woo Kim",
-    "Michael Kim",
-    "Kurt Kitayama",
-    "Jake Knapp",
-    "Brooks Koepka",
-    "Min Woo Lee",
-    "Haotong Li",
-    "Shane Lowry",
-    "Robert MacIntyre",
-    "Hideki Matsuyama",
-    "Matt McCarty",
-    "Rory McIlroy",
-    "Tom McKibbin",
-    "Maverick McNealy",
-    "Phil Mickelson",
-    "Collin Morikawa",
-    "Rasmus Neergaard-Petersen",
-    "Alex Noren",
-    "Andrew Novak",
-    "Carlos Ortiz",
-    "Marco Penge",
-    "Aldrich Potgieter",
-    "Jon Rahm",
-    "Aaron Rai",
-    "Patrick Reed",
-    "Kristoffer Reitan",
-    "Davis Riley",
-    "Justin Rose",
-    "Xander Schauffele",
-    "Scottie Scheffler",
-    "Charl Schwartzel",
-    "Adam Scott",
-    "Vijay Singh",
-    "Cameron Smith",
-    "J.J. Spaun",
-    "Jordan Spieth",
-    "Samuel Stevens",
-    "Sepp Straka",
-    "Nick Taylor",
-    "Justin Thomas",
-    "Sami Valimaki",
-    "Bubba Watson",
-    "Mike Weir",
-    "Danny Willett",
-    "Gary Woodland",
-    "Tiger Woods",
-    "Cameron Young",
-]
-
-# Amateurs — tracked separately, not typically in DataGolf player DB
-MASTERS_AMATEURS_2026 = [
-    "Ethan Fang",
-    "Jackson Herrington",
-    "Brandon Holtz",
-    "Mason Howell",
-    "Naoyuki Kataoka",
-    "John Keefer",
-    "Fifa Laopakdee",
-    "Mateo Pulcini",
-    "José María Olazábal",
-    "Samuel Stevens",
-]
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-MASTERS_EVENT_NAME = "The Masters"
-MASTERS_COURSE = "Augusta National Golf Club"
-MASTERS_START = date(2026, 4, 9)
-MASTERS_END = date(2026, 4, 12)
-
-POOL_CODE = "rvcc-masters-2026"
-POOL_NAME = "RVCC Masters Pool 2026"
-CLUB_CODE = "rvcc"
-
-RVCC_RULES_JSON = {
-    "variant": "rvcc",
-    "pick_count": 7,
-    "count_best": 5,
-    "min_cuts_to_qualify": 5,
-    "uses_buckets": False,
-    # Auto-activate: pool transitions to live + scoring_enabled at this time.
-    # 2 PM EDT = 18:00 UTC (April is EDT, UTC-4)
-    "scoring_starts_at": "2026-04-09T18:00:00+00:00",
-}
-
-ENTRY_OPEN_AT = "2026-04-01T00:00:00+00:00"
-# Lock entries before first tee time Thursday morning.
-# 8 AM EDT = 12:00 UTC
-ENTRY_DEADLINE = "2026-04-09T12:00:00+00:00"
-
-# Synthetic dg_id range for manually-added players not in DataGolf.
-# Real DataGolf IDs are positive ints (typically 1–30000+).
-# We use 900_000+ to avoid collision.  When DataGolf later syncs the
-# field, their entries upsert by (tournament_id, dg_id) — our synthetic
-# entries stay alongside, and any player DG knows gets real scoring data.
-_SYNTHETIC_DG_ID_START = 900_000
-
-
-# ---------------------------------------------------------------------------
-# Name matching helpers
-# ---------------------------------------------------------------------------
-
-
-def _normalize(name: str) -> str:
-    """Normalize a name for fuzzy matching: lowercase, strip accents, punctuation."""
-    # Decompose unicode and strip combining marks (accents)
-    nfkd = unicodedata.normalize("NFKD", name)
-    ascii_name = "".join(c for c in nfkd if not unicodedata.combining(c))
-    # Lowercase, strip punctuation except spaces/hyphens
-    ascii_name = ascii_name.lower().strip()
-    ascii_name = re.sub(r"[^a-z\s-]", "", ascii_name)
-    # Collapse whitespace
-    ascii_name = re.sub(r"\s+", " ", ascii_name)
-    return ascii_name
-
-
-def _to_last_first(name: str) -> str:
-    """Convert 'First Last' to 'last first' for matching."""
-    parts = name.strip().split()
-    if len(parts) >= 2:
-        # Handle multi-word last names: take last word as last name
-        # But also handle "Min Woo Lee" → "Lee, Min Woo"
-        return f"{parts[-1]} {' '.join(parts[:-1])}"
-    return name
-
-
-def _to_last_comma_first(name: str) -> str:
-    """Convert 'First Last' to 'Last, First' (DataGolf convention)."""
-    parts = name.strip().split()
-    if len(parts) >= 2:
-        return f"{parts[-1]}, {' '.join(parts[:-1])}"
-    return name
-
-
-def _build_name_variants(name: str) -> list[str]:
-    """Build multiple normalized variants for matching."""
-    norm = _normalize(name)
-    variants = [norm]
-
-    # Also try "Last First" ordering
-    last_first = _normalize(_to_last_first(name))
-    if last_first != norm:
-        variants.append(last_first)
-
-    # Handle "J.J." → "jj"
-    no_dots = norm.replace(".", "")
-    if no_dots != norm:
-        variants.append(no_dots)
-        variants.append(_normalize(_to_last_first(name.replace(".", ""))))
-
-    return variants
-
-
-# ---------------------------------------------------------------------------
-# DB operations
-# ---------------------------------------------------------------------------
-
-
-def load_all_players(session) -> dict[str, dict]:
-    """Load all players from golf_players, keyed by normalized name."""
-    rows = session.execute(
-        text("SELECT dg_id, player_name, country, country_code, amateur FROM golf_players")
-    ).fetchall()
-
-    by_name: dict[str, dict] = {}
-    for r in rows:
-        player = {
-            "dg_id": r[0],
-            "player_name": r[1],
-            "country": r[2],
-            "country_code": r[3],
-            "amateur": r[4],
-        }
-        # DataGolf format: "Last, First" — normalize both orderings
-        dg_name = r[1] or ""
-        norm = _normalize(dg_name)
-        by_name[norm] = player
-
-        # Also index as "First Last" order
-        if "," in dg_name:
-            parts = dg_name.split(",", 1)
-            flipped = f"{parts[1].strip()} {parts[0].strip()}"
-            by_name[_normalize(flipped)] = player
-
-    return by_name
-
-
-def match_field_to_players(
-    field_names: list[str], player_index: dict[str, dict]
-) -> tuple[list[dict], list[str]]:
-    """Match field names to dg_ids. Returns (matched, unmatched)."""
-    matched = []
-    unmatched = []
-
-    for name in field_names:
-        found = False
-        for variant in _build_name_variants(name):
-            if variant in player_index:
-                p = player_index[variant]
-                matched.append({
-                    "field_name": name,
-                    "dg_id": p["dg_id"],
-                    "dg_name": p["player_name"],
-                    "country": p["country"],
-                    "amateur": name in MASTERS_AMATEURS_2026,
-                })
-                found = True
-                break
-
-        if not found:
-            unmatched.append(name)
-
-    return matched, unmatched
-
-
-def _next_synthetic_dg_id(session) -> int:
-    """Get the next available synthetic dg_id (900_000+)."""
-    row = session.execute(
-        text("SELECT COALESCE(MAX(dg_id), :start - 1) FROM golf_players WHERE dg_id >= :start"),
-        {"start": _SYNTHETIC_DG_ID_START},
-    ).fetchone()
-    return row[0] + 1
-
-
-def create_unmatched_players(
-    session, unmatched_names: list[str], *, dry_run: bool = False
-) -> list[dict]:
-    """Create golf_players entries for unmatched players with synthetic dg_ids.
-
-    Returns list of dicts with field_name, dg_id, dg_name, amateur flag.
-    """
-    if not unmatched_names:
-        return []
-
-    if dry_run:
-        print(f"  [DRY RUN] Would create {len(unmatched_names)} player entries")
-        return [
-            {"field_name": n, "dg_id": _SYNTHETIC_DG_ID_START + i, "dg_name": _to_last_comma_first(n), "amateur": n in MASTERS_AMATEURS_2026}
-            for i, n in enumerate(unmatched_names)
-        ]
-
-    next_id = _next_synthetic_dg_id(session)
-    created = []
-
-    sql = text("""
-        INSERT INTO golf_players (dg_id, player_name, amateur, updated_at)
-        VALUES (:dg_id, :player_name, :amateur, NOW())
-        ON CONFLICT (dg_id) DO UPDATE SET
-            player_name = EXCLUDED.player_name,
-            amateur = EXCLUDED.amateur,
-            updated_at = NOW()
-    """)
-
-    for name in unmatched_names:
-        dg_id = next_id
-        is_amateur = name in MASTERS_AMATEURS_2026
-        dg_name = _to_last_comma_first(name)
-        session.execute(sql, {
-            "dg_id": dg_id,
-            "player_name": dg_name,
-            "amateur": is_amateur,
-        })
-        created.append({
-            "field_name": name,
-            "dg_id": dg_id,
-            "dg_name": dg_name,
-            "country": None,
-            "amateur": is_amateur,
-        })
-        next_id += 1
-
-    session.commit()
-    return created
 
 
 def find_or_create_masters_tournament(session, *, dry_run: bool = False) -> int:

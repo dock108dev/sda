@@ -35,14 +35,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install dependencies
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           source .venv/bin/activate
           uv pip install -e ./scraper
           uv pip install -r api/requirements.txt
@@ -71,14 +71,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install dependencies
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           source .venv/bin/activate
           uv pip install -r api/requirements.txt
           uv pip install pytest pytest-cov pytest-asyncio pytest-timeout pip-audit
@@ -112,14 +112,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install Ruff
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           uv pip install ruff==0.8.6
       - name: Ruff check
         run: |
@@ -181,7 +181,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Check all Pydantic response models have camelCase aliases
         run: python scripts/lint_camel_case_schemas.py
 
@@ -197,14 +197,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install API dependencies
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           uv pip install -r api/requirements.txt
       - name: Scan router registrations
         run: |
@@ -219,7 +219,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Check all ForeignKey() calls declare ondelete=
         run: python scripts/lint_fk_ondelete.py
 
@@ -235,14 +235,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install API dependencies
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           uv pip install -r api/requirements.txt
       - name: Dump OpenAPI schema and scan /api/v1/ response fields
         run: |
@@ -261,14 +261,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install API dependencies
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           uv pip install -r api/requirements.txt
       - name: Check js-core types cover all /api/v1/ response fields
         run: |
@@ -283,7 +283,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install bandit
         run: pip install "bandit[toml]==1.7.9"
       - name: Run bandit on api/app
@@ -302,14 +302,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install deps and audit
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           source .venv/bin/activate
           uv pip install pip-audit
           uv pip install -r api/requirements.txt
@@ -343,7 +343,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install detect-secrets
         run: pip install "detect-secrets==1.5.0"
       - name: Verify no new secrets introduced
@@ -359,7 +359,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Grep api/app for SQL string interpolation
         run: python scripts/lint_sql_interpolation.py
 
@@ -387,14 +387,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install Python dependencies
         run: |
-          uv venv --python 3.12
+          uv venv --python 3.13
           uv pip install -r api/requirements.txt
           uv pip install -e ./scraper
       - name: Compile Python modules

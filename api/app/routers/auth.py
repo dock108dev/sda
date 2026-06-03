@@ -21,8 +21,6 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
@@ -43,9 +41,19 @@ from app.dependencies.roles import (
 from app.security import pwd_context as _pwd_ctx
 from app.services.email import send_magic_link_email, send_password_reset_email
 
-_MAGIC_LINK_TTL = timedelta(minutes=15)
+from .auth_schemas import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    MagicLinkRequest,
+    MagicLinkVerifyRequest,
+    MeResponse,
+    ResetPasswordRequest,
+    SignupRequest,
+    TokenResponse,
+)
+from .auth_self_service import router as self_service_router
 
-_ALIAS_CFG = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+_MAGIC_LINK_TTL = timedelta(minutes=15)
 
 logger = logging.getLogger(__name__)
 
@@ -55,72 +63,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # ---------------------------------------------------------------------------
 # Request / Response models
 # ---------------------------------------------------------------------------
-
-class SignupRequest(BaseModel):
-    email: EmailStr = Field(..., description="User email address")
-    password: str = Field(..., min_length=8, max_length=72, description="Password (8–72 characters)")
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr = Field(..., description="User email address")
-    password: str = Field(..., max_length=72, description="Password")
-    remember_me: bool = Field(default=False, description="Issue a long-lived token (30 days)")
-
-
-class TokenResponse(BaseModel):
-    model_config = _ALIAS_CFG
-
-    access_token: str = Field(..., description="JWT access token")
-    token_type: str = Field(default="bearer")
-    role: str = Field(..., description="User role")
-
-
-class MeResponse(BaseModel):
-    model_config = _ALIAS_CFG
-
-    id: int | None = Field(None, description="User ID (null for guests)")
-    email: str | None = Field(None, description="User email (null for guests)")
-    role: str = Field(..., description="Current role: guest, user, or admin")
-
-
-class UpdateEmailRequest(BaseModel):
-    email: EmailStr = Field(..., description="New email address")
-    password: str = Field(..., max_length=72, description="Current password for verification")
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str = Field(..., max_length=72, description="Current password")
-    new_password: str = Field(..., min_length=8, max_length=72, description="New password (8–72 characters)")
-
-
-class DeleteAccountRequest(BaseModel):
-    password: str = Field(..., max_length=72, description="Current password for verification")
-
-
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr = Field(..., description="Account email address")
-    redirect_url: str | None = Field(
-        None,
-        description="Base URL for the reset link (must be an allowed origin). Defaults to FRONTEND_URL.",
-    )
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str = Field(..., description="Password reset token")
-    new_password: str = Field(..., min_length=8, max_length=72, description="New password (8–72 characters)")
-
-
-class MagicLinkRequest(BaseModel):
-    email: EmailStr = Field(..., description="Account email address")
-    redirect_url: str | None = Field(
-        None,
-        description="Base URL for the magic link (must be an allowed origin). Defaults to FRONTEND_URL.",
-    )
-
-
-class MagicLinkVerifyRequest(BaseModel):
-    token: str = Field(..., description="Magic link token from email")
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -481,102 +423,4 @@ async def me(
 
     return MeResponse(id=user.id, email=user.email, role=user.role)
 
-
-# ---------------------------------------------------------------------------
-# Self-service account management (requires authentication)
-# ---------------------------------------------------------------------------
-
-async def _get_authenticated_user(
-    request: Request,
-    db: AsyncSession,
-) -> User:
-    """Fetch the authenticated user or raise 401."""
-    user_id: int | None = getattr(request.state, "user_id", None)
-    if user_id is None:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
-
-@router.patch(
-    "/me/email",
-    response_model=MeResponse,
-    summary="Update own email address",
-    description="Requires current password for verification.",
-)
-async def update_email(
-    body: UpdateEmailRequest,
-    request: Request,
-    _role: str = Depends(require_user),
-    db: AsyncSession = Depends(get_db),
-) -> MeResponse:
-    user = await _get_authenticated_user(request, db)
-
-    if not _pwd_ctx.verify(body.password, user.password_hash):
-        raise HTTPException(status_code=403, detail="Invalid password")
-
-    # Check new email isn't taken
-    existing = await db.execute(
-        select(User).where(User.email == body.email.lower(), User.id != user.id)
-    )
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=409, detail="Email already registered")
-
-    user.email = body.email.lower()
-    try:
-        await db.flush()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(status_code=409, detail="Email already registered")
-
-    logger.info("user_email_updated", extra={"user_id": user.id, "new_email": user.email})
-    return MeResponse(id=user.id, email=user.email, role=user.role)
-
-
-@router.patch(
-    "/me/password",
-    summary="Change own password",
-)
-async def change_password(
-    body: ChangePasswordRequest,
-    request: Request,
-    _role: str = Depends(require_user),
-    db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
-    user = await _get_authenticated_user(request, db)
-
-    if not _pwd_ctx.verify(body.current_password, user.password_hash):
-        raise HTTPException(status_code=403, detail="Invalid current password")
-
-    user.password_hash = _pwd_ctx.hash(body.new_password)
-    await db.flush()
-
-    logger.info("user_password_changed", extra={"user_id": user.id})
-    return {"detail": "Password updated"}
-
-
-@router.delete(
-    "/me",
-    status_code=status.HTTP_200_OK,
-    summary="Delete own account",
-    description="Permanently deletes the account. Requires password confirmation.",
-)
-async def delete_account(
-    body: DeleteAccountRequest,
-    request: Request,
-    _role: str = Depends(require_user),
-    db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
-    user = await _get_authenticated_user(request, db)
-
-    if not _pwd_ctx.verify(body.password, user.password_hash):
-        raise HTTPException(status_code=403, detail="Invalid password")
-
-    await db.delete(user)
-    await db.flush()
-
-    logger.info("user_account_deleted", extra={"user_id": user.id, "email": user.email})
-    return {"detail": "Account deleted"}
+router.include_router(self_service_router)

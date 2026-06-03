@@ -8,7 +8,7 @@ from .basketball_context import BasketballCardContext
 from .football_context import FootballCardContext
 from .mlb_context import MlbCardContext
 from .nhl_context import NhlCardContext
-from .schemas import ScoreChange, SpoilerPolicy
+from .schemas import ScoreChange
 
 CardContext = MlbCardContext | NhlCardContext | BasketballCardContext | FootballCardContext
 
@@ -33,12 +33,9 @@ def score_before_for(play: PlayEntry, context: CardContext | None) -> ScoreObjec
 
 def score_after_for(
     play: PlayEntry,
-    spoiler_policy: SpoilerPolicy,
     context: CardContext | None,
 ) -> ScoreObject | None:
-    """Return score-after only when the caller requested revealed scores."""
-    if spoiler_policy is not SpoilerPolicy.revealed:
-        return None
+    """Return the score-after snapshot when source data provides it."""
     if context is not None:
         return context.score_after
     return play.score_after
