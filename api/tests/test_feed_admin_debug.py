@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from app.db.sports import GameStatus, SportsGamePlay, SportsTeam
-from app.feed.service import build_card_generation_debug_from_game
+from app.feed.service import build_card_generation_debug_from_game, card_feed_game_options
 from app.routers.sports.game_detail import (
     get_game_card_generation_debug as get_admin_card_generation_debug,
 )
@@ -89,6 +89,16 @@ def test_admin_card_generation_debug_endpoint_returns_debug_response() -> None:
     assert response.available is True
     assert response.feed is not None
     assert response.feed["cards"][0]["playIndex"] == 7
+
+
+def test_card_generation_debug_load_options_cover_payoff_stats() -> None:
+    paths = {str(option.path) for option in card_feed_game_options()}
+
+    assert any("SportsGame.team_boxscores" in path for path in paths)
+    assert any("SportsTeamBoxscore.team" in path for path in paths)
+    assert any("SportsGame.player_boxscores" in path for path in paths)
+    assert any("SportsPlayerBoxscore.team" in path for path in paths)
+    assert any("SportsGame.plays" in path and "SportsGamePlay.team" in path for path in paths)
 
 
 def test_card_generation_debug_reports_available_feed_with_public_aliases() -> None:

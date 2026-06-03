@@ -105,16 +105,11 @@ async def get_game_card_generation_debug(
     session: AsyncSession = Depends(get_db),
 ) -> CardGenerationDebugResponse:
     """Admin-only view of cross-sport narrative card generation state."""
-    from ...feed.service import build_card_generation_debug_from_game
+    from ...feed.service import build_card_generation_debug_from_game, card_feed_game_options
 
     result = await session.execute(
         select(SportsGame)
-        .options(
-            selectinload(SportsGame.league),
-            selectinload(SportsGame.home_team),
-            selectinload(SportsGame.away_team),
-            selectinload(SportsGame.plays).selectinload(SportsGamePlay.team),
-        )
+        .options(*card_feed_game_options())
         .where(SportsGame.id == game_id)
     )
     game = result.scalar_one_or_none()

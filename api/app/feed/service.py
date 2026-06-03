@@ -19,6 +19,8 @@ from app.db.sports import (
     GameStatus,
     SportsGame,
     SportsGamePlay,
+    SportsPlayerBoxscore,
+    SportsTeamBoxscore,
 )
 from app.routers.sports.common import (
     serialize_play_entry,
@@ -114,12 +116,7 @@ async def get_game_card_feed(
     # rather than creating separate persisted artifacts for each boundary.
     result = await session.execute(
         select(SportsGame)
-        .options(
-            selectinload(SportsGame.league),
-            selectinload(SportsGame.home_team),
-            selectinload(SportsGame.away_team),
-            selectinload(SportsGame.plays).selectinload(SportsGamePlay.team),
-        )
+        .options(*card_feed_game_options())
         .where(SportsGame.id == game_id)
     )
     game = result.scalar_one_or_none()
@@ -141,12 +138,7 @@ async def get_game_card_generation_debug(
     """Load one game and return its card-generation debug envelope."""
     result = await session.execute(
         select(SportsGame)
-        .options(
-            selectinload(SportsGame.league),
-            selectinload(SportsGame.home_team),
-            selectinload(SportsGame.away_team),
-            selectinload(SportsGame.plays).selectinload(SportsGamePlay.team),
-        )
+        .options(*card_feed_game_options())
         .where(SportsGame.id == game_id)
     )
     game = result.scalar_one_or_none()
@@ -209,6 +201,18 @@ def build_card_generation_debug_from_game(
             if include_feed
             else None
         ),
+    )
+
+
+def card_feed_game_options():
+    """Eager-load every relationship the card feed builder reads."""
+    return (
+        selectinload(SportsGame.league),
+        selectinload(SportsGame.home_team),
+        selectinload(SportsGame.away_team),
+        selectinload(SportsGame.team_boxscores).selectinload(SportsTeamBoxscore.team),
+        selectinload(SportsGame.player_boxscores).selectinload(SportsPlayerBoxscore.team),
+        selectinload(SportsGame.plays).selectinload(SportsGamePlay.team),
     )
 
 
@@ -481,5 +485,3 @@ def _card_from_play(
         tags=tags,
     )
     return card
-
-
