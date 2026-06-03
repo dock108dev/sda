@@ -19,7 +19,7 @@ current reference.
 | FastAPI consumer routes | `/api/v1/*` requires `CONSUMER_API_KEY` when configured, otherwise falls back to `API_KEY` for single-key development/simple deployments. |
 | FastAPI health and metrics | `/health`, `/healthz`, `/ready`, and `/metrics` do not require API-key auth. Exposure must be controlled by the deployment layer. |
 | FastAPI to data stores | API uses PostgreSQL and Redis. Redis supports rate-limit buckets, task hold state, metrics/cache paths, and the non-production realtime test emitter. |
-| Celery scraper to providers | The active beat schedule runs only `poll_live_pbp`. It reads PostgreSQL, Redis, and league data providers. |
+| Celery scraper to providers | The active beat schedule runs `poll_game_calendars` and `poll_live_pbp`. They read PostgreSQL, Redis, and league data providers. |
 
 ## Key Scope Rules
 

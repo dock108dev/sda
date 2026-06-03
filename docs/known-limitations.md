@@ -10,6 +10,8 @@
 - Odds, golf, social scraping, analytics, simulator, auth product,
   onboarding, club-management, and product realtime streams are not supported
   by the current mounted/scheduled runtime.
+- NFL is currently schedule-stub only in the active beat scheduler; live PBP and
+  box-score polling are not part of `poll_live_pbp`.
 - `/api/social/*` is mounted for manual social post/account data access, but no
   social collection worker is scheduled.
 - `/api/admin/realtime/test-emit` is available only outside production/staging

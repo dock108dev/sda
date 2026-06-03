@@ -245,7 +245,7 @@ def track_job_run(
     phase: str,
     leagues: Iterable[str] = (),
     job_run_id: int | None = None,
-) -> Generator[JobRunTracker, None, None]:
+) -> Generator[JobRunTracker]:
     """Context manager that creates a job run on enter and finalizes on exit.
 
     If *job_run_id* is provided (pre-queued dispatch), the existing record

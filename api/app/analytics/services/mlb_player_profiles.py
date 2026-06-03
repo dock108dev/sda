@@ -13,11 +13,11 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.analytics.services.profile_service import (
-    _clamp,
+from app.analytics.services.profile_math import (
     _season_weights,
     _weighted_mean,
 )
+from app.analytics.services.profile_probabilities import _clamp
 
 logger = logging.getLogger(__name__)
 

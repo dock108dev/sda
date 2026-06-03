@@ -9,13 +9,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analytics.services.profile_math import (  # noqa: F401 - exported from profile service API
+    _season_weights,
+    _weighted_mean,
+)
 from app.analytics.services.profile_probabilities import (
+    _clamp,  # noqa: F401 - exported from profile service API
     profile_to_nba_probabilities,  # noqa: F401 - exported from profile service API
     profile_to_ncaab_probabilities,  # noqa: F401 - exported from profile service API
     profile_to_nhl_probabilities,  # noqa: F401 - exported from profile service API
@@ -38,27 +42,6 @@ class ProfileResult:
     games_used: int
     date_range: tuple[str, str]  # (oldest_game_date, newest_game_date)
     season_breakdown: dict[int, int] = field(default_factory=dict)  # year -> game count
-
-_PRIOR_SEASON_DECAY = 0.7
-
-
-def _season_weights(game_dates: list[datetime]) -> list[float]:
-    """Return per-game weights: 1.0 for current season, 0.7 for prior seasons.
-
-    Current season is defined by the year of the most recent game date.
-    """
-    if not game_dates:
-        return []
-    current_year = game_dates[0].year  # most recent game (desc order)
-    return [1.0 if d.year == current_year else _PRIOR_SEASON_DECAY for d in game_dates]
-
-
-def _weighted_mean(values_weights: list[tuple[float, float]]) -> float:
-    """Compute a weighted mean from (value, weight) pairs."""
-    total_w = sum(w for _, w in values_weights)
-    if total_w == 0:
-        return 0.0
-    return sum(v * w for v, w in values_weights) / total_w
 
 
 # ---------------------------------------------------------------------------

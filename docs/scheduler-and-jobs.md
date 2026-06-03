@@ -1,6 +1,6 @@
 # Scheduler And Jobs
 
-The scraper Celery app has one production execution path.
+The scraper Celery app has two beat-scheduled production execution paths.
 
 ## Authoritative Schedule
 
@@ -8,11 +8,18 @@ Defined in `scraper/sports_scraper/celery_app.py`:
 
 | Beat entry | Task | Cadence | Queue |
 | --- | --- | --- | --- |
+| `calendar-game-stubs-every-15m` | `poll_game_calendars` | every 15 minutes | `sports-scraper` |
 | `catchup-pbp-stats-every-5m` | `poll_live_pbp` | every 5 minutes | `sports-scraper` |
 
-No other scraper tasks are routed or beat-scheduled by the active Celery app.
+`refresh_card_feeds` is included and routed to `sports-scraper`, but it is not
+beat-scheduled. Deploy workflows and manual operators can use it to refresh
+materialized card-feed artifacts for a bounded window.
 
 ## Task Behavior
+
+`poll_game_calendars` creates or updates lightweight game stubs for NBA, NHL,
+MLB, NCAAB, and NFL for today through the seven-day lookahead window. It is
+idempotent: existing games are updated rather than duplicated.
 
 `poll_live_pbp` refreshes:
 
@@ -42,6 +49,10 @@ Admin routes:
 `/api/admin/social/session-health` reads the most recent Playwright session
 health snapshot from Redis. It does not schedule or run a social scraper.
 
+The admin trigger registry exposes only `poll_live_pbp`. `poll_game_calendars`
+is beat-scheduled but not exposed for manual triggering through the admin task
+registry.
+
 Manual trigger request bodies use snake_case:
 
 ```json
@@ -51,6 +62,8 @@ Manual trigger request bodies use snake_case:
 }
 ```
 
-## Removed Schedules
+## Not Scheduled
 
-The legacy full scheduler is not supported. There are no active beat entries for ingestion sweeps, odds sync, golf, social scraping, analytics, realtime orchestration, training, or 5-second live polling.
+The legacy full scheduler is not supported. There are no active beat entries
+for ingestion sweeps, odds sync, golf, social scraping, analytics, simulator,
+realtime orchestration, training, or 5-second live polling.

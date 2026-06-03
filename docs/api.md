@@ -96,6 +96,7 @@ copy and keeps deterministic copy available when polishing is unavailable.
 
 Additional `/api/admin/sports/*` routes support operators and the admin UI:
 
+- card-feed materialization and refresh
 - scrape run creation, cancellation, cache clearing, and bulk preview/backfill
 - game resync and job cancellation
 - teams, team colors, and team social metadata
@@ -120,7 +121,8 @@ runtimes.
 
 ### Task Control
 
-The admin task registry exposes only `poll_live_pbp`.
+The admin task registry exposes only `poll_live_pbp`. The calendar-stub task is
+beat-scheduled but is not exposed through the admin trigger registry.
 
 - `GET /api/admin/tasks/hold`
 - `PUT /api/admin/tasks/hold`
