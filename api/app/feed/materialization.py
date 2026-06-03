@@ -171,6 +171,7 @@ async def refresh_card_feeds_for_window(
             generated += int(item.generated)
             skipped += int(not item.generated)
         except Exception as exc:  # pragma: no cover - exercised via CLI/deploy
+            await session.rollback()
             failed += 1
             errors.append(f"{game_id}: {type(exc).__name__}: {exc}")
     return CardFeedRefreshSummary(
@@ -220,6 +221,7 @@ def materialize_recent_card_feeds_sync(
             generated += int(item.generated)
             skipped += int(not item.generated)
         except Exception as exc:  # pragma: no cover - operational guard
+            session.rollback()
             failed += 1
             errors.append(f"{game_id}: {type(exc).__name__}: {exc}")
     return CardFeedRefreshSummary(

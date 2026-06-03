@@ -10,6 +10,7 @@ from app.db.flow import SportsGameCardFeedArtifact
 from app.feed import materialization
 from app.feed.materialization import (
     CARD_FEED_GENERATOR_LABEL,
+    CardFeedMaterializationResult,
     CardFeedRefreshSummary,
     artifact_to_response,
 )
@@ -35,6 +36,18 @@ def _artifact(*, source_hash: str = "abc123") -> SportsGameCardFeedArtifact:
         validation_issues_json=[],
         generated_at=datetime(2026, 6, 1, tzinfo=UTC),
         generator_label=CARD_FEED_GENERATOR_LABEL,
+    )
+
+
+def _materialization_result(game_id: int) -> CardFeedMaterializationResult:
+    return CardFeedMaterializationResult(
+        game_id=game_id,
+        contract_version=CARD_FEED_CONTRACT_VERSION,
+        feed_key=materialization.CARD_FEED_ARTIFACT_KEY,
+        status="ready",
+        card_count=1,
+        generated=True,
+        source_hash=f"hash-{game_id}",
     )
 
 
@@ -230,3 +243,81 @@ async def test_admin_refresh_route_uses_deploy_window_aliases(monkeypatch) -> No
         "lookahead_hours": 72,
         "force": True,
     }
+
+
+@pytest.mark.asyncio
+async def test_async_refresh_rolls_back_failed_game_and_continues(monkeypatch) -> None:
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [101, 102]
+    session.execute.return_value = result
+    attempted: list[int] = []
+
+    async def _materialize(session_arg, game_id: int, *, force: bool = False):
+        assert session_arg is session
+        assert force is True
+        attempted.append(game_id)
+        if game_id == 101:
+            raise RuntimeError("missing feed_key")
+        return _materialization_result(game_id)
+
+    monkeypatch.setattr(materialization, "materialize_card_feed", _materialize)
+
+    summary = await materialization.refresh_card_feeds_for_window(
+        session,
+        force=True,
+        now=datetime(2026, 6, 3, tzinfo=UTC),
+    )
+
+    assert attempted == [101, 102]
+    assert summary.generated == 1
+    assert summary.failed == 1
+    assert summary.errors == ("101: RuntimeError: missing feed_key",)
+    session.rollback.assert_awaited_once()
+
+
+def test_sync_refresh_rolls_back_failed_game_and_continues(monkeypatch) -> None:
+    class _Query:
+        def filter(self, *args, **kwargs):
+            return self
+
+        def order_by(self, *args, **kwargs):
+            return self
+
+        def all(self):
+            return [(201,), (202,)]
+
+    class _Session:
+        def __init__(self) -> None:
+            self.rollback_count = 0
+
+        def query(self, *args, **kwargs):
+            return _Query()
+
+        def rollback(self) -> None:
+            self.rollback_count += 1
+
+    session = _Session()
+    attempted: list[int] = []
+
+    def _materialize(session_arg, game_id: int, *, force: bool = False):
+        assert session_arg is session
+        assert force is True
+        attempted.append(game_id)
+        if game_id == 201:
+            raise RuntimeError("missing feed_key")
+        return _materialization_result(game_id)
+
+    monkeypatch.setattr(materialization, "materialize_card_feed_sync", _materialize)
+
+    summary = materialization.materialize_recent_card_feeds_sync(
+        session,
+        force=True,
+        now=datetime(2026, 6, 3, tzinfo=UTC),
+    )
+
+    assert attempted == [201, 202]
+    assert summary.generated == 1
+    assert summary.failed == 1
+    assert summary.errors == ("201: RuntimeError: missing feed_key",)
+    assert session.rollback_count == 1
