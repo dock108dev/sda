@@ -14,7 +14,6 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-
 ALLOWED_GENERATION_STATUSES = {
     "ready",
     "no_pbp_yet",
@@ -204,8 +203,6 @@ def _validate_card(card: dict[str, Any], *, game_id: int, index: int) -> None:
             "stageSetting",
             "headline",
             "description",
-            "spoilerLevel",
-            "textFieldSpoilerLevels",
         },
         scope=scope,
     )
@@ -256,7 +253,7 @@ def _validate_feed(
     game_id: int,
     min_cards: int,
 ) -> tuple[int, str]:
-    _require_keys(payload, {"contractVersion", "game", "generation", "reveal", "cards"}, scope="feed")
+    _require_keys(payload, {"contractVersion", "game", "generation", "cards"}, scope="feed")
     if int(payload["contractVersion"]) < 2:
         raise ValidationError(f"game {game_id} contractVersion must be >= 2")
     game = payload["game"]
@@ -340,7 +337,7 @@ def validate(args: argparse.Namespace) -> list[str]:
         try:
             feed = _request_json(
                 args.base_url,
-                f"/api/v1/feed/games/{game_id}/cards?spoilerPolicy=pre_reveal",
+                f"/api/v1/feed/games/{game_id}/cards",
                 api_key,
             )
         except HTTPValidationError as exc:
@@ -352,7 +349,7 @@ def validate(args: argparse.Namespace) -> list[str]:
         if args.debug:
             debug = _request_json(
                 args.base_url,
-                f"/api/v1/feed/games/{game_id}/cards/debug?spoilerPolicy=pre_reveal&includeFeed=false",
+                f"/api/v1/feed/games/{game_id}/cards/debug?includeFeed=false",
                 api_key,
             )
             _validate_debug(debug, game_id=game_id)

@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from app.db.sports import GameStatus, SportsGamePlay, SportsTeam
-from app.feed.schemas import SpoilerPolicy
 from app.feed.service import build_card_generation_debug_from_game
 from app.routers.sports.game_detail import (
     get_game_card_generation_debug as get_admin_card_generation_debug,
@@ -81,7 +80,6 @@ def test_admin_card_generation_debug_endpoint_returns_debug_response() -> None:
     response = _run(
         get_admin_card_generation_debug(
             42,
-            spoiler_policy="pre_reveal",
             through_play_index=None,
             include_feed=True,
             session=_session_for_game(_game()),
@@ -94,7 +92,7 @@ def test_admin_card_generation_debug_endpoint_returns_debug_response() -> None:
 
 
 def test_card_generation_debug_reports_available_feed_with_public_aliases() -> None:
-    response = build_card_generation_debug_from_game(_game(), SpoilerPolicy.pre_reveal)
+    response = build_card_generation_debug_from_game(_game())
 
     assert response.available is True
     assert response.status == "available"
@@ -111,7 +109,6 @@ def test_card_generation_debug_reports_available_feed_with_public_aliases() -> N
 def test_card_generation_debug_reports_not_available_when_source_has_no_plays() -> None:
     response = build_card_generation_debug_from_game(
         _game(league="NHL", status=GameStatus.live.value, plays=[]),
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.available is False
@@ -125,7 +122,6 @@ def test_card_generation_debug_reports_not_available_when_source_has_no_plays() 
 def test_card_generation_debug_reports_blocked_adapter_consistency_error() -> None:
     response = build_card_generation_debug_from_game(
         _game(home_abbreviation=""),
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.available is False
@@ -139,12 +135,11 @@ def test_card_generation_debug_reports_blocked_adapter_consistency_error() -> No
 def test_card_generation_debug_reports_validation_warning() -> None:
     response = build_card_generation_debug_from_game(
         _game(description="This play would go on to matter later."),
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.available is True
     assert response.status == "available"
-    assert response.warnings[0].code == "narrative_future_spoiler_phrase"
+    assert response.warnings[0].code == "narrative_future_outcome_phrase"
     assert response.warnings[0].play_id == "7"
     assert response.errors == []
 
@@ -156,17 +151,16 @@ def test_card_generation_debug_reports_validation_error_with_fallback_card() -> 
             home_score=4,
             away_score=2,
         ),
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.available is True
     assert response.status == "available"
     assert {finding.code for finding in response.errors} >= {
         "narrative_final_score_leak",
-        "narrative_future_spoiler_phrase",
+        "narrative_future_outcome_phrase",
     }
     assert response.feed is not None
     assert (
         response.feed["cards"][0]["description"]
-        == "Verified play detail is available after reveal."
+        == "Verified play detail is available."
     )

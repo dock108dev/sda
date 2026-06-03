@@ -20,7 +20,6 @@ Code, compose, and tests are the source of truth when docs drift.
 | [Data sources](ingestion/data-sources.md) | External feeds used by the catch-up worker |
 | [Database](database.md) | Tables that back games, plays, and stats |
 | [DB conventions](conventions/db.md) | Naming and migration conventions |
-| [Scroll Down MLB fixtures](testing/scroll-down-mlb-fixtures.md) | Historical regression fixture notes |
 
 ## Operations
 

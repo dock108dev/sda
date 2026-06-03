@@ -95,7 +95,7 @@ class SportsGameCardFeedArtifact(Base):
         index=True,
     )
     contract_version: Mapped[int] = mapped_column(Integer, nullable=False)
-    spoiler_policy: Mapped[str] = mapped_column(String(32), nullable=False)
+    feed_key: Mapped[str] = mapped_column(String(32), nullable=False)
     generation_status: Mapped[str] = mapped_column(String(32), nullable=False)
     source_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     card_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -105,12 +105,17 @@ class SportsGameCardFeedArtifact(Base):
         server_default=text("'{}'::jsonb"),
         nullable=False,
     )
-    reveal_json: Mapped[dict[str, Any]] = mapped_column(
+    sections_json: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB,
-        server_default=text("'{}'::jsonb"),
+        server_default=text("'[]'::jsonb"),
         nullable=False,
     )
-    sections_json: Mapped[list[dict[str, Any]]] = mapped_column(
+    team_stats_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        server_default=text("'[]'::jsonb"),
+        nullable=False,
+    )
+    player_stats_json: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB,
         server_default=text("'[]'::jsonb"),
         nullable=False,
@@ -145,8 +150,8 @@ class SportsGameCardFeedArtifact(Base):
         UniqueConstraint(
             "game_id",
             "contract_version",
-            "spoiler_policy",
-            name="uq_sports_game_card_feed_artifacts_game_contract_policy",
+            "feed_key",
+            name="uq_sports_game_card_feed_artifacts_game_contract_key",
         ),
         Index("idx_sports_game_card_feed_artifacts_game", "game_id"),
         Index(

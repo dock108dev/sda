@@ -3,9 +3,7 @@ from __future__ import annotations
 from app.feed.narrative_validation import (
     NarrativeValidationContext,
     validate_card_text,
-    validate_public_card_dto,
 )
-from app.feed.schemas import SpoilerPolicy
 
 
 def _context(**overrides: object) -> NarrativeValidationContext:
@@ -36,7 +34,7 @@ def _codes(text: str, context: NarrativeValidationContext | None = None) -> list
     return [finding.code for finding in findings]
 
 
-def test_pre_reveal_winner_final_score_and_future_language_fall_back() -> None:
+def test_future_winner_final_score_and_future_language_fall_back() -> None:
     findings = validate_card_text(
         text="The Harbor Herons would eventually seal the 5-2 win.",
         field="headline",
@@ -44,7 +42,7 @@ def test_pre_reveal_winner_final_score_and_future_language_fall_back() -> None:
     )
 
     assert {
-        "narrative_future_spoiler_phrase",
+        "narrative_future_outcome_phrase",
         "narrative_final_score_leak",
         "narrative_winner_leak",
     } <= {finding.code for finding in findings}
@@ -52,14 +50,14 @@ def test_pre_reveal_winner_final_score_and_future_language_fall_back() -> None:
 
 
 def test_future_phrase_matching_does_not_trigger_inside_player_names() -> None:
-    assert "narrative_future_spoiler_phrase" not in _codes(
+    assert "narrative_future_outcome_phrase" not in _codes(
         "Austin Slater doubles on a line drive to left fielder Josh Lowe.",
         _context(future_player_names=frozenset()),
     )
 
 
 def test_score_claims_require_allowed_pairs_and_team_order() -> None:
-    revealed_context = _context(
+    final_score_context = _context(
         allow_final_score=True,
         score_after=(5, 2),
         allowed_scores=frozenset({(5, 2)}),
@@ -68,11 +66,11 @@ def test_score_claims_require_allowed_pairs_and_team_order() -> None:
 
     assert "narrative_score_not_allowed" in _codes(
         "The Harbor Herons led 7-2 after the swing.",
-        revealed_context,
+        final_score_context,
     )
     assert "narrative_score_team_order_mismatch" in _codes(
         "The Harbor Herons beat the Mesa Larks 2-5.",
-        revealed_context,
+        final_score_context,
     )
     assert "narrative_margin_mismatch" in _codes(
         "The Harbor Herons moved ahead by three.",
@@ -91,27 +89,3 @@ def test_team_role_scoring_side_and_future_player_mentions_are_blockers() -> Non
     assert "narrative_home_away_role_mismatch" in codes
     assert "narrative_future_player_mention" in codes
     assert "narrative_team_score_mismatch" in codes
-
-
-def test_public_pre_reveal_dto_scans_reveal_only_keys() -> None:
-    clean_context_result = {
-        "situation": {"raw": {"result": {"eventType": "single"}}},
-        "headline": "Verified current play",
-    }
-    blocked = {
-        "headline": "Verified current play",
-        "finalScore": "Harbor Herons 5, Mesa Larks 2",
-        "result": "Harbor Herons win",
-    }
-
-    assert validate_public_card_dto(
-        payload=clean_context_result,
-        spoiler_policy=SpoilerPolicy.pre_reveal,
-    ) == []
-    assert [
-        finding.code
-        for finding in validate_public_card_dto(
-            payload=blocked,
-            spoiler_policy=SpoilerPolicy.pre_reveal,
-        )
-    ] == ["public_card_forbidden_key", "public_card_forbidden_key"]

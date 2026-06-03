@@ -19,21 +19,6 @@ from app.routers.sports.schemas.common import (
 CARD_FEED_CONTRACT_VERSION = 2
 
 
-class SpoilerPolicy(str, Enum):
-    """Score disclosure policy for feed card responses."""
-
-    pre_reveal = "pre_reveal"
-    revealed = "revealed"
-
-
-class CardFieldSpoilerLevel(str, Enum):
-    """Disclosure level for generated text fields on a card."""
-
-    pre_open_safe = "preOpenSafe"
-    earned_at_play = "earnedAtPlay"
-    reveal_only = "revealOnly"
-
-
 class CardFeedStatus(str, Enum):
     """Functional feed states clients can render without inference."""
 
@@ -83,24 +68,8 @@ class CardTeam(BaseModel):
     side: Literal["home", "away", "unknown"] = "unknown"
 
 
-class CardTextSpoilerLevels(BaseModel):
-    """Spoiler levels for generated card text fields."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    lead_in: CardFieldSpoilerLevel = Field(..., alias="leadIn")
-    stage_setting: CardFieldSpoilerLevel = Field(..., alias="stageSetting")
-    headline: CardFieldSpoilerLevel
-    description: CardFieldSpoilerLevel
-    impact: CardFieldSpoilerLevel | None = None
-    situation_summary: CardFieldSpoilerLevel | None = Field(
-        None, alias="situationSummary"
-    )
-    tags: CardFieldSpoilerLevel
-
-
 class CardSectionLeadIn(BaseModel):
-    """Spoiler-classified lead-in copy for a deterministic feed section."""
+    """Lead-in copy for a deterministic feed section."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -113,10 +82,6 @@ class CardSectionLeadIn(BaseModel):
     lead_in: str = Field(..., alias="leadIn")
     start_play_index: int = Field(..., alias="startPlayIndex")
     end_play_index: int = Field(..., alias="endPlayIndex")
-    text_field_spoiler_level: CardFieldSpoilerLevel = Field(
-        CardFieldSpoilerLevel.earned_at_play,
-        alias="textFieldSpoilerLevel",
-    )
     source: Literal["generated", "deterministic", "fallback"] = "deterministic"
 
 
@@ -170,21 +135,6 @@ class NarrativeCard(BaseModel):
     full_details: dict[str, Any] | None = Field(None, alias="fullDetails")
     impact: str | None = None
     tags: list[str] = Field(default_factory=list)
-    spoiler_level: Literal["none", "score_change", "score_revealed"] = Field(
-        ..., alias="spoilerLevel"
-    )
-    text_field_spoiler_levels: CardTextSpoilerLevels = Field(
-        default_factory=lambda: CardTextSpoilerLevels(
-            leadIn=CardFieldSpoilerLevel.earned_at_play,
-            stageSetting=CardFieldSpoilerLevel.earned_at_play,
-            headline=CardFieldSpoilerLevel.earned_at_play,
-            description=CardFieldSpoilerLevel.earned_at_play,
-            impact=CardFieldSpoilerLevel.earned_at_play,
-            situationSummary=CardFieldSpoilerLevel.earned_at_play,
-            tags=CardFieldSpoilerLevel.earned_at_play,
-        ),
-        alias="textFieldSpoilerLevels",
-    )
 
 
 class FeedGenerationStatus(BaseModel):
@@ -198,33 +148,6 @@ class FeedGenerationStatus(BaseModel):
     generated_at: datetime | None = Field(None, alias="generatedAt")
     is_stale: bool = Field(False, alias="isStale")
     validation_issues: list[str] = Field(default_factory=list, alias="validationIssues")
-
-
-class CompletedGameRevealBoundary(BaseModel):
-    """Completed-game fields that are allowed only after the reveal boundary."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    final_score: Literal["unavailable", "hidden_until_reveal", "allowed"] = Field(
-        ..., alias="finalScore"
-    )
-    winner: Literal["unavailable", "hidden_until_reveal", "allowed"]
-    stats: Literal["unavailable", "hidden_until_reveal", "allowed"]
-    payoff_copy: Literal["unavailable", "hidden_until_reveal", "allowed"] = Field(
-        ..., alias="payoffCopy"
-    )
-
-
-class RevealAvailability(BaseModel):
-    """Spoiler-safe reveal capability metadata."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    available: bool
-    status: Literal["unavailable", "ready"]
-    scores_in_cards: bool = Field(..., alias="scoresInCards")
-    reveal_required_for_scores: bool = Field(..., alias="revealRequiredForScores")
-    boundary: CompletedGameRevealBoundary = Field(..., alias="completedGameBoundary")
 
 
 class CardGameMetadata(BaseModel):
@@ -252,9 +175,7 @@ class CardFeedResponse(BaseModel):
 
     contract_version: int = Field(CARD_FEED_CONTRACT_VERSION, alias="contractVersion")
     game: CardGameMetadata
-    spoiler_policy: SpoilerPolicy = Field(..., alias="spoilerPolicy")
     generation: FeedGenerationStatus
-    reveal: RevealAvailability
     sections: list[CardSectionLeadIn] = Field(default_factory=list)
     team_stats: list[TeamStat] = Field(default_factory=list, alias="teamStats")
     player_stats: list[PlayerStat] = Field(default_factory=list, alias="playerStats")

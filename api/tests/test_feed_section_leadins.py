@@ -33,7 +33,6 @@ def _card(play_index: int, raw: dict) -> NarrativeCard:
         description="Backend detail",
         impact=None,
         tags=[],
-        spoilerLevel="none",
     )
 
 

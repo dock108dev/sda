@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import HTTPException
 
 from app.db.flow import SportsGameCardFeedArtifact
 from app.feed import materialization
@@ -14,7 +13,7 @@ from app.feed.materialization import (
     CardFeedRefreshSummary,
     artifact_to_response,
 )
-from app.feed.schemas import CARD_FEED_CONTRACT_VERSION, SpoilerPolicy
+from app.feed.schemas import CARD_FEED_CONTRACT_VERSION
 from app.feed.service import get_game_card_feed
 from app.routers.sports.card_feeds import refresh_recent_card_feeds
 
@@ -23,25 +22,15 @@ def _artifact(*, source_hash: str = "abc123") -> SportsGameCardFeedArtifact:
     return SportsGameCardFeedArtifact(
         game_id=42,
         contract_version=CARD_FEED_CONTRACT_VERSION,
-        spoiler_policy="pre_reveal",
+        feed_key=materialization.CARD_FEED_ARTIFACT_KEY,
         generation_status="ready",
         source_hash=source_hash,
         card_count=1,
         last_play_index=7,
         game_json={"gameId": 42, "sport": "baseball", "league": "MLB"},
-        reveal_json={
-            "available": False,
-            "status": "unavailable",
-            "scoresInCards": False,
-            "revealRequiredForScores": True,
-            "completedGameBoundary": {
-                "finalScore": "unavailable",
-                "winner": "unavailable",
-                "stats": "unavailable",
-                "payoffCopy": "unavailable",
-            },
-        },
         sections_json=[],
+        team_stats_json=[],
+        player_stats_json=[],
         cards_json=[],
         validation_issues_json=[],
         generated_at=datetime(2026, 6, 1, tzinfo=UTC),
@@ -100,8 +89,9 @@ async def test_artifact_stale_check_detects_new_pbp() -> None:
 async def test_public_card_feed_reads_materialized_artifact_without_generating(
     monkeypatch,
 ) -> None:
-    load_game = AsyncMock()
+    load_game = AsyncMock(return_value=SimpleNamespace(id=42))
     monkeypatch.setattr(materialization, "_load_game_async", load_game)
+    monkeypatch.setattr(materialization, "_source_hash", lambda game: "current")
     monkeypatch.setattr(
         materialization,
         "_load_artifact_async",
@@ -118,21 +108,21 @@ async def test_public_card_feed_reads_materialized_artifact_without_generating(
     response = await get_game_card_feed(
         AsyncMock(),
         42,
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.generation.card_count == 1
     assert response.generation.is_stale is False
-    load_game.assert_not_called()
+    load_game.assert_awaited_once()
     regenerate.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_public_card_feed_marks_stale_artifact_without_regenerating(
+async def test_public_card_feed_regenerates_stale_artifact(
     monkeypatch,
 ) -> None:
-    load_game = AsyncMock()
+    load_game = AsyncMock(return_value=SimpleNamespace(id=42))
     monkeypatch.setattr(materialization, "_load_game_async", load_game)
+    monkeypatch.setattr(materialization, "_source_hash", lambda game: "new")
     monkeypatch.setattr(
         materialization,
         "_load_artifact_async",
@@ -143,38 +133,17 @@ async def test_public_card_feed_marks_stale_artifact_without_regenerating(
         "_artifact_is_stale_async",
         AsyncMock(return_value=True),
     )
-    regenerate = AsyncMock()
+    regenerate = AsyncMock(return_value=_artifact(source_hash="new"))
     monkeypatch.setattr(materialization, "_materialize_loaded_game_async", regenerate)
 
     response = await get_game_card_feed(
         AsyncMock(),
         42,
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.generation.card_count == 1
-    assert response.generation.is_stale is True
-    load_game.assert_not_called()
-    regenerate.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_public_card_feed_requires_materialized_artifact(monkeypatch) -> None:
-    monkeypatch.setattr(
-        materialization,
-        "_load_artifact_async",
-        AsyncMock(return_value=None),
-    )
-
-    with pytest.raises(HTTPException) as exc_info:
-        await get_game_card_feed(
-            AsyncMock(),
-            42,
-            SpoilerPolicy.pre_reveal,
-        )
-
-    assert exc_info.value.status_code == 404
-    assert "not been materialized" in exc_info.value.detail
+    load_game.assert_awaited_once()
+    regenerate.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -199,7 +168,6 @@ async def test_get_or_materialize_returns_current_artifact_without_regenerating(
     response = await materialization.get_or_materialize_card_feed(
         AsyncMock(),
         42,
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.generation.card_count == 1
@@ -222,7 +190,6 @@ async def test_get_or_materialize_regenerates_stale_artifact(monkeypatch) -> Non
     response = await materialization.get_or_materialize_card_feed(
         AsyncMock(),
         42,
-        SpoilerPolicy.pre_reveal,
     )
 
     assert response.generation.card_count == 1
@@ -252,7 +219,6 @@ async def test_admin_refresh_route_uses_deploy_window_aliases(monkeypatch) -> No
         lookback_hours=72,
         lookahead_hours=72,
         force=True,
-        spoiler_policy="pre_reveal",
         session=session,
     )
 
@@ -262,6 +228,5 @@ async def test_admin_refresh_route_uses_deploy_window_aliases(monkeypatch) -> No
         "session": session,
         "lookback_hours": 72,
         "lookahead_hours": 72,
-        "spoiler_policy": SpoilerPolicy.pre_reveal,
         "force": True,
     }

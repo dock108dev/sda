@@ -57,11 +57,9 @@ Common query parameters:
 - `limit`: page size from 1 to 200, default `100`
 - `offset`: zero-based page offset
 
-The response is spoiler-light by design. It includes game identity, teams,
-date, league, status, capability flags, and short context copy. It does not
-expose the detail payload's top-level final/current `score`; live games may
-include `liveSnapshot.score` when play-by-play has established period and clock
-state.
+The response is a compact home-list summary. It includes game identity, teams,
+date, league, status, capability flags, and short context copy. Detail score,
+team stats, and player stats live on the normalized card-feed endpoint.
 
 Response envelope fields:
 
@@ -93,8 +91,8 @@ The admin sports catch-up routes are mounted under `/api/admin/sports`:
 - `GET /api/admin/sports/games/{game_id}/context`
 
 `/context` returns two to three short context sentences. It uses deterministic
-local data by default. When `enhance=true`, it attempts OpenAI polishing and
-falls back to deterministic copy on any issue.
+local data by default. When `enhance=true`, it may use OpenAI to polish that
+copy and keeps deterministic copy available when polishing is unavailable.
 
 Additional `/api/admin/sports/*` routes support operators and the admin UI:
 

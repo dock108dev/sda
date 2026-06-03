@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from app.db.sports import GameStatus, SportsGamePlay, SportsTeam
-from app.feed.schemas import SpoilerPolicy
 from app.feed.service import build_card_feed_from_game
 
 
@@ -83,10 +82,9 @@ def _play(
 
 def _cards(
     game: SimpleNamespace,
-    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
 ) -> list[dict]:
     return build_card_feed_from_game(
-        game, spoiler_policy
+        game
     ).model_dump(by_alias=True, mode="json", exclude_none=True)["cards"]
 
 
@@ -225,7 +223,7 @@ def test_nhl_card_context_flags_late_tying_and_lead_change_goals() -> None:
         ),
     ]
 
-    tying_card = _cards(tying_game, SpoilerPolicy.revealed)[1]
+    tying_card = _cards(tying_game)[1]
     tying_context = tying_card["situation"]["raw"]
 
     assert tying_card["impact"] == "tying"
@@ -261,7 +259,7 @@ def test_nhl_card_context_flags_late_tying_and_lead_change_goals() -> None:
         ),
     ]
 
-    lead_change_card = _cards(lead_change_game, SpoilerPolicy.revealed)[1]
+    lead_change_card = _cards(lead_change_game)[1]
     lead_change_context = lead_change_card["situation"]["raw"]
 
     assert lead_change_card["impact"] == "lead_change"
@@ -292,7 +290,7 @@ def test_nhl_card_context_flags_goalie_pulled_and_empty_net() -> None:
         )
     ]
 
-    card = _cards(game, SpoilerPolicy.revealed)[0]
+    card = _cards(game)[0]
     context = card["situation"]["raw"]
 
     assert card["impact"] == "empty_net_goal"
@@ -303,7 +301,7 @@ def test_nhl_card_context_flags_goalie_pulled_and_empty_net() -> None:
     assert context["flags"]["isEmptyNet"] is True
 
 
-def test_nhl_pre_reveal_empty_net_goal_keeps_neutral_stage_setting() -> None:
+def test_nhl_empty_net_goal_keeps_deterministic_stage_setting() -> None:
     game = _game()
     game.plays = [
         _play(
@@ -326,9 +324,7 @@ def test_nhl_pre_reveal_empty_net_goal_keeps_neutral_stage_setting() -> None:
         )
     ]
 
-    card = _cards(game, SpoilerPolicy.pre_reveal)[0]
+    card = _cards(game)[0]
 
     assert card["stageSetting"] != card["leadIn"]
     assert card["stageSetting"] == "P3 03:41, penalty kill, goal"
-    assert "empty net" not in card["stageSetting"].lower()
-    assert "late close" not in card["stageSetting"].lower()

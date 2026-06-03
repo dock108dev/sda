@@ -27,14 +27,37 @@ Template-fallback flows:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import re
-from dataclasses import dataclass, field
 
 import redis
 
+from .grader_config import (
+    _LLM_RUBRIC_PROMPT,
+    _LLM_RUBRIC_SONNET_PROMPT,
+    _TIER1_WEIGHT,
+    _TIER2_WEIGHT,
+    ESCALATION_THRESHOLD,
+    FORBIDDEN_PHRASES,
+    MAX_BLOCKS,
+    MAX_TOTAL_WORDS,
+    MAX_WORDS_PER_BLOCK,
+    MIN_BLOCKS,
+    MIN_WORDS_PER_BLOCK,
+    SONNET_AMBIGUOUS_BAND_HIGH,
+    SONNET_AMBIGUOUS_BAND_LOW,
+    SONNET_MODEL,
+    TIER2_CACHE_TTL,
+)
+from .grader_models import GraderResult, TierOneResult, TierTwoResult
+from .grader_parsing import (
+    _all_block_narratives,
+    _compute_prompt_hash,
+    _count_words,
+    _parse_tier2_rubric_json,
+    _strip_code_fence,
+)
 from .grader_rules.generic_phrases import (
     GENERIC_PHRASE_WEIGHT,
 )
@@ -43,227 +66,6 @@ from .grader_rules.generic_phrases import (
 )
 
 logger = logging.getLogger(__name__)
-
-# ── Thresholds ────────────────────────────────────────────────────────────────
-
-ESCALATION_THRESHOLD: float = 60.0
-TIER2_CACHE_TTL: int = 604800  # 7 days in seconds
-
-# Sonnet escalation: Haiku scores in this band trigger a Sonnet re-grade.
-# Below LOW → fail fast (skip Sonnet). Above HIGH → pass fast (skip Sonnet).
-SONNET_AMBIGUOUS_BAND_LOW: float = 40.0
-SONNET_AMBIGUOUS_BAND_HIGH: float = 60.0
-SONNET_MODEL: str = "claude-sonnet-4-6"
-
-# Block count bounds (mirror validate_blocks.py constants)
-MIN_BLOCKS: int = 3
-MAX_BLOCKS: int = 7
-
-# Word count bounds per block and for the whole flow
-MIN_WORDS_PER_BLOCK: int = 30
-MAX_WORDS_PER_BLOCK: int = 120
-MAX_TOTAL_WORDS: int = 600
-
-# Combined score weights when both tiers are available
-_TIER1_WEIGHT: float = 0.4
-_TIER2_WEIGHT: float = 0.6
-
-# ── Forbidden phrases ─────────────────────────────────────────────────────────
-# Phrases that indicate LLM artifacts, non-specificity, or clichéd writing.
-# These should never appear in a published game recap.
-
-FORBIDDEN_PHRASES: list[str] = [
-    "as an ai",
-    "as an ai language model",
-    "i cannot",
-    "i'm unable",
-    "i am unable",
-    "in conclusion,",
-    "in conclusion.",
-    "to summarize,",
-    "to summarize.",
-    "as we all know",
-    "needless to say",
-    "it is worth noting",
-    "it is important to note",
-    "it goes without saying",
-    "at the end of the day",
-    "the game saw",
-    "had a great game",
-    "played really well",
-    "showed up to play",
-]
-
-# ── LLM rubric prompt ─────────────────────────────────────────────────────────
-
-_LLM_RUBRIC_PROMPT = """\
-You are a sports narrative quality evaluator. Score the following game recap.
-
-Game context:
-- Sport: {sport}
-- Teams: {away_team} @ {home_team}
-- Final score: {home_team} {home_score}, {away_team} {away_score}
-
-Narrative (all blocks combined):
----
-{narrative}
----
-
-Score each dimension from 0 to 25 (integer only). Output ONLY valid JSON with this exact shape:
-{{
-  "factual_accuracy": <0-25>,
-  "sport_specific_voice": <0-25>,
-  "narrative_coherence": <0-25>,
-  "no_generic_filler": <0-25>,
-  "reasoning": "<one sentence>"
-}}
-
-Rubric:
-- factual_accuracy (0-25): Do scores, team names, and player references match the game context?
-- sport_specific_voice (0-25): Does the language use {sport}-appropriate terminology? Reads like a professional recap?
-- narrative_coherence (0-25): Clear arc from setup to resolution? Logical transitions between blocks?
-- no_generic_filler (0-25): Concrete and specific to this game (not generic sports clichés)?
-"""
-
-# Sonnet prompt uses chain-of-thought reasoning before scoring; same output schema.
-_LLM_RUBRIC_SONNET_PROMPT = """\
-You are a sports narrative quality evaluator. Score the following game recap using \
-step-by-step reasoning before each score.
-
-Game context:
-- Sport: {sport}
-- Teams: {away_team} @ {home_team}
-- Final score: {home_team} {home_score}, {away_team} {away_score}
-
-Narrative (all blocks combined):
----
-{narrative}
----
-
-For EACH dimension: quote the relevant passage, compare to game context, identify issues, \
-then assign a score.
-
-BIAS WARNING: default to 15/25; only award >20 with specific quoted evidence; \
-only award <10 on clear failure.
-
-Output ONLY valid JSON with this exact shape:
-{{
-  "factual_accuracy": <0-25>,
-  "factual_accuracy_reasoning": "<one sentence>",
-  "sport_specific_voice": <0-25>,
-  "sport_specific_voice_reasoning": "<one sentence>",
-  "narrative_coherence": <0-25>,
-  "narrative_coherence_reasoning": "<one sentence>",
-  "no_generic_filler": <0-25>,
-  "no_generic_filler_reasoning": "<one sentence>",
-  "reasoning": "<overall one sentence>"
-}}
-
-Rubric:
-- factual_accuracy (0-25): Do scores, team names, and player references match the game context?
-- sport_specific_voice (0-25): Does the language use {sport}-appropriate terminology? Reads like a professional recap?
-- narrative_coherence (0-25): Clear arc from setup to resolution? Logical transitions between blocks?
-- no_generic_filler (0-25): Concrete and specific to this game (not generic sports clichés)?
-"""
-
-# ── Data classes ──────────────────────────────────────────────────────────────
-
-
-@dataclass
-class TierOneResult:
-    """Result of Tier 1 rule-based checks."""
-
-    score: float
-    failures: list[str] = field(default_factory=list)
-    checks: dict[str, bool] = field(default_factory=dict)
-
-
-@dataclass
-class TierTwoResult:
-    """Result of Tier 2 LLM scoring."""
-
-    score: float
-    rubric: dict[str, float] = field(default_factory=dict)
-    cache_hit: bool = False
-    model: str = "claude-haiku-4-5-20251001"
-
-
-@dataclass
-class GraderResult:
-    """Combined output of all grader tiers."""
-
-    flow_id: int
-    sport: str
-    tier1: TierOneResult
-    tier2: TierTwoResult | None
-    combined_score: float
-    escalated: bool
-    is_template_fallback: bool = False
-    # Sonnet escalation fields (populated only when Haiku score was ambiguous)
-    tier2_sonnet: TierTwoResult | None = None
-    haiku_ambiguous: bool = False
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _count_words(text: str) -> int:
-    return len(text.split())
-
-
-def _all_block_narratives(blocks: list[dict]) -> str:
-    return " ".join(b.get("narrative", "") for b in blocks)
-
-
-def _compute_prompt_hash(blocks: list[dict], game_data: dict) -> str:
-    """Stable 16-char hex hash over scoring inputs for cache keying."""
-    payload = json.dumps(
-        {
-            "blocks": blocks,
-            "game": {
-                k: game_data.get(k)
-                for k in ("sport", "home_team", "away_team", "home_score", "away_score")
-            },
-        },
-        sort_keys=True,
-    )
-    return hashlib.sha256(payload.encode()).hexdigest()[:16]
-
-
-# Rubric dimensions scored by both the Haiku and Sonnet Tier 2 prompts;
-# the per-prompt instructions above ask for these exact JSON keys.
-_TIER2_RUBRIC_DIMS: tuple[str, ...] = (
-    "factual_accuracy",
-    "sport_specific_voice",
-    "narrative_coherence",
-    "no_generic_filler",
-)
-
-
-def _strip_code_fence(text: str) -> str:
-    """Strip a leading Markdown ```lang fence and trailing backticks/whitespace."""
-    if text.startswith("```"):
-        return re.sub(r"^```[a-z]*\n?", "", text).rstrip("` \n")
-    return text
-
-
-def _parse_tier2_rubric_json(raw: str) -> tuple[float, dict[str, float]]:
-    """Parse cleaned rubric JSON into ``(score, rubric)``.
-
-    Each dimension is clamped to ``[0, 25]`` and the score is the rounded
-    sum. Raises ``json.JSONDecodeError``/``ValueError``/``KeyError``/
-    ``IndexError``/``TypeError`` on malformed responses; the Tier 2 callers
-    turn those into a neutral 50 + structured warning log.
-    """
-    parsed = json.loads(raw)
-    if not isinstance(parsed, dict):
-        raise ValueError(f"expected JSON object, got {type(parsed).__name__}")
-    rubric = {
-        dim: float(min(max(parsed.get(dim, 0), 0), 25))
-        for dim in _TIER2_RUBRIC_DIMS
-    }
-    return round(sum(rubric.values()), 1), rubric
-
 
 # ── Tier 1 ────────────────────────────────────────────────────────────────────
 

@@ -31,7 +31,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("contract_version", sa.Integer(), nullable=False),
-        sa.Column("spoiler_policy", sa.String(length=32), nullable=False),
+        sa.Column("feed_key", sa.String(length=32), nullable=False),
         sa.Column("generation_status", sa.String(length=32), nullable=False),
         sa.Column("source_hash", sa.String(length=64), nullable=True),
         sa.Column("card_count", sa.Integer(), nullable=False, server_default="0"),
@@ -43,13 +43,19 @@ def upgrade() -> None:
             server_default=sa.text("'{}'::jsonb"),
         ),
         sa.Column(
-            "reveal_json",
+            "sections_json",
             postgresql.JSONB(astext_type=sa.Text()),
             nullable=False,
-            server_default=sa.text("'{}'::jsonb"),
+            server_default=sa.text("'[]'::jsonb"),
         ),
         sa.Column(
-            "sections_json",
+            "team_stats_json",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
+        sa.Column(
+            "player_stats_json",
             postgresql.JSONB(astext_type=sa.Text()),
             nullable=False,
             server_default=sa.text("'[]'::jsonb"),
@@ -84,8 +90,8 @@ def upgrade() -> None:
         sa.UniqueConstraint(
             "game_id",
             "contract_version",
-            "spoiler_policy",
-            name="uq_sports_game_card_feed_artifacts_game_contract_policy",
+            "feed_key",
+            name="uq_sports_game_card_feed_artifacts_game_contract_key",
         ),
     )
     op.create_index("idx_sports_game_card_feed_artifacts_game", _TABLE, ["game_id"])

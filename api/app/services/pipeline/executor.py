@@ -26,12 +26,13 @@ from app.metrics import pipeline_stage_failures_total
 
 from ...db import AsyncSession
 from ...db.pipeline import GamePipelineRun, GamePipelineStage
-from ...db.sports import GameStatus, SportsGame, SportsPlayerBoxscore
+from ...db.sports import GameStatus, SportsGame
 from ...utils.datetime_utils import now_utc
 from .helpers.flow_debug_logger import (
     get_or_create_logger as get_or_create_flow_debug_logger,
 )
 from .helpers.flow_debug_logger import pop_logger as pop_flow_debug_logger
+from .executor_context import accumulate_outputs, get_game_context, resolve_league_code
 from .metrics import increment_published, record_stage_duration
 from .models import PipelineStage, StageInput, StageOutput, StageResult
 from .stages import (
@@ -188,125 +189,6 @@ class PipelineExecutor:
 
         return stage_record
 
-    async def _get_game_context(self, game_id: int) -> dict[str, Any]:
-        """Build game context for team name resolution and player name mapping."""
-        result = await self.session.execute(
-            select(SportsGame)
-            .options(
-                selectinload(SportsGame.league),
-                selectinload(SportsGame.home_team),
-                selectinload(SportsGame.away_team),
-            )
-            .where(SportsGame.id == game_id)
-        )
-        game = result.scalar_one_or_none()
-
-        if not game:
-            return {}
-
-        # Build player name mapping from boxscores
-        # Maps "D. Mitchell" -> "Donovan Mitchell"
-        player_names = await self._build_player_name_mapping(game_id)
-
-        ctx: dict[str, Any] = {
-            "sport": game.league.code if game.league else "NBA",
-            "home_team_name": game.home_team.name if game.home_team else "Home",
-            "away_team_name": game.away_team.name if game.away_team else "Away",
-            "home_team_abbrev": game.home_team.abbreviation if game.home_team else "HOME",
-            "away_team_abbrev": game.away_team.abbreviation if game.away_team else "AWAY",
-            "player_names": player_names,
-        }
-        return ctx
-
-    async def _resolve_league_code(self, game_id: int) -> str | None:
-        """Look up the league code for a game without raising.
-
-        Used by the structured debug logger so it can be initialized before
-        any stage records data; returning None lets emission proceed even when
-        the game lookup fails (the rest of the run-final logging still fires).
-        """
-        result = await self.session.execute(
-            select(SportsGame)
-            .options(selectinload(SportsGame.league))
-            .where(SportsGame.id == game_id)
-        )
-        game = result.scalar_one_or_none()
-        if game is None or game.league is None:
-            return None
-        return game.league.code
-
-    async def _build_player_name_mapping(self, game_id: int) -> dict[str, str]:
-        """Build mapping from abbreviated names to full names.
-
-        Maps formats like "D. Mitchell" -> "Donovan Mitchell"
-        using player boxscore data.
-        """
-        result = await self.session.execute(
-            select(SportsPlayerBoxscore.player_name)
-            .where(SportsPlayerBoxscore.game_id == game_id)
-            .where(SportsPlayerBoxscore.player_name.isnot(None))
-        )
-        full_names = [row[0] for row in result.fetchall()]
-
-        mapping: dict[str, str] = {}
-
-        # First pass: collect last names and detect duplicates
-        last_name_counts: dict[str, int] = {}
-        for full_name in full_names:
-            if not full_name or " " not in full_name:
-                continue
-            parts = full_name.split()
-            if len(parts) >= 2:
-                last_name = parts[-1]
-                last_name_counts[last_name] = last_name_counts.get(last_name, 0) + 1
-
-        # Second pass: build mappings
-        for full_name in full_names:
-            if not full_name or " " not in full_name:
-                continue
-
-            parts = full_name.split()
-            if len(parts) >= 2:
-                # Build abbreviated form: "D. Mitchell" from "Donovan Mitchell"
-                first_initial = parts[0][0].upper()
-                last_name = parts[-1]
-                abbrev = f"{first_initial}. {last_name}"
-                mapping[abbrev] = full_name
-
-                # Only map last name alone if it's unique in this game
-                # (e.g., skip "Green" if both "Jalen Green" and "Draymond Green" play)
-                if last_name_counts.get(last_name, 0) == 1:
-                    mapping[last_name] = full_name
-
-        return mapping
-
-    async def _accumulate_outputs(
-        self,
-        run: GamePipelineRun,
-        up_to_stage: PipelineStage,
-    ) -> dict[str, Any]:
-        """Accumulate outputs from all completed stages up to the given stage.
-
-        Each stage builds on the outputs of previous stages.
-        """
-        accumulated: dict[str, Any] = {}
-
-        for stage in PipelineStage.ordered_stages():
-            if stage == up_to_stage:
-                break
-
-            # Find stage record
-            stage_record = next(
-                (s for s in run.stages if s.stage == stage.value),
-                None,
-            )
-
-            if stage_record and stage_record.output_json:
-                # Merge stage output into accumulated
-                accumulated.update(stage_record.output_json)
-
-        return accumulated
-
     async def execute_stage(
         self,
         run_id: int,
@@ -365,8 +247,8 @@ class PipelineExecutor:
         await self.session.flush()
 
         # Build stage input
-        game_context = await self._get_game_context(run.game_id)
-        accumulated = await self._accumulate_outputs(run, stage)
+        game_context = await get_game_context(self.session, run.game_id)
+        accumulated = accumulate_outputs(run, stage)
 
         stage_input = StageInput(
             game_id=run.game_id,
@@ -519,7 +401,7 @@ class PipelineExecutor:
 
         # Determine league early so the structured debug logger always carries
         # it (even if the pipeline aborts before any stage records data).
-        league_code = await self._resolve_league_code(game_id)
+        league_code = await resolve_league_code(self.session, game_id)
         flow_debug = get_or_create_flow_debug_logger(run.id, game_id, league_code)
 
         try:

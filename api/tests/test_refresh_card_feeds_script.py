@@ -57,7 +57,6 @@ def test_refresh_script_posts_admin_endpoint_with_admin_key(
         lookback_hours=72,
         lookahead_hours=72,
         force=False,
-        spoiler_policy="pre_reveal",
     )
 
     payload = refresher._request_refresh(args)

@@ -13,10 +13,9 @@ from .narrative_validation import (
     NarrativeFinding,
     NarrativeValidationContext,
     validate_card_text,
-    validate_public_card_dto,
 )
 from .prompt_context import PromptContextWindow, build_prompt_window
-from .schemas import NarrativeCard, SpoilerPolicy
+from .schemas import NarrativeCard
 
 _TEXT_FIELDS = (
     "lead_in",
@@ -62,7 +61,6 @@ def validate_feed_cards(
     game: SportsGame,
     sorted_plays: list[SportsGamePlay],
     cards: Iterable[NarrativeCard],
-    spoiler_policy: SpoilerPolicy,
 ) -> list[CardValidationOutcome]:
     """Validate cards and substitute safe deterministic text when needed."""
     ordered_plays = sorted(sorted_plays, key=lambda play: play.play_index)
@@ -83,7 +81,6 @@ def validate_feed_cards(
             window=window,
             final_score=final_score,
             player_ledger=player_ledger,
-            spoiler_policy=spoiler_policy,
         )
         findings: list[NarrativeFinding] = []
         replacement: dict[str, Any] = {}
@@ -111,9 +108,6 @@ def validate_feed_cards(
                 )
 
         checked_card = card.model_copy(update=replacement) if replacement else card
-        dto = checked_card.model_dump(by_alias=True, mode="json", exclude_none=True)
-        findings.extend(validate_public_card_dto(payload=dto, spoiler_policy=spoiler_policy))
-
         blocked = any(f.action == "block_card" for f in findings)
         outcomes.append(
             CardValidationOutcome(
@@ -172,7 +166,6 @@ def _context_for_card(
     window: PromptContextWindow,
     final_score: tuple[int, int] | None,
     player_ledger: dict[str, int],
-    spoiler_policy: SpoilerPolicy,
 ) -> NarrativeValidationContext:
     card = window.current_card
     current_play_index = int(card["playIndex"])
@@ -210,7 +203,7 @@ def _context_for_card(
         home_aliases=_team_aliases(game.home_team.name if game.home_team else None, home_abbr),
         away_aliases=_team_aliases(game.away_team.name if game.away_team else None, away_abbr),
         current_play_index=current_play_index,
-        allow_final_score=spoiler_policy is SpoilerPolicy.revealed,
+        allow_final_score=False,
         score_before=score_before,
         score_after=score_after,
         score_change=score_change,
@@ -375,7 +368,7 @@ def _fallback_text(field: str, card: NarrativeCard) -> str | None:
     if field == "headline":
         return card.team.abbreviation or "Key play"
     if field == "description":
-        return "Verified play detail is available after reveal."
+        return "Verified play detail is available."
     if field == "impact":
         return None
     if field == "setup_line":

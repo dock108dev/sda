@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.db.sports import GameStatus, SportsGamePlay, SportsTeam
-from app.feed.schemas import CardFeedResponse, CardFeedStatus, SpoilerPolicy
+from app.feed.schemas import CardFeedResponse, CardFeedStatus
 from app.feed.service import build_card_feed_from_game
 
 
@@ -118,7 +118,6 @@ def test_card_feed_has_required_json_contract_for_supported_sports(
             home_score=2,
             away_score=0,
         ),
-        SpoilerPolicy.pre_reveal,
     )
     body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)
 
@@ -136,18 +135,8 @@ def test_card_feed_has_required_json_contract_for_supported_sports(
         "isStale": False,
         "validationIssues": [],
     }
-    assert body["reveal"] == {
-        "available": True,
-        "status": "ready",
-        "scoresInCards": False,
-        "revealRequiredForScores": True,
-        "completedGameBoundary": {
-            "finalScore": "hidden_until_reveal",
-            "winner": "hidden_until_reveal",
-            "stats": "hidden_until_reveal",
-            "payoffCopy": "hidden_until_reveal",
-        },
-    }
+    assert "spoilerPolicy" not in body
+    assert "reveal" not in body
     assert body["sections"] == [
         {
             "id": body["sections"][0]["id"],
@@ -159,7 +148,6 @@ def test_card_feed_has_required_json_contract_for_supported_sports(
             "leadIn": body["sections"][0]["leadIn"],
             "startPlayIndex": 7,
             "endPlayIndex": 7,
-            "textFieldSpoilerLevel": "earnedAtPlay",
             "source": "deterministic",
         }
     ]
@@ -185,6 +173,7 @@ def test_card_feed_has_required_json_contract_for_supported_sports(
         "team",
         "scoreBefore",
         "scoreChange",
+        "scoreAfter",
         "situation",
         "leadIn",
         "stageSetting",
@@ -192,28 +181,17 @@ def test_card_feed_has_required_json_contract_for_supported_sports(
         "description",
         "impact",
         "tags",
-        "spoilerLevel",
-        "textFieldSpoilerLevels",
     } <= set(card)
-    assert "scoreAfter" not in card
+    assert "spoilerLevel" not in card
+    assert "textFieldSpoilerLevels" not in card
     assert card["scoreBefore"] == {"home": 0, "away": 0}
     assert card["scoreChange"] == {"home": 2, "away": 0}
+    assert card["scoreAfter"] == {"home": 2, "away": 0}
     assert card["team"] == {"abbreviation": "HOM", "name": f"{league} Home", "side": "home"}
     assert card["modeEligibility"]["all"] is True
     assert card["importance"]["level"] in {"primary", "secondary", "tertiary"}
     assert card["visualImportance"] in {"critical", "high", "medium", "low"}
-    assert card["textFieldSpoilerLevels"] == {
-        "leadIn": "earnedAtPlay",
-        "stageSetting": "earnedAtPlay",
-        "headline": "earnedAtPlay",
-        "description": "earnedAtPlay",
-        "impact": "earnedAtPlay",
-        "situationSummary": "earnedAtPlay",
-        "tags": "earnedAtPlay",
-    }
-
-
-def test_card_feed_revealed_policy_includes_score_after() -> None:
+def test_card_feed_includes_score_after_without_disclosure_policy() -> None:
     feed = build_card_feed_from_game(
         _game(
             league="NBA",
@@ -222,28 +200,16 @@ def test_card_feed_revealed_policy_includes_score_after() -> None:
             home_score=2,
             away_score=0,
         ),
-        SpoilerPolicy.revealed,
     )
     body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)
     card = body["cards"][0]
 
     assert card["scoreAfter"] == {"home": 2, "away": 0}
-    assert card["spoilerLevel"] == "score_revealed"
-    assert body["reveal"] == {
-        "available": True,
-        "status": "ready",
-        "scoresInCards": True,
-        "revealRequiredForScores": False,
-        "completedGameBoundary": {
-            "finalScore": "allowed",
-            "winner": "allowed",
-            "stats": "allowed",
-            "payoffCopy": "allowed",
-        },
-    }
+    assert "spoilerPolicy" not in body
+    assert "reveal" not in body
 
 
-def test_card_feed_revealed_policy_includes_current_score_and_stats() -> None:
+def test_card_feed_includes_current_score_and_stats() -> None:
     game = _game(
         league="NBA",
         play_type="layup",
@@ -278,7 +244,7 @@ def test_card_feed_revealed_policy_includes_current_score_and_stats() -> None:
         )
     ]
 
-    body = build_card_feed_from_game(game, SpoilerPolicy.revealed).model_dump(
+    body = build_card_feed_from_game(game).model_dump(
         by_alias=True,
         mode="json",
         exclude_none=True,
@@ -318,7 +284,6 @@ def test_card_feed_limits_response_to_requested_play_window() -> None:
 
     feed = build_card_feed_from_game(
         game,
-        SpoilerPolicy.pre_reveal,
         through_play_index=1,
     )
     body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)
@@ -372,7 +337,6 @@ def test_card_feed_emits_stable_period_lead_ins_without_future_section_context()
 
     body = build_card_feed_from_game(
         game,
-        SpoilerPolicy.pre_reveal,
         through_play_index=2,
     ).model_dump(by_alias=True, mode="json", exclude_none=True)
 
@@ -384,7 +348,7 @@ def test_card_feed_emits_stable_period_lead_ins_without_future_section_context()
     assert "12-10" not in json.dumps(body["sections"])
 
 
-def test_pre_reveal_card_redacts_reveal_only_score_pressure_metadata() -> None:
+def test_card_feed_omits_legacy_spoiler_contract_fields() -> None:
     game = _game(
         league="NBA",
         play_type="made_shot",
@@ -410,45 +374,16 @@ def test_pre_reveal_card_redacts_reveal_only_score_pressure_metadata() -> None:
 
     body = build_card_feed_from_game(
         game,
-        SpoilerPolicy.pre_reveal,
     ).model_dump(by_alias=True, mode="json", exclude_none=True)
     card = body["cards"][1]
-    raw = card["situation"]["raw"]
-    payload = json.dumps(card).lower()
-
-    assert card["impact"] == "scoring"
-    assert "lead" not in raw
-    assert "marginAfter" not in payload
-    assert "isLeadChange" not in payload
-    assert "lead change" not in payload
-    assert card["textFieldSpoilerLevels"]["impact"] == "earnedAtPlay"
+    assert "spoilerPolicy" not in body
+    assert "reveal" not in body
+    assert "spoilerLevel" not in card
+    assert "textFieldSpoilerLevels" not in card
+    assert all("textFieldSpoilerLevel" not in section for section in body["sections"])
 
 
-def test_card_feed_reveal_boundary_is_unavailable_before_completed_games() -> None:
-    feed = build_card_feed_from_game(
-        _game(
-            league="NHL",
-            play_type="shot",
-            description="Shot on goal.",
-            home_score=0,
-            away_score=0,
-            status=GameStatus.live.value,
-        ),
-        SpoilerPolicy.pre_reveal,
-    )
-    reveal = feed.model_dump(by_alias=True, mode="json", exclude_none=True)["reveal"]
-
-    assert reveal["available"] is False
-    assert reveal["status"] == "unavailable"
-    assert reveal["completedGameBoundary"] == {
-        "finalScore": "unavailable",
-        "winner": "unavailable",
-        "stats": "unavailable",
-        "payoffCopy": "unavailable",
-    }
-
-
-def test_card_feed_falls_back_when_text_mentions_future_spoilers() -> None:
+def test_card_feed_falls_back_when_text_mentions_future_outcomes() -> None:
     game = _game(
         league="NBA",
         play_type="layup",
@@ -474,17 +409,17 @@ def test_card_feed_falls_back_when_text_mentions_future_spoilers() -> None:
     game.home_score = 4
     game.away_score = 2
 
-    feed = build_card_feed_from_game(game, SpoilerPolicy.pre_reveal)
+    feed = build_card_feed_from_game(game)
     body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)
 
     assert body["generation"]["status"] == "ready"
     assert {
-        "narrative_future_spoiler_phrase",
+        "narrative_future_outcome_phrase",
         "narrative_final_score_leak",
         "narrative_winner_leak",
         "narrative_future_player_mention",
     } <= set(body["generation"]["validationIssues"])
-    assert body["cards"][0]["description"] == "Verified play detail is available after reveal."
+    assert body["cards"][0]["description"] == "Verified play detail is available."
 
 
 def test_card_feed_allows_current_official_description_player_mentions() -> None:
@@ -524,7 +459,7 @@ def test_card_feed_allows_current_official_description_player_mentions() -> None
     later_catcher_play.player_name = "Blake Rivers"
     game.plays.extend([later_fielder_play, later_catcher_play])
 
-    feed = build_card_feed_from_game(game, SpoilerPolicy.pre_reveal)
+    feed = build_card_feed_from_game(game)
     body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)
 
     assert "narrative_future_player_mention" not in body["generation"]["validationIssues"]
@@ -540,7 +475,6 @@ def test_important_card_carries_stream_importance_density_and_narrative_fields()
             home_score=2,
             away_score=0,
         ),
-        SpoilerPolicy.pre_reveal,
     )
     card = feed.model_dump(by_alias=True, mode="json", exclude_none=True)["cards"][0]
 
@@ -580,7 +514,7 @@ def test_standard_card_uses_backend_membership_without_changing_density_shape() 
         )
     )
 
-    feed = build_card_feed_from_game(game, SpoilerPolicy.pre_reveal)
+    feed = build_card_feed_from_game(game)
     card = feed.model_dump(by_alias=True, mode="json", exclude_none=True)["cards"][0]
 
     assert card["modeEligibility"] == {"important": False, "standard": True, "all": True}
@@ -617,7 +551,7 @@ def test_basic_card_keeps_all_play_membership_and_uses_clean_detail_text() -> No
         )
     )
 
-    feed = build_card_feed_from_game(game, SpoilerPolicy.pre_reveal)
+    feed = build_card_feed_from_game(game)
     card = feed.model_dump(by_alias=True, mode="json", exclude_none=True)["cards"][0]
 
     assert card["modeEligibility"] == {"important": False, "standard": False, "all": True}
@@ -638,7 +572,7 @@ def test_card_feed_returns_renderable_status_for_empty_and_unsupported_games() -
         away_score=0,
     )
     empty_game.plays = []
-    empty_feed = build_card_feed_from_game(empty_game, SpoilerPolicy.pre_reveal)
+    empty_feed = build_card_feed_from_game(empty_game)
 
     assert empty_feed.generation.status is CardFeedStatus.no_pbp_yet
     assert empty_feed.generation.card_count == 0
@@ -651,7 +585,7 @@ def test_card_feed_returns_renderable_status_for_empty_and_unsupported_games() -
         home_score=1,
         away_score=0,
     )
-    unsupported_feed = build_card_feed_from_game(unsupported_game, SpoilerPolicy.pre_reveal)
+    unsupported_feed = build_card_feed_from_game(unsupported_game)
 
     assert unsupported_feed.generation.status is CardFeedStatus.unsupported_sport
     assert unsupported_feed.cards == []
@@ -667,7 +601,6 @@ def test_card_feed_exposes_pending_blocked_and_stale_states() -> None:
             away_score=0,
             status=GameStatus.recap_pending.value,
         ),
-        SpoilerPolicy.pre_reveal,
     )
     blocked = build_card_feed_from_game(
         _game(
@@ -678,7 +611,6 @@ def test_card_feed_exposes_pending_blocked_and_stale_states() -> None:
             away_score=0,
             status=GameStatus.recap_failed.value,
         ),
-        SpoilerPolicy.pre_reveal,
     )
     stale_game = _game(
         league="NBA",
@@ -690,7 +622,7 @@ def test_card_feed_exposes_pending_blocked_and_stale_states() -> None:
     )
     stale_game.last_ingested_at = datetime(2026, 1, 1, tzinfo=UTC)
     stale_game.last_pbp_at = datetime(2026, 1, 1, 0, 1, tzinfo=UTC)
-    stale = build_card_feed_from_game(stale_game, SpoilerPolicy.pre_reveal)
+    stale = build_card_feed_from_game(stale_game)
 
     assert pending.generation.status is CardFeedStatus.generation_pending
     assert pending.cards == []

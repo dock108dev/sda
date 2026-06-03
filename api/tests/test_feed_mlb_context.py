@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from app.db.sports import GameStatus, SportsGamePlay, SportsTeam
-from app.feed.schemas import SpoilerPolicy
 from app.feed.service import build_card_feed_from_game
 
 
@@ -97,10 +96,9 @@ def _play(
 
 def _cards(
     game: SimpleNamespace,
-    spoiler_policy: SpoilerPolicy = SpoilerPolicy.pre_reveal,
 ) -> list[dict]:
     return build_card_feed_from_game(
-        game, spoiler_policy
+        game
     ).model_dump(by_alias=True, mode="json", exclude_none=True)["cards"]
 
 
@@ -127,7 +125,7 @@ def test_mlb_card_context_promotes_base_out_score_and_matchup() -> None:
         )
     ]
 
-    card = _cards(game, SpoilerPolicy.revealed)[0]
+    card = _cards(game)[0]
     context = card["situation"]["raw"]
 
     assert card["scoreBefore"] == {"home": 3, "away": 1}
@@ -200,7 +198,7 @@ def test_mlb_card_context_flags_tying_go_ahead_and_lead_change() -> None:
         ),
     ]
 
-    cards = _cards(game, SpoilerPolicy.revealed)
+    cards = _cards(game)
     impacts = [card["situation"]["raw"]["score"]["impact"] for card in cards]
     flags = [card["situation"]["raw"]["flags"] for card in cards]
 
