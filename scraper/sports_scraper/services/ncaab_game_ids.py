@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..db import db_models
 from ..logging import logger
-from ..persistence.teams import _normalize_ncaab_name_for_matching  # noqa: F401
+from ..persistence.team_name_normalization import _normalize_ncaab_name_for_matching
 from ..utils.date_utils import season_ending_year
 from ..utils.datetime_utils import end_of_et_day_utc, start_of_et_day_utc, to_et_date
 from .ncaab_scoreboard_ids import _populate_ncaa_game_ids_from_scoreboard

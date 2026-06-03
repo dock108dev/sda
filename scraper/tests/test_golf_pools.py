@@ -18,7 +18,7 @@ class TestParseRules:
     """Unit tests for _parse_rules."""
 
     def test_none_returns_defaults(self):
-        from sports_scraper.golf.pool_scoring import _parse_rules
+        from sports_scraper.golf.pool_engine import _parse_rules
 
         result = _parse_rules(None)
         assert result["variant"] == "rvcc"
@@ -27,13 +27,13 @@ class TestParseRules:
         assert result["min_cuts_to_qualify"] == 5
 
     def test_empty_dict_returns_defaults(self):
-        from sports_scraper.golf.pool_scoring import _parse_rules
+        from sports_scraper.golf.pool_engine import _parse_rules
 
         result = _parse_rules({})
         assert result["variant"] == "rvcc"
 
     def test_crestmont_variant(self):
-        from sports_scraper.golf.pool_scoring import _parse_rules
+        from sports_scraper.golf.pool_engine import _parse_rules
 
         result = _parse_rules({"variant": "crestmont"})
         assert result["variant"] == "crestmont"
@@ -42,14 +42,14 @@ class TestParseRules:
         assert result["min_cuts_to_qualify"] == 4
 
     def test_custom_overrides(self):
-        from sports_scraper.golf.pool_scoring import _parse_rules
+        from sports_scraper.golf.pool_engine import _parse_rules
 
         result = _parse_rules({"variant": "rvcc", "pick_count": 10, "count_best": 6})
         assert result["pick_count"] == 10
         assert result["count_best"] == 6
 
     def test_unknown_variant_falls_back_to_rvcc(self):
-        from sports_scraper.golf.pool_scoring import _parse_rules
+        from sports_scraper.golf.pool_engine import _parse_rules
 
         result = _parse_rules({"variant": "CUSTOM_UNKNOWN"})
         assert result["variant"] == "custom_unknown"
@@ -60,28 +60,28 @@ class TestAnyRoundsPending:
     """Unit tests for _any_rounds_pending."""
 
     def test_no_golfer_in_leaderboard_returns_true(self):
-        from sports_scraper.golf.pool_scoring import _any_rounds_pending
+        from sports_scraper.golf.pool_engine import _any_rounds_pending
 
         leaderboard = {}
         picks = [{"dg_id": 1}]
         assert _any_rounds_pending(leaderboard, picks) is True
 
     def test_active_no_r2_returns_true(self):
-        from sports_scraper.golf.pool_scoring import _any_rounds_pending
+        from sports_scraper.golf.pool_engine import _any_rounds_pending
 
         leaderboard = {1: {"status": "active", "r2": None}}
         picks = [{"dg_id": 1}]
         assert _any_rounds_pending(leaderboard, picks) is True
 
     def test_all_complete_returns_false(self):
-        from sports_scraper.golf.pool_scoring import _any_rounds_pending
+        from sports_scraper.golf.pool_engine import _any_rounds_pending
 
         leaderboard = {1: {"status": "active", "r2": 72}}
         picks = [{"dg_id": 1}]
         assert _any_rounds_pending(leaderboard, picks) is False
 
     def test_cut_player_not_pending(self):
-        from sports_scraper.golf.pool_scoring import _any_rounds_pending
+        from sports_scraper.golf.pool_engine import _any_rounds_pending
 
         leaderboard = {1: {"status": "cut", "r2": 75}}
         picks = [{"dg_id": 1}]
@@ -111,7 +111,7 @@ class TestScoreEntry:
         }
 
     def test_unknown_golfer_marked_as_dropped(self):
-        from sports_scraper.golf.pool_scoring import _score_entry
+        from sports_scraper.golf.pool_engine import _score_entry
 
         entry = self._make_entry([{"dg_id": 999, "player_name": "Unknown", "pick_slot": 1, "bucket_number": 1}])
         result = _score_entry(entry, {}, self._default_rules())
@@ -120,7 +120,7 @@ class TestScoreEntry:
         assert result["qualification_status"] == "pending"
 
     def test_qualified_entry(self):
-        from sports_scraper.golf.pool_scoring import _score_entry
+        from sports_scraper.golf.pool_engine import _score_entry
 
         picks = [
             {"dg_id": i, "player_name": f"P{i}", "pick_slot": i, "bucket_number": 1}
@@ -141,7 +141,7 @@ class TestScoreEntry:
         assert len(counted) == 5
 
     def test_not_qualified_entry(self):
-        from sports_scraper.golf.pool_scoring import _score_entry
+        from sports_scraper.golf.pool_engine import _score_entry
 
         picks = [
             {"dg_id": i, "player_name": f"P{i}", "pick_slot": i, "bucket_number": 1}
@@ -157,7 +157,7 @@ class TestScoreEntry:
         assert result["qualification_status"] == "not_qualified"
 
     def test_aggregate_score_computed(self):
-        from sports_scraper.golf.pool_scoring import _score_entry
+        from sports_scraper.golf.pool_engine import _score_entry
 
         picks = [
             {"dg_id": i, "player_name": f"P{i}", "pick_slot": i, "bucket_number": 1}
@@ -177,7 +177,7 @@ class TestRankEntries:
     """Unit tests for _rank_entries."""
 
     def test_ranks_qualified_by_score(self):
-        from sports_scraper.golf.pool_scoring import _rank_entries
+        from sports_scraper.golf.pool_engine import _rank_entries
 
         entries = [
             {"qualification_status": "qualified", "aggregate_score": -8, "rank": None, "is_tied": False},
@@ -193,7 +193,7 @@ class TestRankEntries:
         assert ranked[2]["is_tied"] is True
 
     def test_pending_after_qualified(self):
-        from sports_scraper.golf.pool_scoring import _rank_entries
+        from sports_scraper.golf.pool_engine import _rank_entries
 
         entries = [
             {"qualification_status": "qualified", "aggregate_score": -5, "rank": None, "is_tied": False},
@@ -204,7 +204,7 @@ class TestRankEntries:
         assert ranked[1]["rank"] == 2
 
     def test_not_qualified_gets_none_rank(self):
-        from sports_scraper.golf.pool_scoring import _rank_entries
+        from sports_scraper.golf.pool_engine import _rank_entries
 
         entries = [
             {"qualification_status": "not_qualified", "aggregate_score": None, "rank": None, "is_tied": False},
@@ -329,7 +329,7 @@ class TestUpsertEntryScore:
     """Test _upsert_entry_score calls session.execute."""
 
     def test_upsert_calls_execute(self):
-        from sports_scraper.golf.pool_scoring import _upsert_entry_score
+        from sports_scraper.golf.pool_persistence import _upsert_entry_score
 
         session = MagicMock()
         scored = {
@@ -350,7 +350,7 @@ class TestUpsertScorePlayers:
     """Test _upsert_score_players calls session.execute per pick."""
 
     def test_upsert_per_pick(self):
-        from sports_scraper.golf.pool_scoring import _upsert_score_players
+        from sports_scraper.golf.pool_persistence import _upsert_score_players
 
         session = MagicMock()
         picks = [

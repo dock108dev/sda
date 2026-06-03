@@ -13,7 +13,7 @@ from ..logging import logger
 from ..models import NormalizedOddsSnapshot
 from ..normalization import normalize_team_name
 from ..utils.datetime_utils import to_et_date
-from .teams import _NCAAB_STOPWORDS, _normalize_ncaab_name_for_matching
+from .team_name_normalization import _NCAAB_STOPWORDS, _normalize_ncaab_name_for_matching
 
 # Odds API team name -> DB team name mappings for NCAAB
 # Keeps this list tiny—only unavoidable canonical differences.

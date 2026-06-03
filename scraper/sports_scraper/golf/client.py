@@ -14,14 +14,8 @@ from typing import Any
 
 import httpx
 
+from . import client_parsing as _parsing
 from .client_historical import DataGolfHistoricalMixin
-from .client_parsing import (
-    _map_tournament_status,
-    _parse_date,
-    _safe_float,
-    _safe_int,
-    parse_leaderboard_entry,
-)
 from .models import (
     DGDFSProjection,
     DGFieldEntry,
@@ -120,8 +114,8 @@ class DataGolfClient(DataGolfHistoricalMixin):
             try:
                 from datetime import timedelta
 
-                start = _parse_date(evt.get("start_date", evt.get("date", "")))
-                end = _parse_date(evt.get("end_date"))
+                start = _parsing._parse_date(evt.get("start_date", evt.get("date", "")))
+                end = _parsing._parse_date(evt.get("end_date"))
                 # DataGolf doesn't return end_date; estimate as start + 3 days
                 # (standard PGA event: Thu–Sun)
                 if end is None and start is not None:
@@ -129,7 +123,7 @@ class DataGolfClient(DataGolfHistoricalMixin):
 
                 # Map DataGolf status to our convention
                 dg_status = evt.get("status", "")
-                status = _map_tournament_status(dg_status)
+                status = _parsing._map_tournament_status(dg_status)
 
                 tournaments.append(DGTournament(
                     event_id=str(evt.get("event_id", "")),
@@ -140,9 +134,9 @@ class DataGolfClient(DataGolfHistoricalMixin):
                     end_date=end,
                     tour=tour,
                     status=status,
-                    purse=_safe_float(evt.get("purse")),
-                    latitude=_safe_float(evt.get("latitude")),
-                    longitude=_safe_float(evt.get("longitude")),
+                    purse=_parsing._safe_float(evt.get("purse")),
+                    latitude=_parsing._safe_float(evt.get("latitude")),
+                    longitude=_parsing._safe_float(evt.get("longitude")),
                     country=evt.get("country"),
                     season=season,
                 ))
@@ -165,9 +159,9 @@ class DataGolfClient(DataGolfHistoricalMixin):
                     country=p.get("country"),
                     country_code=p.get("country_code"),
                     amateur=bool(p.get("amateur", False)),
-                    dk_id=_safe_int(p.get("dk_id")),
-                    fd_id=_safe_int(p.get("fd_id")),
-                    yahoo_id=_safe_int(p.get("yahoo_id")),
+                    dk_id=_parsing._safe_int(p.get("dk_id")),
+                    fd_id=_parsing._safe_int(p.get("fd_id")),
+                    yahoo_id=_parsing._safe_int(p.get("yahoo_id")),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_player_parse_error", player=p, error=str(exc))
@@ -190,8 +184,8 @@ class DataGolfClient(DataGolfHistoricalMixin):
                     dg_id=int(f.get("dg_id", 0)),
                     player_name=f.get("player_name", ""),
                     country=f.get("country"),
-                    dk_salary=_safe_int(f.get("dk_salary")),
-                    fd_salary=_safe_int(f.get("fd_salary")),
+                    dk_salary=_parsing._safe_int(f.get("dk_salary")),
+                    fd_salary=_parsing._safe_int(f.get("fd_salary")),
                     early_late=f.get("early_late"),
                     tee_time=f.get("tee_time"),
                     course=f.get("course"),
@@ -222,14 +216,14 @@ class DataGolfClient(DataGolfHistoricalMixin):
                 ratings.append(DGSkillRating(
                     dg_id=int(p.get("dg_id", 0)),
                     player_name=p.get("player_name", ""),
-                    sg_total=_safe_float(p.get("sg_total")),
-                    sg_ott=_safe_float(p.get("sg_ott")),
-                    sg_app=_safe_float(p.get("sg_app")),
-                    sg_arg=_safe_float(p.get("sg_arg")),
-                    sg_putt=_safe_float(p.get("sg_putt")),
-                    driving_dist=_safe_float(p.get("driving_dist")),
-                    driving_acc=_safe_float(p.get("driving_acc")),
-                    sample_size=_safe_int(p.get("sample_size")),
+                    sg_total=_parsing._safe_float(p.get("sg_total")),
+                    sg_ott=_parsing._safe_float(p.get("sg_ott")),
+                    sg_app=_parsing._safe_float(p.get("sg_app")),
+                    sg_arg=_parsing._safe_float(p.get("sg_arg")),
+                    sg_putt=_parsing._safe_float(p.get("sg_putt")),
+                    driving_dist=_parsing._safe_float(p.get("driving_dist")),
+                    driving_acc=_parsing._safe_float(p.get("driving_acc")),
+                    sample_size=_parsing._safe_int(p.get("sample_size")),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_skill_parse_error", player=p, error=str(exc))
@@ -252,8 +246,8 @@ class DataGolfClient(DataGolfHistoricalMixin):
                     dg_id=int(r.get("dg_id", 0)),
                     player_name=r.get("player_name", ""),
                     rank=int(r.get("rank", 0)),
-                    datagolf_rank=_safe_int(r.get("datagolf_rank")),
-                    owgr=_safe_int(r.get("owgr")),
+                    datagolf_rank=_parsing._safe_int(r.get("datagolf_rank")),
+                    owgr=_parsing._safe_int(r.get("owgr")),
                     am=bool(r.get("am", False)),
                 ))
             except Exception as exc:
@@ -278,11 +272,11 @@ class DataGolfClient(DataGolfHistoricalMixin):
                 preds.append(DGPreTournamentPred(
                     dg_id=int(p.get("dg_id", 0)),
                     player_name=p.get("player_name", ""),
-                    win_prob=_safe_float(p.get("win_prob")),
-                    top_5_prob=_safe_float(p.get("top_5")),
-                    top_10_prob=_safe_float(p.get("top_10")),
-                    top_20_prob=_safe_float(p.get("top_20")),
-                    make_cut_prob=_safe_float(p.get("make_cut")),
+                    win_prob=_parsing._safe_float(p.get("win_prob")),
+                    top_5_prob=_parsing._safe_float(p.get("top_5")),
+                    top_10_prob=_parsing._safe_float(p.get("top_10")),
+                    top_20_prob=_parsing._safe_float(p.get("top_20")),
+                    make_cut_prob=_parsing._safe_float(p.get("make_cut")),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_pred_parse_error", player=p, error=str(exc))
@@ -311,7 +305,7 @@ class DataGolfClient(DataGolfHistoricalMixin):
         if not isinstance(players, list):
             return [], meta
 
-        return [parse_leaderboard_entry(p) for p in players if p], meta
+        return [_parsing.parse_leaderboard_entry(p) for p in players if p], meta
 
     def get_live_tournament_stats(self) -> list[DGLeaderboardEntry]:
         """Fetch live tournament stats (SG + traditional stats per player)."""
@@ -323,7 +317,7 @@ class DataGolfClient(DataGolfHistoricalMixin):
         if not isinstance(live_stats, list):
             return []
 
-        return [parse_leaderboard_entry(p) for p in live_stats if p]
+        return [_parsing.parse_leaderboard_entry(p) for p in live_stats if p]
 
     # ------------------------------------------------------------------
     # Odds
@@ -352,7 +346,7 @@ class DataGolfClient(DataGolfHistoricalMixin):
         for player_odds in odds_data:
             dg_id = int(player_odds.get("dg_id", 0))
             player_name = player_odds.get("player_name", "")
-            dg_prob = _safe_float(player_odds.get("datagolf"))
+            dg_prob = _parsing._safe_float(player_odds.get("datagolf"))
 
             # Each player entry has odds per sportsbook
             for book_key in ("draftkings", "fanduel", "betmgm", "caesars",
@@ -426,8 +420,8 @@ class DataGolfClient(DataGolfHistoricalMixin):
                     player_name=p.get("player_name", ""),
                     site=site,
                     salary=int(p.get("salary", 0)),
-                    projected_points=_safe_float(p.get("proj_pts", p.get("projected_points"))),
-                    projected_ownership=_safe_float(p.get("proj_own", p.get("projected_ownership"))),
+                    projected_points=_parsing._safe_float(p.get("proj_pts", p.get("projected_points"))),
+                    projected_ownership=_parsing._safe_float(p.get("proj_own", p.get("projected_ownership"))),
                 ))
             except Exception as exc:
                 _log().warning("datagolf_dfs_parse_error", player=p, error=str(exc))

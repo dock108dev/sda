@@ -16,11 +16,7 @@ from ..logging import logger
 from ..normalization import normalize_team_name
 from ..utils.datetime_utils import now_utc
 from ..utils.db_queries import count_team_games
-from .team_name_normalization import (
-    _NCAAB_OVERRIDES,
-    _derive_abbreviation,
-    _normalize_ncaab_name_for_matching,
-)
+from . import team_name_normalization as _team_names
 
 if TYPE_CHECKING:
     from ..models import TeamIdentity
@@ -65,7 +61,7 @@ def _upsert_team(session: Session, league_id: int, identity: TeamIdentity) -> in
         if existing_id is not None:
             return existing_id
 
-    abbreviation = feed_abbreviation or _derive_abbreviation(team_name)
+    abbreviation = feed_abbreviation or _team_names._derive_abbreviation(team_name)
     if feed_abbreviation is None and _should_log("team_abbreviation_derived", sample=25):
         logger.warning(
             "team_abbreviation_derived",
@@ -153,8 +149,8 @@ def _find_team_by_name(
     # Apply overrides for NCAAB before matching
     if league_code == "NCAAB":
         override_key = team_name.lower().strip()
-        if override_key in _NCAAB_OVERRIDES:
-            team_name = _NCAAB_OVERRIDES[override_key]
+        if override_key in _team_names._NCAAB_OVERRIDES:
+            team_name = _team_names._NCAAB_OVERRIDES[override_key]
 
     candidate_ids: list[int] = []
 
@@ -180,7 +176,7 @@ def _find_team_by_name(
         candidate_ids.extend(exact_matches)
 
         if not exact_matches:
-            normalized_input = _normalize_ncaab_name_for_matching(team_name)
+            normalized_input = _team_names._normalize_ncaab_name_for_matching(team_name)
             all_teams_stmt = (
                 select(db_models.SportsTeam.id, db_models.SportsTeam.name, db_models.SportsTeam.short_name)
                 .where(db_models.SportsTeam.league_id == league_id)
@@ -191,8 +187,8 @@ def _find_team_by_name(
                 return shorter in longer and len(shorter) / len(longer) >= 0.8
 
             for team_id, db_name, db_short_name in all_teams:
-                db_name_norm = _normalize_ncaab_name_for_matching(db_name or "")
-                db_short_norm = _normalize_ncaab_name_for_matching(db_short_name or "")
+                db_name_norm = _team_names._normalize_ncaab_name_for_matching(db_name or "")
+                db_short_norm = _team_names._normalize_ncaab_name_for_matching(db_short_name or "")
                 if (
                     normalized_input in (db_name_norm, db_short_norm) or _ncaab_substring_match(normalized_input, db_name_norm) or _ncaab_substring_match(normalized_input, db_short_norm)
                 ):
@@ -297,7 +293,7 @@ def _find_team_by_name(
 
     if league_code == "NCAAB" and len(unique_candidates) > 1:
         canonical_name, _ = normalize_team_name(league_code, team_name)
-        normalized_input = _normalize_ncaab_name_for_matching(team_name)
+        normalized_input = _team_names._normalize_ncaab_name_for_matching(team_name)
         exact_matches = []
         for cid in unique_candidates:
             team = session.get(db_models.SportsTeam, cid)
@@ -311,8 +307,8 @@ def _find_team_by_name(
             ):
                 exact_matches.append(cid)
             elif normalized_input:
-                db_name_norm = _normalize_ncaab_name_for_matching(team.name or "")
-                db_short_norm = _normalize_ncaab_name_for_matching(team.short_name or "")
+                db_name_norm = _team_names._normalize_ncaab_name_for_matching(team.name or "")
+                db_short_norm = _team_names._normalize_ncaab_name_for_matching(team.short_name or "")
                 if normalized_input in (db_name_norm, db_short_norm):
                     exact_matches.append(cid)
 
@@ -352,8 +348,8 @@ def _find_team_by_name(
             canonical_name, _ = normalize_team_name(league_code, team.name)
             matches_canonical = (team.name == canonical_name)
             if league_code == "NCAAB":
-                normalized_input = _normalize_ncaab_name_for_matching(team_name)
-                db_name_norm = _normalize_ncaab_name_for_matching(team.name or "")
+                normalized_input = _team_names._normalize_ncaab_name_for_matching(team_name)
+                db_name_norm = _team_names._normalize_ncaab_name_for_matching(team.name or "")
                 normalized_contains = normalized_input and (normalized_input in db_name_norm or db_name_norm in normalized_input)
 
         has_full_name = " " in team.name

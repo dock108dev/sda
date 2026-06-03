@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import text
 
 from ..logging import logger
-from .pool_engine import _parse_rules, _rank_entries, _score_entry
-from .pool_lifecycle import _auto_activate_pools
-from .pool_loaders import _load_entries_and_picks, _load_leaderboard, _load_live_pools
-from .pool_persistence import _upsert_entry_score, _upsert_score_players
+from . import pool_engine as _engine
+from . import pool_lifecycle as _lifecycle
+from . import pool_loaders as _loaders
+from . import pool_persistence as _persistence
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -26,9 +26,9 @@ def score_all_live_pools(session: Session) -> dict[str, Any]:
     Returns summary dict suitable for Celery task result.
     """
     # Auto-lock/activate pools whose time has come
-    activation_events = _auto_activate_pools(session)
+    activation_events = _lifecycle._auto_activate_pools(session)
 
-    pools = _load_live_pools(session)
+    pools = _loaders._load_live_pools(session)
 
     if not pools:
         logger.info("golf_pool_scoring_no_live_pools")
@@ -42,24 +42,24 @@ def score_all_live_pools(session: Session) -> dict[str, Any]:
         tournament_id = pool["tournament_id"]
 
         try:
-            entries = _load_entries_and_picks(session, pool_id)
+            entries = _loaders._load_entries_and_picks(session, pool_id)
             if not entries:
                 logger.debug("golf_pool_scoring_no_entries", pool_id=pool_id)
                 continue
 
-            leaderboard = _load_leaderboard(session, tournament_id)
+            leaderboard = _loaders._load_leaderboard(session, tournament_id)
             if not leaderboard:
                 logger.debug("golf_pool_scoring_no_leaderboard", pool_id=pool_id, tournament_id=tournament_id)
                 continue
 
-            rules = _parse_rules(pool.get("rules_json"))
+            rules = _engine._parse_rules(pool.get("rules_json"))
 
-            scored_entries = [_score_entry(e, leaderboard, rules) for e in entries]
-            ranked = _rank_entries(scored_entries)
+            scored_entries = [_engine._score_entry(e, leaderboard, rules) for e in entries]
+            ranked = _engine._rank_entries(scored_entries)
 
             for scored in ranked:
-                _upsert_entry_score(session, pool_id, scored)
-                _upsert_score_players(session, pool_id, scored["entry_id"], scored["picks"])
+                _persistence._upsert_entry_score(session, pool_id, scored)
+                _persistence._upsert_score_players(session, pool_id, scored["entry_id"], scored["picks"])
 
             session.commit()
 
@@ -113,12 +113,12 @@ def score_single_pool(session: Session, pool_id: int) -> dict[str, Any]:
         "status": row[4],
     }
 
-    entries = _load_entries_and_picks(session, pool_id)
+    entries = _loaders._load_entries_and_picks(session, pool_id)
     if not entries:
         logger.info("golf_pool_rescore_no_entries", pool_id=pool_id)
         return {"pool_id": pool_id, "entries_scored": 0, "reason": "no_entries"}
 
-    leaderboard = _load_leaderboard(session, pool["tournament_id"])
+    leaderboard = _loaders._load_leaderboard(session, pool["tournament_id"])
     if not leaderboard:
         logger.info(
             "golf_pool_rescore_no_leaderboard",
@@ -127,13 +127,13 @@ def score_single_pool(session: Session, pool_id: int) -> dict[str, Any]:
         )
         return {"pool_id": pool_id, "entries_scored": 0, "reason": "no_leaderboard"}
 
-    rules = _parse_rules(pool.get("rules_json"))
-    scored_entries = [_score_entry(e, leaderboard, rules) for e in entries]
-    ranked = _rank_entries(scored_entries)
+    rules = _engine._parse_rules(pool.get("rules_json"))
+    scored_entries = [_engine._score_entry(e, leaderboard, rules) for e in entries]
+    ranked = _engine._rank_entries(scored_entries)
 
     for scored in ranked:
-        _upsert_entry_score(session, pool_id, scored)
-        _upsert_score_players(session, pool_id, scored["entry_id"], scored["picks"])
+        _persistence._upsert_entry_score(session, pool_id, scored)
+        _persistence._upsert_score_players(session, pool_id, scored["entry_id"], scored["picks"])
 
     session.commit()
 
