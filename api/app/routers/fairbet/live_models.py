@@ -9,7 +9,6 @@ from pydantic.alias_generators import to_camel
 
 from .ev_annotation import BookOdds
 
-
 # Minimum books per bet to show in results
 MIN_BOOKS_FOR_LIVE = 3
 

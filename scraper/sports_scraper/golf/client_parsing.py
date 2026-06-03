@@ -7,6 +7,7 @@ from typing import Any
 
 from .models import DGLeaderboardEntry
 
+
 def parse_leaderboard_entry(p: dict) -> DGLeaderboardEntry:
     # Position: in-play uses "current_pos" (e.g. "T4"), stats uses "position"
     pos_raw = p.get("current_pos") or p.get("position") or p.get("pos")

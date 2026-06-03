@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import text
+
 from ..logging import logger
 from .pool_engine import _parse_rules, _rank_entries, _score_entry
 from .pool_lifecycle import _auto_activate_pools

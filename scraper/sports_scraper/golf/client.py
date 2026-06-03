@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx
 
+from .client_historical import DataGolfHistoricalMixin
 from .client_parsing import (
     _map_tournament_status,
     _parse_date,
@@ -21,7 +22,6 @@ from .client_parsing import (
     _safe_int,
     parse_leaderboard_entry,
 )
-from .client_historical import DataGolfHistoricalMixin
 from .models import (
     DGDFSProjection,
     DGFieldEntry,

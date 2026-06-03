@@ -113,7 +113,6 @@ export default function BatchSimsPage() {
     refresh();
   }, [refresh]);
 
-  // Poll for in-progress jobs
   useEffect(() => {
     const active = jobs.filter(
       (j) => j.status === "pending" || j.status === "queued" || j.status === "running",
@@ -205,7 +204,6 @@ export default function BatchSimsPage() {
         {message && <div className={styles.success} style={{ marginTop: "0.5rem" }}>{message}</div>}
       </AdminCard>
 
-      {/* Job History */}
       <AdminCard title="Job History" subtitle={`${jobs.length} batch simulation job(s)`}>
         {jobsError && <div className={styles.error} style={{ marginBottom: "0.5rem" }}>{jobsError}</div>}
 
@@ -284,7 +282,6 @@ export default function BatchSimsPage() {
           </AdminTable>
         )}
 
-        {/* Expanded results */}
         {expandedJob && (() => {
           const job = jobs.find((j) => j.id === expandedJob);
           if (!job?.results) return null;
@@ -292,7 +289,6 @@ export default function BatchSimsPage() {
             <div style={{ marginTop: "1rem" }}>
               <h4 style={{ marginBottom: "0.5rem" }}>Results for Batch #{job.id}</h4>
 
-              {/* Results Summary */}
               {(() => {
                 const results = job.results!;
                 const totalGames = results.length;
@@ -337,7 +333,6 @@ export default function BatchSimsPage() {
                 );
               })()}
 
-              {/* Sanity Warnings */}
               {job.warnings && job.warnings.length > 0 && (
                 <div style={{ marginBottom: "1rem" }}>
                   {job.warnings.map((w, i) => (
@@ -356,7 +351,6 @@ export default function BatchSimsPage() {
                 </div>
               )}
 
-              {/* Simulation Sanity Panel */}
               {(() => {
                 // Use first game's event_summary or batch_summary
                 const bs = job.batch_summary;
@@ -430,7 +424,6 @@ export default function BatchSimsPage() {
                 );
               })()}
 
-              {/* Accuracy data */}
               {accuracyData[job.id] && (() => {
                 const ad = accuracyData[job.id];
                 if (ad.loading) return <p style={{ color: "var(--text-muted)" }}>Loading accuracy...</p>;

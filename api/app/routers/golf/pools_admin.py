@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.db.club import Club
-from app.db.golf import GolfTournament, GolfTournamentField
+from app.db.golf import GolfTournament
 from app.db.golf_pools import (
     GolfPool,
     GolfPoolBucket,

@@ -12,6 +12,7 @@ from __future__ import annotations
 # (canonical_name, abbreviation, cbb_team_id)
 # Sorted alphabetically by canonical name.
 from .ncaab_teams_data import _NCAAB_TEAM_DATA
+
 # Primary lookup: canonical_name -> (canonical_name, abbreviation)
 NCAAB_TEAM_ABBREVIATIONS: dict[str, tuple[str, str]] = {
     name: (name, abbr) for name, abbr, _cbb_id in _NCAAB_TEAM_DATA

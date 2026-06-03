@@ -56,10 +56,10 @@ from .ev_annotation import (
 )
 from .ev_extrapolation import _build_sharp_reference, _try_extrapolated_ev
 from .live_models import (
+    MIN_BOOKS_FOR_LIVE,
     FairbetLiveResponse,
     LiveBetDefinition,
     LiveGameInfo,
-    MIN_BOOKS_FOR_LIVE,
     _build_selection_key,
     _classify_market,
 )

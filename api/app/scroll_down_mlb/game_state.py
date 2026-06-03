@@ -21,7 +21,6 @@ re-exports the rest as the public surface.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 from ._advances import (
@@ -48,7 +47,7 @@ from ._state_readers import (
     read_upstream_runner_names_before,
 )
 from .game_state_containers import _group_into_containers, summarize_half_innings
-from .internal_types import HalfInningMeta, TimelineEntry
+from .internal_types import TimelineEntry
 from .schemas import (
     BasesSituation,
     CountSituation,

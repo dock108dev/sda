@@ -18,6 +18,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .visual_paths import (
+    ball_path_from_event,
+    classify_animation_profile,
+    display_hint_fields,
+    visual_intensity,
+)
+
 # ---------------------------------------------------------------------------
 # Event classification (port of classifyEvent)
 # ---------------------------------------------------------------------------
@@ -161,13 +168,6 @@ def classify_event(play: dict[str, Any]) -> str:
         if pattern.search(description):
             return event_type
     return "other"
-
-from .visual_paths import (
-    ball_path_from_event,
-    classify_animation_profile,
-    display_hint_fields,
-)
-
 
 # ---------------------------------------------------------------------------
 # Outs delta + plausibility downgrade + batter destination
