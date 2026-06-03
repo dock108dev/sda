@@ -1,4 +1,4 @@
-FROM python:3.12-alpine
+FROM python:3.13-alpine
 COPY server.py /app/server.py
 WORKDIR /app
 USER nobody
