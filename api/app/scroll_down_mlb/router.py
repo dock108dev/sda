@@ -45,7 +45,7 @@ from .validation import validate_no_final_score_leak
 logger = logging.getLogger(__name__)
 
 # Strict ISO 8601 calendar date — four-digit year, zero-padded month/day.
-# `datetime.date.fromisoformat` accepts looser variants on Python 3.11+
+# `datetime.date.fromisoformat` accepts looser variants on current Python.
 # (basic-format, ordinal), but the arcade contract only wants extended
 # YYYY-MM-DD so we gate on the regex before delegating to fromisoformat.
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")

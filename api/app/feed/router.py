@@ -22,7 +22,7 @@ router = APIRouter(prefix="/feed", tags=["v1", "feed"])
 )
 async def get_game_cards(
     game_id: int,
-    spoiler_policy: SpoilerPolicy = Query(SpoilerPolicy.pre_reveal, alias="spoilerPolicy"),
+    spoiler_policy: SpoilerPolicy = Query(SpoilerPolicy.revealed, alias="spoilerPolicy"),
     through_play_index: int | None = Query(
         None,
         ge=0,
@@ -48,7 +48,7 @@ async def get_game_cards(
 )
 async def get_game_cards_debug(
     game_id: int,
-    spoiler_policy: SpoilerPolicy = Query(SpoilerPolicy.pre_reveal, alias="spoilerPolicy"),
+    spoiler_policy: SpoilerPolicy = Query(SpoilerPolicy.revealed, alias="spoilerPolicy"),
     through_play_index: int | None = Query(None, ge=0, alias="throughPlayIndex"),
     include_feed: bool = Query(True, alias="includeFeed"),
     session: AsyncSession = Depends(get_db),

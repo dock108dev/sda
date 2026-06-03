@@ -59,7 +59,11 @@ def _game(
         league=SimpleNamespace(code=league),
         home_team=home,
         away_team=away,
+        home_score=home_score,
+        away_score=away_score,
         plays=[play],
+        team_boxscores=[],
+        player_boxscores=[],
         status=status,
         last_pbp_at=None,
         last_ingested_at=None,
@@ -237,6 +241,53 @@ def test_card_feed_revealed_policy_includes_score_after() -> None:
             "payoffCopy": "allowed",
         },
     }
+
+
+def test_card_feed_revealed_policy_includes_current_score_and_stats() -> None:
+    game = _game(
+        league="NBA",
+        play_type="layup",
+        description="Made layup",
+        home_score=52,
+        away_score=50,
+        status=GameStatus.live.value,
+    )
+    game.team_boxscores = [
+        SimpleNamespace(
+            team=game.away_team,
+            is_home=False,
+            stats={"rebounds": 20},
+            source=None,
+            updated_at=None,
+        ),
+        SimpleNamespace(
+            team=game.home_team,
+            is_home=True,
+            stats={"rebounds": 22},
+            source=None,
+            updated_at=None,
+        ),
+    ]
+    game.player_boxscores = [
+        SimpleNamespace(
+            team=game.home_team,
+            player_name="Alex Morgan",
+            stats={"points": 14, "rebounds": 5, "assists": 3},
+            source=None,
+            updated_at=None,
+        )
+    ]
+
+    body = build_card_feed_from_game(game, SpoilerPolicy.revealed).model_dump(
+        by_alias=True,
+        mode="json",
+        exclude_none=True,
+    )
+
+    assert body["game"]["score"] == {"home": 52, "away": 50}
+    assert [stat["team"] for stat in body["teamStats"]] == ["NBA Away", "NBA Home"]
+    assert body["playerStats"][0]["playerName"] == "Alex Morgan"
+    assert body["playerStats"][0]["points"] == 14
 
 
 def test_card_feed_limits_response_to_requested_play_window() -> None:
@@ -420,6 +471,8 @@ def test_card_feed_falls_back_when_text_mentions_future_spoilers() -> None:
         )
     )
     game.plays[-1].player_name = "Dax Moreno"
+    game.home_score = 4
+    game.away_score = 2
 
     feed = build_card_feed_from_game(game, SpoilerPolicy.pre_reveal)
     body = feed.model_dump(by_alias=True, mode="json", exclude_none=True)

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.flow import SportsGameCardFeedArtifact
-from app.db.sports import SportsGame, SportsGamePlay
+from app.db.sports import SportsGame, SportsGamePlay, SportsPlayerBoxscore, SportsTeamBoxscore
 
 from .schemas import CARD_FEED_CONTRACT_VERSION, CardFeedResponse, SpoilerPolicy
 from .service import (
@@ -284,6 +284,8 @@ def _game_select():
         selectinload(SportsGame.league),
         selectinload(SportsGame.home_team),
         selectinload(SportsGame.away_team),
+        selectinload(SportsGame.team_boxscores).selectinload(SportsTeamBoxscore.team),
+        selectinload(SportsGame.player_boxscores).selectinload(SportsPlayerBoxscore.team),
         selectinload(SportsGame.plays).selectinload(SportsGamePlay.team),
     )
 

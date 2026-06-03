@@ -8,7 +8,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.routers.sports.schemas.common import PlayImportance, PlayModeEligibility, ScoreObject
+from app.routers.sports.schemas.common import (
+    PlayerStat,
+    PlayImportance,
+    PlayModeEligibility,
+    ScoreObject,
+    TeamStat,
+)
 
 CARD_FEED_CONTRACT_VERSION = 2
 
@@ -222,7 +228,7 @@ class RevealAvailability(BaseModel):
 
 
 class CardGameMetadata(BaseModel):
-    """Score-free game metadata for the feed envelope."""
+    """Game metadata for the feed envelope."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -236,6 +242,7 @@ class CardGameMetadata(BaseModel):
     away_team_id: int | None = Field(None, alias="awayTeamId")
     home_team_abbr: str | None = Field(None, alias="homeTeamAbbr")
     away_team_abbr: str | None = Field(None, alias="awayTeamAbbr")
+    score: ScoreObject | None = None
 
 
 class CardFeedResponse(BaseModel):
@@ -249,4 +256,6 @@ class CardFeedResponse(BaseModel):
     generation: FeedGenerationStatus
     reveal: RevealAvailability
     sections: list[CardSectionLeadIn] = Field(default_factory=list)
+    team_stats: list[TeamStat] = Field(default_factory=list, alias="teamStats")
+    player_stats: list[PlayerStat] = Field(default_factory=list, alias="playerStats")
     cards: list[NarrativeCard] = Field(default_factory=list)

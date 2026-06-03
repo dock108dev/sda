@@ -20,9 +20,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.db import AsyncSession
-from app.db.sports import GameStatus, SportsGame, SportsGamePlay
-from app.routers.sports.common import serialize_play_entry
-from app.routers.sports.schemas.common import PlayEntry
+from app.db.sports import (
+    GameStatus,
+    SportsGame,
+    SportsGamePlay,
+    SportsPlayerBoxscore,
+    SportsTeamBoxscore,
+)
+from app.routers.sports.common import (
+    serialize_play_entry,
+    serialize_player_stat,
+    serialize_team_stat,
+)
+from app.routers.sports.schemas.common import PlayEntry, ScoreObject
 from app.services.play_importance import (
     DetailContractError,
     enrich_play_importance,
@@ -142,9 +152,13 @@ async def get_game_card_feed(
 ) -> CardFeedResponse:
     """Return the persisted normalized narrative-card feed for one game."""
     if through_play_index is None:
-        from .materialization import get_materialized_card_feed
+        from .materialization import get_materialized_card_feed, get_or_materialize_card_feed
 
-        return await get_materialized_card_feed(session, game_id, spoiler_policy)
+        if spoiler_policy is SpoilerPolicy.revealed:
+            response = await get_or_materialize_card_feed(session, game_id, spoiler_policy)
+            return await _with_revealed_payoff(session, game_id, response)
+        response = await get_materialized_card_feed(session, game_id, spoiler_policy)
+        return response
 
     # Partial feed windows are debug/admin-only; keep them generated directly
     # rather than creating separate persisted artifacts for each boundary.
@@ -735,6 +749,7 @@ def _response(
     sections: list[CardSectionLeadIn] | None = None,
     validation_issues: list[str] | None = None,
 ) -> CardFeedResponse:
+    payoff = _revealed_payoff(game, spoiler_policy)
     return CardFeedResponse(
         game=CardGameMetadata(
             gameId=game.id,
@@ -747,6 +762,7 @@ def _response(
             awayTeamId=game.away_team.id if game.away_team else None,
             homeTeamAbbr=game.home_team.abbreviation if game.home_team else None,
             awayTeamAbbr=game.away_team.abbreviation if game.away_team else None,
+            score=payoff["score"],
         ),
         spoilerPolicy=spoiler_policy,
         generation=FeedGenerationStatus(
@@ -759,8 +775,64 @@ def _response(
         ),
         reveal=_reveal_availability(game, spoiler_policy),
         sections=sections or [],
+        teamStats=payoff["team_stats"],
+        playerStats=payoff["player_stats"],
         cards=cards,
     )
+
+
+async def _with_revealed_payoff(
+    session: AsyncSession,
+    game_id: int,
+    response: CardFeedResponse,
+) -> CardFeedResponse:
+    result = await session.execute(
+        select(SportsGame)
+        .options(
+            selectinload(SportsGame.league),
+            selectinload(SportsGame.team_boxscores).selectinload(SportsTeamBoxscore.team),
+            selectinload(SportsGame.player_boxscores).selectinload(SportsPlayerBoxscore.team),
+        )
+        .where(SportsGame.id == game_id)
+    )
+    game = result.scalar_one_or_none()
+    if not game:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
+
+    payoff = _revealed_payoff(game, SpoilerPolicy.revealed)
+    game_metadata = response.game.model_copy(update={"score": payoff["score"]})
+    return response.model_copy(
+        update={
+            "game": game_metadata,
+            "team_stats": payoff["team_stats"],
+            "player_stats": payoff["player_stats"],
+        }
+    )
+
+
+def _revealed_payoff(
+    game: SportsGame,
+    spoiler_policy: SpoilerPolicy,
+) -> dict[str, object]:
+    if spoiler_policy is not SpoilerPolicy.revealed:
+        return {"score": None, "team_stats": [], "player_stats": []}
+
+    league_code = _league_code(game)
+    score = None
+    if game.home_score is not None and game.away_score is not None:
+        score = ScoreObject(home=game.home_score, away=game.away_score)
+
+    return {
+        "score": score,
+        "team_stats": [
+            serialize_team_stat(boxscore, league_code=league_code)
+            for boxscore in game.team_boxscores
+        ],
+        "player_stats": [
+            serialize_player_stat(boxscore, league_code=league_code)
+            for boxscore in game.player_boxscores
+        ],
+    }
 
 
 def _initial_status(
