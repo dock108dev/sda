@@ -325,6 +325,8 @@ export type CardFeedGameMetadata = {
   awayTeamId?: number | null;
   homeTeamAbbr?: string | null;
   awayTeamAbbr?: string | null;
+  score?: ScoreObject | null;
+  scoreboard?: CardScoreboard | null;
 };
 
 export type CardPeriod = {
@@ -337,6 +339,36 @@ export type CardTeam = {
   abbreviation?: string | null;
   name?: string | null;
   side: "home" | "away" | "neutral" | "unknown" | string;
+};
+
+export type CardScoreboardCompetitor = {
+  side: "away" | "home";
+  teamName?: string | null;
+  teamAbbreviation?: string | null;
+  score?: number | null;
+  scoreText?: string | null;
+  isWinner?: boolean | null;
+};
+
+export type CardScoreboardSegment = {
+  label: string;
+  away?: string | null;
+  home?: string | null;
+};
+
+export type CardScoreboardTotals = {
+  away?: string | null;
+  home?: string | null;
+};
+
+export type CardScoreboard = {
+  schemaVersion: number;
+  layout: "period_table" | "inning_table" | "quarter_table";
+  statusLabel?: string | null;
+  scoreline?: string | null;
+  competitors: CardScoreboardCompetitor[];
+  segments: CardScoreboardSegment[];
+  totals?: CardScoreboardTotals | null;
 };
 
 export type ScoreChange = {
