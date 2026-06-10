@@ -1395,7 +1395,7 @@ requires-dist = [
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "redis", specifier = ">=7.4.0,<9.0.0" },
     { name = "sqlalchemy", specifier = ">=2.0.49,<3.0.0" },
-    { name = "structlog", specifier = ">=24.1.0,<26.0.0" },
+    { name = "structlog", specifier = ">=24.1.0,<27.0.0" },
     { name = "tenacity", specifier = ">=9.1.4,<10.0.0" },
 ]
 

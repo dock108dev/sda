@@ -5,12 +5,11 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
-    "react": "19.2.6",
+    "react": "19.2.7",
     "zod": "^4.4.2"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.17",
     "typescript": "^6"
   }
 }
-
