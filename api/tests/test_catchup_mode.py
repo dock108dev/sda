@@ -250,23 +250,48 @@ def test_admin_surface_keeps_sports_and_system_routes_only() -> None:
 import json
 from app.config import settings
 from main import app
+
+
+def _join_path(prefix, path):
+    if not prefix:
+        return path
+    if path == prefix or path.startswith(prefix.rstrip("/") + "/"):
+        return path
+    return prefix.rstrip("/") + "/" + path.lstrip("/")
+
+
+def _iter_routes(routes, prefix=""):
+    for route in routes:
+        path = getattr(route, "path", None)
+        if isinstance(path, str):
+            yield _join_path(prefix, path), route
+
+        include_context = getattr(route, "include_context", None)
+        original_router = getattr(route, "original_router", None)
+        child_routes = getattr(original_router, "routes", None)
+        if include_context is not None and child_routes is not None:
+            child_prefix = _join_path(prefix, getattr(include_context, "prefix", "") or "")
+            yield from _iter_routes(child_routes, child_prefix)
+
+
 route_owners = {}
 route_entries = []
-for route in app.routes:
-    if route.path in {
+expanded_routes = list(_iter_routes(app.routes))
+for path, route in expanded_routes:
+    if path in {
         "/api/admin/sports/games",
         "/api/admin/sports/games/{game_id}",
         "/api/admin/sports/games/{game_id}/context",
         "/api/admin/sports/games/{game_id}/admin-detail",
     }:
-        route_owners.setdefault(route.path, f"{route.endpoint.__module__}.{route.endpoint.__name__}")
+        route_owners.setdefault(path, f"{route.endpoint.__module__}.{route.endpoint.__name__}")
         route_entries.append({
-            "path": route.path,
+            "path": path,
             "methods": sorted(route.methods or []),
             "owner": f"{route.endpoint.__module__}.{route.endpoint.__name__}",
         })
 payload = {
-    "routes": sorted(route.path for route in app.routes),
+    "routes": sorted(path for path, _route in expanded_routes),
     "routeEntries": route_entries,
     "routeOwners": route_owners,
     "has_catchup_only_setting": hasattr(settings, "catchup_only"),

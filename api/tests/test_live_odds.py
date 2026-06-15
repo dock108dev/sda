@@ -180,7 +180,28 @@ class TestFairbetLiveEndpoint:
 
     def test_router_registered(self):
         from app.routers.fairbet import router
-        paths = [route.path for route in router.routes]
+
+        def join_path(prefix, path):
+            if not prefix:
+                return path
+            if path == prefix or path.startswith(prefix.rstrip("/") + "/"):
+                return path
+            return prefix.rstrip("/") + "/" + path.lstrip("/")
+
+        def iter_route_paths(routes, prefix=""):
+            for route in routes:
+                path = getattr(route, "path", None)
+                if isinstance(path, str):
+                    yield join_path(prefix, path)
+
+                include_context = getattr(route, "include_context", None)
+                original_router = getattr(route, "original_router", None)
+                child_routes = getattr(original_router, "routes", None)
+                if include_context is not None and child_routes is not None:
+                    child_prefix = join_path(prefix, getattr(include_context, "prefix", "") or "")
+                    yield from iter_route_paths(child_routes, child_prefix)
+
+        paths = list(iter_route_paths(router.routes))
         assert "/api/fairbet/live" in paths
 
 
