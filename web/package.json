@@ -15,7 +15,7 @@
     "@dock108/js-core": "file:../packages/js-core",
     "@dock108/ui": "file:../packages/ui",
     "@dock108/ui-kit": "file:../packages/ui-kit",
-    "next": "16.2.7",
+    "next": "16.2.9",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "recharts": "^3.8.0"
@@ -28,7 +28,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.8",
     "eslint": "^9",
-    "eslint-config-next": "16.2.7",
+    "eslint-config-next": "16.2.9",
     "jsdom": "^29.1.1",
     "typescript": "6.0.3",
     "vite": "^8.0.16",
