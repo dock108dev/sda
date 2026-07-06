@@ -32,9 +32,9 @@
     },
     "peerDependencyRules": {
       "allowedVersions": {
-        "eslint-plugin-import>eslint": "10.5.0",
-        "eslint-plugin-jsx-a11y>eslint": "10.5.0",
-        "eslint-plugin-react>eslint": "10.5.0"
+        "eslint-plugin-import>eslint": "10.6.0",
+        "eslint-plugin-jsx-a11y>eslint": "10.6.0",
+        "eslint-plugin-react>eslint": "10.6.0"
       }
     }
   }
