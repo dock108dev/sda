@@ -44,18 +44,14 @@ jobs:
             if [ ! -d ".git" ]; then
               echo "No git repo found. Initializing..."
               git init
-              git remote add origin "$REPO_URL"
-            else
-              echo "Updating remote URL with token..."
-              git remote set-url origin "$REPO_URL"
             fi
 
             echo "Fetching latest code..."
-            git fetch origin
+            git fetch --prune "$REPO_URL" "+refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}"
 
             echo "Resetting to origin/$BRANCH..."
-            git checkout -B "$BRANCH" "origin/$BRANCH"
-            git reset --hard "origin/$BRANCH"
+            git checkout -B "$BRANCH" "refs/remotes/origin/$BRANCH"
+            git reset --hard "refs/remotes/origin/$BRANCH"
 
             echo "Syncing active Caddy site block from repo..."
             if [ ! -f "infra/Caddyfile" ]; then
