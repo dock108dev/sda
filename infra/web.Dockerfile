@@ -3,22 +3,22 @@ FROM node:26.5-alpine AS base
 # Install pnpm.
 # Corepack signature verification has intermittently failed in CI/buildkit environments;
 # install pnpm directly via npm to avoid keyid verification issues.
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@10.28.0
 
 WORKDIR /app
 
 FROM base AS deps
 
-# Copy workspace config and all package.json files
-# Note: this repo does not commit pnpm-lock.yaml, so we cannot use --frozen-lockfile.
-COPY pnpm-workspace.yaml package.json ./
+# Copy workspace config, lockfile, and all package.json files.
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY web/package.json ./web/
+COPY tools/eslint-config ./tools/eslint-config/
 COPY packages/js-core/package.json ./packages/js-core/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/ui-kit/package.json ./packages/ui-kit/
 
-# Install dependencies (will create a lockfile inside the image)
-RUN pnpm install
+# Install the exact dependency graph validated by CI.
+RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 
@@ -70,9 +70,10 @@ RUN addgroup -S appgroup \
 
 WORKDIR /app
 
-# Copy workspace config (see note above about pnpm-lock.yaml)
-COPY --chown=appuser:appgroup pnpm-workspace.yaml package.json ./
+# Copy the same workspace graph used by the build stage.
+COPY --chown=appuser:appgroup pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY --chown=appuser:appgroup web/package.json ./web/
+COPY --chown=appuser:appgroup tools/eslint-config ./tools/eslint-config/
 COPY --chown=appuser:appgroup packages/js-core/package.json ./packages/js-core/
 COPY --chown=appuser:appgroup packages/ui/package.json ./packages/ui/
 COPY --chown=appuser:appgroup packages/ui-kit/package.json ./packages/ui-kit/
@@ -80,7 +81,7 @@ COPY --chown=appuser:appgroup packages/ui-kit/package.json ./packages/ui-kit/
 # Install production deps as appuser — avoids root-owned node_modules
 # and eliminates the need for a chown -R layer.
 USER appuser
-RUN pnpm install --prod
+RUN pnpm install --prod --frozen-lockfile
 
 # Copy built assets
 COPY --chown=appuser:appgroup --from=build /app/web/.next ./web/.next

@@ -1,0 +1,16 @@
+{
+  "name": "@dock108/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./index.mjs",
+  "description": "Next.js ESLint config isolated on the TypeScript 6 compiler API.",
+  "dependencies": {
+    "@typescript-eslint/parser": "8.61.0",
+    "eslint-config-next": "16.2.12",
+    "typescript": "6.0.3"
+  },
+  "peerDependencies": {
+    "eslint": "10.8.0"
+  }
+}

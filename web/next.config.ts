@@ -36,6 +36,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@dock108/ui", "@dock108/ui-kit", "@dock108/js-core"],
+  experimental: {
+    useTypeScriptCli: true,
+  },
   async headers() {
     return [
       {
@@ -47,4 +50,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
