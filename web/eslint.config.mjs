@@ -1,5 +1,5 @@
 import { fixupPluginRules } from "@eslint/compat";
-import nextConfig from "eslint-config-next";
+import nextConfig from "@dock108/eslint-config";
 
 const addEslint10GlobalsSupport = (scopeManager) => {
   if (!scopeManager || typeof scopeManager.addGlobals === "function") {
