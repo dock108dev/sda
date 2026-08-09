@@ -4,8 +4,8 @@
   the source for score, player stats, team stats, and box-score data.
 - The scraper refreshes every five minutes, so live game data can lag by one polling interval plus API latency.
 - OpenAI context copy is optional. Without `OPENAI_API_KEY`, the API returns deterministic local context sentences.
-- Production relevance is defined by mounted API routers, scheduled Celery
-  tasks, and compose services.
+- Runtime relevance is defined by mounted API routers, scheduled Celery tasks,
+  and compose services; there is no active production deployment.
 - CI still runs broad historical checks; CI coverage is larger than the active catch-up runtime boundary.
 - Odds, golf, social scraping, analytics, simulator, auth product,
   onboarding, club-management, and product realtime streams are not supported

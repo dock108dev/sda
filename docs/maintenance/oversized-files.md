@@ -1,6 +1,6 @@
 # Oversized Source File Inventory
 
-Current result: no maintained production source files are over 500 lines.
+Current result: no maintained source files are over 500 lines.
 
 The cleanup size target excludes tests, shell scripts, migrations, generated
 data, lockfiles, docs, build output, virtualenvs, and dependency directories.

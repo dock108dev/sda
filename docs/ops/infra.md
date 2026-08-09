@@ -2,6 +2,10 @@
 
 Docker Compose is the supported local runtime.
 
+The `prod` profile and Caddy assets are retained as inactive architecture
+history. They are not a supported deployment path while the repository is in
+maintenance-only mode.
+
 ## Quick Start
 
 ```bash
@@ -21,7 +25,7 @@ Local URLs:
 | Profile | Purpose |
 | --- | --- |
 | `dev` | Local development |
-| `prod` | Production runtime |
+| `prod` | Historical production-shaped runtime; inactive and unsupported |
 | `observability` | Optional OTel, Prometheus, and Grafana |
 
 ## Services
@@ -39,7 +43,8 @@ Local URLs:
 | `log-relay` | internal `9999` | Docker log relay sidecar |
 
 The host-mapped API, web, Postgres, and observability ports are bound to
-`127.0.0.1` in compose. Caddy is the intended public edge in production.
+`127.0.0.1` in compose. Caddy was the public-edge design for the historical
+production runtime; no active target is maintained by this repository.
 
 Observability services are only created with the `observability` profile:
 
@@ -68,7 +73,7 @@ Health endpoint meanings:
 
 ## Migrations
 
-Run migrations explicitly:
+Run local-development migrations explicitly:
 
 ```bash
 docker compose --profile dev run --rm migrate
@@ -86,3 +91,5 @@ CONFIRM_DESTRUCTIVE=true docker exec sports-postgres /scripts/restore.sh /backup
 ```
 
 Restores are destructive and require `CONFIRM_DESTRUCTIVE=true`.
+These backup and restore examples are for an operator-controlled local runtime,
+not an active production service.

@@ -1,98 +1,83 @@
-# Deployment
+# Deployment (Inactive)
 
-Production runs the same service set as local development with the `prod` compose profile.
+**Status: maintenance only. Sports Data Admin is not currently deployable.**
+GitHub Actions do not publish images or deploy from `main`, pull requests, or
+Dependabot merges. This page retains operational history without authorizing or
+instructing a production deployment.
 
-## Deploy
+## Current Maintenance Contract
 
-The manual deploy workflow in `.github/workflows/deploy-recent-image.yml` SSHes to the server, syncs the repo, updates Caddy from `infra/Caddyfile`, logs into GHCR, pulls images, runs migrations, starts compose, and waits for the API container health check.
+`.github/workflows/backend-ci-cd.yml` is CI only. It runs tests, coverage,
+linting, type and schema checks, dependency/security audits, secret scanning,
+application compilation, and container builds with `push: false`. It has only
+`contents: read` permission, does not authenticate to GHCR, and has no SSH,
+migration, restart, or deployment job.
 
-Equivalent manual command shape:
+`.github/workflows/deploy-recent-image.yml` retains the historical procedure in
+a separate manual-only workflow. Its first job is a credential-free maintenance
+gate. The deployment job cannot be scheduled unless both conditions are true:
 
-```bash
-cd infra
-docker compose --profile prod pull --policy always
-docker compose --profile prod run --rm migrate
-docker compose --profile prod up -d --remove-orphans
-```
+- repository variable `DEPLOYMENTS_ENABLED` is exactly `true`;
+- the dispatcher types `DEPLOY SPORTS DATA ADMIN` exactly.
 
-The full CI/CD workflow in `.github/workflows/backend-ci-cd.yml` can also build, push, and deploy when manually dispatched with `full_deploy=true`.
+`DEPLOYMENTS_ENABLED` is intentionally absent or false in maintenance mode. A
+normal dispatch therefore exits at the gate with a maintenance-only message,
+before any deployment secret, registry login, SSH action, migration, or service
+restart is reached. Do not set the variable or provision deployment credentials
+under the current repository contract.
 
-Both deploy workflows run the Scroll Down card-feed smoke check after the API
-container is healthy. The check scans a dated `/api/v1/games` window with
-pagination, selects games with play-by-play, then validates
-`/api/v1/feed/games/{game_id}/cards` for the frontend contract: cards,
-`importance`, `modeEligibility`, `visualImportance`, `leadIn`, and
-non-duplicated important-card `stageSetting`.
+The manual realtime load-test workflow is unrelated to deployment. Its Alembic
+migration targets an ephemeral PostgreSQL service created inside the GitHub
+Actions runner.
 
-Deploy first refreshes materialized card feeds for the 72-hour lookback and
-72-hour lookahead window, then validates the matching three-day dated window.
-The validator skips older PBP candidates whose card feed has not been
-materialized and fails only if no materialized feed in the scanned window
-passes the frontend contract.
+## Historical Production Shape
 
-The smoke check intentionally fails when the scanned window has no games with
-`hasPbp=true` and `playCount>0`. That is a data-ingestion problem, not a valid
-consumer route contract. Run `poll_live_pbp`, backfill the relevant window, or
-widen `--lookback-days` for manual diagnosis.
+Before maintenance-only mode, the repository had two deployment paths:
 
-Manual PBP refresh:
+- pushes to `main` built API, web, and scraper images, published commit and
+  `latest` tags to GHCR, then opened an SSH session to the deployment target;
+- a manual recent-image workflow selected an existing tag and opened the same
+  SSH deployment path.
 
-```bash
-curl -X POST http://localhost:8000/api/admin/tasks/trigger \
-  -H "X-API-Key: $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"task_name": "poll_live_pbp", "args": []}'
-```
+The server-side procedure historically synchronized the checkout, updated the
+Caddy site block, authenticated to GHCR, pulled images, ran Alembic through the
+`migrate` Compose service, recreated application services, checked API health,
+refreshed materialized card feeds, verified the normalized feed contract, and
+pruned superseded Docker artifacts. Rollback historically selected an earlier
+image tag and restarted the application services, with schema compatibility
+considered separately.
 
-Equivalent manual verification:
-
-```bash
-python3 scripts/validate_scroll_down_feed.py \
-  --base-url http://localhost:8000 \
-  --env-file infra/.env \
-  --lookback-days 3 \
-  --lookahead-days 3
-```
-
-To also require finalized LLM recap output for selected completed games:
-
-```bash
-python3 scripts/validate_scroll_down_feed.py \
-  --base-url http://localhost:8000 \
-  --env-file infra/.env \
-  --game-id 190584 \
-  --check-summary \
-  --require-summary
-```
-
-## Required Secrets
-
-Set these in `infra/.env` or your deployment secret manager:
-
-- `POSTGRES_PASSWORD`
-- `REDIS_PASSWORD`
-- `API_KEY`
-- `CONSUMER_API_KEY`
-- `JWT_SECRET`
-- `ALLOWED_CORS_ORIGINS`
-- `OPENAI_API_KEY` when AI context copy is desired
-- `CBB_STATS_API_KEY` when NCAAB feeds are enabled
-
-## Rollback
-
-Use the previous image tag and restart the application services:
-
-```bash
-IMAGE_TAG=<previous-tag> docker compose --profile prod up -d api scraper scraper-beat web
-```
-
-Run migrations only when the rollback plan accounts for schema compatibility.
+Those details are preserved for context only. They do not describe an active,
+supported, or validated deployment target, and they must not be used as a
+runbook while the repository is in maintenance-only mode.
 
 ## CI Workflows
 
-- `backend-ci-cd.yml`: runs backend, scraper, API, web, and repository hygiene checks. Manual `full_deploy=true` builds GHCR images and deploys.
-- `deploy-recent-image.yml`: manually deploys an existing image tag, defaulting to `latest`, and always syncs the active Caddy site block from `infra/Caddyfile`.
-- `realtime-load-test.yml`: manual load harness for the non-production
-  `/api/admin/realtime/test-emit` endpoint and Redis Streams path. It is not
-  part of the active catch-up runtime because product realtime subscribe/stream
-  routes are not mounted.
+- `backend-ci-cd.yml`: CI-only validation for pull requests, `main`, and manual
+  CI runs; image builds remain local to the runner.
+- `deploy-recent-image.yml`: historical manual deployment procedure protected
+  by the fail-closed maintenance gate.
+- `realtime-load-test.yml`: manual, runner-local load harness for the
+  non-production realtime test endpoint and Redis Streams path.
+
+The deterministic `scripts/check_maintenance_mode.py` guardrail scans every
+tracked workflow. CI fails if an automatic workflow gains deployment behavior,
+registry authentication, image publication, deployment credentials, production
+migrations, or service mutation, or if a manual deployment bypasses the gate.
+
+## Reopening Deployment
+
+Deployment may be reconsidered only through a separate owner-authorized task.
+That task must provide and validate all of the following before enabling the
+repository variable or exercising deployment code:
+
+- explicit owner authorization;
+- a defined, current deployment target;
+- a current secret and access review;
+- a current image-registry decision;
+- a server checkout and migration strategy;
+- verified backup and rollback procedures;
+- proof on staging or a disposable target;
+- a deliberate choice between manual and automatic deployment.
+
+The maintenance-only conversion does not satisfy or begin any of those steps.

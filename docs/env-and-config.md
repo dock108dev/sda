@@ -3,12 +3,17 @@
 Use `infra/.env.example` as the local template. Do not commit local `.env`
 files.
 
+The repository is maintenance-only and does not currently provision or consume
+deployment secrets. Production/staging entries below document application
+validation behavior and historical compatibility, not an instruction to create
+credentials or deploy the service.
+
 The current runtime reads configuration from:
 
 - `api/app/config.py` for FastAPI and the Next.js proxy-facing API behavior,
 - `scraper/sports_scraper/config.py` for the Celery worker/beat process,
 - `infra/docker-compose.yml` for service-local URLs and container wiring,
-- `scripts/lint_env_file.py` for production deploy env-file hygiene.
+- `scripts/lint_env_file.py` for production-shaped env-file validation.
 
 ## Required Runtime Values
 
@@ -22,7 +27,7 @@ The current runtime reads configuration from:
 | `DATABASE_URL` | set by compose | API and migration database URL. |
 | `REDIS_URL` | set by compose | Redis URL for API and Celery-compatible Redis access. |
 | `API_KEY` | production/staging | Admin API key; required by API startup validation. |
-| `CONSUMER_API_KEY` | production env lint | Read-only consumer key for `/api/v1/*`; deploy env lint requires it for production files. |
+| `CONSUMER_API_KEY` | production-shaped env lint | Read-only consumer key for `/api/v1/*`; env lint requires it when validating production-shaped files. |
 | `JWT_SECRET` | production/staging | Required by API startup validation even though auth product routes are not mounted. |
 | `ALLOWED_CORS_ORIGINS` | production/staging | Comma-separated origins; localhost is rejected in production/staging. |
 | `ADMIN_PASSWORD` | production web | Basic auth password for `/admin/*` and `/proxy/*`; keep independent from database credentials. |
@@ -103,7 +108,7 @@ route path:
 - `SCRAPER_ROLE`
 - `STRIPE_*`
 
-Payment provider configuration is no longer accepted by deploy env lint;
+Payment provider configuration is no longer accepted by env lint;
 `STRIPE_*` keys fail as unknown variables. `ODDS_API_*` and `DATAGOLF_API_KEY`
 are still accepted by env lint because importable dormant modules can read
 them, but they do not activate beat-scheduled odds or golf jobs.
@@ -116,7 +121,7 @@ them, but they do not activate beat-scheduled odds or golf jobs.
   database and Redis requirements.
 - `Settings.validate_runtime_settings()` rejects production/staging API startup
   when `API_KEY` is missing, weak, or paired with unsafe CORS/JWT/auth settings.
-- `scripts/lint_env_file.py` rejects unknown deployment env keys and requires
+- `scripts/lint_env_file.py` rejects unknown production-shaped env keys and requires
   production env files to include `ALLOWED_CORS_ORIGINS`, `API_KEY`,
   `CONSUMER_API_KEY`, `DATABASE_URL`, `ENVIRONMENT`, `JWT_SECRET`, and
   `REDIS_URL`.
@@ -125,7 +130,7 @@ them, but they do not activate beat-scheduled odds or golf jobs.
 
 ## Runtime Source Of Truth
 
-Production relevance is determined by `api/main.py`,
+Runtime relevance is determined by `api/main.py`,
 `scraper/sports_scraper/celery_app.py`, and `infra/docker-compose.yml`.
 Environment variables accepted by dormant modules do not make those modules
 active.

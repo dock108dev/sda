@@ -3,15 +3,15 @@
 The catch-up worker creates upcoming game stubs and refreshes play-by-play plus
 box score data for supported leagues.
 
-## Active Data Types
+## Supported Data Types
 
 - Game schedule/status metadata
 - Play-by-play
 - Player stats
 - Team stats
 - Score fields used by game detail and, for live games with play state, `liveSnapshot`
-- Materialized normalized card feeds when deploy scripts or manual operators
-  call the refresh path
+- Materialized normalized card feeds when a local operator explicitly calls the
+  refresh path; the inactive historical deployment procedure also retains it
 
 ## League Integrations
 
@@ -23,8 +23,9 @@ box score data for supported leagues.
 | NCAAB | Calendar stubs, CBB/NCAA IDs, play-by-play, player/team box scores |
 | NFL | Calendar stubs only in the active beat schedule |
 
-The active scheduler calls `poll_game_calendars` every 15 minutes and
-`poll_live_pbp` every five minutes. See [Scheduler and jobs](../scheduler-and-jobs.md).
+The scheduler definition calls `poll_game_calendars` every 15 minutes and
+`poll_live_pbp` every five minutes when the local runtime is running. See
+[Scheduler and jobs](../scheduler-and-jobs.md).
 
 The worker does not run broad historical backfills automatically. It refreshes
 games selected by the active-game resolver around the current catch-up window.

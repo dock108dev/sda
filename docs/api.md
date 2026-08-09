@@ -20,9 +20,10 @@ production and staging.
 | `/api/social/*` | `verify_api_key` | Manual social record access. |
 | `/health`, `/healthz`, `/ready`, `/metrics` | none | Operational endpoints; protect by network/proxy if public exposure is possible. |
 
-Development without configured keys is permissive and logs warnings. Production
-and staging require `API_KEY`; deploy env lint also requires `CONSUMER_API_KEY`
-for production env files.
+Development without configured keys is permissive and logs warnings. The
+production/staging code paths require `API_KEY`; production-shaped env lint also
+requires `CONSUMER_API_KEY`. These are validation rules, not deployment setup
+instructions.
 
 ```http
 GET /api/v1/games HTTP/1.1

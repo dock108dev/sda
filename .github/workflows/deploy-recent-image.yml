@@ -1,10 +1,14 @@
-name: Deploy Recent Image
+name: Deployment (Maintenance-Gated)
 
 on:
   workflow_dispatch:
     inputs:
+      confirmation:
+        description: "Type DEPLOY SPORTS DATA ADMIN to confirm the owner-authorized deployment"
+        required: true
+        type: string
       image_tag:
-        description: "Optional image tag to deploy (defaults to latest)"
+        description: "Historical image tag selector (defaults to latest)"
         required: false
         default: latest
         type: string
@@ -13,8 +17,32 @@ permissions:
   contents: read
 
 jobs:
-  deploy-recent-image:
+  maintenance-gate:
+    name: Maintenance-Only Gate
     runs-on: ubuntu-latest
+    steps:
+      - name: Require explicit owner opt-in
+        env:
+          DEPLOYMENTS_ENABLED: ${{ vars.DEPLOYMENTS_ENABLED }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          if [[ "$DEPLOYMENTS_ENABLED" != "true" ]]; then
+            echo "::error::Deployment is disabled because this repository is in maintenance-only mode."
+            echo "A separate owner-authorized deployment-reopening project must set DEPLOYMENTS_ENABLED=true."
+            exit 1
+          fi
+          if [[ "$CONFIRMATION" != "DEPLOY SPORTS DATA ADMIN" ]]; then
+            echo "::error::The explicit deployment confirmation did not match."
+            exit 1
+          fi
+          echo "Deployment maintenance gate passed."
+
+  deploy-recent-image:
+    name: Deploy Recent Image
+    runs-on: ubuntu-latest
+    needs: maintenance-gate
+    if: ${{ vars.DEPLOYMENTS_ENABLED == 'true' && inputs.confirmation == 'DEPLOY SPORTS DATA ADMIN' }}
     steps:
       - name: Deploy selected image tag over SSH
         uses: appleboy/ssh-action@v1.2.5

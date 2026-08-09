@@ -1,5 +1,8 @@
 # Runbook
 
+This runbook is for an operator-controlled local development runtime only. The
+repository is maintenance-only and has no supported production target.
+
 ## Health Checks
 
 ```bash

@@ -1,6 +1,8 @@
 # Scheduler And Jobs
 
-The scraper Celery app has two beat-scheduled production execution paths.
+The scraper Celery app defines two beat-scheduled runtime paths. The repository
+is not currently deployed, so these describe code behavior rather than active
+production execution.
 
 ## Authoritative Schedule
 
@@ -12,8 +14,8 @@ Defined in `scraper/sports_scraper/celery_app.py`:
 | `catchup-pbp-stats-every-5m` | `poll_live_pbp` | every 5 minutes | `sports-scraper` |
 
 `refresh_card_feeds` is included and routed to `sports-scraper`, but it is not
-beat-scheduled. Deploy workflows and manual operators can use it to refresh
-materialized card-feed artifacts for a bounded window.
+beat-scheduled. It remains available for explicit local use and in the gated
+historical deployment procedure.
 
 ## Task Behavior
 

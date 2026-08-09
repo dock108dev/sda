@@ -36,7 +36,9 @@ Important freshness columns on `sports_games`:
 
 ## Migrations
 
-Alembic migrations live in `api/alembic/versions/`. Use the `migrate` Docker service for local and production migrations.
+Alembic migrations live in `api/alembic/versions/`. The `migrate` Docker service
+is supported for local development. Production migration remains inactive until
+a separately authorized deployment-reopening project defines and validates it.
 
 ```bash
 cd infra

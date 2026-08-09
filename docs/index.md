@@ -3,13 +3,17 @@
 These docs describe the current catch-up-centered Sports Data Admin service.
 Code, compose, and tests are the source of truth when docs drift.
 
+**Repository status: maintenance only and not currently deployable.** CI keeps
+tests, audits, builds, and dependency maintenance active without publishing
+images or connecting to a deployment target.
+
 ## Start Here
 
 | Guide | Purpose |
 | --- | --- |
 | [Architecture](architecture.md) | Current service shape and data flow |
 | [API](api.md) | Catch-up API contract and health endpoints |
-| [Environment & config](env-and-config.md) | Runtime settings and required secrets |
+| [Environment & config](env-and-config.md) | Runtime settings and validation rules |
 | [Scheduler & jobs](scheduler-and-jobs.md) | Celery queues, beat schedule, and task hold |
 | [Infrastructure](ops/infra.md) | Docker services, local setup, migrations, backups |
 
@@ -25,8 +29,8 @@ Code, compose, and tests are the source of truth when docs drift.
 
 | Guide | Purpose |
 | --- | --- |
-| [Deployment](ops/deployment.md) | Production deployment and rollback basics |
-| [Runbook](ops/runbook.md) | Common operator checks |
+| [Deployment](ops/deployment.md) | Inactive deployment history, maintenance gate, and reopening contract |
+| [Runbook](ops/runbook.md) | Local-development operator checks |
 | [Security and runtime boundaries](ops/security.md) | Current auth, proxy, health, and disabled-surface boundaries |
 | [Known limitations](known-limitations.md) | Intentional constraints |
 

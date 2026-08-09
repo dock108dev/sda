@@ -1,5 +1,10 @@
 # Security And Runtime Boundaries
 
+Sports Data Admin is maintenance-only and has no currently supported deployment
+target. The production/staging behaviors below describe code-enforced runtime
+boundaries if those modes are exercised in a future authorized project; they do
+not claim an active production service.
+
 This document describes the current `sports-data-admin` security boundary as
 implemented by `api/main.py`, `web/src/proxy.ts`,
 `web/src/app/proxy/[...path]/route.ts`, `api/app/config.py`, and
@@ -9,7 +14,7 @@ Historical audit snapshots were removed because they described earlier branch
 states and external repositories. Use this file plus the code paths above as the
 current reference.
 
-## Active Trust Boundaries
+## Runtime Trust Boundaries
 
 | Boundary | Current behavior |
 | --- | --- |
@@ -17,9 +22,9 @@ current reference.
 | Next.js proxy to FastAPI | `/proxy/*` forwards to `SPORTS_API_INTERNAL_URL` or `NEXT_PUBLIC_SPORTS_API_URL` and injects `SPORTS_API_KEY` as `X-API-Key`. |
 | FastAPI admin routes | `/api/admin/*`, `/api/admin/sports/*`, and `/api/social/*` require the admin `API_KEY` through `verify_api_key`. |
 | FastAPI consumer routes | `/api/v1/*` requires `CONSUMER_API_KEY` when configured, otherwise falls back to `API_KEY` for single-key development/simple deployments. |
-| FastAPI health and metrics | `/health`, `/healthz`, `/ready`, and `/metrics` do not require API-key auth. Exposure must be controlled by the deployment layer. |
+| FastAPI health and metrics | `/health`, `/healthz`, `/ready`, and `/metrics` do not require API-key auth. Any future deployment must control exposure at its edge. |
 | FastAPI to data stores | API uses PostgreSQL and Redis. Redis supports rate-limit buckets, task hold state, metrics/cache paths, and the non-production realtime test emitter. |
-| Celery scraper to providers | The active beat schedule runs `poll_game_calendars` and `poll_live_pbp`. They read PostgreSQL, Redis, and league data providers. |
+| Celery scraper to providers | The defined beat schedule runs `poll_game_calendars` and `poll_live_pbp` when the runtime is started. They read PostgreSQL, Redis, and league data providers. |
 
 ## Key Scope Rules
 
@@ -51,8 +56,8 @@ admin-capable unless the target backend route has its own stricter guard.
 ## Operational Endpoints
 
 `/metrics` is unauthenticated at the FastAPI layer. Compose binds the API port
-to `127.0.0.1`, and Caddy is expected to be the public edge. If FastAPI is ever
-exposed directly, protect `/metrics` at the reverse proxy or network layer.
+to `127.0.0.1`, and the historical design used Caddy as the public edge. Any
+future deployment must protect `/metrics` at the reverse proxy or network layer.
 
 Health endpoint semantics:
 
@@ -68,10 +73,10 @@ club-management routes, golf, FairBet, odds/model-odds, simulator, analytics
 experiments, or product realtime subscribe/stream routes.
 
 Payment/commerce/billing/webhook runtime code has been removed. `STRIPE_*`
-environment variables are rejected by deploy env lint.
+environment variables are rejected by production-shaped env lint.
 
 Dormant modules and historical migrations can still exist in the repository.
-They are not production-relevant unless mounted by `api/main.py`, scheduled by
+They are not runtime-relevant unless mounted by `api/main.py`, scheduled by
 `scraper/sports_scraper/celery_app.py`, or started by
 `infra/docker-compose.yml`.
 

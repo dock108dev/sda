@@ -1,4 +1,4 @@
-name: Backend CI/CD
+name: Backend CI
 
 on:
   push:
@@ -6,20 +6,13 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
-    inputs:
-      full_deploy:
-        description: "Run full deploy (build + push + deploy to server)"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
 
-# Cancel stale in-progress runs on PRs only. On main pushes we let runs
-# queue so a deploy already in flight is never killed by the next commit.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  # Keep each main merge validated while allowing stale PR runs to be replaced.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -363,6 +356,22 @@ jobs:
       - name: Grep api/app for SQL string interpolation
         run: python scripts/lint_sql_interpolation.py
 
+  lint-maintenance-mode:
+    name: Guardrail · Maintenance-only workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install workflow parser
+        run: pip install "PyYAML==6.0.3"
+      - name: Test and enforce the maintenance boundary
+        run: |
+          python -m unittest tests.test_maintenance_mode_guardrail
+          python scripts/check_maintenance_mode.py
+
   compile:
     name: Compile
     runs-on: ubuntu-latest
@@ -383,6 +392,7 @@ jobs:
       - security-pnpm-audit
       - security-detect-secrets
       - security-sql-interpolation
+      - lint-maintenance-mode
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -415,16 +425,10 @@ jobs:
         run: pnpm build
 
   build:
-    name: Build and Push Images
+    name: Build Images (No Push)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: compile
-    if: >-
-      (github.event_name == 'push' && github.ref_name == 'main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_deploy == 'true')
-    permissions:
-      contents: read
-      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -438,256 +442,16 @@ jobs:
             dockerfile: infra/scraper.Dockerfile
     steps:
       - uses: actions/checkout@v7
-      - name: Compute image tags
-        id: image-tags
-        env:
-          SERVICE: ${{ matrix.service }}
-        run: |
-          REPO="ghcr.io/${{ github.repository }}-${SERVICE}"
-          SHORT_SHA="${GITHUB_SHA::7}"
-          {
-            echo "tags<<EOF"
-            echo "${REPO}:${SHORT_SHA}"
-            echo "${REPO}:latest"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-      - name: Build and push
+      - name: Build without publishing
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          push: true
-          tags: ${{ steps.image-tags.outputs.tags }}
+          push: false
+          tags: sports-data-admin-${{ matrix.service }}:ci
           # Per-service GHA cache scope avoids cross-image layer collisions
           # while still letting each image reuse its own previous layers.
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
-
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: build
-    if: >-
-      (github.event_name == 'push' && github.ref_name == 'main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_deploy == 'true')
-    steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.5
-        env:
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          GH_ACTOR: ${{ github.actor }}
-          GH_REPO: ${{ github.repository }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          GH_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
-          GH_EVENT_NAME: ${{ github.event_name }}
-          GH_BEFORE: ${{ github.event.before }}
-          GH_SHA: ${{ github.sha }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: GHCR_TOKEN,GH_ACTOR,GH_REPO,DEPLOY_PATH,GH_REF,GH_EVENT_NAME,GH_BEFORE,GH_SHA
-          script: |
-            set -euo pipefail
-
-            BASE_DIR="$DEPLOY_PATH"
-            REPO_URL="https://x-access-token:${GHCR_TOKEN}@github.com/${GH_REPO}.git"
-            BRANCH="${GH_REF}"
-
-            echo "Ensuring base directory exists..."
-            mkdir -p "$BASE_DIR"
-            cd "$BASE_DIR"
-
-            if [ ! -d ".git" ]; then
-              echo "No git repo found. Initializing..."
-              git init
-            fi
-
-            echo "Fetching latest code..."
-            git fetch --prune "$REPO_URL" "+refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}"
-
-            echo "Resetting to origin/$BRANCH..."
-            git checkout -B "$BRANCH" "refs/remotes/origin/$BRANCH"
-            git reset --hard "refs/remotes/origin/$BRANCH"
-
-            CADDY_CHANGED=false
-            if [ "${GH_EVENT_NAME:-}" = "push" ] && [ -n "${GH_BEFORE:-}" ] && [ -n "${GH_SHA:-}" ]; then
-              if git diff --name-only "$GH_BEFORE" "$GH_SHA" -- infra/Caddyfile | grep -q "infra/Caddyfile"; then
-                CADDY_CHANGED=true
-              fi
-            fi
-
-            if [ "$CADDY_CHANGED" = true ]; then
-              echo "Detected infra/Caddyfile change in this deploy. Updating active Caddy config..."
-
-              if [ ! -f "infra/Caddyfile" ]; then
-                echo "ERROR: infra/Caddyfile missing in repo checkout"
-                exit 1
-              fi
-
-              if [ ! -f "/etc/caddy/Caddyfile" ]; then
-                echo "ERROR: /etc/caddy/Caddyfile not found on server"
-                exit 1
-              fi
-
-              if ! sudo -n true 2>/dev/null; then
-                echo "ERROR: deploy user requires passwordless sudo for Caddy update commands."
-                echo "Grant NOPASSWD sudo for python3 (writing /etc/caddy/Caddyfile), caddy validate, and systemctl reload caddy."
-                exit 1
-              fi
-
-              sudo python3 infra/scripts/update_caddy_site_block.py \
-                infra/Caddyfile \
-                /etc/caddy/Caddyfile \
-                sda.dock108.dev
-
-              sudo caddy validate --config /etc/caddy/Caddyfile
-              sudo systemctl reload caddy
-              echo "Caddy reload complete."
-            else
-              echo "No infra/Caddyfile change detected; skipping Caddy update."
-            fi
-
-            if [ ! -f "infra/.env" ]; then
-              echo "ERROR: infra/.env file missing in $BASE_DIR"
-              exit 1
-            fi
-
-            echo "Changing to infra directory (loads .env + correct relative volume mounts)..."
-            cd infra
-
-            echo "Logging into GHCR..."
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
-
-            echo "Pre-deploy cleanup (free space for new images)..."
-            # No --until filter: rapid redeploys must still reclaim space.
-            # -a drops any image not referenced by a running container, so
-            # in-use images (sports-api/web/scraper currently running) stay
-            # and superseded :latest pulls get freed regardless of age.
-            docker image prune -af 2>/dev/null || true
-            docker builder prune -af 2>/dev/null || true
-            # Anonymous volumes left behind by `compose run --rm migrate` and
-            # earlier service starts accumulate over time. Named volumes
-            # (infra_postgres-data, infra_model-artifacts, infra_scraper-cache)
-            # have LINKS>0 and are never touched by `volume prune`.
-            docker volume prune -f 2>/dev/null || true
-
-            echo "Pulling images..."
-            docker compose --profile prod pull --policy always
-
-            echo "Running migrations..."
-            docker compose --profile prod run --rm migrate
-
-            echo "Starting services..."
-            # --force-recreate is required because we use :latest tags. Without
-            # it, compose hashes the service config (which includes the tag
-            # string but not the resolved image SHA) and decides "no change →
-            # keep running container", silently skipping every deploy where
-            # only the underlying image content changed. See the "deploys
-            # 2-days-old container" incident in the deploy log.
-            docker compose --profile prod up -d --remove-orphans --force-recreate
-
-            echo "Verifying API health..."
-            for i in $(seq 1 30); do
-              if docker inspect sports-api --format='{{.State.Health.Status}}' 2>/dev/null | grep -q healthy; then
-                echo "✅ API container healthy"
-                break
-              fi
-              STATUS=$(docker inspect sports-api --format='{{.State.Status}}' 2>/dev/null || echo "missing")
-              if [ "$STATUS" = "exited" ] || [ "$STATUS" = "missing" ]; then
-                echo "❌ API container failed to start (status: $STATUS)"
-                docker logs sports-api --tail=40 2>/dev/null || true
-                exit 1
-              fi
-              echo "  Waiting for API health check ($i/30)..."
-              sleep 5
-            done
-
-            # Final check — if we exhausted retries without healthy
-            FINAL_STATUS=$(docker inspect sports-api --format='{{.State.Health.Status}}' 2>/dev/null || echo "unknown")
-            if [ "$FINAL_STATUS" != "healthy" ]; then
-              echo "❌ API did not become healthy within 150s (status: $FINAL_STATUS)"
-              docker logs sports-api --tail=40 2>/dev/null || true
-              exit 1
-            fi
-
-            echo "Verifying containers are running the just-pulled images..."
-            # Defense against the silent-no-op-deploy class of bugs: for each
-            # long-running app container, read the image tag it was started
-            # with, resolve that tag to the SHA currently in the local image
-            # store, and compare to the SHA the container is actually running
-            # on. Mismatch → compose declined to recreate (or pulled from a
-            # different image namespace than it runs from). Either way: fail.
-            #
-            # Using the container's own `Config.Image` as the source of truth
-            # keeps this check working regardless of image-naming conventions
-            # in compose.yaml.
-            check_image_sha() {
-              local container="$1"
-              local image_tag pulled_sha running_sha
-              image_tag=$(docker inspect "$container" --format='{{.Config.Image}}' 2>/dev/null || echo "")
-              if [ -z "$image_tag" ]; then
-                echo "❌ Could not resolve image tag for $container (container missing?)"
-                return 1
-              fi
-              pulled_sha=$(docker image inspect "$image_tag" --format='{{.Id}}' 2>/dev/null || echo "")
-              running_sha=$(docker inspect "$container" --format='{{.Image}}' 2>/dev/null || echo "")
-              if [ -z "$pulled_sha" ] || [ -z "$running_sha" ]; then
-                echo "❌ Could not resolve image SHA for $container ($image_tag)"
-                return 1
-              fi
-              if [ "$pulled_sha" != "$running_sha" ]; then
-                echo "❌ $container is running a stale image ($image_tag)."
-                echo "    pulled:  $pulled_sha"
-                echo "    running: $running_sha"
-                return 1
-              fi
-              echo "  ✅ $container ($image_tag) matches local store"
-              return 0
-            }
-
-            STALE=0
-            for container in sports-api sports-web sports-scraper; do
-              if ! check_image_sha "$container"; then
-                STALE=1
-              fi
-            done
-            if [ "$STALE" -ne 0 ]; then
-              echo "❌ One or more containers are running stale images. Common causes:"
-              echo "   - \`docker compose up -d\` skipped recreation because :latest"
-              echo "     tag didn't change (need --force-recreate)."
-              echo "   - compose.yaml pulls from a different image namespace than"
-              echo "     the build job pushes to."
-              exit 1
-            fi
-
-            echo "Refreshing Scroll Down card feeds for deploy window..."
-            python3 ../scripts/refresh_card_feeds.py \
-              --base-url http://localhost:8000 \
-              --env-file .env \
-              --lookback-hours 72 \
-              --lookahead-hours 72
-
-            echo "Verifying Scroll Down normalized card feed..."
-            python3 ../scripts/validate_scroll_down_feed.py \
-              --base-url http://localhost:8000 \
-              --env-file .env \
-              --lookback-days 3 \
-              --lookahead-days 3
-
-            echo "Post-deploy cleanup..."
-            docker image prune -af
-            docker builder prune -af
-            docker volume prune -f
-
-            echo "Deployment status:"
-            docker compose --profile prod ps

@@ -1,7 +1,8 @@
 # Architecture
 
 Sports Data Admin is the backend and admin control plane for Scroll Down Sports
-catch-up data. Current production relevance is defined by:
+catch-up data. The repository is maintenance-only and has no active deployment.
+Current runtime relevance is defined by:
 
 - `api/main.py` for mounted API routes,
 - `scraper/sports_scraper/celery_app.py` for scheduled worker behavior,
@@ -70,11 +71,11 @@ catch-up window. `poll_live_pbp` uses a Redis lock to avoid overlapping runs.
 Worker startup marks interrupted scrape/job runs so previous crashes do not
 permanently block new work.
 
-`refresh_card_feeds` is included and routed for explicit dispatch by deploy
-scripts or manual Celery use. It is not beat-scheduled. Other `@shared_task`
-definitions can exist in historical modules without being active unless they
-are included, routed, and scheduled by the current Celery app or dispatched by a
-mounted API route.
+`refresh_card_feeds` is included and routed for explicit local Celery use and
+is retained in the historical deployment procedure. It is not beat-scheduled.
+Other `@shared_task` definitions can exist in historical modules without being
+active unless they are included, routed, and scheduled by the current Celery
+app or dispatched by a mounted API route.
 
 ## Web
 
@@ -123,7 +124,8 @@ migrations remain as database history.
 ## CI Boundary
 
 GitHub Actions still runs broad tests, lint, build, dependency audit, secret
-scan, SQL interpolation checks, and schema/type synchronization checks. Passing
-CI does not mean every historical module is active production runtime; the
+scan, SQL interpolation checks, schema/type synchronization checks, and
+container builds with `push: false`. Passing CI does not mean every historical
+module is active runtime or that the application is deployable; the
 runtime boundary is the mounted API, scheduled Celery task, and compose service
 set above.
